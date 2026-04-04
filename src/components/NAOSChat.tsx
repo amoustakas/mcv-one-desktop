@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Bot, User } from 'lucide-react';
+import { Send, Loader2, Bot, User, Trash2 } from 'lucide-react';
 import { streamMessage, type ChatMessage } from '../lib/claude';
 import { type Venture } from '../lib/ventures';
 
@@ -7,8 +7,19 @@ interface NAOSChatProps {
   venture: Venture;
 }
 
+function loadHistory(ventureId: string): ChatMessage[] {
+  try {
+    const raw = localStorage.getItem(`naos-chat-${ventureId}`);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveHistory(ventureId: string, msgs: ChatMessage[]) {
+  localStorage.setItem(`naos-chat-${ventureId}`, JSON.stringify(msgs.slice(-100)));
+}
+
 export default function NAOSChat({ venture }: NAOSChatProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => loadHistory(venture.id));
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [streamingText, setStreamingText] = useState('');
@@ -20,9 +31,14 @@ export default function NAOSChat({ venture }: NAOSChatProps) {
   }, [messages, streamingText]);
 
   useEffect(() => {
-    setMessages([]);
+    const history = loadHistory(venture.id);
+    setMessages(history);
     setStreamingText('');
   }, [venture.id]);
+
+  useEffect(() => {
+    if (messages.length > 0) saveHistory(venture.id, messages);
+  }, [messages, venture.id]);
 
   async function handleSend() {
     const text = input.trim();
@@ -132,9 +148,24 @@ export default function NAOSChat({ venture }: NAOSChatProps) {
             {loading ? <Loader2 size={18} className="spin" /> : <Send size={18} />}
           </button>
         </div>
-        <p className="chat-disclaimer">
-          Powered by Claude claude-sonnet-4-20250514 &middot; Responses may be inaccurate
-        </p>
+        <div className="chat-footer-row">
+          <p className="chat-disclaimer">
+            Powered by Claude claude-sonnet-4-20250514
+          </p>
+          {messages.length > 0 && (
+            <button
+              className="chat-clear"
+              onClick={() => {
+                setMessages([]);
+                localStorage.removeItem(`naos-chat-${venture.id}`);
+              }}
+              aria-label="Clear chat"
+            >
+              <Trash2 size={14} />
+              <span>Clear</span>
+            </button>
+          )}
+        </div>
       </div>
 
       <style>{`
@@ -325,11 +356,32 @@ export default function NAOSChat({ venture }: NAOSChatProps) {
           cursor: not-allowed;
         }
 
+        .chat-footer-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-top: var(--space-sm);
+        }
+
         .chat-disclaimer {
           font-size: var(--text-xs);
           color: var(--text-muted);
-          text-align: center;
-          margin-top: var(--space-sm);
+        }
+
+        .chat-clear {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          font-size: var(--text-xs);
+          color: var(--text-muted);
+          padding: 4px 8px;
+          border-radius: var(--radius-sm);
+          transition: all var(--transition-fast);
+        }
+
+        .chat-clear:hover {
+          color: var(--error);
+          background: rgba(239, 68, 68, 0.1);
         }
 
         @keyframes spin {

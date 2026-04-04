@@ -7,7 +7,14 @@
       "Bash(npm run:*)",
       "Bash(git -C /c/Users/moust/mcv-one-desktop init)",
       "Bash(git -C /c/Users/moust/mcv-one-desktop add -A)",
-      "Bash(git -C /c/Users/moust/mcv-one-desktop commit -m ':*)"
+      "Bash(git -C /c/Users/moust/mcv-one-desktop commit -m ':*)",
+      "Bash(vercel whoami:*)",
+      "Bash(vercel:*)",
+      "Bash(gh auth:*)",
+      "Bash(gh repo:*)",
+      "Bash(git push:*)",
+      "Bash(npx cap:*)",
+      "Bash(git commit -m ':*)"
     ]
   }
 }
