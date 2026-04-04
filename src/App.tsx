@@ -179,10 +179,10 @@ export default function App() {
           {/* Chat Dock */}
           {chatDocked && <ChatDock />}
         </div>
-      </div>
 
-      {/* Status Bar - spans full width */}
-      <StatusBar />
+        {/* Status Bar inside main column */}
+        <StatusBar />
+      </div>
 
       {/* Overlays */}
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
@@ -202,6 +202,7 @@ export default function App() {
           flex-direction: column;
           min-width: 0;
           height: 100vh;
+          overflow: hidden;
         }
 
         /* ── Header ── */
@@ -209,6 +210,7 @@ export default function App() {
           height: 48px;
           display: flex;
           align-items: center;
+          justify-content: space-between;
           padding: 0 16px;
           background: var(--bg-surface);
           border-bottom: 1px solid var(--border);
