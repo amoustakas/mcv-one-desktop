@@ -20,6 +20,8 @@ import IntelligenceView from './views/IntelligenceView';
 import TreasuryView from './views/TreasuryView';
 import PortfolioView from './views/PortfolioView';
 import EngineeringView from './views/EngineeringView';
+import SignalsView from './views/SignalsView';
+import GrowthView from './views/GrowthView';
 
 // Placeholder views for Phase 2
 function PlaceholderView({ title, description }: { title: string; description: string }) {
@@ -68,7 +70,7 @@ function ViewRouter() {
     case 'engineering':
       return <EngineeringView />;
     case 'signals':
-      return <PlaceholderView title="Signals" description="Live event stream, webhooks, real-time feeds." />;
+      return <SignalsView />;
     case 'settings':
       return <PlaceholderView title="Settings" description="Use the gear icon in the header." />;
     // Venture views
@@ -77,9 +79,9 @@ function ViewRouter() {
     case 'venture-engineering':
       return <EngineeringView />;
     case 'venture-growth':
-      return <PlaceholderView title={`${venture.name} — Growth`} description="Marketing, campaigns, analytics." />;
+      return <GrowthView />;
     case 'venture-operations':
-      return <PlaceholderView title={`${venture.name} — Operations`} description="CRM, workflows, support." />;
+      return <PlaceholderView title={`${venture.name} — Operations`} description="CRM, workflows, and support center. Connect Twilio for voice/SMS." />;
     case 'venture-docs':
       return <IntelligenceView />;
     case 'venture-settings':
