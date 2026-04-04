@@ -45,7 +45,7 @@ const ventureItems: { id: ViewId; label: string }[] = [
 ];
 
 export default function NavRail() {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(() => window.innerWidth >= 1600);
   const { mode, activeView, activeVenture, setView, switchToGlobal, switchToVenture } = useNavigation();
   const { applyGlobalTheme, applyVentureTheme } = useTheme();
 

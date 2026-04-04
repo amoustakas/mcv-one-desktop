@@ -156,7 +156,7 @@ export default function CommandCenter() {
         .cc-refresh { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); color: var(--text-muted); transition: all var(--transition-fast); }
         .cc-refresh:hover { background: var(--bg-card); color: var(--cyan); }
 
-        .cc-kpi-bar { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+        .cc-kpi-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
         .cc-kpi {
           display: flex; align-items: center; gap: 10px; padding: 12px 14px;
           background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md);
@@ -174,7 +174,7 @@ export default function CommandCenter() {
           margin-bottom: 8px;
         }
 
-        .cc-venture-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+        .cc-venture-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
 
         .cc-venture-card {
           position: relative; overflow: hidden;

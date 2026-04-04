@@ -19,6 +19,7 @@ import CommandCenter from './views/CommandCenter';
 import IntelligenceView from './views/IntelligenceView';
 import TreasuryView from './views/TreasuryView';
 import PortfolioView from './views/PortfolioView';
+import EngineeringView from './views/EngineeringView';
 
 // Placeholder views for Phase 2
 function PlaceholderView({ title, description }: { title: string; description: string }) {
@@ -65,7 +66,7 @@ function ViewRouter() {
     case 'ops':
       return <OpsPanel />;
     case 'engineering':
-      return <PlaceholderView title="Engineering" description="CTO workbench, CI/CD status, infrastructure." />;
+      return <EngineeringView />;
     case 'signals':
       return <PlaceholderView title="Signals" description="Live event stream, webhooks, real-time feeds." />;
     case 'settings':
@@ -178,7 +179,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* Status Bar */}
+      {/* Status Bar - spans full width */}
       <StatusBar />
 
       {/* Overlays */}
