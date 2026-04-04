@@ -41,7 +41,9 @@
       "Bash(unzip -o \"/c/Users/moust/Downloads/Samples/the-lab.zip\" -d the-lab)",
       "Bash(unzip -l \"/c/Users/moust/Downloads/Samples/flash-ui.zip\")",
       "Bash(unzip:*)",
-      "Bash(grep -E \"\\\\.tsx?$|package\\\\.json\")"
+      "Bash(grep -E \"\\\\.tsx?$|package\\\\.json\")",
+      "Bash(node:*)",
+      "Bash(wc -l /c/Users/moust/Documents/GitHub/mcv/docs-v2/tier-5-domains/mcv-only/agentic-os/*.md)"
     ]
   }
 }
