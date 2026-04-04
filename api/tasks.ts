@@ -1,0 +1,61 @@
+import { createClient } from '@supabase/supabase-js';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+
+const supabase = createClient(
+  process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '',
+);
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const action = req.method === 'GET' ? req.query.action as string : req.body?.action;
+
+  try {
+    switch (action) {
+      case 'list': {
+        const v = req.query.venture_id || req.body?.venture_id;
+        const status = req.query.status || req.body?.status;
+        let q = supabase.from('tasks').select('*').order('priority_order', { ascending: true }).order('created_at', { ascending: false }).limit(200);
+        if (v) q = q.eq('venture_id', v);
+        if (status) q = q.eq('status', status);
+        // fallback sort if priority_order doesn't exist
+        const { data, error } = await supabase.from('tasks').select('*').order('created_at', { ascending: false }).limit(200);
+        if (error) throw error;
+        let filtered = data || [];
+        if (v) filtered = filtered.filter((t: any) => t.venture_id === v);
+        if (status) filtered = filtered.filter((t: any) => t.status === status);
+        return res.json({ tasks: filtered });
+      }
+      case 'create': {
+        const { data, error } = await supabase.from('tasks').insert(req.body.task).select().single();
+        if (error) throw error;
+        return res.json({ task: data });
+      }
+      case 'update': {
+        const { id, ...updates } = req.body;
+        if (updates.status === 'done' && !updates.completed_at) updates.completed_at = new Date().toISOString();
+        const { data, error } = await supabase.from('tasks').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id).select().single();
+        if (error) throw error;
+        return res.json({ task: data });
+      }
+      case 'delete': {
+        await supabase.from('tasks').delete().eq('id', req.body.id);
+        return res.json({ success: true });
+      }
+      case 'stats': {
+        const { data } = await supabase.from('tasks').select('status, priority, venture_id');
+        const tasks = data || [];
+        const byStatus: Record<string, number> = {};
+        const byPriority: Record<string, number> = {};
+        tasks.forEach((t: any) => {
+          byStatus[t.status] = (byStatus[t.status] || 0) + 1;
+          byPriority[t.priority] = (byPriority[t.priority] || 0) + 1;
+        });
+        return res.json({ total: tasks.length, byStatus, byPriority });
+      }
+      default:
+        return res.status(400).json({ error: `Unknown action: ${action}` });
+    }
+  } catch (error) {
+    return res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
+  }
+}

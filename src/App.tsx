@@ -22,6 +22,9 @@ import PortfolioView from './views/PortfolioView';
 import EngineeringView from './views/EngineeringView';
 import SignalsView from './views/SignalsView';
 import GrowthView from './views/GrowthView';
+import TasksView from './views/TasksView';
+import CRMView from './views/CRMView';
+import ForgeView from './views/ForgeView';
 
 // Placeholder views for Phase 2
 function PlaceholderView({ title, description }: { title: string; description: string }) {
@@ -71,6 +74,12 @@ function ViewRouter() {
       return <EngineeringView />;
     case 'signals':
       return <SignalsView />;
+    case 'tasks':
+      return <TasksView />;
+    case 'crm':
+      return <CRMView />;
+    case 'forge':
+      return <ForgeView />;
     case 'settings':
       return <PlaceholderView title="Settings" description="Use the gear icon in the header." />;
     // Venture views
@@ -84,6 +93,10 @@ function ViewRouter() {
       return <PlaceholderView title={`${venture.name} — Operations`} description="CRM, workflows, and support center. Connect Twilio for voice/SMS." />;
     case 'venture-docs':
       return <IntelligenceView />;
+    case 'venture-forge':
+      return <ForgeView />;
+    case 'venture-tasks':
+      return <TasksView />;
     case 'venture-settings':
       return <PlaceholderView title={`${venture.name} — Settings`} description="Venture configuration." />;
     default:
@@ -102,7 +115,7 @@ export default function App() {
 
   // Keyboard shortcuts
   useEffect(() => {
-    const globalViews: ViewId[] = ['command-center', 'portfolio', 'chat', 'intelligence', 'treasury', 'ops', 'engineering', 'signals'];
+    const globalViews: ViewId[] = ['command-center', 'portfolio', 'chat', 'intelligence', 'treasury', 'ops', 'engineering', 'tasks', 'crm'];
 
     function handleKey(e: KeyboardEvent) {
       // Don't capture if typing in an input

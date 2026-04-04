@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   LayoutGrid, PieChart, Bot, Brain, Landmark, Activity,
   Wrench, Radio, Settings, Globe, ChevronLeft, ChevronRight,
+  CheckSquare, Users, Hammer, FileText,
 } from 'lucide-react';
 import { useNavigation, type ViewId } from '../stores/navigation';
 import { useTheme } from '../stores/theme';
@@ -16,12 +17,17 @@ const VIEW_ICONS: Record<string, React.FC<{ size: number }>> = {
   'ops': Activity,
   'engineering': Wrench,
   'signals': Radio,
+  'tasks': CheckSquare,
+  'crm': Users,
+  'forge': Hammer,
   'settings': Settings,
   'venture-dashboard': LayoutGrid,
   'venture-engineering': Wrench,
   'venture-growth': Activity,
   'venture-operations': Radio,
-  'venture-docs': Brain,
+  'venture-docs': FileText,
+  'venture-forge': Hammer,
+  'venture-tasks': CheckSquare,
 };
 
 const globalItems: { id: ViewId; label: string }[] = [
@@ -32,6 +38,9 @@ const globalItems: { id: ViewId; label: string }[] = [
   { id: 'treasury', label: 'Treasury' },
   { id: 'ops', label: 'Ops Center' },
   { id: 'engineering', label: 'Engineering' },
+  { id: 'tasks', label: 'Tasks' },
+  { id: 'crm', label: 'CRM' },
+  { id: 'forge', label: 'Forge' },
   { id: 'signals', label: 'Signals' },
 ];
 
@@ -42,6 +51,8 @@ const ventureItems: { id: ViewId; label: string }[] = [
   { id: 'venture-growth', label: 'Growth' },
   { id: 'venture-operations', label: 'Operations' },
   { id: 'venture-docs', label: 'Documents' },
+  { id: 'venture-forge', label: 'Forge' },
+  { id: 'venture-tasks', label: 'Tasks' },
 ];
 
 export default function NavRail() {

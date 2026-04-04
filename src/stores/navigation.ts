@@ -10,6 +10,9 @@ export type ViewId =
   | 'ops'
   | 'engineering'
   | 'signals'
+  | 'tasks'
+  | 'crm'
+  | 'forge'
   | 'settings'
   // Venture views
   | 'venture-dashboard'
@@ -17,6 +20,8 @@ export type ViewId =
   | 'venture-growth'
   | 'venture-operations'
   | 'venture-docs'
+  | 'venture-forge'
+  | 'venture-tasks'
   | 'venture-settings';
 
 export type ContextMode = 'global' | 'venture';
