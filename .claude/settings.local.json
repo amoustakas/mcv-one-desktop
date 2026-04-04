@@ -17,7 +17,14 @@
       "Bash(git commit -m ':*)",
       "Bash(curl -s -X POST https://mcv-one-desktop.vercel.app/api/chat -H 'Content-Type: application/json' -d '{\"messages\":[{\"role\":\"user\",\"content\":\"Say hello in one word.\"}],\"systemPrompt\":\"You are NAOS.\"}')",
       "Bash(find /c/Users/moust/.claude -type f -name \"*.md\" -exec wc -l {} +)",
-      "Bash(npx supabase:*)"
+      "Bash(npx supabase:*)",
+      "mcp__plugin_supabase_supabase__list_organizations",
+      "mcp__plugin_supabase_supabase__list_projects",
+      "mcp__plugin_supabase_supabase__get_project_url",
+      "mcp__plugin_supabase_supabase__get_publishable_keys",
+      "mcp__plugin_supabase_supabase__list_tables",
+      "mcp__plugin_supabase_supabase__apply_migration",
+      "Bash(curl:*)"
     ]
   }
 }

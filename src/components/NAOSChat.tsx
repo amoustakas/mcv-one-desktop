@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Loader2, Bot, User, Trash2, Plus } from 'lucide-react';
 import { streamMessage, type ChatMessage } from '../lib/claude';
+import { handleCommand } from '../lib/commands';
 import { type Venture } from '../lib/ventures';
 import {
   supabase,
@@ -137,6 +138,30 @@ export default function NAOSChat({ venture }: NAOSChatProps) {
   async function handleSend() {
     const text = input.trim();
     if (!text || loading) return;
+
+    // Check for slash commands first
+    if (text.startsWith('/')) {
+      setInput('');
+      setLoading(true);
+      const userMsg: ChatMessage = { role: 'user', content: text };
+      setMessages((prev) => [...prev, userMsg]);
+      try {
+        const result = await handleCommand(text);
+        if (result.handled) {
+          setMessages((prev) => [
+            ...prev,
+            { role: 'assistant', content: result.response || 'Command executed.' },
+          ]);
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // Fall through to Claude if command fails
+      }
+      // Remove the user message we added — it'll be re-added below
+      setMessages((prev) => prev.slice(0, -1));
+      setLoading(false);
+    }
 
     // Auto-create conversation if none exists
     let convId = activeConvId;
