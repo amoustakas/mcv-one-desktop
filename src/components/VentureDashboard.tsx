@@ -75,7 +75,7 @@ export default function VentureDashboard({ venture }: VentureDashboardProps) {
       <div className="vdash-empty">
         <div className="vdash-empty-icon" style={{ color: venture.color }}>{venture.icon}</div>
         <h2>{venture.name} Dashboard</h2>
-        <p>Dashboard integration coming soon. Use Chat to interact with NAOS about {venture.name}.</p>
+        <p>Dashboard integration coming soon. Use Chat to interact with Aegis about {venture.name}.</p>
       </div>
     );
   }

@@ -29,7 +29,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
     // Views
     { id: 'v-command', label: 'Command Center', sublabel: 'Global overview', action: () => { switchToGlobal(); applyGlobalTheme(); setView('command-center'); }, icon: <Globe size={14} /> },
     { id: 'v-portfolio', label: 'Portfolio', sublabel: 'Venture health', action: () => { setView('portfolio'); } },
-    { id: 'v-chat', label: 'Open NAOS Chat', sublabel: 'AI assistant', action: () => { setView('chat'); }, icon: <MessageSquare size={14} /> },
+    { id: 'v-chat', label: 'Open Aegis Chat', sublabel: 'AI assistant', action: () => { setView('chat'); }, icon: <MessageSquare size={14} /> },
     { id: 'v-intel', label: 'Intelligence', sublabel: 'Documents & RAG', action: () => { setView('intelligence'); } },
     { id: 'v-treasury', label: 'Treasury', sublabel: 'EDGE & P&L', action: () => { setView('treasury'); } },
     { id: 'v-ops', label: 'Ops Center', sublabel: 'GitHub & Vercel', action: () => { setView('ops'); } },

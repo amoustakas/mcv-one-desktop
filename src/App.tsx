@@ -12,7 +12,7 @@ import { UserButton } from './lib/auth';
 import { Search, Settings, Bot } from 'lucide-react';
 
 // Views
-import NAOSChat from './components/NAOSChat';
+import AegisChat from './components/AegisChat';
 import OpsPanel from './components/OpsPanel';
 import VentureDashboard from './components/VentureDashboard';
 import CommandCenter from './views/CommandCenter';
@@ -29,7 +29,7 @@ function PlaceholderView({ title, description }: { title: string; description: s
     <div className="placeholder-view">
       <h2>{title}</h2>
       <p>{description}</p>
-      <p className="placeholder-hint">Coming in Phase 2. Use NAOS chat or slash commands in the meantime.</p>
+      <p className="placeholder-hint">Coming in Phase 2. Use Aegis chat or slash commands in the meantime.</p>
       <style>{`
         .placeholder-view {
           height: 100%;
@@ -60,7 +60,7 @@ function ViewRouter() {
     case 'portfolio':
       return <PortfolioView />;
     case 'chat':
-      return <NAOSChat venture={venture} />;
+      return <AegisChat venture={venture} />;
     case 'intelligence':
       return <IntelligenceView />;
     case 'treasury':
@@ -87,7 +87,7 @@ function ViewRouter() {
     case 'venture-settings':
       return <PlaceholderView title={`${venture.name} — Settings`} description="Venture configuration." />;
     default:
-      return <NAOSChat venture={venture} />;
+      return <AegisChat venture={venture} />;
   }
 }
 
@@ -161,7 +161,7 @@ export default function App() {
             <button
               className="header-icon-btn"
               onClick={toggleChatDock}
-              title={chatDocked ? 'Hide NAOS (Ctrl+/)' : 'Show NAOS (Ctrl+/)'}
+              title={chatDocked ? 'Hide Aegis (Ctrl+/)' : 'Show Aegis (Ctrl+/)'}
               style={chatDocked ? { color: 'var(--cyan)' } : undefined}
             >
               <Bot size={15} />

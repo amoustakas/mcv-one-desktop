@@ -200,7 +200,7 @@ export async function handleCommand(input: string): Promise<CommandResult> {
       case 'help': {
         return {
           handled: true,
-          response: `## NAOS Commands
+          response: `## Aegis Commands
 
 ### System
 | Command | Description |

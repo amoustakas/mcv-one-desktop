@@ -15,7 +15,7 @@ import {
 } from '../lib/supabase';
 import Markdown from './Markdown';
 
-interface NAOSChatProps {
+interface AegisChatProps {
   venture: Venture;
   docked?: boolean;
 }
@@ -43,7 +43,7 @@ function saveConvList(ventureId: string, convs: { id: string; title: string }[])
   localStorage.setItem(`naos-convs-${ventureId}`, JSON.stringify(convs));
 }
 
-export default function NAOSChat({ venture, docked = false }: NAOSChatProps) {
+export default function AegisChat({ venture, docked = false }: AegisChatProps) {
   const [conversations, setConversations] = useState<{ id: string; title: string }[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -321,7 +321,7 @@ export default function NAOSChat({ venture, docked = false }: NAOSChatProps) {
                 {venture.icon}
               </div>
               <h2 className="chat-empty-title">
-                NAOS <span style={{ color: venture.color }}>&middot;</span> {venture.name}
+                Aegis <span style={{ color: venture.color }}>&middot;</span> {venture.name}
               </h2>
               <p className="chat-empty-sub">{venture.tagline}</p>
               <p className="chat-empty-hint">Ask me anything about {venture.name}.</p>
@@ -336,7 +336,7 @@ export default function NAOSChat({ venture, docked = false }: NAOSChatProps) {
               <div className="chat-msg-content">
                 <div className="chat-msg-header">
                   <span className="chat-msg-name">
-                    {msg.role === 'user' ? 'You' : 'NAOS'}
+                    {msg.role === 'user' ? 'You' : 'Aegis'}
                   </span>
                   {msg.role === 'assistant' && (
                     <button
@@ -359,7 +359,7 @@ export default function NAOSChat({ venture, docked = false }: NAOSChatProps) {
             <div className="chat-msg assistant">
               <div className="chat-msg-avatar"><Bot size={16} /></div>
               <div className="chat-msg-content">
-                <div className="chat-msg-name">NAOS</div>
+                <div className="chat-msg-name">Aegis</div>
                 <div className="chat-msg-text">
                   <Markdown content={streamingText} />
                 </div>
@@ -386,7 +386,7 @@ export default function NAOSChat({ venture, docked = false }: NAOSChatProps) {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={recording ? 'Listening...' : `Message NAOS (${venture.name})...`}
+              placeholder={recording ? 'Listening...' : `Message Aegis (${venture.name})...`}
               rows={1}
               disabled={loading}
             />

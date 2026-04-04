@@ -147,7 +147,7 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             </div>
             <label className="settings-toggle-row">
               <input type="checkbox" checked={settings.autoTTS} onChange={(e) => update({ autoTTS: e.target.checked })} />
-              <span>Auto-read NAOS responses aloud</span>
+              <span>Auto-read Aegis responses aloud</span>
             </label>
           </div>
 

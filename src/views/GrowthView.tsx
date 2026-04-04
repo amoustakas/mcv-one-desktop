@@ -86,7 +86,7 @@ export default function GrowthView() {
           <h2 className="growth-section-title"><Target size={14} /> Content Pipeline</h2>
           <div className="growth-placeholder">
             <p>Content calendar, social posts, and scheduled campaigns will appear here once integrations are connected.</p>
-            <p className="growth-hint">Use <code>/note</code> in NAOS to save campaign ideas.</p>
+            <p className="growth-hint">Use <code>/note</code> in Aegis to save campaign ideas.</p>
           </div>
         </div>
       </div>

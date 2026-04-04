@@ -27,7 +27,7 @@ const VIEW_ICONS: Record<string, React.FC<{ size: number }>> = {
 const globalItems: { id: ViewId; label: string }[] = [
   { id: 'command-center', label: 'Command' },
   { id: 'portfolio', label: 'Portfolio' },
-  { id: 'chat', label: 'NAOS' },
+  { id: 'chat', label: 'Aegis' },
   { id: 'intelligence', label: 'Intelligence' },
   { id: 'treasury', label: 'Treasury' },
   { id: 'ops', label: 'Ops Center' },
@@ -37,7 +37,7 @@ const globalItems: { id: ViewId; label: string }[] = [
 
 const ventureItems: { id: ViewId; label: string }[] = [
   { id: 'venture-dashboard', label: 'Dashboard' },
-  { id: 'chat', label: 'NAOS' },
+  { id: 'chat', label: 'Aegis' },
   { id: 'venture-engineering', label: 'Engineering' },
   { id: 'venture-growth', label: 'Growth' },
   { id: 'venture-operations', label: 'Operations' },

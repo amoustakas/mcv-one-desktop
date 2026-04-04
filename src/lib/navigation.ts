@@ -17,7 +17,7 @@ export interface NavSection {
 export const globalNav: NavItem[] = [
   { id: 'command-center', label: 'Command', icon: 'LayoutGrid' },
   { id: 'portfolio', label: 'Portfolio', icon: 'PieChart' },
-  { id: 'chat', label: 'NAOS', icon: 'Bot' },
+  { id: 'chat', label: 'Aegis', icon: 'Bot' },
   { id: 'intelligence', label: 'Intel', icon: 'Brain' },
   { id: 'treasury', label: 'Treasury', icon: 'Landmark' },
   { id: 'ops', label: 'Ops', icon: 'Activity' },
@@ -28,7 +28,7 @@ export const globalNav: NavItem[] = [
 // Layer 1: Venture navigation (base template)
 export const ventureNav: NavItem[] = [
   { id: 'venture-dashboard', label: 'Dashboard', icon: 'LayoutGrid' },
-  { id: 'chat', label: 'NAOS', icon: 'Bot' },
+  { id: 'chat', label: 'Aegis', icon: 'Bot' },
   { id: 'venture-engineering', label: 'Engineering', icon: 'Wrench' },
   { id: 'venture-growth', label: 'Growth', icon: 'TrendingUp' },
   { id: 'venture-operations', label: 'Operations', icon: 'ClipboardList' },
