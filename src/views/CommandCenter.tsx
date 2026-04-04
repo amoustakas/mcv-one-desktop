@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { GitBranch, Cloud, Zap, RefreshCw, ExternalLink, Clock, CheckSquare, Users, BookOpen, MessageSquare, Activity, Shield, TrendingUp, DollarSign, Cpu } from 'lucide-react';
+import { GitBranch, Cloud, Zap, RefreshCw, ExternalLink, CheckSquare, Users, BookOpen, MessageSquare, Activity, Shield, TrendingUp, Cpu } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
 import { useTheme } from '../stores/theme';
 import { ventures } from '../lib/ventures';
