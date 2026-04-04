@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Hammer, Plus, RefreshCw, Copy, Check, Code, FileCode, Cpu, Palette, Globe } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
+import { useToast } from '../components/Toasts';
 
 interface Template { id: string; name: string; category: string; language: string; content: string; description: string; tags: string[]; usage_count: number; venture_id: string; }
 
@@ -20,7 +21,9 @@ export default function ForgeView() {
   const [copied, setCopied] = useState<string | null>(null);
   const [filterCat, setFilterCat] = useState('');
   const [form, setForm] = useState({ name: '', category: 'component', language: 'typescript', content: '', description: '', venture_id: '' });
+  const [sortBy, setSortBy] = useState<'name' | 'date' | 'language'>('date');
   const { mode, activeVenture } = useNavigation();
+  const { toast } = useToast();
 
   async function load() {
     setLoading(true);
@@ -44,6 +47,7 @@ export default function ForgeView() {
       venture_id: form.venture_id || (mode === 'venture' ? activeVenture : 'mcv'),
       metadata: { language: form.language, description: form.description },
     });
+    toast('success', `Template "${form.name}" created`);
     setForm({ name: '', category: 'component', language: 'typescript', content: '', description: '', venture_id: '' });
     setShowAdd(false); load();
   }
@@ -54,7 +58,12 @@ export default function ForgeView() {
     setTimeout(() => setCopied(null), 2000);
   }
 
-  const filtered = filterCat ? templates.filter(t => t.category === filterCat) : templates;
+  const filtered = (filterCat ? templates.filter(t => t.category === filterCat) : templates)
+    .sort((a, b) => {
+      if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '');
+      if (sortBy === 'language') return (a.language || '').localeCompare(b.language || '');
+      return 0; // date: already sorted from API
+    });
 
   return (
     <div className="forge">
@@ -66,6 +75,11 @@ export default function ForgeView() {
           <select className="forge-filter" value={filterCat} onChange={e => setFilterCat(e.target.value)}>
             <option value="">All Categories</option>
             {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select className="forge-filter" value={sortBy} onChange={e => setSortBy(e.target.value as 'name' | 'date' | 'language')}>
+            <option value="date">Sort: Recent</option>
+            <option value="name">Sort: Name</option>
+            <option value="language">Sort: Language</option>
           </select>
           <button className="forge-add-btn" onClick={() => setShowAdd(!showAdd)}><Plus size={13} /> New Template</button>
           <button className="forge-refresh" onClick={load}><RefreshCw size={14} className={loading ? 'spin' : ''} /></button>
