@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import AnimatedBackground from './components/AnimatedBackground';
 import NavRail from './components/NavRail';
 import ChatDock from './components/ChatDock';
@@ -9,30 +9,31 @@ import { useNavigation, type ViewId } from './stores/navigation';
 import { useTheme } from './stores/theme';
 import { getVenture, ventures } from './lib/ventures';
 import { UserButton } from './lib/auth';
-// version shown in StatusBar
 import { Search, Settings, Bot } from 'lucide-react';
 import VentureMegaMenu from './components/VentureMegaMenu';
-
-// Views
-import AegisChat from './components/AegisChat';
-import OpsPanel from './components/OpsPanel';
-import VentureDashboard from './components/VentureDashboard';
-import CommandCenter from './views/CommandCenter';
-import IntelligenceView from './views/IntelligenceView';
-import TreasuryView from './views/TreasuryView';
-import PortfolioView from './views/PortfolioView';
-import EngineeringView from './views/EngineeringView';
-import SignalsView from './views/SignalsView';
-import GrowthView from './views/GrowthView';
-import TasksView from './views/TasksView';
-import CRMView from './views/CRMView';
-import ForgeView from './views/ForgeView';
-import DocsHub from './views/DocsHub';
 import QuickCapture from './components/QuickCapture';
-import AIStudioView from './views/AIStudioView';
-import SessionsView from './views/SessionsView';
-import PromptComposer from './views/PromptComposer';
-import WarRoom from './views/WarRoom';
+
+// Lazy-loaded views (code splitting)
+const AegisChat = lazy(() => import('./components/AegisChat'));
+const OpsPanel = lazy(() => import('./components/OpsPanel'));
+const VentureDashboard = lazy(() => import('./components/VentureDashboard'));
+const CommandCenter = lazy(() => import('./views/CommandCenter'));
+const IntelligenceView = lazy(() => import('./views/IntelligenceView'));
+const TreasuryView = lazy(() => import('./views/TreasuryView'));
+const PortfolioView = lazy(() => import('./views/PortfolioView'));
+const EngineeringView = lazy(() => import('./views/EngineeringView'));
+const SignalsView = lazy(() => import('./views/SignalsView'));
+const GrowthView = lazy(() => import('./views/GrowthView'));
+const TasksView = lazy(() => import('./views/TasksView'));
+const CRMView = lazy(() => import('./views/CRMView'));
+const ForgeView = lazy(() => import('./views/ForgeView'));
+const DocsHub = lazy(() => import('./views/DocsHub'));
+const AIStudioView = lazy(() => import('./views/AIStudioView'));
+const SessionsView = lazy(() => import('./views/SessionsView'));
+const PromptComposer = lazy(() => import('./views/PromptComposer'));
+const WarRoom = lazy(() => import('./views/WarRoom'));
+const VentureProfile = lazy(() => import('./views/VentureProfile'));
+const VentureOnboarding = lazy(() => import('./views/VentureOnboarding'));
 
 // Placeholder views
 function PlaceholderView({ title, description }: { title: string; description: string }) {
@@ -61,11 +62,22 @@ function PlaceholderView({ title, description }: { title: string; description: s
   );
 }
 
+function ViewLoadingFallback() {
+  return (
+    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+        <div className="view-loader" />
+        <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Loading module...</span>
+      </div>
+    </div>
+  );
+}
+
 function ViewRouter() {
   const { activeView, activeVenture } = useNavigation();
   const venture = getVenture(activeVenture || 'mcv') ?? ventures[0];
 
-  switch (activeView) {
+  const view = (() => { switch (activeView) {
     case 'command-center':
       return <CommandCenter />;
     case 'portfolio':
@@ -115,11 +127,19 @@ function ViewRouter() {
       return <ForgeView />;
     case 'venture-tasks':
       return <TasksView />;
+    case 'venture-profile':
+      return <VentureProfile venture={venture} />;
     case 'venture-settings':
       return <PlaceholderView title={`${venture.name} — Settings`} description="Venture configuration." />;
+    case 'venture-onboarding':
+      return <VentureOnboarding />;
+    case 'growth':
+      return <GrowthView />;
     default:
       return <AegisChat venture={venture} />;
-  }
+  } })();
+
+  return <Suspense fallback={<ViewLoadingFallback />}>{view}</Suspense>;
 }
 
 export default function App() {
@@ -365,6 +385,15 @@ export default function App() {
           overflow: hidden;
           min-width: 0;
         }
+
+        .view-loader {
+          width: 24px; height: 24px;
+          border: 2px solid var(--border);
+          border-top-color: var(--cyan);
+          border-radius: 50%;
+          animation: viewSpin 0.6s linear infinite;
+        }
+        @keyframes viewSpin { to { transform: rotate(360deg); } }
       `}</style>
     </div>
   );

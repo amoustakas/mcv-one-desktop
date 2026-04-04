@@ -1,95 +1,155 @@
 import { useState } from 'react';
 import {
   LayoutGrid, PieChart, Bot, Brain, Landmark, Activity,
-  Wrench, Radio, Settings, ChevronLeft, ChevronRight,
-  CheckSquare, Users, Hammer, FileText, Monitor, BookOpen, Sparkles,
-  Wand2, Swords,
+  Wrench, Radio, Settings, ChevronLeft, ChevronRight, ChevronDown,
+  CheckSquare, Users, Hammer, BookOpen, Monitor, Sparkles,
+  Wand2, Swords, TrendingUp, FileText, Plus,
 } from 'lucide-react';
 import { useNavigation, type ViewId } from '../stores/navigation';
 
+// ── Icon map ──
 const VIEW_ICONS: Record<string, React.FC<{ size: number }>> = {
-  'command-center': LayoutGrid,
-  'portfolio': PieChart,
-  'chat': Bot,
-  'intelligence': Brain,
-  'treasury': Landmark,
-  'ops': Activity,
-  'engineering': Wrench,
-  'signals': Radio,
-  'tasks': CheckSquare,
-  'crm': Users,
-  'forge': Hammer,
-  'docs': BookOpen,
-  'ai-studio': Sparkles,
-  'sessions': Monitor,
-  'prompt-composer': Wand2,
-  'war-room': Swords,
-  'settings': Settings,
-  'venture-dashboard': LayoutGrid,
-  'venture-engineering': Wrench,
-  'venture-growth': Activity,
-  'venture-operations': Radio,
-  'venture-docs': FileText,
-  'venture-forge': Hammer,
-  'venture-tasks': CheckSquare,
+  'command-center': LayoutGrid, portfolio: PieChart, chat: Bot,
+  intelligence: Brain, treasury: Landmark, signals: Radio,
+  engineering: Wrench, ops: Activity, forge: Hammer, sessions: Monitor, 'war-room': Swords,
+  crm: Users, growth: TrendingUp,
+  tasks: CheckSquare, docs: BookOpen,
+  'ai-studio': Sparkles, 'prompt-composer': Wand2,
+  settings: Settings,
+  'venture-dashboard': LayoutGrid, 'venture-profile': FileText,
+  'venture-engineering': Wrench, 'venture-growth': TrendingUp,
+  'venture-operations': Activity, 'venture-docs': BookOpen,
+  'venture-forge': Hammer, 'venture-tasks': CheckSquare,
+  'venture-settings': Settings, 'venture-onboarding': Plus,
 };
 
-const globalItems: { id: ViewId; label: string }[] = [
-  { id: 'command-center', label: 'Command' },
-  { id: 'portfolio', label: 'Portfolio' },
-  { id: 'chat', label: 'Aegis' },
-  { id: 'intelligence', label: 'Intelligence' },
-  { id: 'treasury', label: 'Treasury' },
-  { id: 'ops', label: 'Ops Center' },
-  { id: 'engineering', label: 'Engineering' },
-  { id: 'tasks', label: 'Tasks' },
-  { id: 'crm', label: 'CRM' },
-  { id: 'forge', label: 'Forge' },
-  { id: 'docs', label: 'Docs Hub' },
-  { id: 'ai-studio', label: 'AI Studio' },
-  { id: 'sessions', label: 'Sessions' },
-  { id: 'prompt-composer', label: 'Prompts' },
-  { id: 'war-room', label: 'War Room' },
-  { id: 'signals', label: 'Signals' },
+// ── Section definitions ──
+interface NavSection { label: string; key: string; items: { id: ViewId; label: string; badge?: string }[] }
+
+const globalSections: NavSection[] = [
+  {
+    label: 'Command', key: 'command',
+    items: [
+      { id: 'command-center', label: 'Command Center' },
+      { id: 'portfolio', label: 'Portfolio' },
+      { id: 'chat', label: 'Aegis AI' },
+    ],
+  },
+  {
+    label: 'Intelligence', key: 'intel',
+    items: [
+      { id: 'intelligence', label: 'Knowledge Base' },
+      { id: 'treasury', label: 'Treasury' },
+      { id: 'signals', label: 'Signals Feed' },
+    ],
+  },
+  {
+    label: 'Engineering', key: 'eng',
+    items: [
+      { id: 'engineering', label: 'CTO Dashboard' },
+      { id: 'ops', label: 'Ops Center' },
+      { id: 'forge', label: 'The Forge' },
+      { id: 'sessions', label: 'Sessions' },
+      { id: 'war-room', label: 'War Room' },
+    ],
+  },
+  {
+    label: 'Growth & CRM', key: 'growth',
+    items: [
+      { id: 'crm', label: 'CRM Pipeline' },
+      { id: 'growth', label: 'Growth Studio' },
+    ],
+  },
+  {
+    label: 'Operations', key: 'ops-section',
+    items: [
+      { id: 'tasks', label: 'Task Board' },
+      { id: 'docs', label: 'Docs Hub' },
+    ],
+  },
+  {
+    label: 'AI Tools', key: 'tools',
+    items: [
+      { id: 'ai-studio', label: 'AI Studio' },
+      { id: 'prompt-composer', label: 'Prompt Composer' },
+    ],
+  },
 ];
 
-const ventureItems: { id: ViewId; label: string }[] = [
-  { id: 'venture-dashboard', label: 'Dashboard' },
-  { id: 'chat', label: 'Aegis' },
-  { id: 'venture-engineering', label: 'Engineering' },
-  { id: 'venture-growth', label: 'Growth' },
-  { id: 'venture-operations', label: 'Operations' },
-  { id: 'venture-docs', label: 'Documents' },
-  { id: 'venture-forge', label: 'Forge' },
-  { id: 'venture-tasks', label: 'Tasks' },
+const ventureSections: NavSection[] = [
+  {
+    label: 'Venture', key: 'venture-core',
+    items: [
+      { id: 'venture-dashboard', label: 'Dashboard' },
+      { id: 'venture-profile', label: 'Profile & Assets' },
+      { id: 'chat', label: 'Aegis AI' },
+    ],
+  },
+  {
+    label: 'Build', key: 'venture-build',
+    items: [
+      { id: 'venture-engineering', label: 'Engineering' },
+      { id: 'venture-forge', label: 'The Forge' },
+      { id: 'venture-docs', label: 'Documents' },
+    ],
+  },
+  {
+    label: 'Grow', key: 'venture-grow',
+    items: [
+      { id: 'venture-growth', label: 'Growth' },
+      { id: 'venture-tasks', label: 'Tasks' },
+      { id: 'venture-operations', label: 'Operations' },
+    ],
+  },
 ];
 
 export default function NavRail() {
   const [expanded, setExpanded] = useState(() => window.innerWidth >= 1600);
   const { mode, activeView, setView } = useNavigation();
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
-  const navItems = mode === 'global' ? globalItems : ventureItems;
+  const sections = mode === 'global' ? globalSections : ventureSections;
+  const w = expanded ? 220 : 56;
 
-  const w = expanded ? 200 : 56;
+  function toggleSection(key: string) {
+    setCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
+  }
 
   return (
     <nav className="rail" style={{ width: w }}>
-      {/* Nav items */}
       <div className="rail-nav">
-        {navItems.map((item) => {
-          const Icon = VIEW_ICONS[item.id] || Activity;
-          const isActive = activeView === item.id;
+        {sections.map((section) => {
+          const isCollapsed = collapsed[section.key] && expanded;
           return (
-            <button
-              key={item.id}
-              className={`rail-btn ${isActive ? 'active' : ''}`}
-              onClick={() => setView(item.id)}
-              title={item.label}
-            >
-              <Icon size={17} />
-              {expanded && <span className="rail-text">{item.label}</span>}
-              {isActive && <span className="rail-indicator" />}
-            </button>
+            <div key={section.key} className="rail-section">
+              {expanded && (
+                <button className="rail-section-header" onClick={() => toggleSection(section.key)}>
+                  <span className="rail-section-label">{section.label}</span>
+                  <ChevronDown size={11} className={`rail-section-chevron ${isCollapsed ? 'collapsed' : ''}`} />
+                </button>
+              )}
+              {!isCollapsed && section.items.map((item) => {
+                const Icon = VIEW_ICONS[item.id] || Activity;
+                const isActive = activeView === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    className={`rail-btn ${isActive ? 'active' : ''}`}
+                    onClick={() => setView(item.id)}
+                    title={item.label}
+                  >
+                    <Icon size={16} />
+                    {expanded && (
+                      <>
+                        <span className="rail-text">{item.label}</span>
+                        {item.badge && <span className="rail-badge">{item.badge}</span>}
+                      </>
+                    )}
+                    {isActive && <span className="rail-indicator" />}
+                  </button>
+                );
+              })}
+            </div>
           );
         })}
       </div>
@@ -97,7 +157,7 @@ export default function NavRail() {
       {/* Bottom: Settings + Expand toggle */}
       <div className="rail-bottom">
         <button className={`rail-btn ${activeView === 'settings' ? 'active' : ''}`} onClick={() => setView('settings')} title="Settings">
-          <Settings size={17} />
+          <Settings size={16} />
           {expanded && <span className="rail-text">Settings</span>}
         </button>
         <button className="rail-toggle" onClick={() => setExpanded((e) => !e)} title={expanded ? 'Collapse' : 'Expand'}>
@@ -118,16 +178,64 @@ export default function NavRail() {
           user-select: none;
         }
 
+        .rail-nav {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          overflow-y: auto;
+          overflow-x: hidden;
+          padding: 4px 0;
+        }
+
+        .rail-section {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .rail-section + .rail-section {
+          margin-top: 2px;
+          padding-top: 2px;
+          border-top: 1px solid var(--border);
+        }
+
+        .rail-section-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 6px 14px 3px;
+          cursor: pointer;
+          transition: color 0.15s;
+        }
+        .rail-section-header:hover { color: var(--text-secondary); }
+
+        .rail-section-label {
+          font-size: 9px;
+          font-weight: 700;
+          color: var(--text-muted);
+          text-transform: uppercase;
+          letter-spacing: 1.2px;
+        }
+
+        .rail-section-chevron {
+          color: var(--text-muted);
+          transition: transform 0.2s;
+        }
+        .rail-section-chevron.collapsed {
+          transform: rotate(-90deg);
+        }
+
         .rail-btn {
           position: relative;
           display: flex;
           align-items: center;
           gap: 10px;
-          padding: 8px 16px;
+          padding: 7px 16px;
           color: var(--text-muted);
           transition: all 0.15s ease;
           white-space: nowrap;
-          min-height: 38px;
+          min-height: 34px;
+          font-size: 12px;
         }
 
         .rail-btn:hover {
@@ -145,7 +253,7 @@ export default function NavRail() {
           top: 50%;
           transform: translateY(-50%);
           width: 3px;
-          height: 20px;
+          height: 18px;
           background: var(--cyan);
           border-radius: 0 3px 3px 0;
         }
@@ -155,68 +263,18 @@ export default function NavRail() {
           font-weight: 500;
           overflow: hidden;
           text-overflow: ellipsis;
-        }
-
-        .rail-sep {
-          height: 1px;
-          margin: 4px 12px;
-          background: var(--border);
-        }
-
-        .rail-nav {
           flex: 1;
-          display: flex;
-          flex-direction: column;
-          gap: 1px;
-          overflow-y: auto;
-          padding: 2px 0;
         }
 
-        .rail-ventures {
-          display: flex;
-          flex-direction: column;
-          gap: 1px;
-          padding: 2px 0;
-          max-height: 280px;
-          overflow-y: auto;
-        }
-
-        .rail-section-label {
-          font-size: 9px;
-          font-weight: 600;
-          color: var(--text-muted);
+        .rail-badge {
+          font-size: 8px;
+          font-weight: 700;
+          padding: 1px 5px;
+          border-radius: var(--radius-full);
+          background: rgba(0,240,255,0.1);
+          color: var(--cyan);
           text-transform: uppercase;
-          letter-spacing: 1px;
-          padding: 4px 16px 2px;
-        }
-
-        .rail-venture {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 6px 16px;
-          transition: all 0.15s ease;
-          white-space: nowrap;
-          min-height: 32px;
-        }
-
-        .rail-venture:hover {
-          background: var(--bg-card);
-        }
-
-        .rail-venture .rail-text {
-          font-size: 11px;
-          color: var(--text-secondary);
-        }
-
-        .rail-venture.active .rail-text {
-          font-weight: 600;
-        }
-
-        .rail-dot {
-          border-radius: 50%;
-          flex-shrink: 0;
-          transition: all 0.2s ease;
+          letter-spacing: 0.3px;
         }
 
         .rail-bottom {

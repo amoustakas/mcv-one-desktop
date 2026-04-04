@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { MessageSquare, GripVertical } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
 import { getVenture, ventures } from '../lib/ventures';
-import AegisChat from './AegisChat';
+const AegisChat = lazy(() => import('./AegisChat'));
 
 export default function ChatDock() {
   const { chatVenture } = useNavigation();
@@ -57,7 +57,9 @@ export default function ChatDock() {
           </div>
         </div>
         <div className="dock-body">
-          <AegisChat venture={venture} docked />
+          <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontSize: 11 }}>Loading Aegis...</div>}>
+            <AegisChat venture={venture} docked />
+          </Suspense>
         </div>
       </div>
 

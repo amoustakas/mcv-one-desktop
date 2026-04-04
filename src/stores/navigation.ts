@@ -2,32 +2,42 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 export type ViewId =
+  // Command
   | 'command-center'
   | 'portfolio'
   | 'chat'
+  // Business Intelligence
   | 'intelligence'
   | 'treasury'
-  | 'ops'
-  | 'engineering'
   | 'signals'
-  | 'tasks'
-  | 'crm'
+  // Engineering
+  | 'engineering'
+  | 'ops'
   | 'forge'
-  | 'docs'
-  | 'ai-studio'
   | 'sessions'
-  | 'prompt-composer'
   | 'war-room'
+  // Growth & Marketing
+  | 'crm'
+  | 'growth'
+  // Operations
+  | 'tasks'
+  | 'docs'
+  // Tools & AI
+  | 'ai-studio'
+  | 'prompt-composer'
+  // System
   | 'settings'
   // Venture views
   | 'venture-dashboard'
+  | 'venture-profile'
   | 'venture-engineering'
   | 'venture-growth'
   | 'venture-operations'
   | 'venture-docs'
   | 'venture-forge'
   | 'venture-tasks'
-  | 'venture-settings';
+  | 'venture-settings'
+  | 'venture-onboarding';
 
 export type ContextMode = 'global' | 'venture';
 
@@ -39,7 +49,6 @@ interface NavigationState {
   chatDocked: boolean;
   chatVenture: string;
 
-  // Actions
   setView: (view: ViewId) => void;
   switchToGlobal: () => void;
   switchToVenture: (slug: string) => void;

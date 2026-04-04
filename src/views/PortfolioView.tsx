@@ -1,62 +1,143 @@
-import { PieChart, ExternalLink } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { PieChart, ExternalLink, RefreshCw, GitBranch, Cloud, FileText, CheckSquare, MessageSquare } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
 import { useTheme } from '../stores/theme';
 import { ventures } from '../lib/ventures';
+import { supabase } from '../lib/supabase';
 
-const statusOrder = { active: 0, development: 1, planned: 2, concept: 3 };
+const statusOrder: Record<string, number> = { active: 0, development: 1, planned: 2, concept: 3 };
 const statusLabels: Record<string, string> = { active: 'ACTIVE', development: 'DEV', planned: 'PLANNED', concept: 'CONCEPT' };
 const statusColors: Record<string, string> = { active: '#10B981', development: '#00F0FF', planned: '#8B5CF6', concept: '#6B7280' };
 
 const sorted = [...ventures].sort((a, b) => statusOrder[a.status] - statusOrder[b.status]);
 
+interface VentureKPIs {
+  repos: number; deploys: number; docs: number; tasks: number; chats: number;
+}
+
 export default function PortfolioView() {
   const { switchToVenture } = useNavigation();
   const { applyVentureTheme } = useTheme();
+  const [kpis, setKPIs] = useState<Record<string, VentureKPIs>>({});
+  const [loading, setLoading] = useState(true);
+  const [totals, setTotals] = useState({ repos: 0, deploys: 0, docs: 0, tasks: 0, chats: 0 });
+
+  async function load() {
+    setLoading(true);
+    const [gh, vc, docs, tasks, convos] = await Promise.all([
+      fetch('/api/github?action=overview').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/vercel-status?action=deployments').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/docs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) }).then(r => r.ok ? r.json() : null).catch(() => null),
+      supabase ? supabase.from('conversations').select('venture_id') : null,
+    ]);
+
+    const repoCount = gh?.repos?.length || 0;
+    const deployCount = vc?.deployments?.length || 0;
+    const allDocs = docs?.documents || [];
+    const allTasks = (tasks?.tasks || []).filter((t: { status?: string }) => t.status !== 'done' && t.status !== 'completed');
+    const allConvos = convos?.data || [];
+
+    const newKPIs: Record<string, VentureKPIs> = {};
+    for (const v of ventures) {
+      newKPIs[v.id] = {
+        repos: 0,
+        deploys: 0,
+        docs: allDocs.filter((d: { venture_id?: string }) => d.venture_id === v.id).length,
+        tasks: allTasks.filter((t: { venture_id?: string }) => t.venture_id === v.id).length,
+        chats: allConvos.filter((c: { venture_id?: string }) => c.venture_id === v.id).length,
+      };
+    }
+
+    setKPIs(newKPIs);
+    setTotals({ repos: repoCount, deploys: deployCount, docs: allDocs.length, tasks: allTasks.length, chats: allConvos.length });
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
 
   function enter(slug: string) {
     switchToVenture(slug);
     applyVentureTheme(slug);
   }
 
+  const activeCount = ventures.filter(v => v.status === 'active' || v.status === 'development').length;
+
   return (
     <div className="port">
-      <h1 className="port-title"><PieChart size={20} /> Venture Portfolio</h1>
-      <p className="port-subtitle">EdgeIQ Holdings — 9 ventures across gaming, fintech, Web3, infrastructure, and R&D</p>
+      <div className="port-header">
+        <div>
+          <h1 className="port-title"><PieChart size={20} /> Venture Portfolio</h1>
+          <p className="port-subtitle">EdgeIQ Holdings — {ventures.length} ventures across gaming, fintech, Web3, infrastructure, and R&D</p>
+        </div>
+        <button className="port-refresh" onClick={load}><RefreshCw size={14} className={loading ? 'spin' : ''} /></button>
+      </div>
+
+      {/* Portfolio KPIs */}
+      <div className="port-kpis">
+        <div className="port-kpi"><span className="port-kpi-v">{ventures.length}</span><span className="port-kpi-l">Ventures</span></div>
+        <div className="port-kpi"><span className="port-kpi-v">{activeCount}</span><span className="port-kpi-l">Active</span></div>
+        <div className="port-kpi"><span className="port-kpi-v"><GitBranch size={12} /> {totals.repos}</span><span className="port-kpi-l">Repos</span></div>
+        <div className="port-kpi"><span className="port-kpi-v"><Cloud size={12} /> {totals.deploys}</span><span className="port-kpi-l">Deploys</span></div>
+        <div className="port-kpi"><span className="port-kpi-v"><FileText size={12} /> {totals.docs}</span><span className="port-kpi-l">Docs</span></div>
+        <div className="port-kpi"><span className="port-kpi-v"><CheckSquare size={12} /> {totals.tasks}</span><span className="port-kpi-l">Active Tasks</span></div>
+        <div className="port-kpi"><span className="port-kpi-v"><MessageSquare size={12} /> {totals.chats}</span><span className="port-kpi-l">Conversations</span></div>
+      </div>
 
       <div className="port-grid">
-        {sorted.map((v) => (
-          <button key={v.id} className="port-card" onClick={() => enter(v.id)}>
-            <div className="port-card-accent" style={{ background: `linear-gradient(90deg, transparent, ${v.color}50, transparent)` }} />
-            <div className="port-card-header">
-              <span className="port-card-icon" style={{ background: v.color }}>{v.icon}</span>
-              <div className="port-card-titles">
-                <span className="port-card-name">{v.name}</span>
-                <span className="port-card-tagline">{v.tagline}</span>
+        {sorted.map((v) => {
+          const vk = kpis[v.id];
+          return (
+            <button key={v.id} className="port-card" onClick={() => enter(v.id)}>
+              <div className="port-card-accent" style={{ background: `linear-gradient(90deg, transparent, ${v.color}50, transparent)` }} />
+              <div className="port-card-header">
+                <span className="port-card-icon" style={{ background: v.color }}>{v.icon}</span>
+                <div className="port-card-titles">
+                  <span className="port-card-name">{v.name}</span>
+                  <span className="port-card-tagline">{v.tagline}</span>
+                </div>
+                <span className="port-card-status" style={{ color: statusColors[v.status] }}>
+                  <span className="port-status-dot" style={{ background: statusColors[v.status] }} />
+                  {statusLabels[v.status]}
+                </span>
               </div>
-              <span className="port-card-status" style={{ color: statusColors[v.status] }}>
-                {statusLabels[v.status]}
-              </span>
-            </div>
-            <div className="port-card-meta">
-              <span className="port-card-type">{v.type.replace(/_/g, ' ')}</span>
-              <span className="port-card-domain">
-                {v.domain}
-                <ExternalLink size={9} />
-              </span>
-            </div>
-            <div className="port-card-bottom">
-              <span className="port-card-enter">Enter Venture &rarr;</span>
-            </div>
-          </button>
-        ))}
+              <div className="port-card-meta">
+                <span className="port-card-type">{v.type.replace(/_/g, ' ')}</span>
+                <span className="port-card-domain">
+                  {v.domain}
+                  <ExternalLink size={9} />
+                </span>
+              </div>
+              {/* Live KPIs per venture */}
+              {vk && (
+                <div className="port-card-kpis">
+                  <span className="port-card-stat"><FileText size={10} /> {vk.docs} docs</span>
+                  <span className="port-card-stat"><CheckSquare size={10} /> {vk.tasks} tasks</span>
+                  <span className="port-card-stat"><MessageSquare size={10} /> {vk.chats} chats</span>
+                </div>
+              )}
+              <div className="port-card-bottom">
+                <span className="port-card-enter">Enter Venture &rarr;</span>
+              </div>
+            </button>
+          );
+        })}
       </div>
 
       <style>{`
-        .port { height: 100%; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 20px; }
+        .port { height: 100%; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
+        .port-header { display: flex; justify-content: space-between; align-items: flex-start; }
         .port-title { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-        .port-subtitle { font-size: 12px; color: var(--text-muted); margin-top: -12px; }
+        .port-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+        .port-refresh { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); color: var(--text-muted); }
+        .port-refresh:hover { background: var(--bg-card); color: var(--cyan); }
 
-        .port-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+        .port-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 6px; }
+        .port-kpi { display: flex; flex-direction: column; padding: 10px 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); }
+        .port-kpi-v { font-family: var(--font-mono); font-size: 1rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px; }
+        .port-kpi-l { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .port-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
 
         .port-card {
           position: relative; overflow: hidden;
@@ -74,15 +155,22 @@ export default function PortfolioView() {
         .port-card-titles { flex: 1; min-width: 0; }
         .port-card-name { display: block; font-size: 14px; font-weight: 600; }
         .port-card-tagline { display: block; font-size: 10px; color: var(--text-muted); }
-        .port-card-status { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0; }
+        .port-card-status { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0; display: flex; align-items: center; gap: 4px; }
+        .port-status-dot { width: 5px; height: 5px; border-radius: 50%; }
 
         .port-card-meta { display: flex; justify-content: space-between; align-items: center; }
         .port-card-type { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px; }
         .port-card-domain { font-size: 10px; color: var(--text-secondary); font-family: var(--font-mono); display: flex; align-items: center; gap: 3px; }
 
+        .port-card-kpis { display: flex; gap: 12px; padding: 6px 0; border-top: 1px solid var(--border); }
+        .port-card-stat { font-size: 10px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; font-family: var(--font-mono); }
+
         .port-card-bottom { border-top: 1px solid var(--border); padding-top: 8px; }
         .port-card-enter { font-size: 11px; font-weight: 500; color: var(--cyan); opacity: 0; transition: opacity 0.15s; }
         .port-card:hover .port-card-enter { opacity: 1; }
+
+        @keyframes spin { to{transform:rotate(360deg)} }
+        .spin { animation:spin 1s linear infinite; }
       `}</style>
     </div>
   );
