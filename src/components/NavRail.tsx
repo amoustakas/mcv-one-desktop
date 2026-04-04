@@ -105,7 +105,7 @@ const ventureSections: NavSection[] = [
 
 export default function NavRail() {
   const [expanded, setExpanded] = useState(() => window.innerWidth >= 1600);
-  const { mode, activeView, setView } = useNavigation();
+  const { mode, activeView, setView, openSplit, splitView } = useNavigation();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const sections = mode === 'global' ? globalSections : ventureSections;
@@ -134,9 +134,10 @@ export default function NavRail() {
                 return (
                   <button
                     key={item.id}
-                    className={`rail-btn ${isActive ? 'active' : ''}`}
+                    className={`rail-btn ${isActive ? 'active' : ''} ${splitView === item.id ? 'split-active' : ''}`}
                     onClick={() => setView(item.id)}
-                    title={item.label}
+                    onContextMenu={(e) => { e.preventDefault(); openSplit(item.id); }}
+                    title={`${item.label} (right-click: open in split)`}
                   >
                     <Icon size={16} />
                     {expanded && (
@@ -245,6 +246,10 @@ export default function NavRail() {
 
         .rail-btn.active {
           color: var(--cyan);
+        }
+        .rail-btn.split-active {
+          color: var(--purple);
+          background: rgba(139,92,246,0.06);
         }
 
         .rail-indicator {

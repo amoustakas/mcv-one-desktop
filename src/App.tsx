@@ -9,9 +9,10 @@ import { useNavigation, type ViewId } from './stores/navigation';
 import { useTheme } from './stores/theme';
 import { getVenture, ventures } from './lib/ventures';
 import { UserButton } from './lib/auth';
-import { Search, Settings, Bot } from 'lucide-react';
+import { Search, Settings, Bot, Columns2 } from 'lucide-react';
 import VentureMegaMenu from './components/VentureMegaMenu';
 import QuickCapture from './components/QuickCapture';
+import Toasts from './components/Toasts';
 
 // Lazy-loaded views (code splitting)
 const AegisChat = lazy(() => import('./components/AegisChat'));
@@ -73,11 +74,8 @@ function ViewLoadingFallback() {
   );
 }
 
-function ViewRouter() {
-  const { activeView, activeVenture } = useNavigation();
-  const venture = getVenture(activeVenture || 'mcv') ?? ventures[0];
-
-  const view = (() => { switch (activeView) {
+function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & object) {
+  switch (viewId) {
     case 'command-center':
       return <CommandCenter />;
     case 'portfolio':
@@ -137,16 +135,121 @@ function ViewRouter() {
       return <GrowthView />;
     default:
       return <AegisChat venture={venture} />;
-  } })();
+  }
+}
 
+function ViewPanel({ viewId }: { viewId?: ViewId }) {
+  const { activeView, activeVenture } = useNavigation();
+  const venture = getVenture(activeVenture || 'mcv') ?? ventures[0];
+  const view = renderView(viewId ?? activeView, venture);
   return <Suspense fallback={<ViewLoadingFallback />}>{view}</Suspense>;
+}
+
+function SplitWorkspace() {
+  const { splitView, splitRatio, setSplitRatio, closeSplit, swapPanels } = useNavigation();
+  const [dragging, setDragging] = useState(false);
+
+  function handleMouseDown() {
+    setDragging(true);
+    function onMove(e: MouseEvent) {
+      const container = document.querySelector('.app-workspace') as HTMLElement;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const ratio = (e.clientX - rect.left) / rect.width;
+      setSplitRatio(ratio);
+    }
+    function onUp() {
+      setDragging(false);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    }
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
+
+  if (!splitView) {
+    return (
+      <div className="app-content">
+        <ViewPanel />
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="app-content split-left" style={{ width: `${splitRatio * 100}%` }}>
+        <ViewPanel />
+      </div>
+      <div className={`split-divider ${dragging ? 'active' : ''}`} onMouseDown={handleMouseDown}>
+        <div className="split-divider-line" />
+        <div className="split-divider-actions">
+          <button className="split-action-btn" onClick={swapPanels} title="Swap panels">⇄</button>
+          <button className="split-action-btn" onClick={closeSplit} title="Close split (Ctrl+\\)">✕</button>
+        </div>
+      </div>
+      <div className="app-content split-right" style={{ width: `${(1 - splitRatio) * 100}%` }}>
+        <ViewPanel viewId={splitView} />
+      </div>
+    </>
+  );
+}
+
+const VIEW_LABELS: Record<string, string> = {
+  'command-center': 'Command Center', portfolio: 'Portfolio', chat: 'Aegis AI',
+  intelligence: 'Knowledge Base', treasury: 'Treasury', signals: 'Signals',
+  engineering: 'CTO Dashboard', ops: 'Ops Center', forge: 'The Forge',
+  sessions: 'Sessions', 'war-room': 'War Room', crm: 'CRM Pipeline',
+  growth: 'Growth Studio', tasks: 'Task Board', docs: 'Docs Hub',
+  'ai-studio': 'AI Studio', 'prompt-composer': 'Prompt Composer', settings: 'Settings',
+  'venture-dashboard': 'Dashboard', 'venture-profile': 'Profile & Assets',
+  'venture-engineering': 'Engineering', 'venture-growth': 'Growth',
+  'venture-operations': 'Operations', 'venture-docs': 'Documents',
+  'venture-forge': 'The Forge', 'venture-tasks': 'Tasks',
+  'venture-settings': 'Settings', 'venture-onboarding': 'New Venture',
+};
+
+const SECTION_MAP: Record<string, string> = {
+  'command-center': 'Command', portfolio: 'Command', chat: 'Command',
+  intelligence: 'Intelligence', treasury: 'Intelligence', signals: 'Intelligence',
+  engineering: 'Engineering', ops: 'Engineering', forge: 'Engineering',
+  sessions: 'Engineering', 'war-room': 'Engineering',
+  crm: 'Growth & CRM', growth: 'Growth & CRM',
+  tasks: 'Operations', docs: 'Operations',
+  'ai-studio': 'AI Tools', 'prompt-composer': 'AI Tools',
+  settings: 'System',
+};
+
+function Breadcrumbs() {
+  const { mode, activeView, activeVenture } = useNavigation();
+  const venture = getVenture(activeVenture || 'mcv');
+
+  const crumbs: string[] = [];
+  if (mode === 'global') {
+    crumbs.push('Global');
+    const section = SECTION_MAP[activeView];
+    if (section) crumbs.push(section);
+  } else if (venture) {
+    crumbs.push(venture.name);
+  }
+  crumbs.push(VIEW_LABELS[activeView] || activeView);
+
+  return (
+    <div className="breadcrumbs">
+      {crumbs.map((c, i) => (
+        <span key={i}>
+          {i > 0 && <span className="bc-sep">/</span>}
+          <span className={i === crumbs.length - 1 ? 'bc-active' : 'bc-parent'}>{c}</span>
+        </span>
+      ))}
+    </div>
+  );
 }
 
 export default function App() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
-  const { chatDocked, toggleChatDock, setView } = useNavigation();
+  const { chatDocked, toggleChatDock, setView, toggleSplit, splitView, mode, switchToGlobal, switchToVenture } = useNavigation();
   useTheme();
 
   // Keyboard shortcuts
@@ -170,20 +273,39 @@ export default function App() {
         e.preventDefault();
         setQuickCaptureOpen(o => !o);
       }
+      if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
+        e.preventDefault();
+        toggleSplit();
+      }
       if (e.key === 'Escape') {
         if (paletteOpen) setPaletteOpen(false);
         if (settingsOpen) setSettingsOpen(false);
       }
+      // Ctrl+E — toggle global/venture mode
+      if ((e.metaKey || e.ctrlKey) && e.key === 'e') {
+        e.preventDefault();
+        if (mode === 'global') {
+          switchToVenture('mcv');
+        } else {
+          switchToGlobal();
+        }
+      }
       // Cmd+1 through Cmd+8 for global views
-      if ((e.metaKey || e.ctrlKey) && e.key >= '1' && e.key <= '8') {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key >= '1' && e.key <= '8') {
         e.preventDefault();
         const idx = parseInt(e.key) - 1;
         if (globalViews[idx]) setView(globalViews[idx]);
       }
+      // Ctrl+Shift+1-9 for ventures
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key >= '1' && e.key <= '9') {
+        e.preventDefault();
+        const idx = parseInt(e.key) - 1;
+        if (ventures[idx]) switchToVenture(ventures[idx].id);
+      }
     }
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [paletteOpen, settingsOpen, toggleChatDock, setView]);
+  }, [paletteOpen, settingsOpen, toggleChatDock, setView, toggleSplit, mode, switchToGlobal, switchToVenture]);
 
   // Context used by VentureMegaMenu in header
 
@@ -205,6 +327,8 @@ export default function App() {
             </div>
             <div className="header-divider" />
             <VentureMegaMenu />
+            <div className="header-divider" />
+            <Breadcrumbs />
           </div>
 
           <button className="header-search" onClick={() => setPaletteOpen(true)}>
@@ -214,6 +338,14 @@ export default function App() {
           </button>
 
           <div className="header-right">
+            <button
+              className="header-icon-btn"
+              onClick={toggleSplit}
+              title={splitView ? 'Close Split (Ctrl+\\)' : 'Split View (Ctrl+\\)'}
+              style={splitView ? { color: 'var(--cyan)' } : undefined}
+            >
+              <Columns2 size={15} />
+            </button>
             <button className="header-icon-btn" onClick={() => setSettingsOpen(true)} title="Settings">
               <Settings size={15} />
             </button>
@@ -231,9 +363,7 @@ export default function App() {
 
         {/* Content Area */}
         <div className="app-workspace">
-          <div className="app-content">
-            <ViewRouter />
-          </div>
+          <SplitWorkspace />
 
           {/* Chat Dock */}
           {chatDocked && <ChatDock />}
@@ -249,6 +379,7 @@ export default function App() {
       {/* Overlays */}
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <Toasts />
 
       <style>{`
         .app-shell {
@@ -315,7 +446,26 @@ export default function App() {
           background: var(--border);
         }
 
-        /* VentureMegaMenu handles context display */
+        /* Breadcrumbs */
+        .breadcrumbs {
+          display: flex;
+          align-items: center;
+          gap: 0;
+          font-size: 11px;
+          white-space: nowrap;
+        }
+        .bc-sep {
+          margin: 0 6px;
+          color: var(--text-muted);
+          opacity: 0.4;
+        }
+        .bc-parent {
+          color: var(--text-muted);
+        }
+        .bc-active {
+          color: var(--text-secondary);
+          font-weight: 500;
+        }
 
         /* Search bar */
         .header-search {
@@ -384,6 +534,70 @@ export default function App() {
           flex: 1;
           overflow: hidden;
           min-width: 0;
+        }
+        .app-content.split-left,
+        .app-content.split-right {
+          flex: none;
+        }
+
+        /* ── Split Divider ── */
+        .split-divider {
+          width: 6px;
+          flex-shrink: 0;
+          background: var(--border);
+          cursor: col-resize;
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background 0.15s;
+        }
+        .split-divider:hover, .split-divider.active {
+          background: var(--cyan);
+        }
+        .split-divider-line {
+          width: 2px;
+          height: 32px;
+          background: var(--text-muted);
+          border-radius: 1px;
+          opacity: 0.3;
+        }
+        .split-divider:hover .split-divider-line,
+        .split-divider.active .split-divider-line {
+          opacity: 0;
+        }
+        .split-divider-actions {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.15s;
+        }
+        .split-divider:hover .split-divider-actions {
+          opacity: 1;
+          pointer-events: all;
+        }
+        .split-action-btn {
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: var(--bg-surface);
+          border: 1px solid var(--cyan);
+          color: var(--cyan);
+          font-size: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+        }
+        .split-action-btn:hover {
+          background: var(--cyan);
+          color: var(--bg-deep);
         }
 
         .view-loader {

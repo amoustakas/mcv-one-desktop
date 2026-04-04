@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { CheckSquare, Plus, RefreshCw, Trash2, Clock, AlertTriangle, Circle, CheckCircle2, Ban, ArrowUp, ArrowDown, Minus } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
+import { useToast } from '../components/Toasts';
 
 interface Task { id: string; title: string; description: string; status: string; priority: string; venture_id: string; assignee: string; due_date: string; tags: string[]; created_at: string; }
 
@@ -23,6 +24,7 @@ export default function TasksView() {
   const [newPriority, setNewPriority] = useState('medium');
   const [newVenture, setNewVenture] = useState('');
   const { mode, activeVenture } = useNavigation();
+  const { toast } = useToast();
 
   async function load() {
     setLoading(true);
@@ -37,6 +39,7 @@ export default function TasksView() {
   async function handleCreate() {
     if (!newTitle.trim()) return;
     await api({ action: 'create', task: { title: newTitle, priority: newPriority, venture_id: newVenture || (mode === 'venture' ? activeVenture : null), status: 'todo' } });
+    toast('success', `Task "${newTitle}" created`);
     setNewTitle(''); setShowAdd(false); load();
   }
 

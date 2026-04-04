@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
 import { ventures } from '../lib/ventures';
+import { useToast } from '../components/Toasts';
 
 // ── Types ──
 interface Contact {
@@ -286,6 +287,7 @@ export default function CRMView() {
   const [dealForm, setDealForm] = useState({ title: '', value: 0, stage: 'discovery', venture_id: '', contact_id: '', probability: 20, expected_close: '' });
   const [accountForm, setAccountForm] = useState({ name: '', domain: '', industry: '', size: '', type: 'prospect', venture_id: '' });
   const { mode, activeVenture } = useNavigation();
+  const { toast } = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -310,12 +312,14 @@ export default function CRMView() {
   async function handleCreateContact() {
     if (!form.name.trim()) return;
     await api({ action: 'create-contact', contact: { ...form, venture_id: form.venture_id || (mode === 'venture' ? activeVenture : null) } });
+    toast('success', `Contact "${form.name}" created`);
     setForm({ name: '', email: '', company: '', role: '', type: 'lead', phone: '', venture_id: '' }); setShowAdd(false); load();
   }
 
   async function handleCreateDeal() {
     if (!dealForm.title.trim()) return;
     await api({ action: 'create-deal', deal: { ...dealForm, venture_id: dealForm.venture_id || (mode === 'venture' ? activeVenture : null), contact_id: dealForm.contact_id || null } });
+    toast('success', `Deal "${dealForm.title}" created`);
     setDealForm({ title: '', value: 0, stage: 'discovery', venture_id: '', contact_id: '', probability: 20, expected_close: '' }); setShowAdd(false); load();
   }
 
@@ -323,11 +327,13 @@ export default function CRMView() {
     await api({ action: 'delete-contact', id });
     setContacts(c => c.filter(x => x.id !== id));
     if (selectedContact?.id === id) setSelectedContact(null);
+    toast('info', 'Contact deleted');
   }
 
   async function handleUpdateDealStage(dealId: string, newStage: string) {
     await api({ action: 'update-deal', deal: { id: dealId, stage: newStage } });
     setDeals(prev => prev.map(d => d.id === dealId ? { ...d, stage: newStage } : d));
+    toast('info', `Deal moved to ${newStage.replace(/_/g, ' ')}`);
   }
 
   async function handleDeleteDeal(id: string) {
@@ -338,6 +344,7 @@ export default function CRMView() {
   async function handleCreateAccount() {
     if (!accountForm.name.trim()) return;
     await api({ action: 'create-account', account: { ...accountForm, venture_id: accountForm.venture_id || (mode === 'venture' ? activeVenture : null) } });
+    toast('success', `Account "${accountForm.name}" created`);
     setAccountForm({ name: '', domain: '', industry: '', size: '', type: 'prospect', venture_id: '' }); setShowAdd(false); load();
   }
 
