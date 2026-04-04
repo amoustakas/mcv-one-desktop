@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Wifi, WifiOff, Database, GitBranch, Cloud, FileText, CheckSquare, Users, Columns2, Cpu } from 'lucide-react';
+import { Wifi, WifiOff, Database, GitBranch, Cloud, FileText, CheckSquare, Columns2, Cpu } from 'lucide-react';
 import { APP_VERSION } from '../lib/version';
 import { supabase } from '../lib/supabase';
 import { useNavigation } from '../stores/navigation';
@@ -10,7 +10,7 @@ export default function StatusBar() {
   const [docCount, setDocCount] = useState(0);
   const [taskCount, setTaskCount] = useState(0);
   const [online, setOnline] = useState(navigator.onLine);
-  const { mode, activeVenture, splitView, activeView } = useNavigation();
+  const { mode, activeVenture, splitView } = useNavigation();
 
   useEffect(() => {
     function refresh() {

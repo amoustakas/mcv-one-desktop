@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Activity, Cpu, Database, GitBranch, Globe, Shield, Wifi, Zap, RefreshCw, ExternalLink, Cloud, Server, Radio, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
+import { Activity, Cpu, Database, GitBranch, Globe, Shield, Wifi, Zap, RefreshCw, ExternalLink, Cloud, Server, Radio, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface RepoInfo { name: string; updated: string | null; open_issues: number; language?: string }
@@ -63,7 +63,6 @@ export default function OpsPanel() {
   useEffect(() => { load(); }, []);
 
   const onlineCount = services.filter(s => s.status === 'online').length;
-  const totalIssues = repos.reduce((s, r) => s + (r.open_issues || 0), 0);
   const liveCount = deploys.filter(d => d.state === 'READY').length;
 
   return (

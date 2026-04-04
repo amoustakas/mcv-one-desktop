@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bell, Check, Trash2, X, Zap, GitBranch, Cloud, Users, FileText, MessageSquare } from 'lucide-react';
+import { Bell, Check, Trash2, Zap, GitBranch, Cloud, Users, FileText, MessageSquare } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface Notification {
