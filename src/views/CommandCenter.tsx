@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { GitBranch, Cloud, FileText, Zap, TrendingUp, RefreshCw, MessageSquare, ExternalLink, Clock } from 'lucide-react';
+import { GitBranch, Cloud, FileText, Zap, RefreshCw, MessageSquare, ExternalLink, Clock, CheckSquare, Users, BookOpen } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
 import { useTheme } from '../stores/theme';
 import { ventures } from '../lib/ventures';
@@ -18,6 +18,8 @@ export default function CommandCenter() {
   const [commits, setCommits] = useState<CommitInfo[]>([]);
   const [deploys, setDeploys] = useState<DeployInfo[]>([]);
   const [docCount, setDocCount] = useState(0);
+  const [taskCount, setTaskCount] = useState(0);
+  const [contactCount, setContactCount] = useState(0);
   const [convCount, setConvCount] = useState(0);
   const [msgCount, setMsgCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -26,14 +28,18 @@ export default function CommandCenter() {
 
   async function load() {
     setLoading(true);
-    const [gh, vc, docs] = await Promise.all([
+    const [gh, vc, docs, tasks, crm] = await Promise.all([
       fetch('/api/github?action=overview').then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('/api/vercel-status?action=deployments').then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('/api/docs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/crm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list-contacts' }) }).then(r => r.ok ? r.json() : null).catch(() => null),
     ]);
     if (gh) { setRepos(gh.repos || []); setCommits(gh.recent_commits || []); }
     if (vc) setDeploys(vc.deployments?.slice(0, 8) || []);
     if (docs) setDocCount(docs.documents?.length || 0);
+    if (tasks) setTaskCount((tasks.tasks || []).filter((t: { status?: string }) => t.status !== 'done' && t.status !== 'completed').length);
+    if (crm) setContactCount((crm.contacts || []).length);
 
     if (supabase) {
       const [c, m] = await Promise.all([
@@ -68,10 +74,12 @@ export default function CommandCenter() {
         <div className="cc-kpi glass"><Zap size={14}/><div><span className="cc-kpi-v">9</span><span className="cc-kpi-l">Ventures</span></div></div>
         <div className="cc-kpi glass"><GitBranch size={14}/><div><span className="cc-kpi-v">{repos.length}</span><span className="cc-kpi-l">Repos</span></div></div>
         <div className="cc-kpi glass"><Cloud size={14}/><div><span className="cc-kpi-v">{deploys.length}</span><span className="cc-kpi-l">Deploys</span></div></div>
-        <div className="cc-kpi glass"><FileText size={14}/><div><span className="cc-kpi-v">{docCount}</span><span className="cc-kpi-l">Documents</span></div></div>
+        <div className="cc-kpi glass" style={{cursor:'pointer'}} onClick={() => setView('docs')}><BookOpen size={14}/><div><span className="cc-kpi-v">{docCount || '...'}</span><span className="cc-kpi-l">Knowledge Base</span></div></div>
+        <div className="cc-kpi glass" style={{cursor:'pointer'}} onClick={() => setView('tasks')}><CheckSquare size={14}/><div><span className="cc-kpi-v">{taskCount || '...'}</span><span className="cc-kpi-l">Active Tasks</span></div></div>
+        <div className="cc-kpi glass" style={{cursor:'pointer'}} onClick={() => setView('crm')}><Users size={14}/><div><span className="cc-kpi-v">{contactCount || '...'}</span><span className="cc-kpi-l">Contacts</span></div></div>
         <div className="cc-kpi glass"><MessageSquare size={14}/><div><span className="cc-kpi-v">{convCount}</span><span className="cc-kpi-l">Chats</span></div></div>
         <div className="cc-kpi glass"><Clock size={14}/><div><span className="cc-kpi-v">{msgCount}</span><span className="cc-kpi-l">Messages</span></div></div>
-        <div className="cc-kpi glass edge"><TrendingUp size={14}/><div><span className="cc-kpi-v">$0.025</span><span className="cc-kpi-l">EDGE</span></div></div>
+        <div className="cc-kpi glass edge" style={{cursor:'pointer'}} onClick={() => setView('docs')}><FileText size={14}/><div><span className="cc-kpi-v">{docCount ? `${docCount}+` : '...'}</span><span className="cc-kpi-l">Docs</span></div></div>
       </div>
 
       {/* Main grid: ventures + feeds */}

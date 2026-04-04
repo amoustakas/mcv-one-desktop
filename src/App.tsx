@@ -27,6 +27,7 @@ import TasksView from './views/TasksView';
 import CRMView from './views/CRMView';
 import ForgeView from './views/ForgeView';
 import DocsHub from './views/DocsHub';
+import QuickCapture from './components/QuickCapture';
 import AIStudioView from './views/AIStudioView';
 import SessionsView from './views/SessionsView';
 import PromptComposer from './views/PromptComposer';
@@ -123,6 +124,7 @@ function ViewRouter() {
 export default function App() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
   const { mode, activeVenture, chatDocked, toggleChatDock } = useNavigation();
   useTheme(); // keep theme store active
   const venture = getVenture(activeVenture || 'mcv');
@@ -145,6 +147,10 @@ export default function App() {
       if ((e.metaKey || e.ctrlKey) && e.key === '/') {
         e.preventDefault();
         toggleChatDock();
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
+        e.preventDefault();
+        setQuickCaptureOpen(o => !o);
       }
       if (e.key === 'Escape') {
         if (paletteOpen) setPaletteOpen(false);
@@ -229,6 +235,9 @@ export default function App() {
         {/* Status Bar inside main column */}
         <StatusBar />
       </div>
+
+      {/* Quick Capture FAB */}
+      <QuickCapture open={quickCaptureOpen} onToggle={() => setQuickCaptureOpen(o => !o)} />
 
       {/* Overlays */}
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />

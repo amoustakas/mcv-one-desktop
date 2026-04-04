@@ -1,9 +1,16 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { BookOpen, Plus, Search, RefreshCw, FileText, Folder, Edit3, Save, X, ExternalLink, Trash2, Upload, Brain, ChevronRight, ChevronDown, Clock, Tag, Hash, Link2, History, FolderOpen, SortAsc, SortDesc, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { BookOpen, Plus, Search, RefreshCw, FileText, Folder, Edit3, Save, X, ExternalLink, Trash2, Upload, Brain, ChevronRight, ChevronDown, Clock, Tag, Hash, Link2, History, FolderOpen, SortAsc, SortDesc, AlertCircle, Database, Star } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
 import Markdown from '../components/Markdown';
 
 /* ── Types ── */
+interface DocMetadata {
+  source?: string;
+  path?: string;
+  notionId?: string;
+  [key: string]: unknown;
+}
+
 interface Doc {
   id: string;
   title: string;
@@ -11,6 +18,7 @@ interface Doc {
   doc_type: string;
   venture_id: string;
   tags?: string[];
+  metadata?: DocMetadata;
   created_at: string;
   updated_at: string;
 }
@@ -149,7 +157,7 @@ export default function DocsHub() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterVenture, setFilterVenture] = useState('');
   const [filterType, setFilterType] = useState('');
-  const [sortBy, setSortBy] = useState<'updated' | 'created' | 'title'>('updated');
+  const [sortBy, setSortBy] = useState<'updated' | 'created' | 'title' | 'venture'>('updated');
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
 
   // Folder tree
@@ -200,7 +208,11 @@ export default function DocsHub() {
     .filter(d => {
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
-        if (!d.title.toLowerCase().includes(q) && !d.doc_type.toLowerCase().includes(q) && !d.venture_id.toLowerCase().includes(q)) return false;
+        const titleMatch = d.title.toLowerCase().includes(q);
+        const typeMatch = d.doc_type.toLowerCase().includes(q);
+        const ventureMatch = d.venture_id.toLowerCase().includes(q);
+        const contentMatch = d.content ? d.content.toLowerCase().includes(q) : false;
+        if (!titleMatch && !typeMatch && !ventureMatch && !contentMatch) return false;
       }
       if (filterType && d.doc_type !== filterType) return false;
       if (filterVenture && d.venture_id !== filterVenture) return false;
@@ -210,8 +222,31 @@ export default function DocsHub() {
       const dir = sortDir === 'desc' ? -1 : 1;
       if (sortBy === 'title') return dir * a.title.localeCompare(b.title);
       if (sortBy === 'created') return dir * (new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      if (sortBy === 'venture') return dir * a.venture_id.localeCompare(b.venture_id);
       return dir * (new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime());
     });
+
+  /* ── Stats ── */
+  const stats = useMemo(() => {
+    const byType: Record<string, number> = {};
+    const byVenture: Record<string, number> = {};
+    for (const d of docs) {
+      byType[d.doc_type] = (byType[d.doc_type] || 0) + 1;
+      byVenture[d.venture_id] = (byVenture[d.venture_id] || 0) + 1;
+    }
+    return { total: docs.length, byType, byVenture };
+  }, [docs]);
+
+  /* ── Recently Updated ── */
+  const recentlyUpdated = useMemo(() => {
+    return [...docs].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()).slice(0, 5);
+  }, [docs]);
+
+  /* ── Word Count helper ── */
+  function getWordCount(text?: string): number {
+    if (!text) return 0;
+    return text.trim().split(/\s+/).filter(Boolean).length;
+  }
 
   /* ── Folder counts ── */
   function getFolderCount(node: FolderNode): number {
@@ -353,6 +388,51 @@ export default function DocsHub() {
         </div>
       </div>
 
+      {/* ── STATS BAR ── */}
+      {docs.length > 0 && !selectedDoc && (
+        <div className="dh-stats-bar">
+          <div className="dh-stat glass">
+            <Database size={12} />
+            <span className="dh-stat-val">{stats.total}</span>
+            <span className="dh-stat-label">Total Docs</span>
+          </div>
+          {Object.entries(stats.byType).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([type, count]) => (
+            <button key={type} className="dh-stat dh-stat-clickable" onClick={() => { setFilterType(type); setActiveFolder(type); }} style={{ borderColor: (DOC_TYPE_COLORS[type] || '#6B7280') + '30' }}>
+              <span className="dh-stat-dot" style={{ background: DOC_TYPE_COLORS[type] || '#6B7280' }} />
+              <span className="dh-stat-val">{count}</span>
+              <span className="dh-stat-label">{DOC_TYPE_LABELS[type] || type}</span>
+            </button>
+          ))}
+          <div className="dh-stat-divider" />
+          {Object.entries(stats.byVenture).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([vid, count]) => {
+            const v = getVentureInfo(vid);
+            return (
+              <button key={vid} className="dh-stat dh-stat-clickable" onClick={() => { setFilterVenture(vid); setActiveFolder(`venture-${vid}`); }} style={{ borderColor: v.color + '30' }}>
+                <span className="dh-stat-dot" style={{ background: v.color }} />
+                <span className="dh-stat-val">{count}</span>
+                <span className="dh-stat-label">{v.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── RECENTLY UPDATED ── */}
+      {docs.length > 0 && !selectedDoc && recentlyUpdated.length > 0 && (
+        <div className="dh-recent-bar">
+          <span className="dh-recent-label"><Star size={11} /> Recently Updated</span>
+          <div className="dh-recent-list">
+            {recentlyUpdated.map(doc => (
+              <button key={doc.id} className="dh-recent-item" onClick={() => handleSelectDoc(doc)}>
+                <FileText size={10} />
+                <span className="dh-recent-title">{doc.title}</span>
+                <span className="dh-recent-time">{timeAgo(doc.updated_at)}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── CREATE FORM OVERLAY ── */}
       {showCreate && (
         <div className="dh-create-overlay">
@@ -467,10 +547,11 @@ export default function DocsHub() {
               {DOC_TYPES.map(t => <option key={t} value={t}>{DOC_TYPE_LABELS[t] || t}</option>)}
             </select>
             <div className="dh-sort-group">
-              <select className="dh-select dh-select-sm" value={sortBy} onChange={e => setSortBy(e.target.value as 'updated' | 'created' | 'title')}>
+              <select className="dh-select dh-select-sm" value={sortBy} onChange={e => setSortBy(e.target.value as 'updated' | 'created' | 'title' | 'venture')}>
                 <option value="updated">Updated</option>
                 <option value="created">Created</option>
                 <option value="title">Title</option>
+                <option value="venture">Venture</option>
               </select>
               <button className="dh-btn dh-btn-icon dh-btn-tiny" onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')} title={sortDir === 'desc' ? 'Descending' : 'Ascending'}>
                 {sortDir === 'desc' ? <SortDesc size={12} /> : <SortAsc size={12} />}
@@ -639,7 +720,35 @@ export default function DocsHub() {
                   <span className="dh-meta-label">ID</span>
                   <span className="dh-meta-value dh-meta-id">{selectedDoc.id.slice(0, 8)}...</span>
                 </div>
+                <div className="dh-meta-row">
+                  <span className="dh-meta-label">Words</span>
+                  <span className="dh-meta-value">{getWordCount(docContent).toLocaleString()}</span>
+                </div>
+                {selectedDoc.metadata?.source && (
+                  <div className="dh-meta-row">
+                    <span className="dh-meta-label">Source</span>
+                    <span className={`dh-source-badge dh-source-${selectedDoc.metadata.source}`}>
+                      {selectedDoc.metadata.source}
+                    </span>
+                  </div>
+                )}
+                {selectedDoc.metadata?.path && (
+                  <div className="dh-meta-row">
+                    <span className="dh-meta-label">Path</span>
+                    <span className="dh-meta-value dh-meta-id" title={selectedDoc.metadata.path}>{selectedDoc.metadata.path}</span>
+                  </div>
+                )}
               </div>
+              {selectedDoc.metadata?.notionId && (
+                <a
+                  href={`https://notion.so/${selectedDoc.metadata.notionId.replace(/-/g, '')}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="dh-notion-link"
+                >
+                  <ExternalLink size={11} /> Open in Notion
+                </a>
+              )}
             </div>
 
             {/* Tags */}
@@ -1041,6 +1150,67 @@ export default function DocsHub() {
           background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
           font-size: 10px; color: var(--text-muted);
         }
+
+        /* ── Stats Bar ── */
+        .dh-stats-bar {
+          display: flex; align-items: center; gap: 6px; padding: 8px 20px;
+          border-bottom: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap;
+          background: rgba(11,17,33,0.4);
+        }
+        .dh-stat {
+          display: flex; align-items: center; gap: 5px; padding: 4px 10px;
+          border-radius: var(--radius-full); border: 1px solid var(--border);
+          background: rgba(11,17,33,0.6); font-size: 10px; color: var(--text-muted);
+        }
+        .dh-stat-clickable {
+          cursor: pointer; transition: all 0.15s;
+        }
+        .dh-stat-clickable:hover { background: var(--bg-elevated); color: var(--text-primary); border-color: var(--border-active); }
+        .dh-stat-val { font-family: var(--font-mono); font-weight: 700; color: var(--text-primary); font-size: 11px; }
+        .dh-stat-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.3px; }
+        .dh-stat-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+        .dh-stat-divider { width: 1px; height: 18px; background: var(--border); margin: 0 4px; flex-shrink: 0; }
+
+        /* ── Recently Updated Bar ── */
+        .dh-recent-bar {
+          display: flex; align-items: center; gap: 12px; padding: 6px 20px;
+          border-bottom: 1px solid var(--border); flex-shrink: 0;
+          background: rgba(11,17,33,0.3); overflow-x: auto;
+        }
+        .dh-recent-label {
+          display: flex; align-items: center; gap: 4px; font-size: 9px; font-weight: 700;
+          text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted);
+          white-space: nowrap; flex-shrink: 0;
+        }
+        .dh-recent-list { display: flex; gap: 4px; flex: 1; min-width: 0; }
+        .dh-recent-item {
+          display: flex; align-items: center; gap: 4px; padding: 3px 10px;
+          border-radius: var(--radius-full); background: var(--bg-card); border: 1px solid var(--border);
+          color: var(--text-secondary); font-size: 10px; cursor: pointer; transition: all 0.12s;
+          white-space: nowrap; flex-shrink: 0;
+        }
+        .dh-recent-item:hover { border-color: var(--border-active); color: var(--cyan); background: var(--bg-elevated); }
+        .dh-recent-title { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .dh-recent-time { font-size: 8px; font-family: var(--font-mono); color: var(--text-muted); }
+
+        /* ── Source Badges ── */
+        .dh-source-badge {
+          font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px;
+          padding: 1px 8px; border-radius: var(--radius-full); display: inline-flex; align-items: center;
+        }
+        .dh-source-notion { background: rgba(255,255,255,0.08); color: #E8E8E8; }
+        .dh-source-docs-v2 { background: rgba(0,240,255,0.1); color: var(--cyan); }
+        .dh-source-manual { background: rgba(139,92,246,0.1); color: var(--purple); }
+
+        /* ── Notion Link ── */
+        .dh-notion-link {
+          display: flex; align-items: center; gap: 5px; margin-top: 8px;
+          padding: 5px 10px; border-radius: var(--radius-sm);
+          background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+          color: var(--text-secondary); font-size: 10px; font-weight: 500;
+          text-decoration: none; transition: all 0.15s;
+        }
+        .dh-notion-link:hover { border-color: var(--border-active); color: var(--text-primary); background: var(--bg-elevated); }
 
         /* ── States ── */
         .dh-loading {

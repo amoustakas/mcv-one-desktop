@@ -43,7 +43,8 @@
       "Bash(unzip:*)",
       "Bash(grep -E \"\\\\.tsx?$|package\\\\.json\")",
       "Bash(node:*)",
-      "Bash(wc -l /c/Users/moust/Documents/GitHub/mcv/docs-v2/tier-5-domains/mcv-only/agentic-os/*.md)"
+      "Bash(wc -l /c/Users/moust/Documents/GitHub/mcv/docs-v2/tier-5-domains/mcv-only/agentic-os/*.md)",
+      "Bash(npx vite:*)"
     ]
   }
 }
