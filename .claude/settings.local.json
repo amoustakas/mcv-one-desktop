@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "Bash(git -C /c/Users/moust/mcv-one-desktop init)",
+      "Bash(git -C /c/Users/moust/mcv-one-desktop add -A)",
+      "Bash(git -C /c/Users/moust/mcv-one-desktop commit -m ':*)"
+    ]
+  }
+}
