@@ -2,7 +2,7 @@
 // Network-first strategy with offline fallback
 // Versioned: changes here trigger SW update → auto-reload
 
-const CACHE_VERSION = 6;
+const CACHE_VERSION = 7;
 const CACHE_NAME = `mcv-one-v${CACHE_VERSION}`;
 
 const PRECACHE_URLS = [

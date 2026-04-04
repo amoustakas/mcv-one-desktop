@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Loader2, Bot, User, Trash2, Plus } from 'lucide-react';
+import { Send, Loader2, Bot, User, Trash2, Plus, Mic, MicOff, Volume2, Square } from 'lucide-react';
 import { streamMessage, type ChatMessage } from '../lib/claude';
 import { handleCommand } from '../lib/commands';
+import { isRecordingSupported, startRecording, stopRecording, speakText, stopSpeaking } from '../lib/voice';
 import { type Venture } from '../lib/ventures';
 import {
   supabase,
@@ -48,9 +49,47 @@ export default function NAOSChat({ venture }: NAOSChatProps) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [streamingText, setStreamingText] = useState('');
+  const [recording, setRecording] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const useDb = !!supabase;
+  const hasVoice = isRecordingSupported();
+
+  async function handleMicToggle() {
+    if (recording) {
+      try {
+        const transcript = await stopRecording();
+        setRecording(false);
+        if (transcript) setInput((prev) => prev + (prev ? ' ' : '') + transcript);
+      } catch {
+        setRecording(false);
+      }
+    } else {
+      try {
+        await startRecording();
+        setRecording(true);
+      } catch {
+        // mic permission denied or not supported
+      }
+    }
+  }
+
+  async function handleSpeak(text: string) {
+    if (speaking) {
+      stopSpeaking();
+      setSpeaking(false);
+      return;
+    }
+    setSpeaking(true);
+    try {
+      await speakText(text);
+    } catch {
+      // TTS not configured
+    } finally {
+      setSpeaking(false);
+    }
+  }
 
   // Load conversations for this venture
   const loadConversations = useCallback(async () => {
@@ -294,8 +333,19 @@ export default function NAOSChat({ venture }: NAOSChatProps) {
                 {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
               </div>
               <div className="chat-msg-content">
-                <div className="chat-msg-name">
-                  {msg.role === 'user' ? 'You' : 'NAOS'}
+                <div className="chat-msg-header">
+                  <span className="chat-msg-name">
+                    {msg.role === 'user' ? 'You' : 'NAOS'}
+                  </span>
+                  {msg.role === 'assistant' && (
+                    <button
+                      className="chat-tts-btn"
+                      onClick={() => handleSpeak(msg.content)}
+                      aria-label={speaking ? 'Stop speaking' : 'Read aloud'}
+                    >
+                      {speaking ? <Square size={10} /> : <Volume2 size={12} />}
+                    </button>
+                  )}
                 </div>
                 <div className="chat-msg-text">
                   {msg.role === 'assistant' ? <Markdown content={msg.content} /> : msg.content}
@@ -321,12 +371,21 @@ export default function NAOSChat({ venture }: NAOSChatProps) {
 
         <div className="chat-input-area">
           <div className="chat-input-wrap">
+            {hasVoice && (
+              <button
+                className={`chat-voice-btn ${recording ? 'recording' : ''}`}
+                onClick={handleMicToggle}
+                aria-label={recording ? 'Stop recording' : 'Start recording'}
+              >
+                {recording ? <MicOff size={16} /> : <Mic size={16} />}
+              </button>
+            )}
             <textarea
               className="chat-input"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={`Message NAOS (${venture.name})...`}
+              placeholder={recording ? 'Listening...' : `Message NAOS (${venture.name})...`}
               rows={1}
               disabled={loading}
             />
@@ -503,6 +562,12 @@ export default function NAOSChat({ venture }: NAOSChatProps) {
 
         .chat-msg-content { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 
+        .chat-msg-header {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
         .chat-msg-name {
           font-size: 10px;
           font-weight: 600;
@@ -511,7 +576,40 @@ export default function NAOSChat({ venture }: NAOSChatProps) {
           letter-spacing: 0.5px;
         }
 
-        .chat-msg.user .chat-msg-name { text-align: right; }
+        .chat-tts-btn {
+          opacity: 0;
+          padding: 2px;
+          border-radius: 3px;
+          color: var(--text-muted);
+          transition: all var(--transition-fast);
+        }
+        .chat-msg:hover .chat-tts-btn { opacity: 1; }
+        .chat-tts-btn:hover { color: var(--cyan); background: rgba(0,245,255,0.1); }
+
+        .chat-msg.user .chat-msg-header { justify-content: flex-end; }
+
+        .chat-voice-btn {
+          width: 34px;
+          height: 34px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: var(--radius-sm);
+          color: var(--text-secondary);
+          transition: all var(--transition-fast);
+          flex-shrink: 0;
+        }
+        .chat-voice-btn:hover { color: var(--text-primary); background: var(--bg-card); }
+        .chat-voice-btn.recording {
+          color: var(--error);
+          background: rgba(239,68,68,0.1);
+          animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
 
         .chat-msg-text {
           padding: var(--space-sm) var(--space-md);
