@@ -186,6 +186,28 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             </div>
           </div>
 
+          {/* Keyboard Shortcuts */}
+          <div className="settings-section">
+            <h3>Keyboard Shortcuts</h3>
+            <div className="settings-shortcuts">
+              {[
+                ['Ctrl+K', 'Command Palette'],
+                ['Ctrl+/', 'Toggle Chat Dock'],
+                ['Ctrl+\\', 'Toggle Split Panel'],
+                ['Ctrl+N', 'Quick Capture'],
+                ['Ctrl+E', 'Toggle Global/Venture'],
+                ['Ctrl+1-8', 'Switch Global View'],
+                ['Ctrl+Shift+1-9', 'Switch Venture'],
+                ['Escape', 'Close Overlays'],
+              ].map(([key, desc]) => (
+                <div key={key} className="settings-shortcut">
+                  <kbd className="settings-kbd">{key}</kbd>
+                  <span>{desc}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* About */}
           <div className="settings-section">
             <h3>About</h3>
@@ -257,6 +279,9 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             color: var(--text-muted); display: flex; align-items: center; gap: 4px; transition: all var(--transition-fast);
           }
           .settings-reset:hover { color: var(--error); border-color: var(--error); }
+          .settings-shortcuts { display: flex; flex-direction: column; gap: 4px; }
+          .settings-shortcut { display: flex; align-items: center; justify-content: space-between; padding: 4px 0; font-size: var(--text-xs); color: var(--text-secondary); }
+          .settings-kbd { font-size: 9px; font-family: var(--font-mono); background: var(--bg-card); border: 1px solid var(--border); padding: 2px 8px; border-radius: 3px; color: var(--text-muted); }
         `}</style>
       </div>
     </div>
