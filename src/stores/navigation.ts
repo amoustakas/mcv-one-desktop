@@ -13,6 +13,8 @@ export type ViewId =
   | 'tasks'
   | 'crm'
   | 'forge'
+  | 'docs'
+  | 'sessions'
   | 'settings'
   // Venture views
   | 'venture-dashboard'

@@ -34,6 +34,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
     { id: 'v-treasury', label: 'Treasury', sublabel: 'EDGE & P&L', action: () => { setView('treasury'); } },
     { id: 'v-ops', label: 'Ops Center', sublabel: 'GitHub & Vercel', action: () => { setView('ops'); } },
     { id: 'v-eng', label: 'Engineering', sublabel: 'CTO workbench', action: () => { setView('engineering'); } },
+    { id: 'v-docs', label: 'Documentation Hub', sublabel: 'Document management', action: () => { setView('docs'); } },
     // Ventures
     ...ventures.map((v) => ({
       id: `venture-${v.id}`,

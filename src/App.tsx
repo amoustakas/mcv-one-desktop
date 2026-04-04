@@ -25,6 +25,8 @@ import GrowthView from './views/GrowthView';
 import TasksView from './views/TasksView';
 import CRMView from './views/CRMView';
 import ForgeView from './views/ForgeView';
+import DocsHub from './views/DocsHub';
+import SessionsView from './views/SessionsView';
 
 // Placeholder views for Phase 2
 function PlaceholderView({ title, description }: { title: string; description: string }) {
@@ -80,6 +82,10 @@ function ViewRouter() {
       return <CRMView />;
     case 'forge':
       return <ForgeView />;
+    case 'docs':
+      return <DocsHub />;
+    case 'sessions':
+      return <SessionsView />;
     case 'settings':
       return <PlaceholderView title="Settings" description="Use the gear icon in the header." />;
     // Venture views
@@ -92,7 +98,7 @@ function ViewRouter() {
     case 'venture-operations':
       return <PlaceholderView title={`${venture.name} — Operations`} description="CRM, workflows, and support center. Connect Twilio for voice/SMS." />;
     case 'venture-docs':
-      return <IntelligenceView />;
+      return <DocsHub />;
     case 'venture-forge':
       return <ForgeView />;
     case 'venture-tasks':
