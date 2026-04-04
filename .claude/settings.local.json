@@ -30,7 +30,12 @@
       "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'{len\\(d.get\\(\\\\\"deployments\\\\\",[]\\)\\)} deployments'\\) if 'deployments' in d else print\\(d\\)\")",
       "Bash(ls -d /c/Users/moust/Documents/GitHub/mcv-one-admin-prototype/.claude/worktrees/amazing-hofstadter/packages/ui/src/*)",
       "Bash(xargs -I {} basename {})",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "mcp__claude_ai_Notion__notion-search",
+      "mcp__claude_ai_Notion__notion-fetch",
+      "mcp__plugin_supabase_supabase__execute_sql",
+      "Bash(npx vercel:*)",
+      "Bash(python3 -c \"import sys,json; data=json.load\\(sys.stdin\\); [print\\(f'{d[\\\\\"id\\\\\"][:8]}... | {d[\\\\\"venture_id\\\\\"]:12} | {d[\\\\\"doc_type\\\\\"]:15} | {d[\\\\\"title\\\\\"]}'\\) for d in data['documents']]\")"
     ]
   }
 }
