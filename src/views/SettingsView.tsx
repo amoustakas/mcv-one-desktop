@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   Settings, Monitor, Volume2, Mic, Shield, Keyboard, Info, Database,
   Cloud, GitBranch, Zap, Radio, Globe, Server, CheckCircle2, XCircle,
-  RefreshCw, HardDrive, Users, Bell, Palette,
+  RefreshCw, HardDrive,
 } from 'lucide-react';
 import { APP_VERSION, BUILD_TIME } from '../lib/version';
 import { ventures } from '../lib/ventures';
