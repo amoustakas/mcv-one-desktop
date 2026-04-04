@@ -4,7 +4,7 @@ import ChatDock from './components/ChatDock';
 import StatusBar from './components/StatusBar';
 import CommandPalette from './components/CommandPalette';
 import SettingsPanel from './components/SettingsPanel';
-import { useNavigation } from './stores/navigation';
+import { useNavigation, type ViewId } from './stores/navigation';
 import { useTheme } from './stores/theme';
 import { getVenture, ventures } from './lib/ventures';
 import { UserButton } from './lib/auth';
@@ -98,9 +98,17 @@ export default function App() {
   useTheme(); // keep theme store active
   const venture = getVenture(activeVenture || 'mcv');
 
+  const { setView } = useNavigation();
+
   // Keyboard shortcuts
   useEffect(() => {
+    const globalViews: ViewId[] = ['command-center', 'portfolio', 'chat', 'intelligence', 'treasury', 'ops', 'engineering', 'signals'];
+
     function handleKey(e: KeyboardEvent) {
+      // Don't capture if typing in an input
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setPaletteOpen((o) => !o);
@@ -109,13 +117,20 @@ export default function App() {
         e.preventDefault();
         toggleChatDock();
       }
-      if (e.key === 'Escape' && paletteOpen) {
-        setPaletteOpen(false);
+      if (e.key === 'Escape') {
+        if (paletteOpen) setPaletteOpen(false);
+        if (settingsOpen) setSettingsOpen(false);
+      }
+      // Cmd+1 through Cmd+8 for global views
+      if ((e.metaKey || e.ctrlKey) && e.key >= '1' && e.key <= '8') {
+        e.preventDefault();
+        const idx = parseInt(e.key) - 1;
+        if (globalViews[idx]) setView(globalViews[idx]);
       }
     }
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [paletteOpen, toggleChatDock]);
+  }, [paletteOpen, settingsOpen, toggleChatDock, setView]);
 
   const contextLabel = mode === 'global'
     ? 'Global'
