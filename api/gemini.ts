@@ -12,12 +12,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'messages array required' });
   }
 
-  if (!process.env.GOOGLE_AI_KEY) {
+  const googleKey = process.env.GOOGLE_AI_KEY || process.env.VITE_GOOGLE_AI_KEY || process.env.GOOGLE_GENERATIVE_AI_KEY || '';
+  if (!googleKey) {
     return res.status(500).json({ error: 'GOOGLE_AI_KEY not configured' });
   }
 
   try {
-    const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY);
+    const genAI = new GoogleGenerativeAI(googleKey);
     const model = genAI.getGenerativeModel({
       model: 'gemini-1.5-pro',
       systemInstruction: systemPrompt || undefined,

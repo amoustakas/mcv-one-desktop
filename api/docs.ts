@@ -7,7 +7,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '',
 );
 
-const GOOGLE_AI_KEY = process.env.GOOGLE_AI_KEY || '';
+const GOOGLE_AI_KEY = process.env.GOOGLE_AI_KEY || process.env.VITE_GOOGLE_AI_KEY || process.env.GOOGLE_GENERATIVE_AI_KEY || '';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const action = req.method === 'GET' ? (req.query.action as string) : req.body?.action;
