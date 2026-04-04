@@ -17,6 +17,7 @@ import Markdown from './Markdown';
 
 interface NAOSChatProps {
   venture: Venture;
+  docked?: boolean;
 }
 
 // localStorage fallback when Supabase isn't connected
@@ -42,7 +43,7 @@ function saveConvList(ventureId: string, convs: { id: string; title: string }[])
   localStorage.setItem(`naos-convs-${ventureId}`, JSON.stringify(convs));
 }
 
-export default function NAOSChat({ venture }: NAOSChatProps) {
+export default function NAOSChat({ venture, docked = false }: NAOSChatProps) {
   const [conversations, setConversations] = useState<{ id: string; title: string }[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -286,8 +287,8 @@ export default function NAOSChat({ venture }: NAOSChatProps) {
 
   return (
     <div className="chat-layout">
-      {/* Conversation sidebar */}
-      <div className="conv-sidebar">
+      {/* Conversation sidebar — hidden when docked */}
+      {!docked && <div className="conv-sidebar">
         <button className="conv-new-btn" onClick={handleNewChat}>
           <Plus size={14} />
           <span>New Chat</span>
@@ -309,7 +310,7 @@ export default function NAOSChat({ venture }: NAOSChatProps) {
             </div>
           ))}
         </div>
-      </div>
+      </div>}
 
       {/* Chat area */}
       <div className="chat-container">

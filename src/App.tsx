@@ -8,8 +8,8 @@ import { useNavigation } from './stores/navigation';
 import { useTheme } from './stores/theme';
 import { getVenture, ventures } from './lib/ventures';
 import { UserButton } from './lib/auth';
-import { APP_VERSION } from './lib/version';
-import { Search } from 'lucide-react';
+// version shown in StatusBar
+import { Search, Settings, Bot } from 'lucide-react';
 
 // Views
 import NAOSChat from './components/NAOSChat';
@@ -128,23 +128,37 @@ export default function App() {
         {/* Header */}
         <header className="app-header">
           <div className="header-left">
-            <span className="header-logo">MCV</span>
-            <span className="header-logo-sub">ONE</span>
-            <span className="header-context-badge" style={{ borderColor: contextColor, color: contextColor }}>
-              {contextLabel}
-            </span>
+            <div className="header-brand">
+              <span className="header-logo">MCV</span>
+              <span className="header-logo-sub">ONE</span>
+            </div>
+            <div className="header-divider" />
+            <div className="header-context" style={{ '--ctx-color': contextColor } as React.CSSProperties}>
+              <span className="header-ctx-dot" style={{ background: contextColor }} />
+              <span className="header-ctx-label">{contextLabel}</span>
+              {mode === 'venture' && venture && (
+                <span className="header-ctx-tagline">{venture.tagline}</span>
+              )}
+            </div>
           </div>
 
           <button className="header-search" onClick={() => setPaletteOpen(true)}>
             <Search size={14} />
-            <span>Search or command...</span>
-            <kbd>Ctrl+K</kbd>
+            <span className="header-search-text">Search views, ventures, commands...</span>
+            <kbd className="header-kbd">Ctrl+K</kbd>
           </button>
 
           <div className="header-right">
-            <span className="header-version">v{APP_VERSION}</span>
-            <button className="header-icon-btn" onClick={() => setSettingsOpen(true)}>
-              <span style={{ fontSize: '14px' }}>&#9881;</span>
+            <button className="header-icon-btn" onClick={() => setSettingsOpen(true)} title="Settings">
+              <Settings size={15} />
+            </button>
+            <button
+              className="header-icon-btn"
+              onClick={toggleChatDock}
+              title={chatDocked ? 'Hide NAOS (Ctrl+/)' : 'Show NAOS (Ctrl+/)'}
+              style={chatDocked ? { color: 'var(--cyan)' } : undefined}
+            >
+              <Bot size={15} />
             </button>
             <UserButton afterSignOutUrl="/" />
           </div>
@@ -171,124 +185,148 @@ export default function App() {
       <style>{`
         .app-shell {
           display: flex;
-          flex-direction: column;
           height: 100vh;
           width: 100vw;
           overflow: hidden;
-        }
-
-        .app-shell > .nav-rail {
-          position: fixed;
-          left: 0;
-          top: 0;
-          height: 100vh;
-          z-index: 20;
         }
 
         .app-main-col {
           flex: 1;
           display: flex;
           flex-direction: column;
-          margin-left: 56px;
           min-width: 0;
-          height: calc(100vh - 28px);
+          height: 100vh;
         }
 
+        /* ── Header ── */
         .app-header {
-          height: 40px;
+          height: 48px;
           display: flex;
           align-items: center;
-          justify-content: space-between;
           padding: 0 16px;
           background: var(--bg-surface);
           border-bottom: 1px solid var(--border);
           flex-shrink: 0;
-          gap: 12px;
+          gap: 16px;
         }
 
         .header-left {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 12px;
           flex-shrink: 0;
         }
 
+        .header-brand {
+          display: flex;
+          align-items: baseline;
+          gap: 3px;
+        }
+
         .header-logo {
-          font-size: 14px;
-          font-weight: 800;
+          font-family: var(--font-display);
+          font-size: 18px;
+          font-weight: 700;
           color: var(--cyan);
+          letter-spacing: -0.5px;
         }
 
         .header-logo-sub {
-          font-size: 10px;
+          font-family: var(--font-display);
+          font-size: 11px;
           font-weight: 600;
           color: var(--text-muted);
-          letter-spacing: 2px;
+          letter-spacing: 3px;
         }
 
-        .header-context-badge {
-          font-size: 10px;
-          font-weight: 600;
-          padding: 2px 8px;
-          border: 1px solid;
-          border-radius: var(--radius-full);
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
+        .header-divider {
+          width: 1px;
+          height: 20px;
+          background: var(--border);
         }
 
-        .header-search {
-          flex: 1;
-          max-width: 400px;
+        .header-context {
           display: flex;
           align-items: center;
           gap: 8px;
-          padding: 5px 12px;
+        }
+
+        .header-ctx-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          box-shadow: 0 0 6px var(--ctx-color);
+        }
+
+        .header-ctx-label {
+          font-family: var(--font-display);
+          font-size: 14px;
+          font-weight: 600;
+          color: var(--ctx-color);
+        }
+
+        .header-ctx-tagline {
+          font-size: 11px;
+          color: var(--text-muted);
+        }
+
+        /* Search bar */
+        .header-search {
+          flex: 1;
+          max-width: 420px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 14px;
           background: var(--bg-input);
           border: 1px solid var(--border);
           border-radius: var(--radius-md);
           color: var(--text-muted);
           font-size: 12px;
-          transition: border-color var(--transition-fast);
+          transition: all 0.15s ease;
           cursor: pointer;
         }
 
-        .header-search:hover { border-color: var(--border-active); }
+        .header-search:hover {
+          border-color: var(--border-active);
+          background: var(--bg-card);
+        }
 
-        .header-search kbd {
-          margin-left: auto;
+        .header-search-text { flex: 1; }
+
+        .header-kbd {
           font-size: 9px;
           font-family: var(--font-mono);
-          background: var(--bg-card);
+          background: var(--bg-surface);
           border: 1px solid var(--border);
-          padding: 1px 5px;
+          padding: 2px 6px;
           border-radius: 3px;
+          color: var(--text-muted);
         }
 
         .header-right {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 4px;
           flex-shrink: 0;
         }
 
-        .header-version {
-          font-size: 10px;
-          font-family: var(--font-mono);
-          color: var(--text-muted);
-        }
-
         .header-icon-btn {
-          width: 28px;
-          height: 28px;
+          width: 32px;
+          height: 32px;
           display: flex;
           align-items: center;
           justify-content: center;
           border-radius: var(--radius-sm);
           color: var(--text-muted);
-          transition: all var(--transition-fast);
+          transition: all 0.15s ease;
         }
-        .header-icon-btn:hover { background: var(--bg-card); color: var(--text-primary); }
+        .header-icon-btn:hover {
+          background: var(--bg-card);
+          color: var(--text-primary);
+        }
 
+        /* ── Workspace ── */
         .app-workspace {
           flex: 1;
           display: flex;

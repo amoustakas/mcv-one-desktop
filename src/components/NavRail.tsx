@@ -1,62 +1,51 @@
-import { LayoutGrid, PieChart, Bot, Brain, Landmark, Activity, Wrench, Radio, Settings, Globe } from 'lucide-react';
+import { useState } from 'react';
+import {
+  LayoutGrid, PieChart, Bot, Brain, Landmark, Activity,
+  Wrench, Radio, Settings, Globe, ChevronLeft, ChevronRight,
+} from 'lucide-react';
 import { useNavigation, type ViewId } from '../stores/navigation';
 import { useTheme } from '../stores/theme';
 import { ventures } from '../lib/ventures';
 
-const ICONS: Record<string, React.ReactNode> = {
-  LayoutGrid: <LayoutGrid size={18} />,
-  PieChart: <PieChart size={18} />,
-  Bot: <Bot size={18} />,
-  Brain: <Brain size={18} />,
-  Landmark: <Landmark size={18} />,
-  Activity: <Activity size={18} />,
-  Wrench: <Wrench size={18} />,
-  Radio: <Radio size={18} />,
+const VIEW_ICONS: Record<string, React.FC<{ size: number }>> = {
+  'command-center': LayoutGrid,
+  'portfolio': PieChart,
+  'chat': Bot,
+  'intelligence': Brain,
+  'treasury': Landmark,
+  'ops': Activity,
+  'engineering': Wrench,
+  'signals': Radio,
+  'settings': Settings,
+  'venture-dashboard': LayoutGrid,
+  'venture-engineering': Wrench,
+  'venture-growth': Activity,
+  'venture-operations': Radio,
+  'venture-docs': Brain,
 };
 
-interface NavRailItemProps {
-  icon: React.ReactNode;
-  label: string;
-  active: boolean;
-  onClick: () => void;
-  color?: string;
-}
-
-function NavRailItem({ icon, label, active, onClick, color }: NavRailItemProps) {
-  return (
-    <button
-      className={`rail-item ${active ? 'active' : ''}`}
-      onClick={onClick}
-      title={label}
-      style={active && color ? { color } : undefined}
-    >
-      {icon}
-      <span className="rail-label">{label}</span>
-    </button>
-  );
-}
-
-const globalItems: { id: ViewId; label: string; icon: string }[] = [
-  { id: 'command-center', label: 'Command', icon: 'LayoutGrid' },
-  { id: 'portfolio', label: 'Portfolio', icon: 'PieChart' },
-  { id: 'chat', label: 'NAOS', icon: 'Bot' },
-  { id: 'intelligence', label: 'Intel', icon: 'Brain' },
-  { id: 'treasury', label: 'Treasury', icon: 'Landmark' },
-  { id: 'ops', label: 'Ops', icon: 'Activity' },
-  { id: 'engineering', label: 'Eng', icon: 'Wrench' },
-  { id: 'signals', label: 'Signals', icon: 'Radio' },
+const globalItems: { id: ViewId; label: string }[] = [
+  { id: 'command-center', label: 'Command' },
+  { id: 'portfolio', label: 'Portfolio' },
+  { id: 'chat', label: 'NAOS' },
+  { id: 'intelligence', label: 'Intelligence' },
+  { id: 'treasury', label: 'Treasury' },
+  { id: 'ops', label: 'Ops Center' },
+  { id: 'engineering', label: 'Engineering' },
+  { id: 'signals', label: 'Signals' },
 ];
 
-const ventureItems: { id: ViewId; label: string; icon: string }[] = [
-  { id: 'venture-dashboard', label: 'Dash', icon: 'LayoutGrid' },
-  { id: 'chat', label: 'NAOS', icon: 'Bot' },
-  { id: 'venture-engineering', label: 'Eng', icon: 'Wrench' },
-  { id: 'venture-growth', label: 'Growth', icon: 'Activity' },
-  { id: 'venture-operations', label: 'Ops', icon: 'Radio' },
-  { id: 'venture-docs', label: 'Docs', icon: 'Brain' },
+const ventureItems: { id: ViewId; label: string }[] = [
+  { id: 'venture-dashboard', label: 'Dashboard' },
+  { id: 'chat', label: 'NAOS' },
+  { id: 'venture-engineering', label: 'Engineering' },
+  { id: 'venture-growth', label: 'Growth' },
+  { id: 'venture-operations', label: 'Operations' },
+  { id: 'venture-docs', label: 'Documents' },
 ];
 
 export default function NavRail() {
+  const [expanded, setExpanded] = useState(false);
   const { mode, activeView, activeVenture, setView, switchToGlobal, switchToVenture } = useNavigation();
   const { applyGlobalTheme, applyVentureTheme } = useTheme();
 
@@ -72,197 +61,214 @@ export default function NavRail() {
     applyVentureTheme(slug);
   }
 
+  const w = expanded ? 200 : 56;
+
   return (
-    <nav className="nav-rail">
-      {/* Context indicator */}
-      <div className="rail-context">
-        <button
-          className={`rail-global ${mode === 'global' ? 'active' : ''}`}
-          onClick={handleGlobal}
-          title="Global View"
-        >
-          <Globe size={16} />
+    <nav className="rail" style={{ width: w }}>
+      {/* Global toggle */}
+      <button className={`rail-btn ${mode === 'global' ? 'active' : ''}`} onClick={handleGlobal} title="Global">
+        <Globe size={18} />
+        {expanded && <span className="rail-text">Global</span>}
+      </button>
+
+      <div className="rail-sep" />
+
+      {/* Nav items */}
+      <div className="rail-nav">
+        {navItems.map((item) => {
+          const Icon = VIEW_ICONS[item.id] || Activity;
+          const isActive = activeView === item.id;
+          return (
+            <button
+              key={item.id}
+              className={`rail-btn ${isActive ? 'active' : ''}`}
+              onClick={() => setView(item.id)}
+              title={item.label}
+            >
+              <Icon size={17} />
+              {expanded && <span className="rail-text">{item.label}</span>}
+              {isActive && <span className="rail-indicator" />}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="rail-sep" />
+
+      {/* Ventures */}
+      <div className="rail-ventures">
+        {expanded && <span className="rail-section-label">Ventures</span>}
+        {ventures.map((v) => {
+          const isActive = activeVenture === v.id;
+          return (
+            <button
+              key={v.id}
+              className={`rail-venture ${isActive ? 'active' : ''}`}
+              onClick={() => handleVenture(v.id)}
+              title={v.name}
+            >
+              <span
+                className="rail-dot"
+                style={{
+                  background: v.color,
+                  boxShadow: isActive ? `0 0 8px ${v.color}, 0 0 2px ${v.color}` : 'none',
+                  width: isActive ? 12 : 8,
+                  height: isActive ? 12 : 8,
+                }}
+              />
+              {expanded && <span className="rail-text" style={isActive ? { color: v.color } : undefined}>{v.name}</span>}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Bottom: Settings + Expand toggle */}
+      <div className="rail-bottom">
+        <button className={`rail-btn ${activeView === 'settings' ? 'active' : ''}`} onClick={() => setView('settings')} title="Settings">
+          <Settings size={17} />
+          {expanded && <span className="rail-text">Settings</span>}
+        </button>
+        <button className="rail-toggle" onClick={() => setExpanded((e) => !e)} title={expanded ? 'Collapse' : 'Expand'}>
+          {expanded ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
         </button>
       </div>
 
-      {/* Main nav items */}
-      <div className="rail-items">
-        {navItems.map((item) => (
-          <NavRailItem
-            key={item.id}
-            icon={ICONS[item.icon] || <Activity size={18} />}
-            label={item.label}
-            active={activeView === item.id}
-            onClick={() => setView(item.id)}
-          />
-        ))}
-      </div>
-
-      {/* Venture switcher */}
-      <div className="rail-ventures">
-        <div className="rail-divider" />
-        <span className="rail-ventures-label">Ventures</span>
-        {ventures.map((v) => (
-          <button
-            key={v.id}
-            className={`rail-venture ${activeVenture === v.id ? 'active' : ''}`}
-            onClick={() => handleVenture(v.id)}
-            title={v.name}
-          >
-            <span
-              className="rail-venture-dot"
-              style={{ background: v.color, boxShadow: activeVenture === v.id ? `0 0 8px ${v.color}` : 'none' }}
-            />
-            <span className="rail-venture-name">{v.name}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Settings at bottom */}
-      <div className="rail-bottom">
-        <NavRailItem
-          icon={<Settings size={18} />}
-          label="Settings"
-          active={activeView === 'settings'}
-          onClick={() => setView('settings')}
-        />
-      </div>
-
       <style>{`
-        .nav-rail {
-          width: 56px;
+        .rail {
           height: 100%;
           display: flex;
           flex-direction: column;
           background: var(--bg-surface);
           border-right: 1px solid var(--border);
           flex-shrink: 0;
+          transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
           overflow: hidden;
-          transition: width 0.2s ease;
+          user-select: none;
         }
 
-        .nav-rail:hover {
-          width: 160px;
-        }
-
-        .rail-context {
-          padding: 8px;
-          display: flex;
-          justify-content: center;
-        }
-
-        .rail-global {
-          width: 40px;
-          height: 40px;
-          border-radius: var(--radius-md);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: var(--text-muted);
-          transition: all var(--transition-fast);
-        }
-
-        .rail-global:hover { background: var(--bg-card); color: var(--text-primary); }
-        .rail-global.active { background: var(--bg-elevated); color: var(--cyan); }
-
-        .rail-items {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-          padding: 4px 8px;
-          overflow-y: auto;
-        }
-
-        .rail-item {
+        .rail-btn {
+          position: relative;
           display: flex;
           align-items: center;
           gap: 10px;
-          padding: 8px;
-          border-radius: var(--radius-sm);
+          padding: 8px 16px;
           color: var(--text-muted);
-          transition: all var(--transition-fast);
+          transition: all 0.15s ease;
           white-space: nowrap;
-          overflow: hidden;
-          min-height: 36px;
+          min-height: 38px;
         }
 
-        .rail-item:hover { background: var(--bg-card); color: var(--text-primary); }
-        .rail-item.active { background: var(--bg-elevated); color: var(--cyan); }
+        .rail-btn:hover {
+          color: var(--text-primary);
+          background: var(--bg-card);
+        }
 
-        .rail-label {
-          font-size: 11px;
+        .rail-btn.active {
+          color: var(--cyan);
+        }
+
+        .rail-indicator {
+          position: absolute;
+          left: 0;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 3px;
+          height: 20px;
+          background: var(--cyan);
+          border-radius: 0 3px 3px 0;
+        }
+
+        .rail-text {
+          font-size: 12px;
           font-weight: 500;
-          opacity: 0;
-          transition: opacity 0.15s ease;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
-        .nav-rail:hover .rail-label { opacity: 1; }
+        .rail-sep {
+          height: 1px;
+          margin: 4px 12px;
+          background: var(--border);
+        }
 
-        .rail-ventures {
-          padding: 4px 8px;
+        .rail-nav {
+          flex: 1;
           display: flex;
           flex-direction: column;
-          gap: 2px;
+          gap: 1px;
           overflow-y: auto;
-          max-height: 240px;
+          padding: 2px 0;
         }
 
-        .rail-divider {
-          height: 1px;
-          background: var(--border);
-          margin: 4px 0;
+        .rail-ventures {
+          display: flex;
+          flex-direction: column;
+          gap: 1px;
+          padding: 2px 0;
+          max-height: 280px;
+          overflow-y: auto;
         }
 
-        .rail-ventures-label {
+        .rail-section-label {
           font-size: 9px;
           font-weight: 600;
           color: var(--text-muted);
           text-transform: uppercase;
           letter-spacing: 1px;
-          padding: 4px 8px;
-          opacity: 0;
-          transition: opacity 0.15s ease;
+          padding: 4px 16px 2px;
         }
-
-        .nav-rail:hover .rail-ventures-label { opacity: 1; }
 
         .rail-venture {
           display: flex;
           align-items: center;
-          gap: 8px;
-          padding: 5px 8px;
-          border-radius: var(--radius-sm);
-          transition: all var(--transition-fast);
-          overflow: hidden;
+          gap: 10px;
+          padding: 6px 16px;
+          transition: all 0.15s ease;
+          white-space: nowrap;
+          min-height: 32px;
         }
 
-        .rail-venture:hover { background: var(--bg-card); }
-        .rail-venture.active { background: var(--bg-elevated); }
+        .rail-venture:hover {
+          background: var(--bg-card);
+        }
 
-        .rail-venture-dot {
-          width: 10px;
-          height: 10px;
+        .rail-venture .rail-text {
+          font-size: 11px;
+          color: var(--text-secondary);
+        }
+
+        .rail-venture.active .rail-text {
+          font-weight: 600;
+        }
+
+        .rail-dot {
           border-radius: 50%;
           flex-shrink: 0;
-          transition: box-shadow var(--transition-fast);
+          transition: all 0.2s ease;
         }
-
-        .rail-venture-name {
-          font-size: 11px;
-          font-weight: 500;
-          color: var(--text-secondary);
-          white-space: nowrap;
-          opacity: 0;
-          transition: opacity 0.15s ease;
-        }
-
-        .nav-rail:hover .rail-venture-name { opacity: 1; }
-        .rail-venture.active .rail-venture-name { color: var(--text-primary); }
 
         .rail-bottom {
-          padding: 4px 8px 8px;
           border-top: 1px solid var(--border);
+          padding: 4px 0;
+          display: flex;
+          flex-direction: column;
+          gap: 1px;
+        }
+
+        .rail-toggle {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 6px;
+          margin: 0 8px;
+          border-radius: var(--radius-sm);
+          color: var(--text-muted);
+          transition: all 0.15s ease;
+        }
+
+        .rail-toggle:hover {
+          background: var(--bg-card);
+          color: var(--text-primary);
         }
       `}</style>
     </nav>
