@@ -14,6 +14,7 @@ import VentureMegaMenu from './components/VentureMegaMenu';
 import QuickCapture from './components/QuickCapture';
 import Toasts from './components/Toasts';
 import NotificationCenter from './components/NotificationCenter';
+import { useLocalServer } from './lib/local';
 
 // Lazy-loaded views (code splitting)
 const AegisChat = lazy(() => import('./components/AegisChat'));
@@ -256,6 +257,7 @@ export default function App() {
   const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
   const { chatDocked, toggleChatDock, setView, toggleSplit, splitView, mode, switchToGlobal, switchToVenture } = useNavigation();
   useTheme();
+  useLocalServer(); // Detect local server connection
 
   // Keyboard shortcuts
   useEffect(() => {

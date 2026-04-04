@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Wifi, WifiOff, Database, GitBranch, Cloud, FileText, CheckSquare, Columns2, Cpu } from 'lucide-react';
+import { Wifi, WifiOff, Database, GitBranch, Cloud, FileText, CheckSquare, Columns2, Cpu, HardDrive } from 'lucide-react';
 import { APP_VERSION } from '../lib/version';
 import { supabase } from '../lib/supabase';
 import { useNavigation } from '../stores/navigation';
 import { getVenture } from '../lib/ventures';
+import { useLocalStore } from '../lib/local';
 
 export default function StatusBar() {
   const [health, setHealth] = useState<Record<string, boolean>>({});
@@ -11,6 +12,7 @@ export default function StatusBar() {
   const [taskCount, setTaskCount] = useState(0);
   const [online, setOnline] = useState(navigator.onLine);
   const { mode, activeVenture, splitView } = useNavigation();
+  const localConnected = useLocalStore(s => s.connected);
 
   useEffect(() => {
     function refresh() {
@@ -58,6 +60,7 @@ export default function StatusBar() {
       </div>
 
       <div className="status-right">
+        <span className={`status-dot ${localConnected ? 'ok' : 'off'}`} title={localConnected ? 'Local Server Connected' : 'Local Server Offline'}><HardDrive size={10} /></span>
         <span className="status-services"><Cpu size={9} /> {onlineServices} services</span>
         <span className="status-sep" />
         <span className={`status-dot ${online ? 'ok' : 'err'}`} title={online ? 'Online' : 'Offline'}>
