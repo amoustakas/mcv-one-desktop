@@ -3,6 +3,7 @@ import {
   LayoutGrid, PieChart, Bot, Brain, Landmark, Activity,
   Wrench, Radio, Settings, Globe, ChevronLeft, ChevronRight,
   CheckSquare, Users, Hammer, FileText, Monitor, BookOpen, Sparkles,
+  Wand2, Swords,
 } from 'lucide-react';
 import { useNavigation, type ViewId } from '../stores/navigation';
 import { useTheme } from '../stores/theme';
@@ -23,6 +24,8 @@ const VIEW_ICONS: Record<string, React.FC<{ size: number }>> = {
   'docs': BookOpen,
   'ai-studio': Sparkles,
   'sessions': Monitor,
+  'prompt-composer': Wand2,
+  'war-room': Swords,
   'settings': Settings,
   'venture-dashboard': LayoutGrid,
   'venture-engineering': Wrench,
@@ -47,6 +50,8 @@ const globalItems: { id: ViewId; label: string }[] = [
   { id: 'docs', label: 'Docs Hub' },
   { id: 'ai-studio', label: 'AI Studio' },
   { id: 'sessions', label: 'Sessions' },
+  { id: 'prompt-composer', label: 'Prompts' },
+  { id: 'war-room', label: 'War Room' },
   { id: 'signals', label: 'Signals' },
 ];
 

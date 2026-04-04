@@ -35,7 +35,13 @@
       "mcp__claude_ai_Notion__notion-fetch",
       "mcp__plugin_supabase_supabase__execute_sql",
       "Bash(npx vercel:*)",
-      "Bash(python3 -c \"import sys,json; data=json.load\\(sys.stdin\\); [print\\(f'{d[\\\\\"id\\\\\"][:8]}... | {d[\\\\\"venture_id\\\\\"]:12} | {d[\\\\\"doc_type\\\\\"]:15} | {d[\\\\\"title\\\\\"]}'\\) for d in data['documents']]\")"
+      "Bash(python3 -c \"import sys,json; data=json.load\\(sys.stdin\\); [print\\(f'{d[\\\\\"id\\\\\"][:8]}... | {d[\\\\\"venture_id\\\\\"]:12} | {d[\\\\\"doc_type\\\\\"]:15} | {d[\\\\\"title\\\\\"]}'\\) for d in data['documents']]\")",
+      "Bash(mkdir -p /tmp/samples)",
+      "Read(//tmp/**)",
+      "Bash(unzip -o \"/c/Users/moust/Downloads/Samples/the-lab.zip\" -d the-lab)",
+      "Bash(unzip -l \"/c/Users/moust/Downloads/Samples/flash-ui.zip\")",
+      "Bash(unzip:*)",
+      "Bash(grep -E \"\\\\.tsx?$|package\\\\.json\")"
     ]
   }
 }

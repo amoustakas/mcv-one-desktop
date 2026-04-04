@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import AnimatedBackground from './components/AnimatedBackground';
 import NavRail from './components/NavRail';
 import ChatDock from './components/ChatDock';
 import StatusBar from './components/StatusBar';
@@ -28,6 +29,8 @@ import ForgeView from './views/ForgeView';
 import DocsHub from './views/DocsHub';
 import AIStudioView from './views/AIStudioView';
 import SessionsView from './views/SessionsView';
+import PromptComposer from './views/PromptComposer';
+import WarRoom from './views/WarRoom';
 
 // Placeholder views
 function PlaceholderView({ title, description }: { title: string; description: string }) {
@@ -89,6 +92,10 @@ function ViewRouter() {
       return <AIStudioView />;
     case 'sessions':
       return <SessionsView />;
+    case 'prompt-composer':
+      return <PromptComposer />;
+    case 'war-room':
+      return <WarRoom />;
     case 'settings':
       return <PlaceholderView title="Settings" description="Use the gear icon in the header." />;
     // Venture views
@@ -163,6 +170,8 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      <AnimatedBackground />
+
       {/* Nav Rail */}
       <NavRail />
 

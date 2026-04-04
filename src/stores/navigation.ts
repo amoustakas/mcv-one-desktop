@@ -16,6 +16,8 @@ export type ViewId =
   | 'docs'
   | 'ai-studio'
   | 'sessions'
+  | 'prompt-composer'
+  | 'war-room'
   | 'settings'
   // Venture views
   | 'venture-dashboard'
