@@ -1,4 +1,5 @@
 import { Activity, MessageSquare, BarChart3, Settings } from 'lucide-react';
+import { APP_VERSION } from '../lib/version';
 
 export type Panel = 'chat' | 'sessions' | 'ops';
 
@@ -44,6 +45,7 @@ export default function TopBar({ activePanel, onPanelChange, ventureLabel }: Top
       </nav>
 
       <div className="topbar-right">
+        <span className="topbar-version">v{APP_VERSION}</span>
         <button className="topbar-icon-btn" aria-label="Settings">
           <Settings size={18} />
         </button>
@@ -131,6 +133,16 @@ export default function TopBar({ activePanel, onPanelChange, ventureLabel }: Top
         .topbar-right {
           display: flex;
           align-items: center;
+        }
+
+        .topbar-version {
+          font-size: 10px;
+          font-family: var(--font-mono);
+          color: var(--text-muted);
+          padding: 2px 6px;
+          background: var(--bg-card);
+          border-radius: var(--radius-sm);
+          border: 1px solid var(--border);
         }
 
         .topbar-icon-btn {
