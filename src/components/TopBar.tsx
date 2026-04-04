@@ -8,9 +8,10 @@ interface TopBarProps {
   activePanel: Panel;
   onPanelChange: (panel: Panel) => void;
   ventureLabel: string;
+  onSettingsClick?: () => void;
 }
 
-export default function TopBar({ activePanel, onPanelChange, ventureLabel }: TopBarProps) {
+export default function TopBar({ activePanel, onPanelChange, ventureLabel, onSettingsClick }: TopBarProps) {
   return (
     <header className="topbar">
       <div className="topbar-left">
@@ -54,7 +55,7 @@ export default function TopBar({ activePanel, onPanelChange, ventureLabel }: Top
 
       <div className="topbar-right">
         <span className="topbar-version">v{APP_VERSION}</span>
-        <button className="topbar-icon-btn" aria-label="Settings">
+        <button className="topbar-icon-btn" aria-label="Settings" onClick={onSettingsClick}>
           <Settings size={18} />
         </button>
         <UserButton afterSignOutUrl="/" />

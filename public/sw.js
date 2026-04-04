@@ -2,7 +2,7 @@
 // NETWORK-ONLY for HTML/JS/CSS. Cache only static assets.
 // This ensures the installed PWA always gets fresh content.
 
-const CACHE_VERSION = 10;
+const CACHE_VERSION = 11;
 const CACHE_NAME = `mcv-v${CACHE_VERSION}`;
 
 self.addEventListener('install', () => {

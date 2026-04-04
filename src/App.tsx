@@ -5,12 +5,14 @@ import NAOSChat from './components/NAOSChat';
 import VentureDashboard from './components/VentureDashboard';
 import SessionsPanel from './components/SessionsPanel';
 import OpsPanel from './components/OpsPanel';
+import SettingsPanel from './components/SettingsPanel';
 import { ventures, getVenture } from './lib/ventures';
 
 export default function App() {
   const [activePanel, setActivePanel] = useState<Panel>('chat');
   const [activeVenture, setActiveVenture] = useState('mcv');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const venture = getVenture(activeVenture) ?? ventures[0];
 
@@ -27,6 +29,7 @@ export default function App() {
           activePanel={activePanel}
           onPanelChange={setActivePanel}
           ventureLabel={venture.name}
+          onSettingsClick={() => setSettingsOpen(true)}
         />
         <main className="app-content">
           {activePanel === 'chat' && <NAOSChat venture={venture} />}
@@ -35,6 +38,8 @@ export default function App() {
           {activePanel === 'ops' && <OpsPanel />}
         </main>
       </div>
+
+      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
       <style>{`
         .app-layout {
