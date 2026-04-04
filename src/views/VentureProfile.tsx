@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import {
   Globe, ExternalLink, Users, Code, Calendar, DollarSign, BarChart3,
-  FileText, CheckSquare, MessageSquare, GitBranch, Shield, Layers,
-  Target, Zap, RefreshCw, Edit3,
+  FileText, CheckSquare, MessageSquare, Shield, Layers,
+  Target, Zap, RefreshCw,
 } from 'lucide-react';
-import { type Venture, ventures } from '../lib/ventures';
+import { type Venture } from '../lib/ventures';
 import { useNavigation } from '../stores/navigation';
 import { supabase } from '../lib/supabase';
 

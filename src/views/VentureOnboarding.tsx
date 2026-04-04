@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronRight, ChevronLeft, Check, Rocket, Globe, Users, Code, Sparkles, Zap } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Check, Rocket, Globe, Users, Sparkles, Zap } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
 
 type Step = 'identity' | 'links' | 'team' | 'genesis';
@@ -175,7 +175,7 @@ export default function VentureOnboarding() {
               ].map(({ key, label, ph }) => (
                 <div key={key} className="vo-field wide">
                   <label>{label}</label>
-                  <input value={(form as Record<string, unknown>)[key] as string || ''} onChange={e => setForm({ ...form, [key]: e.target.value })} placeholder={ph} />
+                  <input value={(form as unknown as Record<string, string>)[key] || ''} onChange={e => setForm({ ...form, [key]: e.target.value })} placeholder={ph} />
                 </div>
               ))}
             </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { TrendingUp, Target, Megaphone, BarChart3, Plus, RefreshCw, Trash2, Calendar, DollarSign, Edit3, Save, X, Users, Globe, Zap } from 'lucide-react';
+import { TrendingUp, Target, Megaphone, BarChart3, Plus, RefreshCw, Trash2, Calendar, DollarSign, Edit3, X, Users, Zap } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
 import { ventures } from '../lib/ventures';
 

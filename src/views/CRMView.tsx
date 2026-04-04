@@ -43,7 +43,6 @@ const TYPE_COLORS: Record<string, string> = { lead: '#F59E0B', prospect: '#00F0F
 const STAGE_COLORS: Record<string, string> = { discovery: '#6B7280', qualification: '#00F0FF', proposal: '#F59E0B', negotiation: '#8B5CF6', closed_won: '#10B981', closed_lost: '#EF4444' };
 const ACTIVITY_ICONS: Record<string, typeof Phone> = { call: PhoneCall, email: Send, meeting: Video, note: StickyNote, task: FileText };
 const ACTIVITY_COLORS: Record<string, string> = { call: '#10B981', email: '#3B82F6', meeting: '#8B5CF6', note: '#F59E0B', task: '#00F0FF' };
-const LIFECYCLE_COLORS: Record<string, string> = { lead: '#6B7280', mql: '#F59E0B', sql: '#00F0FF', opportunity: '#8B5CF6', customer: '#10B981', churned: '#EF4444' };
 const ACCOUNT_TYPE_COLORS: Record<string, string> = { prospect: '#F59E0B', customer: '#10B981', partner: '#8B5CF6', vendor: '#3B82F6', churned: '#EF4444' };
 
 // ── Helpers ──
