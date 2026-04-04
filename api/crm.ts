@@ -7,6 +7,10 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '',
 );
 
+async function notify(type: string, title: string, description: string, source: string, ventureId?: string) {
+  await supabase.from('notifications').insert({ type, title, description, source, venture_id: ventureId || null }).catch(() => {});
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const userId = await requireAuth(req, res); if (!userId) return;
   const action = req.method === 'GET' ? req.query.action as string : req.body?.action;
@@ -41,6 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       case 'create-contact': {
         const { data, error } = await supabase.from('contacts').insert(req.body.contact).select().single();
         if (error) throw error;
+        await notify('success', `New contact: ${data.name}`, data.company ? `${data.role || ''} at ${data.company}` : '', 'crm', data.venture_id);
         return res.json({ contact: data });
       }
       case 'update-contact': {
@@ -68,6 +73,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       case 'create-deal': {
         const { data, error } = await supabase.from('deals').insert(req.body.deal).select().single();
         if (error) throw error;
+        await notify('info', `New deal: ${data.title}`, `Value: $${data.value || 0}`, 'crm', data.venture_id);
         return res.json({ deal: data });
       }
       case 'update-deal': {

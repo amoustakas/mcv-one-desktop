@@ -19,6 +19,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 function AuthGate({ children }: { children: ReactNode }) {
   const { isSignedIn, isLoaded, getToken } = useAuth();
+  const { user } = useUser();
   const [showSignIn, setShowSignIn] = useState(false);
 
   // Wire Clerk token into fetch helper for API auth
@@ -27,6 +28,23 @@ function AuthGate({ children }: { children: ReactNode }) {
       setAuthTokenGetter(() => getToken());
     }
   }, [isSignedIn, getToken]);
+
+  // Sync Clerk user to Supabase team_members
+  useEffect(() => {
+    if (isSignedIn && user) {
+      fetch('/api/user-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'sync',
+          clerk_user_id: user.id,
+          name: user.fullName || user.firstName || user.primaryEmailAddress?.emailAddress?.split('@')[0],
+          email: user.primaryEmailAddress?.emailAddress,
+          avatar_url: user.imageUrl,
+        }),
+      }).catch(() => {});
+    }
+  }, [isSignedIn, user]);
 
   if (!isLoaded) {
     return (

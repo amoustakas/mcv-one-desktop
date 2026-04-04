@@ -1,5 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import './lib/api'; // Install global fetch interceptor (must be before any components)
 import { AuthProvider } from './lib/auth';
 import App from './App';
 import './styles/design-system.css';

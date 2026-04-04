@@ -1,4 +1,4 @@
-// Authenticated fetch wrapper — sends Clerk session token with all API requests
+// Auth-aware fetch — intercepts all /api/ calls to inject Clerk JWT
 
 let getToken: (() => Promise<string | null>) | null = null;
 
@@ -6,33 +6,27 @@ export function setAuthTokenGetter(fn: () => Promise<string | null>) {
   getToken = fn;
 }
 
-export async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
-  const headers = new Headers(options.headers);
+// Install global fetch interceptor for /api/ routes
+const originalFetch = window.fetch.bind(window);
 
-  // Inject auth token if available
-  if (getToken) {
+window.fetch = async function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : (input as Request).url;
+
+  // Only intercept our API routes
+  if (url.startsWith('/api/') && getToken) {
     try {
       const token = await getToken();
       if (token) {
-        headers.set('Authorization', `Bearer ${token}`);
+        const headers = new Headers(init?.headers);
+        if (!headers.has('Authorization')) {
+          headers.set('Authorization', `Bearer ${token}`);
+        }
+        return originalFetch(input, { ...init, headers });
       }
     } catch {
-      // Token retrieval failed — continue without auth
+      // Token retrieval failed — send request without auth
     }
   }
 
-  if (!headers.has('Content-Type') && options.body) {
-    headers.set('Content-Type', 'application/json');
-  }
-
-  return fetch(url, { ...options, headers });
-}
-
-// Convenience for POST JSON
-export async function apiPost(url: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
-  const r = await apiFetch(url, {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
-  return r.json();
-}
+  return originalFetch(input, init);
+};
