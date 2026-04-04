@@ -1,32 +1,74 @@
-import { Landmark, Coins, Clock, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Landmark, Coins, Clock, ArrowUpRight, ArrowDownRight, RefreshCw, Plus, Edit3, Save, X } from 'lucide-react';
+import { ventures as ventureRegistry } from '../lib/ventures';
 
-const ventures = [
-  { name: 'MCV One', burn: -2400, color: '#00F0FF' },
-  { name: 'BetEdge AI', burn: -8200, color: '#F59E0B' },
-  { name: 'FutureState', burn: 340, color: '#8B5CF6' },
-  { name: 'WarForge', burn: -500, color: '#EF4444' },
-  { name: 'MCV Studios', burn: -200, color: '#EC4899' },
-  { name: 'EdgeIQ Markets', burn: -1800, color: '#3B82F6' },
-  { name: 'ARQ Labs', burn: -3100, color: '#6366F1' },
-  { name: 'MCV Dev', burn: -600, color: '#3B82F6' },
-  { name: 'MCV Tech', burn: -1500, color: '#6B7280' },
-];
+interface VentureBurn { venture_id: string; name: string; color: string; revenue: number; expenses: number; burn: number; }
 
-const netBurn = ventures.reduce((a, v) => a + v.burn, 0);
+const currentMonth = new Date().toISOString().slice(0, 7); // e.g. 2026-04
 
 function formatUSD(n: number) {
   const abs = Math.abs(n);
+  if (abs >= 1e6) return `$${(abs / 1e6).toFixed(1)}M`;
   if (abs >= 1000) return `$${(abs / 1000).toFixed(1)}K`;
   return `$${abs}`;
 }
 
+async function api(body: Record<string, unknown>) {
+  const r = await fetch('/api/treasury', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  return r.json();
+}
+
 export default function TreasuryView() {
+  const [burns, setBurns] = useState<VentureBurn[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editRevenue, setEditRevenue] = useState(0);
+  const [editExpenses, setEditExpenses] = useState(0);
+  const [month, setMonth] = useState(currentMonth);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const res = await api({ action: 'list', month });
+    const data: Record<string, { revenue: number; expenses: number }> = {};
+    for (const f of (res.financials || [])) {
+      data[f.venture_id] = { revenue: Number(f.revenue) || 0, expenses: Number(f.expenses) || 0 };
+    }
+    const rows = ventureRegistry.map(v => {
+      const d = data[v.id] || { revenue: 0, expenses: 0 };
+      return { venture_id: v.id, name: v.name, color: v.color, revenue: d.revenue, expenses: d.expenses, burn: d.revenue - d.expenses };
+    });
+    setBurns(rows);
+    setLoading(false);
+  }, [month]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function handleSave(ventureId: string) {
+    await api({ action: 'upsert', venture_id: ventureId, month, revenue: editRevenue, expenses: editExpenses });
+    setEditId(null);
+    load();
+  }
+
+  function startEdit(b: VentureBurn) {
+    setEditId(b.venture_id);
+    setEditRevenue(b.revenue);
+    setEditExpenses(b.expenses);
+  }
+
+  const netBurn = burns.reduce((a, v) => a + v.burn, 0);
+  const totalRevenue = burns.reduce((a, v) => a + v.revenue, 0);
+  const totalExpenses = burns.reduce((a, v) => a + v.expenses, 0);
+  const maxBar = Math.max(...burns.map(v => Math.abs(v.burn)), 1);
+
   return (
     <div className="trsy">
-      <h1 className="trsy-title">
-        <Landmark size={20} />
-        Treasury & Token Economy
-      </h1>
+      <div className="trsy-header">
+        <h1 className="trsy-title"><Landmark size={20} /> Treasury & Token Economy</h1>
+        <div className="trsy-header-right">
+          <input type="month" value={month} onChange={e => setMonth(e.target.value)} className="trsy-month" />
+          <button className="trsy-refresh" onClick={load}><RefreshCw size={14} className={loading ? 'spin' : ''} /></button>
+        </div>
+      </div>
 
       {/* EDGE Token Dashboard */}
       <div className="trsy-section">
@@ -39,58 +81,67 @@ export default function TreasuryView() {
               <span className="trsy-token-label">TGE Price</span>
             </div>
           </div>
-          <div className="trsy-token-card">
-            <span className="trsy-token-val">$25M</span>
-            <span className="trsy-token-label">FDV</span>
-          </div>
-          <div className="trsy-token-card">
-            <span className="trsy-token-val">1B</span>
-            <span className="trsy-token-label">Total Supply</span>
-          </div>
-          <div className="trsy-token-card">
-            <span className="trsy-token-val">Jupiter</span>
-            <span className="trsy-token-label">Launch</span>
-          </div>
-          <div className="trsy-token-card">
-            <span className="trsy-token-val">Solana</span>
-            <span className="trsy-token-label">Network</span>
-          </div>
-          <div className="trsy-token-card">
-            <Clock size={14} />
-            <div>
-              <span className="trsy-token-val">Pending</span>
-              <span className="trsy-token-label">TGE Status</span>
-            </div>
-          </div>
+          <div className="trsy-token-card"><span className="trsy-token-val">$25M</span><span className="trsy-token-label">FDV</span></div>
+          <div className="trsy-token-card"><span className="trsy-token-val">1B</span><span className="trsy-token-label">Total Supply</span></div>
+          <div className="trsy-token-card"><span className="trsy-token-val">Jupiter</span><span className="trsy-token-label">Launch</span></div>
+          <div className="trsy-token-card"><span className="trsy-token-val">Solana</span><span className="trsy-token-label">Network</span></div>
+          <div className="trsy-token-card"><Clock size={14} /><div><span className="trsy-token-val">Pending</span><span className="trsy-token-label">TGE Status</span></div></div>
         </div>
       </div>
 
-      {/* Cross-Venture P&L */}
+      {/* P&L Summary */}
       <div className="trsy-section">
-        <h2 className="trsy-section-title">Cross-Venture Burn Rate</h2>
-        <div className="trsy-pnl-summary">
-          <span className={`trsy-pnl-net ${netBurn >= 0 ? 'pos' : 'neg'}`}>
-            {netBurn >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-            {formatUSD(netBurn)}/mo net
-          </span>
+        <h2 className="trsy-section-title">Cross-Venture P&L — {month}</h2>
+        <div className="trsy-pnl-kpis">
+          <div className="trsy-pnl-kpi"><span className="trsy-pnl-kpi-v pos">{formatUSD(totalRevenue)}</span><span className="trsy-pnl-kpi-l">Revenue</span></div>
+          <div className="trsy-pnl-kpi"><span className="trsy-pnl-kpi-v neg">{formatUSD(totalExpenses)}</span><span className="trsy-pnl-kpi-l">Expenses</span></div>
+          <div className="trsy-pnl-kpi">
+            <span className={`trsy-pnl-kpi-v ${netBurn >= 0 ? 'pos' : 'neg'}`}>
+              {netBurn >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+              {netBurn >= 0 ? '+' : '-'}{formatUSD(netBurn)}/mo
+            </span>
+            <span className="trsy-pnl-kpi-l">Net Burn</span>
+          </div>
         </div>
+
         <div className="trsy-pnl-list">
-          {ventures.map((v) => (
-            <div key={v.name} className="trsy-pnl-row">
-              <span className="trsy-pnl-dot" style={{ background: v.color }} />
-              <span className="trsy-pnl-name">{v.name}</span>
+          <div className="trsy-pnl-header">
+            <span>Venture</span><span></span><span>Revenue</span><span>Expenses</span><span>Net</span><span></span>
+          </div>
+          {burns.map((v) => (
+            <div key={v.venture_id} className="trsy-pnl-row">
+              <span className="trsy-pnl-name"><span className="trsy-pnl-dot" style={{ background: v.color }} />{v.name}</span>
               <div className="trsy-pnl-bar-track">
-                <div
-                  className={`trsy-pnl-bar ${v.burn >= 0 ? 'pos' : 'neg'}`}
-                  style={{ width: `${Math.min(Math.abs(v.burn) / 100, 100)}%` }}
-                />
+                <div className={`trsy-pnl-bar ${v.burn >= 0 ? 'pos' : 'neg'}`} style={{ width: `${(Math.abs(v.burn) / maxBar) * 100}%` }} />
               </div>
-              <span className={`trsy-pnl-val ${v.burn >= 0 ? 'pos' : 'neg'}`}>
-                {v.burn >= 0 ? '+' : '-'}{formatUSD(v.burn)}/mo
-              </span>
+              {editId === v.venture_id ? (
+                <>
+                  <input type="number" value={editRevenue} onChange={e => setEditRevenue(parseFloat(e.target.value) || 0)} className="trsy-edit-input" />
+                  <input type="number" value={editExpenses} onChange={e => setEditExpenses(parseFloat(e.target.value) || 0)} className="trsy-edit-input" />
+                  <span className={`trsy-pnl-val ${(editRevenue - editExpenses) >= 0 ? 'pos' : 'neg'}`}>
+                    {(editRevenue - editExpenses) >= 0 ? '+' : '-'}{formatUSD(editRevenue - editExpenses)}
+                  </span>
+                  <div className="trsy-row-actions">
+                    <button className="trsy-icon-btn save" onClick={() => handleSave(v.venture_id)}><Save size={11} /></button>
+                    <button className="trsy-icon-btn" onClick={() => setEditId(null)}><X size={11} /></button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <span className="trsy-pnl-val pos">{v.revenue > 0 ? formatUSD(v.revenue) : '—'}</span>
+                  <span className="trsy-pnl-val neg">{v.expenses > 0 ? formatUSD(v.expenses) : '—'}</span>
+                  <span className={`trsy-pnl-val ${v.burn >= 0 ? 'pos' : 'neg'}`}>
+                    {v.burn !== 0 ? `${v.burn >= 0 ? '+' : '-'}${formatUSD(v.burn)}` : '—'}
+                  </span>
+                  <div className="trsy-row-actions">
+                    <button className="trsy-icon-btn" onClick={() => startEdit(v)}><Edit3 size={11} /></button>
+                  </div>
+                </>
+              )}
             </div>
           ))}
         </div>
+        <p className="trsy-hint">Click the edit icon on any venture to set revenue/expenses for {month}.</p>
       </div>
 
       {/* Token Economy Status */}
@@ -107,40 +158,59 @@ export default function TreasuryView() {
       </div>
 
       <style>{`
-        .trsy { height: 100%; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 24px; }
-        .trsy-title { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+        .trsy { height:100%; overflow-y:auto; padding:20px 24px; display:flex; flex-direction:column; gap:20px; }
+        .trsy-header { display:flex; justify-content:space-between; align-items:center; }
+        .trsy-title { font-family:var(--font-display); font-size:1.5rem; font-weight:700; display:flex; align-items:center; gap:8px; }
+        .trsy-header-right { display:flex; gap:8px; align-items:center; }
+        .trsy-month { padding:5px 10px; background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-primary); font-size:12px; font-family:var(--font-mono); }
+        .trsy-refresh { width:30px; height:30px; display:flex; align-items:center; justify-content:center; border-radius:var(--radius-sm); color:var(--text-muted); }
+        .trsy-refresh:hover { background:var(--bg-card); color:var(--cyan); }
 
-        .trsy-section-title { font-family: var(--font-display); font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+        .trsy-section-title { font-family:var(--font-display); font-size:13px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:10px; }
 
-        .trsy-token-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
-        .trsy-token-card { padding: 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); display: flex; flex-direction: column; gap: 4px; }
-        .trsy-token-card.main { flex-direction: row; align-items: center; gap: 12px; border-color: rgba(139, 92, 246, 0.2); color: var(--purple); }
-        .trsy-token-card.main > div { display: flex; flex-direction: column; }
-        .trsy-token-price { font-family: var(--font-mono); font-size: 1.5rem; font-weight: 700; color: var(--purple); }
-        .trsy-token-val { font-family: var(--font-mono); font-size: 1rem; font-weight: 700; color: var(--text-primary); }
-        .trsy-token-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .trsy-token-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; }
+        .trsy-token-card { padding:14px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); display:flex; flex-direction:column; gap:4px; }
+        .trsy-token-card.main { flex-direction:row; align-items:center; gap:12px; border-color:rgba(139,92,246,0.2); color:var(--purple); }
+        .trsy-token-card.main>div { display:flex; flex-direction:column; }
+        .trsy-token-price { font-family:var(--font-mono); font-size:1.5rem; font-weight:700; color:var(--purple); }
+        .trsy-token-val { font-family:var(--font-mono); font-size:1rem; font-weight:700; color:var(--text-primary); }
+        .trsy-token-label { font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; }
 
-        .trsy-pnl-summary { margin-bottom: 8px; }
-        .trsy-pnl-net { font-family: var(--font-mono); font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
-        .trsy-pnl-net.pos { color: var(--success); }
-        .trsy-pnl-net.neg { color: var(--error); }
+        .trsy-pnl-kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
+        .trsy-pnl-kpi { padding:12px 16px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); }
+        .trsy-pnl-kpi-v { display:flex; align-items:center; gap:4px; font-family:var(--font-mono); font-size:1.1rem; font-weight:700; }
+        .trsy-pnl-kpi-v.pos { color:var(--success); }
+        .trsy-pnl-kpi-v.neg { color:var(--error); }
+        .trsy-pnl-kpi-l { display:block; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-top:2px; }
 
-        .trsy-pnl-list { display: flex; flex-direction: column; gap: 4px; }
-        .trsy-pnl-row { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); }
-        .trsy-pnl-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-        .trsy-pnl-name { font-size: 12px; font-weight: 500; width: 120px; flex-shrink: 0; }
-        .trsy-pnl-bar-track { flex: 1; height: 4px; background: var(--bg-elevated); border-radius: 2px; overflow: hidden; }
-        .trsy-pnl-bar { height: 100%; border-radius: 2px; transition: width 0.3s ease; }
-        .trsy-pnl-bar.pos { background: var(--success); }
-        .trsy-pnl-bar.neg { background: var(--error); opacity: 0.6; }
-        .trsy-pnl-val { font-family: var(--font-mono); font-size: 11px; font-weight: 600; width: 80px; text-align: right; flex-shrink: 0; }
-        .trsy-pnl-val.pos { color: var(--success); }
-        .trsy-pnl-val.neg { color: var(--error); }
+        .trsy-pnl-list { display:flex; flex-direction:column; gap:2px; }
+        .trsy-pnl-header { display:grid; grid-template-columns:140px 1fr 80px 80px 80px 50px; gap:8px; padding:4px 12px; font-size:9px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; }
+        .trsy-pnl-row { display:grid; grid-template-columns:140px 1fr 80px 80px 80px 50px; gap:8px; align-items:center; padding:8px 12px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-sm); }
+        .trsy-pnl-row:hover { border-color:var(--border-active); }
+        .trsy-pnl-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; display:inline-block; margin-right:8px; }
+        .trsy-pnl-name { font-size:12px; font-weight:500; white-space:nowrap; display:flex; align-items:center; }
+        .trsy-pnl-bar-track { height:4px; background:var(--bg-elevated); border-radius:2px; overflow:hidden; }
+        .trsy-pnl-bar { height:100%; border-radius:2px; transition:width 0.3s; }
+        .trsy-pnl-bar.pos { background:var(--success); }
+        .trsy-pnl-bar.neg { background:var(--error); opacity:0.6; }
+        .trsy-pnl-val { font-family:var(--font-mono); font-size:11px; font-weight:600; text-align:right; }
+        .trsy-pnl-val.pos { color:var(--success); }
+        .trsy-pnl-val.neg { color:var(--error); }
+        .trsy-row-actions { display:flex; gap:2px; justify-content:flex-end; }
+        .trsy-icon-btn { width:22px; height:22px; display:flex; align-items:center; justify-content:center; border-radius:3px; color:var(--text-muted); opacity:0.5; transition:all 0.15s; }
+        .trsy-pnl-row:hover .trsy-icon-btn { opacity:1; }
+        .trsy-icon-btn:hover { background:var(--bg-elevated); color:var(--text-primary); }
+        .trsy-icon-btn.save { color:var(--cyan); opacity:1; }
+        .trsy-edit-input { width:70px; padding:3px 6px; background:var(--bg-input); border:1px solid var(--border-active); border-radius:3px; color:var(--text-primary); font-size:11px; font-family:var(--font-mono); text-align:right; }
+        .trsy-hint { font-size:10px; color:var(--text-muted); margin-top:6px; }
 
-        .trsy-eco-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-        .trsy-eco-card { padding: 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); display: flex; flex-direction: column; gap: 4px; text-align: center; }
-        .trsy-eco-name { font-size: 13px; font-weight: 600; }
-        .trsy-eco-status { font-size: 10px; color: var(--text-muted); font-style: italic; }
+        .trsy-eco-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+        .trsy-eco-card { padding:16px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); display:flex; flex-direction:column; gap:4px; text-align:center; }
+        .trsy-eco-name { font-size:13px; font-weight:600; }
+        .trsy-eco-status { font-size:10px; color:var(--text-muted); font-style:italic; }
+
+        @keyframes spin { to{transform:rotate(360deg)} }
+        .spin { animation:spin 1s linear infinite; }
       `}</style>
     </div>
   );

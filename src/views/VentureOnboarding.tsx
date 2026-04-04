@@ -67,8 +67,40 @@ export default function VentureOnboarding() {
     log(`Tech Stack: ${form.techStack.join(', ') || 'Not configured'}`);
     await delay(500);
     log('Generating system prompt...');
+    const systemPrompt = `You are the ${form.name} assistant. ${form.description || form.tagline || `A ${form.type} venture in ${form.category}.`} Help with strategy, development, and operations for this venture.`;
     await delay(600);
-    log('Creating venture blueprint...');
+    log('Persisting to database...');
+    try {
+      const ventureData = {
+        name: form.name,
+        tagline: form.tagline,
+        description: form.description,
+        icon: form.icon || form.name.charAt(0).toUpperCase(),
+        color: form.color,
+        accent: form.color,
+        domain: form.domain,
+        type: form.type,
+        status: form.status,
+        category: form.category,
+        founded: new Date().toISOString().slice(0, 7),
+        funding_stage: form.fundingStage,
+        socials: { website: form.website, github: form.github, twitter: form.twitter, discord: form.discord, telegram: form.telegram, linkedin: form.linkedin, youtube: form.youtube },
+        team: form.teamMembers.filter(m => m.name),
+        tech_stack: form.techStack,
+        competitors: form.competitors,
+        key_metrics: {},
+        system_prompt: systemPrompt,
+      };
+      const res = await fetch('/api/ventures', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'create', venture: ventureData }) });
+      const data = await res.json();
+      if (data.venture) {
+        log(`Venture registered with ID: ${data.venture.id}`);
+      } else {
+        log(`Warning: ${data.error || 'Could not persist — venture saved locally only'}`);
+      }
+    } catch {
+      log('Warning: Could not reach API — venture saved locally only');
+    }
     await delay(400);
     log('Registering in portfolio...');
     await delay(300);

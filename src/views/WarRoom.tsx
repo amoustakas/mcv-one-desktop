@@ -176,17 +176,75 @@ function formatUptime(base: number) {
 
 /* ──────────────────────── Component ──────────────────────── */
 
+// Fetch real system events and convert to log entries
+async function fetchRealEvents(): Promise<LogEntry[]> {
+  const entries: LogEntry[] = [];
+  try {
+    const [gh, vc, health, tasks, docs] = await Promise.all([
+      fetch('/api/github?action=overview').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/vercel-status?action=deployments').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/health').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/docs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) }).then(r => r.ok ? r.json() : null).catch(() => null),
+    ]);
+    // GitHub commits
+    if (gh?.recent_commits) {
+      for (const c of gh.recent_commits.slice(0, 5)) {
+        entries.push({ id: ++_logId, timestamp: new Date(c.date), severity: 'INFO', agent: 'GitHub', message: `commit ${c.sha}: ${c.message}` });
+      }
+    }
+    if (gh?.repos) {
+      entries.push({ id: ++_logId, timestamp: new Date(), severity: 'SUCCESS', agent: 'GitHub', message: `${gh.repos.length} repositories tracked | ${gh.repos.reduce((s: number, r: { open_issues: number }) => s + (r.open_issues || 0), 0)} open issues` });
+    }
+    // Vercel deployments
+    if (vc?.deployments) {
+      for (const d of vc.deployments.slice(0, 4)) {
+        const sev = d.state === 'READY' ? 'SUCCESS' : d.state === 'ERROR' ? 'ERROR' : 'INFO';
+        entries.push({ id: ++_logId, timestamp: new Date(d.created), severity: sev, agent: 'Vercel', message: `${d.name} → ${d.state} (${d.target || 'preview'}) ${d.url ? d.url : ''}` });
+      }
+    }
+    // Health check
+    if (health) {
+      const configured = Object.entries(health).filter(([, v]) => v).map(([k]) => k);
+      entries.push({ id: ++_logId, timestamp: new Date(), severity: 'SUCCESS', agent: 'System', message: `Health: ${configured.length} services configured [${configured.join(', ')}]` });
+    }
+    // Tasks summary
+    if (tasks?.tasks) {
+      const active = tasks.tasks.filter((t: { status: string }) => t.status !== 'done' && t.status !== 'completed').length;
+      entries.push({ id: ++_logId, timestamp: new Date(), severity: 'INFO', agent: 'Director', message: `Task board: ${active} active tasks | ${tasks.tasks.length} total` });
+    }
+    // Docs summary
+    if (docs?.documents) {
+      entries.push({ id: ++_logId, timestamp: new Date(), severity: 'INFO', agent: 'Aegis', message: `Knowledge base: ${docs.documents.length} documents indexed` });
+    }
+  } catch { /* silent */ }
+  return entries.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+}
+
 export default function WarRoom() {
   const [logs, setLogs] = useState<LogEntry[]>(() => {
-    // Seed with 30 initial logs
     const seed: LogEntry[] = [];
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 15; i++) {
       const entry = generateLog();
-      entry.timestamp = new Date(Date.now() - (30 - i) * 2500);
+      entry.timestamp = new Date(Date.now() - (15 - i) * 2500);
       seed.push(entry);
     }
     return seed;
   });
+
+  // Fetch real data on mount and every 60s
+  useEffect(() => {
+    let mounted = true;
+    async function injectReal() {
+      const real = await fetchRealEvents();
+      if (mounted && real.length > 0) {
+        setLogs(prev => [...prev, ...real].slice(-500));
+      }
+    }
+    injectReal();
+    const id = setInterval(injectReal, 60000);
+    return () => { mounted = false; clearInterval(id); };
+  }, []);
 
   const [paused, setPaused] = useState(false);
   const [filterAgent, setFilterAgent] = useState<string | null>(null);
@@ -218,13 +276,29 @@ export default function WarRoom() {
     connections: 4,
   });
 
-  // Tasks
-  const [tasks, setTasks] = useState<TaskInfo[]>([
-    { id: 't1', name: 'Portfolio rebalance calc',  venture: 'MCV',         progress: 72, eta: '~3m' },
-    { id: 't2', name: 'Investor deck generation',  venture: 'Futurestate', progress: 45, eta: '~8m' },
-    { id: 't3', name: 'Scout RSS digest cycle',    venture: 'Global',      progress: 88, eta: '~1m' },
-    { id: 't4', name: 'CI pipeline: mcv-one-desktop', venture: 'MCV',      progress: 31, eta: '~5m' },
-  ]);
+  // Tasks - load from API
+  const [tasks, setTasks] = useState<TaskInfo[]>([]);
+
+  useEffect(() => {
+    fetch('/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.tasks) {
+          const active = data.tasks
+            .filter((t: { status: string }) => t.status === 'in_progress' || t.status === 'review')
+            .slice(0, 6)
+            .map((t: { id: string; title: string; venture_id: string; status: string }, i: number) => ({
+              id: t.id,
+              name: t.title,
+              venture: t.venture_id || 'Global',
+              progress: t.status === 'review' ? 90 : 30 + i * 15,
+              eta: t.status === 'review' ? '~1m' : `~${5 + i * 3}m`,
+            }));
+          if (active.length > 0) setTasks(active);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Auto-scroll terminal
   useEffect(() => {
