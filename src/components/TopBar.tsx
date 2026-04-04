@@ -1,5 +1,6 @@
 import { Activity, MessageSquare, BarChart3, Settings, LayoutDashboard } from 'lucide-react';
 import { APP_VERSION } from '../lib/version';
+import { UserButton } from '../lib/auth';
 
 export type Panel = 'chat' | 'dashboard' | 'sessions' | 'ops';
 
@@ -56,6 +57,7 @@ export default function TopBar({ activePanel, onPanelChange, ventureLabel }: Top
         <button className="topbar-icon-btn" aria-label="Settings">
           <Settings size={18} />
         </button>
+        <UserButton afterSignOutUrl="/" />
       </div>
 
       <style>{`

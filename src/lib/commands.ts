@@ -9,6 +9,19 @@ async function fetchJson(url: string) {
   return res.json();
 }
 
+async function postJson(url: string, body: Record<string, unknown>) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Request failed' }));
+    throw new Error(err.error || `API error: ${res.status}`);
+  }
+  return res.json();
+}
+
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
@@ -119,22 +132,102 @@ export async function handleCommand(input: string): Promise<CommandResult> {
         return { handled: true, response: md };
       }
 
+      // --- Document Intelligence ---
+      case 'docs': {
+        const data = await postJson('/api/docs', { action: 'list', venture_id: arg || undefined });
+        if (!data.documents?.length) return { handled: true, response: 'No documents found.' };
+        const lines = data.documents.map((d: { title: string; doc_type: string; venture_id: string; id: string }) =>
+          `- **${d.title}** (${d.doc_type}) — ${d.venture_id} \`${d.id.slice(0, 8)}\``
+        );
+        return { handled: true, response: `## Documents\n\n${lines.join('\n')}` };
+      }
+
+      case 'ask': {
+        if (!arg) return { handled: true, response: 'Usage: `/ask <question>` — queries your document library' };
+        const data = await postJson('/api/docs', { action: 'query', question: arg });
+        let md = `## Answer\n\n${data.answer}`;
+        if (data.sources?.length) {
+          md += `\n\n**Sources:** ${data.sources.map((s: { title: string }) => s.title).join(', ')}`;
+        }
+        return { handled: true, response: md };
+      }
+
+      case 'note': {
+        if (!arg) return { handled: true, response: 'Usage: `/note <title> | <content>` — saves a document' };
+        const [title, ...rest] = arg.split('|');
+        const content = rest.join('|').trim() || title.trim();
+        const data = await postJson('/api/docs', {
+          action: 'create',
+          title: title.trim(),
+          content,
+          doc_type: 'note',
+        });
+        return { handled: true, response: `Saved: **${data.document?.title}** \`${data.document?.id?.slice(0, 8)}\`` };
+      }
+
+      // --- Google / Gemini ---
+      case 'gemini': {
+        if (!arg) return { handled: true, response: 'Usage: `/gemini <prompt>` — sends to Gemini Pro' };
+        const data = await postJson('/api/google', { action: 'gemini-generate', prompt: arg });
+        return { handled: true, response: data.content || 'No response from Gemini.' };
+      }
+
+      case 'summarize': {
+        if (!arg) return { handled: true, response: 'Usage: `/summarize <text or URL>`' };
+        const data = await postJson('/api/google', { action: 'gemini-summarize', text: arg });
+        return { handled: true, response: `## Summary\n\n${data.content}` };
+      }
+
+      case 'places': {
+        if (!arg) return { handled: true, response: 'Usage: `/places <search query>` — searches Google Places' };
+        const data = await postJson('/api/google', { action: 'places-search', query: arg });
+        if (!data.places?.length) return { handled: true, response: 'No places found.' };
+        const lines = data.places.slice(0, 10).map((p: { name: string; address: string; rating: number }) =>
+          `- **${p.name}** — ${p.address} (${p.rating ? p.rating + ' stars' : 'unrated'})`
+        );
+        return { handled: true, response: `## Places: ${arg}\n\n${lines.join('\n')}` };
+      }
+
+      case 'geocode': {
+        if (!arg) return { handled: true, response: 'Usage: `/geocode <address>`' };
+        const data = await postJson('/api/google', { action: 'maps-geocode', address: arg });
+        if (!data.results?.length) return { handled: true, response: 'Address not found.' };
+        const r = data.results[0];
+        const loc = r.geometry?.location;
+        return { handled: true, response: `**${r.formatted_address}**\nLat: ${loc?.lat}, Lng: ${loc?.lng}` };
+      }
+
       case 'help': {
         return {
           handled: true,
           response: `## NAOS Commands
 
+### System
 | Command | Description |
 |---------|-------------|
 | \`/status\` | Full system overview (GitHub + Vercel) |
 | \`/repos\` | List all GitHub repos |
-| \`/prs [repo]\` | Recent PRs (default: mcv-one-desktop) |
+| \`/prs [repo]\` | Recent PRs |
 | \`/commits [repo]\` | Recent commits |
 | \`/deployments\` | Vercel deployment history |
 | \`/projects\` | Vercel projects list |
-| \`/help\` | This help menu |
 
-Anything else gets sent to Claude as a regular message.`,
+### Intelligence
+| Command | Description |
+|---------|-------------|
+| \`/docs [venture]\` | List documents in library |
+| \`/ask <question>\` | Query docs with Gemini RAG |
+| \`/note <title> \\| <content>\` | Save a document/note |
+| \`/gemini <prompt>\` | Direct Gemini Pro query |
+| \`/summarize <text>\` | Summarize with Gemini Flash |
+
+### Google
+| Command | Description |
+|---------|-------------|
+| \`/places <query>\` | Search Google Places |
+| \`/geocode <address>\` | Geocode an address |
+
+| \`/help\` | This menu |`,
         };
       }
 
