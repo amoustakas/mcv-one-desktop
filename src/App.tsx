@@ -75,13 +75,13 @@ function ViewRouter() {
     case 'venture-dashboard':
       return <VentureDashboard venture={venture} />;
     case 'venture-engineering':
-      return <PlaceholderView title={`${venture.name} — Engineering`} description="Venture repos, PRs, deployments." />;
+      return <EngineeringView />;
     case 'venture-growth':
       return <PlaceholderView title={`${venture.name} — Growth`} description="Marketing, campaigns, analytics." />;
     case 'venture-operations':
       return <PlaceholderView title={`${venture.name} — Operations`} description="CRM, workflows, support." />;
     case 'venture-docs':
-      return <PlaceholderView title={`${venture.name} — Documents`} description="Venture-scoped documents." />;
+      return <IntelligenceView />;
     case 'venture-settings':
       return <PlaceholderView title={`${venture.name} — Settings`} description="Venture configuration." />;
     default:
