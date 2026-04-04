@@ -1,48 +1,176 @@
-import { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Bot, User, Trash2 } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Send, Loader2, Bot, User, Trash2, Plus } from 'lucide-react';
 import { streamMessage, type ChatMessage } from '../lib/claude';
 import { type Venture } from '../lib/ventures';
+import {
+  supabase,
+  getConversations,
+  createConversation,
+  getMessages,
+  saveMessage,
+  deleteConversation,
+  type DbConversation,
+} from '../lib/supabase';
+import Markdown from './Markdown';
 
 interface NAOSChatProps {
   venture: Venture;
 }
 
-function loadHistory(ventureId: string): ChatMessage[] {
+// localStorage fallback when Supabase isn't connected
+function loadLocal(ventureId: string, convId: string): ChatMessage[] {
   try {
-    const raw = localStorage.getItem(`naos-chat-${ventureId}`);
+    const raw = localStorage.getItem(`naos-${ventureId}-${convId}`);
     return raw ? JSON.parse(raw) : [];
   } catch { return []; }
 }
 
-function saveHistory(ventureId: string, msgs: ChatMessage[]) {
-  localStorage.setItem(`naos-chat-${ventureId}`, JSON.stringify(msgs.slice(-100)));
+function saveLocal(ventureId: string, convId: string, msgs: ChatMessage[]) {
+  localStorage.setItem(`naos-${ventureId}-${convId}`, JSON.stringify(msgs.slice(-200)));
+}
+
+function loadConvList(ventureId: string): { id: string; title: string }[] {
+  try {
+    const raw = localStorage.getItem(`naos-convs-${ventureId}`);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveConvList(ventureId: string, convs: { id: string; title: string }[]) {
+  localStorage.setItem(`naos-convs-${ventureId}`, JSON.stringify(convs));
 }
 
 export default function NAOSChat({ venture }: NAOSChatProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>(() => loadHistory(venture.id));
+  const [conversations, setConversations] = useState<{ id: string; title: string }[]>([]);
+  const [activeConvId, setActiveConvId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [streamingText, setStreamingText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const useDb = !!supabase;
+
+  // Load conversations for this venture
+  const loadConversations = useCallback(async () => {
+    if (useDb) {
+      const dbConvs = await getConversations(venture.id);
+      const mapped = dbConvs.map((c: DbConversation) => ({ id: c.id, title: c.title }));
+      setConversations(mapped);
+      return mapped;
+    }
+    const local = loadConvList(venture.id);
+    setConversations(local);
+    return local;
+  }, [venture.id, useDb]);
+
+  // Load messages for active conversation
+  const loadMessages = useCallback(async (convId: string) => {
+    if (useDb) {
+      const dbMsgs = await getMessages(convId);
+      const mapped = dbMsgs.map((m) => ({ role: m.role, content: m.content }));
+      setMessages(mapped);
+      return;
+    }
+    setMessages(loadLocal(venture.id, convId));
+  }, [venture.id, useDb]);
+
+  // On venture change, reload conversations
+  useEffect(() => {
+    setStreamingText('');
+    setMessages([]);
+    setActiveConvId(null);
+    loadConversations().then((convs) => {
+      if (convs.length > 0) {
+        setActiveConvId(convs[0].id);
+      }
+    });
+  }, [venture.id, loadConversations]);
+
+  // On active conversation change, load messages
+  useEffect(() => {
+    if (activeConvId) {
+      loadMessages(activeConvId);
+    } else {
+      setMessages([]);
+    }
+  }, [activeConvId, loadMessages]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingText]);
 
-  useEffect(() => {
-    const history = loadHistory(venture.id);
-    setMessages(history);
-    setStreamingText('');
-  }, [venture.id]);
+  async function handleNewChat() {
+    const title = 'New Chat';
+    if (useDb) {
+      const conv = await createConversation(venture.id, title);
+      if (conv) {
+        setConversations((prev) => [{ id: conv.id, title: conv.title }, ...prev]);
+        setActiveConvId(conv.id);
+        setMessages([]);
+      }
+    } else {
+      const id = crypto.randomUUID();
+      const convs = [{ id, title }, ...conversations];
+      saveConvList(venture.id, convs);
+      setConversations(convs);
+      setActiveConvId(id);
+      setMessages([]);
+    }
+  }
 
-  useEffect(() => {
-    if (messages.length > 0) saveHistory(venture.id, messages);
-  }, [messages, venture.id]);
+  async function handleDeleteConv(convId: string) {
+    if (useDb) {
+      await deleteConversation(convId);
+    } else {
+      localStorage.removeItem(`naos-${venture.id}-${convId}`);
+      const convs = conversations.filter((c) => c.id !== convId);
+      saveConvList(venture.id, convs);
+    }
+    const remaining = conversations.filter((c) => c.id !== convId);
+    setConversations(remaining);
+    if (activeConvId === convId) {
+      setActiveConvId(remaining[0]?.id ?? null);
+    }
+  }
 
   async function handleSend() {
     const text = input.trim();
     if (!text || loading) return;
+
+    // Auto-create conversation if none exists
+    let convId = activeConvId;
+    if (!convId) {
+      const title = text.slice(0, 60) + (text.length > 60 ? '...' : '');
+      if (useDb) {
+        const conv = await createConversation(venture.id, title);
+        if (conv) {
+          convId = conv.id;
+          setConversations((prev) => [{ id: conv.id, title: conv.title }, ...prev]);
+          setActiveConvId(conv.id);
+        }
+      } else {
+        convId = crypto.randomUUID();
+        const convs = [{ id: convId, title }, ...conversations];
+        saveConvList(venture.id, convs);
+        setConversations(convs);
+        setActiveConvId(convId);
+      }
+    }
+    if (!convId) return;
+
+    // Auto-rename "New Chat" to first message
+    const conv = conversations.find((c) => c.id === convId);
+    if (conv?.title === 'New Chat') {
+      const newTitle = text.slice(0, 60) + (text.length > 60 ? '...' : '');
+      setConversations((prev) =>
+        prev.map((c) => c.id === convId ? { ...c, title: newTitle } : c)
+      );
+      if (!useDb) {
+        const convs = conversations.map((c) => c.id === convId ? { ...c, title: newTitle } : c);
+        saveConvList(venture.id, convs);
+      }
+    }
 
     const userMsg: ChatMessage = { role: 'user', content: text };
     const newMessages = [...messages, userMsg];
@@ -51,21 +179,35 @@ export default function NAOSChat({ venture }: NAOSChatProps) {
     setLoading(true);
     setStreamingText('');
 
+    // Persist user message
+    if (useDb) {
+      await saveMessage(convId, 'user', text);
+    } else {
+      saveLocal(venture.id, convId, newMessages);
+    }
+
     try {
       const full = await streamMessage(
         newMessages,
         venture.systemPrompt,
         (partial) => setStreamingText(partial),
       );
-      setMessages((prev) => [...prev, { role: 'assistant', content: full }]);
+      const finalMessages = [...newMessages, { role: 'assistant' as const, content: full }];
+      setMessages(finalMessages);
       setStreamingText('');
+
+      // Persist assistant message
+      if (useDb) {
+        await saveMessage(convId, 'assistant', full);
+      } else {
+        saveLocal(venture.id, convId, finalMessages);
+      }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: `Error: ${errorMsg}` },
-      ]);
+      const errMessages = [...newMessages, { role: 'assistant' as const, content: `**Error:** ${errorMsg}` }];
+      setMessages(errMessages);
       setStreamingText('');
+      if (!useDb) saveLocal(venture.id, convId!, errMessages);
     } finally {
       setLoading(false);
     }
@@ -79,100 +221,197 @@ export default function NAOSChat({ venture }: NAOSChatProps) {
   }
 
   return (
-    <div className="chat-container">
-      <div className="chat-messages">
-        {messages.length === 0 && !streamingText && (
-          <div className="chat-empty">
-            <div className="chat-empty-icon" style={{ color: venture.color }}>
-              {venture.icon}
+    <div className="chat-layout">
+      {/* Conversation sidebar */}
+      <div className="conv-sidebar">
+        <button className="conv-new-btn" onClick={handleNewChat}>
+          <Plus size={14} />
+          <span>New Chat</span>
+        </button>
+        <div className="conv-scroll">
+          {conversations.map((c) => (
+            <div
+              key={c.id}
+              className={`conv-row ${activeConvId === c.id ? 'active' : ''}`}
+              onClick={() => setActiveConvId(c.id)}
+            >
+              <span className="conv-row-title">{c.title}</span>
+              <button
+                className="conv-row-del"
+                onClick={(e) => { e.stopPropagation(); handleDeleteConv(c.id); }}
+              >
+                <Trash2 size={11} />
+              </button>
             </div>
-            <h2 className="chat-empty-title">
-              NAOS <span style={{ color: venture.color }}>&middot;</span> {venture.name}
-            </h2>
-            <p className="chat-empty-sub">{venture.tagline}</p>
-            <p className="chat-empty-hint">Ask me anything about {venture.name}.</p>
-          </div>
-        )}
-
-        {messages.map((msg, i) => (
-          <div key={i} className={`chat-msg ${msg.role}`}>
-            <div className="chat-msg-avatar">
-              {msg.role === 'user' ? (
-                <User size={16} />
-              ) : (
-                <Bot size={16} />
-              )}
-            </div>
-            <div className="chat-msg-content">
-              <div className="chat-msg-name">
-                {msg.role === 'user' ? 'You' : 'NAOS'}
-              </div>
-              <div className="chat-msg-text">{msg.content}</div>
-            </div>
-          </div>
-        ))}
-
-        {streamingText && (
-          <div className="chat-msg assistant">
-            <div className="chat-msg-avatar">
-              <Bot size={16} />
-            </div>
-            <div className="chat-msg-content">
-              <div className="chat-msg-name">NAOS</div>
-              <div className="chat-msg-text">{streamingText}</div>
-            </div>
-          </div>
-        )}
-
-        <div ref={messagesEndRef} />
+          ))}
+        </div>
       </div>
 
-      <div className="chat-input-area">
-        <div className="chat-input-wrap">
-          <textarea
-            ref={inputRef}
-            className="chat-input"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={`Message NAOS (${venture.name})...`}
-            rows={1}
-            disabled={loading}
-          />
-          <button
-            className="chat-send"
-            onClick={handleSend}
-            disabled={!input.trim() || loading}
-            aria-label="Send message"
-          >
-            {loading ? <Loader2 size={18} className="spin" /> : <Send size={18} />}
-          </button>
-        </div>
-        <div className="chat-footer-row">
-          <p className="chat-disclaimer">
-            Powered by Claude claude-sonnet-4-20250514
-          </p>
-          {messages.length > 0 && (
-            <button
-              className="chat-clear"
-              onClick={() => {
-                setMessages([]);
-                localStorage.removeItem(`naos-chat-${venture.id}`);
-              }}
-              aria-label="Clear chat"
-            >
-              <Trash2 size={14} />
-              <span>Clear</span>
-            </button>
+      {/* Chat area */}
+      <div className="chat-container">
+        <div className="chat-messages">
+          {messages.length === 0 && !streamingText && (
+            <div className="chat-empty">
+              <div className="chat-empty-icon" style={{ color: venture.color }}>
+                {venture.icon}
+              </div>
+              <h2 className="chat-empty-title">
+                NAOS <span style={{ color: venture.color }}>&middot;</span> {venture.name}
+              </h2>
+              <p className="chat-empty-sub">{venture.tagline}</p>
+              <p className="chat-empty-hint">Ask me anything about {venture.name}.</p>
+            </div>
           )}
+
+          {messages.map((msg, i) => (
+            <div key={i} className={`chat-msg ${msg.role}`}>
+              <div className="chat-msg-avatar">
+                {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
+              </div>
+              <div className="chat-msg-content">
+                <div className="chat-msg-name">
+                  {msg.role === 'user' ? 'You' : 'NAOS'}
+                </div>
+                <div className="chat-msg-text">
+                  {msg.role === 'assistant' ? <Markdown content={msg.content} /> : msg.content}
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {streamingText && (
+            <div className="chat-msg assistant">
+              <div className="chat-msg-avatar"><Bot size={16} /></div>
+              <div className="chat-msg-content">
+                <div className="chat-msg-name">NAOS</div>
+                <div className="chat-msg-text">
+                  <Markdown content={streamingText} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        <div className="chat-input-area">
+          <div className="chat-input-wrap">
+            <textarea
+              className="chat-input"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={`Message NAOS (${venture.name})...`}
+              rows={1}
+              disabled={loading}
+            />
+            <button
+              className="chat-send"
+              onClick={handleSend}
+              disabled={!input.trim() || loading}
+              aria-label="Send message"
+            >
+              {loading ? <Loader2 size={18} className="spin" /> : <Send size={18} />}
+            </button>
+          </div>
+          <div className="chat-footer-row">
+            <p className="chat-disclaimer">
+              Powered by Claude &middot; {useDb ? 'Synced' : 'Local only'}
+            </p>
+          </div>
         </div>
       </div>
 
       <style>{`
-        .chat-container {
+        .chat-layout {
+          display: flex;
+          height: 100%;
+          overflow: hidden;
+        }
+
+        /* Conversation sidebar */
+        .conv-sidebar {
+          width: 220px;
+          flex-shrink: 0;
           display: flex;
           flex-direction: column;
-          height: 100%;
+          background: var(--bg-surface);
+          border-right: 1px solid var(--border);
+        }
+
+        .conv-new-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 12px;
+          margin: var(--space-sm);
+          border-radius: var(--radius-md);
+          font-size: var(--text-sm);
+          font-weight: 500;
+          color: var(--cyan);
+          border: 1px dashed var(--border-active);
+          transition: all var(--transition-fast);
+        }
+
+        .conv-new-btn:hover {
+          background: var(--bg-card);
+          border-style: solid;
+        }
+
+        .conv-scroll {
+          flex: 1;
+          overflow-y: auto;
+          padding: 0 var(--space-sm) var(--space-sm);
+          display: flex;
+          flex-direction: column;
+          gap: 1px;
+        }
+
+        .conv-row {
+          display: flex;
+          align-items: center;
+          padding: 7px 10px;
+          border-radius: var(--radius-sm);
+          cursor: pointer;
+          transition: all var(--transition-fast);
+        }
+
+        .conv-row:hover { background: var(--bg-card); }
+
+        .conv-row.active {
+          background: var(--bg-elevated);
+          border: 1px solid var(--border-active);
+        }
+
+        .conv-row-title {
+          flex: 1;
+          font-size: var(--text-xs);
+          color: var(--text-secondary);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .conv-row.active .conv-row-title { color: var(--text-primary); }
+
+        .conv-row-del {
+          opacity: 0;
+          padding: 3px;
+          border-radius: 3px;
+          color: var(--text-muted);
+          flex-shrink: 0;
+          transition: all var(--transition-fast);
+        }
+
+        .conv-row:hover .conv-row-del { opacity: 1; }
+        .conv-row-del:hover { color: var(--error); background: rgba(239,68,68,0.1); }
+
+        /* Chat area */
+        .chat-container {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
           overflow: hidden;
         }
 
@@ -210,22 +449,9 @@ export default function NAOSChat({ venture }: NAOSChatProps) {
           margin-bottom: var(--space-md);
         }
 
-        .chat-empty-title {
-          font-size: var(--text-2xl);
-          font-weight: 700;
-          color: var(--text-primary);
-        }
-
-        .chat-empty-sub {
-          font-size: var(--text-sm);
-          color: var(--text-secondary);
-        }
-
-        .chat-empty-hint {
-          font-size: var(--text-sm);
-          color: var(--text-muted);
-          margin-top: var(--space-lg);
-        }
+        .chat-empty-title { font-size: var(--text-2xl); font-weight: 700; }
+        .chat-empty-sub { font-size: var(--text-sm); color: var(--text-secondary); }
+        .chat-empty-hint { font-size: var(--text-sm); color: var(--text-muted); margin-top: var(--space-lg); }
 
         .chat-msg {
           display: flex;
@@ -233,14 +459,11 @@ export default function NAOSChat({ venture }: NAOSChatProps) {
           max-width: 800px;
         }
 
-        .chat-msg.user {
-          align-self: flex-end;
-          flex-direction: row-reverse;
-        }
+        .chat-msg.user { align-self: flex-end; flex-direction: row-reverse; }
 
         .chat-msg-avatar {
-          width: 32px;
-          height: 32px;
+          width: 30px;
+          height: 30px;
           border-radius: var(--radius-sm);
           display: flex;
           align-items: center;
@@ -251,53 +474,41 @@ export default function NAOSChat({ venture }: NAOSChatProps) {
           color: var(--text-secondary);
         }
 
-        .chat-msg.assistant .chat-msg-avatar {
-          color: var(--cyan);
-          border-color: var(--cyan-glow);
-        }
+        .chat-msg.assistant .chat-msg-avatar { color: var(--cyan); border-color: rgba(0,245,255,0.15); }
 
-        .chat-msg-content {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-          min-width: 0;
-        }
+        .chat-msg-content { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 
         .chat-msg-name {
-          font-size: var(--text-xs);
+          font-size: 10px;
           font-weight: 600;
           color: var(--text-muted);
           text-transform: uppercase;
           letter-spacing: 0.5px;
         }
 
-        .chat-msg.user .chat-msg-name {
-          text-align: right;
-        }
+        .chat-msg.user .chat-msg-name { text-align: right; }
 
         .chat-msg-text {
           padding: var(--space-sm) var(--space-md);
           border-radius: var(--radius-md);
-          font-size: var(--text-sm);
           line-height: 1.6;
-          white-space: pre-wrap;
           word-break: break-word;
         }
 
         .chat-msg.user .chat-msg-text {
           background: var(--bg-elevated);
           border: 1px solid var(--border);
-          color: var(--text-primary);
+          font-size: var(--text-sm);
+          white-space: pre-wrap;
         }
 
         .chat-msg.assistant .chat-msg-text {
           background: var(--bg-card);
           border: 1px solid var(--border);
-          color: var(--text-primary);
         }
 
         .chat-input-area {
-          padding: var(--space-md) var(--space-lg);
+          padding: var(--space-sm) var(--space-lg);
           border-top: 1px solid var(--border);
           background: var(--bg-surface);
         }
@@ -313,9 +524,7 @@ export default function NAOSChat({ venture }: NAOSChatProps) {
           transition: border-color var(--transition-fast);
         }
 
-        .chat-input-wrap:focus-within {
-          border-color: var(--border-active);
-        }
+        .chat-input-wrap:focus-within { border-color: var(--border-active); }
 
         .chat-input {
           flex: 1;
@@ -329,10 +538,7 @@ export default function NAOSChat({ venture }: NAOSChatProps) {
           line-height: 1.5;
         }
 
-        .chat-input:focus {
-          outline: none;
-          border: none;
-        }
+        .chat-input:focus { outline: none; border: none; }
 
         .chat-send {
           width: 36px;
@@ -347,52 +553,23 @@ export default function NAOSChat({ venture }: NAOSChatProps) {
           flex-shrink: 0;
         }
 
-        .chat-send:hover:not(:disabled) {
-          background: var(--cyan-dim);
-        }
-
-        .chat-send:disabled {
-          opacity: 0.3;
-          cursor: not-allowed;
-        }
+        .chat-send:hover:not(:disabled) { background: var(--cyan-dim); }
+        .chat-send:disabled { opacity: 0.3; cursor: not-allowed; }
 
         .chat-footer-row {
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          margin-top: var(--space-sm);
+          justify-content: center;
+          margin-top: 6px;
         }
 
-        .chat-disclaimer {
-          font-size: var(--text-xs);
-          color: var(--text-muted);
-        }
+        .chat-disclaimer { font-size: 10px; color: var(--text-muted); }
 
-        .chat-clear {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          font-size: var(--text-xs);
-          color: var(--text-muted);
-          padding: 4px 8px;
-          border-radius: var(--radius-sm);
-          transition: all var(--transition-fast);
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spin { animation: spin 1s linear infinite; }
 
-        .chat-clear:hover {
-          color: var(--error);
-          background: rgba(239, 68, 68, 0.1);
-        }
-
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-
-        .spin {
-          animation: spin 1s linear infinite;
-        }
-
-        @media (max-width: 640px) {
+        @media (max-width: 768px) {
+          .conv-sidebar { display: none; }
           .chat-messages { padding: var(--space-md); }
           .chat-input-area { padding: var(--space-sm) var(--space-md); }
         }

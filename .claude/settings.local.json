@@ -14,7 +14,10 @@
       "Bash(gh repo:*)",
       "Bash(git push:*)",
       "Bash(npx cap:*)",
-      "Bash(git commit -m ':*)"
+      "Bash(git commit -m ':*)",
+      "Bash(curl -s -X POST https://mcv-one-desktop.vercel.app/api/chat -H 'Content-Type: application/json' -d '{\"messages\":[{\"role\":\"user\",\"content\":\"Say hello in one word.\"}],\"systemPrompt\":\"You are NAOS.\"}')",
+      "Bash(find /c/Users/moust/.claude -type f -name \"*.md\" -exec wc -l {} +)",
+      "Bash(npx supabase:*)"
     ]
   }
 }
