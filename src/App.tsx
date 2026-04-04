@@ -16,6 +16,9 @@ import NAOSChat from './components/NAOSChat';
 import OpsPanel from './components/OpsPanel';
 import VentureDashboard from './components/VentureDashboard';
 import CommandCenter from './views/CommandCenter';
+import IntelligenceView from './views/IntelligenceView';
+import TreasuryView from './views/TreasuryView';
+import PortfolioView from './views/PortfolioView';
 
 // Placeholder views for Phase 2
 function PlaceholderView({ title, description }: { title: string; description: string }) {
@@ -52,13 +55,13 @@ function ViewRouter() {
     case 'command-center':
       return <CommandCenter />;
     case 'portfolio':
-      return <PlaceholderView title="Portfolio" description="Venture portfolio, capital stack, investment tracking." />;
+      return <PortfolioView />;
     case 'chat':
       return <NAOSChat venture={venture} />;
     case 'intelligence':
-      return <PlaceholderView title="Intelligence Hub" description="Document library, RAG queries, knowledge base." />;
+      return <IntelligenceView />;
     case 'treasury':
-      return <PlaceholderView title="Treasury" description="EDGE token dashboard, cross-venture P&L, token economy." />;
+      return <TreasuryView />;
     case 'ops':
       return <OpsPanel />;
     case 'engineering':
