@@ -1,3 +1,4 @@
+import { requireAuth } from "./_middleware";
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
@@ -7,6 +8,7 @@ const GOOGLE_MAPS_KEY = process.env.GOOGLE_MAPS_KEY || process.env.VITE_GOOGLE_M
 const GENERATIVE_LANGUAGE_BASE = 'https://generativelanguage.googleapis.com/v1';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const userId = await requireAuth(req, res); if (!userId) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { action } = req.body;

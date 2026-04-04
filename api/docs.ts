@@ -1,3 +1,4 @@
+import { requireAuth } from "./_middleware";
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
@@ -10,6 +11,7 @@ const supabase = createClient(
 const GOOGLE_AI_KEY = process.env.GOOGLE_AI_KEY || process.env.VITE_GOOGLE_AI_KEY || process.env.GOOGLE_GENERATIVE_AI_KEY || '';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const userId = await requireAuth(req, res); if (!userId) return;
   const action = req.method === 'GET' ? (req.query.action as string) : req.body?.action;
 
   try {

@@ -1,3 +1,4 @@
+import { requireAuth } from "./_middleware";
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const NOTION_API_KEY = process.env.NOTION_API_KEY || process.env.NOTION_TOKEN || '';
@@ -121,6 +122,7 @@ function simplifyDatabase(db: Record<string, unknown>): Record<string, unknown> 
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const userId = await requireAuth(req, res); if (!userId) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   if (!NOTION_API_KEY) {

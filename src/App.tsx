@@ -36,6 +36,7 @@ const PromptComposer = lazy(() => import('./views/PromptComposer'));
 const WarRoom = lazy(() => import('./views/WarRoom'));
 const VentureProfile = lazy(() => import('./views/VentureProfile'));
 const TeamView = lazy(() => import('./views/TeamView'));
+const SettingsView = lazy(() => import('./views/SettingsView'));
 const VentureOnboarding = lazy(() => import('./views/VentureOnboarding'));
 
 // Placeholder views
@@ -113,7 +114,7 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
     case 'team':
       return <TeamView />;
     case 'settings':
-      return <PlaceholderView title="Settings" description="Use the gear icon in the header." />;
+      return <SettingsView />;
     // Venture views
     case 'venture-dashboard':
       return <VentureDashboard venture={venture} />;
@@ -351,7 +352,7 @@ export default function App() {
               <Columns2 size={15} />
             </button>
             <NotificationCenter />
-            <button className="header-icon-btn" onClick={() => setSettingsOpen(true)} title="Settings">
+            <button className="header-icon-btn" onClick={() => setView('settings')} title="Settings">
               <Settings size={15} />
             </button>
             <button

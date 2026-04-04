@@ -1,6 +1,8 @@
+import { requireAuth } from "./_middleware";
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const userId = await requireAuth(req, res); if (!userId) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const apiKey = process.env.ELEVENLABS_API_KEY || process.env.VITE_ELEVENLABS_API_KEY || '';
   if (!apiKey) return res.status(500).json({ error: 'ELEVENLABS_API_KEY not configured' });

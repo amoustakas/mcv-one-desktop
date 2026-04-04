@@ -1,3 +1,4 @@
+import { requireAuth } from "./_middleware";
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const GOOGLE_DRIVE_KEY = process.env.GOOGLE_DRIVE_KEY || process.env.GOOGLE_API_KEY || '';
@@ -30,6 +31,7 @@ function simplifyFile(file: Record<string, unknown>): Record<string, unknown> {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const userId = await requireAuth(req, res); if (!userId) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   if (!GOOGLE_DRIVE_KEY) {

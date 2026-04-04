@@ -1,3 +1,4 @@
+import { requireAuth } from "./_middleware";
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const FS_API_URL = process.env.FUTURESTATE_API_URL || '';
@@ -62,6 +63,7 @@ async function proxyFetch(path: string) {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const userId = await requireAuth(req, res); if (!userId) return;
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   const action = req.query.action as string;

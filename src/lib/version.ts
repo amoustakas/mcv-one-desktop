@@ -1,4 +1,4 @@
-export const APP_VERSION = '3.3.0';
+export const APP_VERSION = '4.0.0';
 
 declare const __BUILD_TIME__: string;
 export const BUILD_TIME = typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : new Date().toISOString();

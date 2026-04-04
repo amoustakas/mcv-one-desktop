@@ -1,5 +1,6 @@
 import { ClerkProvider, SignIn, useAuth, useUser, UserButton } from '@clerk/clerk-react';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useState, useEffect } from 'react';
+import { setAuthTokenGetter } from './api';
 
 const CLERK_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || '';
 
@@ -17,8 +18,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 function AuthGate({ children }: { children: ReactNode }) {
-  const { isSignedIn, isLoaded } = useAuth();
+  const { isSignedIn, isLoaded, getToken } = useAuth();
   const [showSignIn, setShowSignIn] = useState(false);
+
+  // Wire Clerk token into fetch helper for API auth
+  useEffect(() => {
+    if (isSignedIn) {
+      setAuthTokenGetter(() => getToken());
+    }
+  }, [isSignedIn, getToken]);
 
   if (!isLoaded) {
     return (

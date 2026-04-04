@@ -1,3 +1,4 @@
+import { requireAuth } from "./_middleware";
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
@@ -24,6 +25,7 @@ async function ghFetch(path: string) {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const userId = await requireAuth(req, res); if (!userId) return;
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
   if (!GITHUB_TOKEN) return res.status(500).json({ error: 'GITHUB_TOKEN not configured' });
 
