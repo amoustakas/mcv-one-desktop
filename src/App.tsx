@@ -34,6 +34,7 @@ const SessionsView = lazy(() => import('./views/SessionsView'));
 const PromptComposer = lazy(() => import('./views/PromptComposer'));
 const WarRoom = lazy(() => import('./views/WarRoom'));
 const VentureProfile = lazy(() => import('./views/VentureProfile'));
+const TeamView = lazy(() => import('./views/TeamView'));
 const VentureOnboarding = lazy(() => import('./views/VentureOnboarding'));
 
 // Placeholder views
@@ -108,6 +109,8 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <PromptComposer />;
     case 'war-room':
       return <WarRoom />;
+    case 'team':
+      return <TeamView />;
     case 'settings':
       return <PlaceholderView title="Settings" description="Use the gear icon in the header." />;
     // Venture views
@@ -200,7 +203,7 @@ const VIEW_LABELS: Record<string, string> = {
   engineering: 'CTO Dashboard', ops: 'Ops Center', forge: 'The Forge',
   sessions: 'Sessions', 'war-room': 'War Room', crm: 'CRM Pipeline',
   growth: 'Growth Studio', tasks: 'Task Board', docs: 'Docs Hub',
-  'ai-studio': 'AI Studio', 'prompt-composer': 'Prompt Composer', settings: 'Settings',
+  'ai-studio': 'AI Studio', 'prompt-composer': 'Prompt Composer', team: 'Team', settings: 'Settings',
   'venture-dashboard': 'Dashboard', 'venture-profile': 'Profile & Assets',
   'venture-engineering': 'Engineering', 'venture-growth': 'Growth',
   'venture-operations': 'Operations', 'venture-docs': 'Documents',
@@ -214,7 +217,7 @@ const SECTION_MAP: Record<string, string> = {
   engineering: 'Engineering', ops: 'Engineering', forge: 'Engineering',
   sessions: 'Engineering', 'war-room': 'Engineering',
   crm: 'Growth & CRM', growth: 'Growth & CRM',
-  tasks: 'Operations', docs: 'Operations',
+  tasks: 'Operations', docs: 'Operations', team: 'Operations',
   'ai-studio': 'AI Tools', 'prompt-composer': 'AI Tools',
   settings: 'System',
 };
@@ -405,10 +408,21 @@ export default function App() {
           align-items: center;
           justify-content: space-between;
           padding: 0 16px;
-          background: var(--bg-surface);
+          background: linear-gradient(180deg, rgba(11, 17, 33, 0.95), rgba(11, 17, 33, 0.85));
           border-bottom: 1px solid var(--border);
           flex-shrink: 0;
           gap: 16px;
+          backdrop-filter: blur(12px);
+          position: relative;
+        }
+        .app-header::after {
+          content: "";
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 1px;
+          background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.15), rgba(139, 92, 246, 0.1), transparent);
         }
 
         .header-left {
@@ -430,6 +444,7 @@ export default function App() {
           font-weight: 700;
           color: var(--cyan);
           letter-spacing: -0.5px;
+          text-shadow: 0 0 12px rgba(0, 240, 255, 0.4);
         }
 
         .header-logo-sub {
@@ -487,6 +502,7 @@ export default function App() {
         .header-search:hover {
           border-color: var(--border-active);
           background: var(--bg-card);
+          box-shadow: 0 0 0 3px rgba(0, 240, 255, 0.04);
         }
 
         .header-search-text { flex: 1; }

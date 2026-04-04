@@ -1,21 +1,24 @@
-/* MCV ONE Design System — Sovereign Neopunk / Electric Cyan / Neon Purple */
+/* MCV ONE Design System — Alien Technology / Neural Glass / Sovereign Neopunk */
 
 :root {
   /* Primary Palette */
   --cyan: #00F0FF;
   --cyan-dim: #00C4CC;
   --cyan-glow: rgba(0, 240, 255, 0.15);
+  --cyan-intense: rgba(0, 240, 255, 0.35);
   --purple: #8B5CF6;
   --purple-dim: #7C3AED;
   --purple-glow: rgba(139, 92, 246, 0.15);
   --core-blue: #0072F5;
+  --gold: #F59E0B;
 
-  /* Backgrounds — The Lab void palette */
+  /* Backgrounds — Deep void palette */
   --bg-deep: #020408;
   --bg-surface: #0B1121;
   --bg-card: #0F1629;
   --bg-elevated: #161D2E;
   --bg-input: #0A1020;
+  --bg-hover: rgba(0, 240, 255, 0.03);
 
   /* Venture-dynamic colors (injected by Chameleon Engine) */
   --venture-primary: #00F0FF;
@@ -30,6 +33,7 @@
   /* Borders */
   --border: rgba(0, 245, 255, 0.08);
   --border-active: rgba(0, 245, 255, 0.25);
+  --border-glow: rgba(0, 240, 255, 0.12);
 
   /* Glass */
   --glass-bg: rgba(10, 22, 40, 0.75);
@@ -73,12 +77,15 @@
   --transition-base: 250ms ease;
   --transition-slow: 400ms ease;
 
-  /* Sidebar */
+  /* Layout */
   --sidebar-width: 260px;
   --topbar-height: 56px;
 }
 
-/* Reset & Global */
+/* ═══════════════════════════════════════════ */
+/* Reset & Global                              */
+/* ═══════════════════════════════════════════ */
+
 *, *::before, *::after {
   margin: 0;
   padding: 0;
@@ -101,42 +108,58 @@ body {
   isolation: isolate;
 }
 
-/* Fractal noise texture overlay — The Lab aesthetic */
+/* ═══════════════════════════════════════════ */
+/* Alien Tech Texture Layers                   */
+/* ═══════════════════════════════════════════ */
+
+/* Layer 1: Fractal noise grain */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
-  opacity: 0.035;
+  opacity: 0.03;
   pointer-events: none;
   z-index: 9999;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-/* Selection highlight */
+/* Layer 2: Subtle grid pattern overlay */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  opacity: 0.015;
+  background-image:
+    linear-gradient(rgba(0, 240, 255, 0.5) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.5) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+/* ═══════════════════════════════════════════ */
+/* Selection & Scrollbar                       */
+/* ═══════════════════════════════════════════ */
+
 ::selection {
   background: rgba(0, 240, 255, 0.2);
   color: var(--cyan);
 }
 
-/* Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: var(--text-muted);
+  background: rgba(0, 240, 255, 0.12);
   border-radius: var(--radius-full);
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
+  background: rgba(0, 240, 255, 0.25);
 }
 
-/* Glassmorphism utility */
+/* ═══════════════════════════════════════════ */
+/* Neural Glass System                         */
+/* ═══════════════════════════════════════════ */
+
 .glass {
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
@@ -144,7 +167,26 @@ body::before {
   -webkit-backdrop-filter: blur(var(--glass-blur));
 }
 
-/* Glow effects */
+/* Enhanced glass with inner shimmer */
+.glass-neural {
+  background: linear-gradient(
+    135deg,
+    rgba(10, 22, 40, 0.82),
+    rgba(15, 28, 50, 0.72),
+    rgba(10, 22, 40, 0.82)
+  );
+  border: 1px solid rgba(0, 240, 255, 0.06);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* ═══════════════════════════════════════════ */
+/* Glow Effects                                */
+/* ═══════════════════════════════════════════ */
+
 .glow-cyan {
   box-shadow: 0 0 20px var(--cyan-glow), 0 0 60px rgba(0, 245, 255, 0.05);
 }
@@ -153,13 +195,115 @@ body::before {
   box-shadow: 0 0 20px var(--purple-glow), 0 0 60px rgba(139, 92, 246, 0.05);
 }
 
-/* Focus ring */
+/* Animated glow border for active/important elements */
+.glow-border {
+  position: relative;
+}
+.glow-border::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 240, 255, 0.3),
+    rgba(139, 92, 246, 0.2),
+    rgba(0, 240, 255, 0.1),
+    rgba(139, 92, 246, 0.3)
+  );
+  background-size: 300% 300%;
+  animation: glowShift 4s ease infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+@keyframes glowShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* Holographic shimmer on hover */
+.holo-hover {
+  position: relative;
+  overflow: hidden;
+}
+.holo-hover::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 40%,
+    rgba(0, 240, 255, 0.04) 45%,
+    rgba(139, 92, 246, 0.04) 50%,
+    rgba(0, 240, 255, 0.04) 55%,
+    transparent 60%
+  );
+  transform: rotate(0deg) translateX(-100%);
+  transition: none;
+  pointer-events: none;
+}
+.holo-hover:hover::after {
+  animation: holoSweep 0.8s ease forwards;
+}
+
+@keyframes holoSweep {
+  to { transform: rotate(0deg) translateX(100%); }
+}
+
+/* Pulsing status indicator */
+.pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  position: relative;
+}
+.pulse-dot.active::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  opacity: 0;
+  animation: pulseRing 2s ease infinite;
+}
+
+@keyframes pulseRing {
+  0% { transform: scale(0.8); opacity: 0.6; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* Scanline overlay effect */
+.scanlines::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 240, 255, 0.008) 2px,
+    rgba(0, 240, 255, 0.008) 4px
+  );
+  z-index: 1;
+}
+
+/* ═══════════════════════════════════════════ */
+/* Focus & Interaction                         */
+/* ═══════════════════════════════════════════ */
+
 :focus-visible {
   outline: 2px solid var(--cyan);
   outline-offset: 2px;
 }
 
-/* Button base */
 button {
   cursor: pointer;
   border: none;
@@ -168,23 +312,26 @@ button {
   color: inherit;
 }
 
-/* Input base */
-input, textarea {
+input, textarea, select {
   font-family: inherit;
   color: var(--text-primary);
   background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: var(--space-sm) var(--space-md);
-  transition: border-color var(--transition-fast);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-input:focus, textarea:focus {
+input:focus, textarea:focus, select:focus {
   border-color: var(--border-active);
+  box-shadow: 0 0 0 3px rgba(0, 240, 255, 0.06);
   outline: none;
 }
 
-/* Code blocks */
+/* ═══════════════════════════════════════════ */
+/* Code                                        */
+/* ═══════════════════════════════════════════ */
+
 code, pre {
   font-family: var(--font-mono);
 }
@@ -198,8 +345,33 @@ pre {
   font-size: var(--text-sm);
 }
 
-/* Selection */
-::selection {
-  background: rgba(0, 245, 255, 0.2);
-  color: var(--text-primary);
+/* ═══════════════════════════════════════════ */
+/* Utility Animations                          */
+/* ═══════════════════════════════════════════ */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Loading shimmer placeholder */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--bg-card) 25%,
+    var(--bg-elevated) 37%,
+    var(--bg-card) 63%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
 }

@@ -26,6 +26,7 @@ export type ViewId =
   | 'ai-studio'
   | 'prompt-composer'
   // System
+  | 'team'
   | 'settings'
   // Venture views
   | 'venture-dashboard'

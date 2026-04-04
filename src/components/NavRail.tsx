@@ -14,6 +14,7 @@ const VIEW_ICONS: Record<string, React.FC<{ size: number }>> = {
   engineering: Wrench, ops: Activity, forge: Hammer, sessions: Monitor, 'war-room': Swords,
   crm: Users, growth: TrendingUp,
   tasks: CheckSquare, docs: BookOpen,
+  team: Users,
   'ai-studio': Sparkles, 'prompt-composer': Wand2,
   settings: Settings,
   'venture-dashboard': LayoutGrid, 'venture-profile': FileText,
@@ -65,6 +66,7 @@ const globalSections: NavSection[] = [
     items: [
       { id: 'tasks', label: 'Task Board' },
       { id: 'docs', label: 'Docs Hub' },
+      { id: 'team', label: 'Team' },
     ],
   },
   {
@@ -171,12 +173,23 @@ export default function NavRail() {
           height: 100%;
           display: flex;
           flex-direction: column;
-          background: var(--bg-surface);
+          background: linear-gradient(180deg, rgba(11, 17, 33, 0.98), rgba(8, 14, 28, 0.95));
           border-right: 1px solid var(--border);
           flex-shrink: 0;
           transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
           overflow: hidden;
           user-select: none;
+          position: relative;
+        }
+        .rail::after {
+          content: "";
+          position: absolute;
+          top: 0;
+          right: 0;
+          width: 1px;
+          height: 100%;
+          background: linear-gradient(180deg, rgba(0, 240, 255, 0.12), transparent 30%, transparent 70%, rgba(139, 92, 246, 0.08));
+          pointer-events: none;
         }
 
         .rail-nav {
@@ -261,6 +274,7 @@ export default function NavRail() {
           height: 18px;
           background: var(--cyan);
           border-radius: 0 3px 3px 0;
+          box-shadow: 0 0 8px rgba(0, 240, 255, 0.5), 0 0 20px rgba(0, 240, 255, 0.15);
         }
 
         .rail-text {
