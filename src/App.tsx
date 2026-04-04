@@ -11,6 +11,7 @@ import { getVenture, ventures } from './lib/ventures';
 import { UserButton } from './lib/auth';
 // version shown in StatusBar
 import { Search, Settings, Bot } from 'lucide-react';
+import VentureMegaMenu from './components/VentureMegaMenu';
 
 // Views
 import AegisChat from './components/AegisChat';
@@ -125,11 +126,8 @@ export default function App() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
-  const { mode, activeVenture, chatDocked, toggleChatDock } = useNavigation();
-  useTheme(); // keep theme store active
-  const venture = getVenture(activeVenture || 'mcv');
-
-  const { setView } = useNavigation();
+  const { chatDocked, toggleChatDock, setView } = useNavigation();
+  useTheme();
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -167,12 +165,7 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKey);
   }, [paletteOpen, settingsOpen, toggleChatDock, setView]);
 
-  const contextLabel = mode === 'global'
-    ? 'Global'
-    : venture?.name || 'Venture';
-  const contextColor = mode === 'global'
-    ? 'var(--cyan)'
-    : venture?.color || 'var(--cyan)';
+  // Context used by VentureMegaMenu in header
 
   return (
     <div className="app-shell">
@@ -191,13 +184,7 @@ export default function App() {
               <span className="header-logo-sub">ONE</span>
             </div>
             <div className="header-divider" />
-            <div className="header-context" style={{ '--ctx-color': contextColor } as React.CSSProperties}>
-              <span className="header-ctx-dot" style={{ background: contextColor }} />
-              <span className="header-ctx-label">{contextLabel}</span>
-              {mode === 'venture' && venture && (
-                <span className="header-ctx-tagline">{venture.tagline}</span>
-              )}
-            </div>
+            <VentureMegaMenu />
           </div>
 
           <button className="header-search" onClick={() => setPaletteOpen(true)}>
@@ -308,30 +295,7 @@ export default function App() {
           background: var(--border);
         }
 
-        .header-context {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .header-ctx-dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          box-shadow: 0 0 6px var(--ctx-color);
-        }
-
-        .header-ctx-label {
-          font-family: var(--font-display);
-          font-size: 14px;
-          font-weight: 600;
-          color: var(--ctx-color);
-        }
-
-        .header-ctx-tagline {
-          font-size: 11px;
-          color: var(--text-muted);
-        }
+        /* VentureMegaMenu handles context display */
 
         /* Search bar */
         .header-search {

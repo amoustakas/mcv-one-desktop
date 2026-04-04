@@ -1,13 +1,11 @@
 import { useState } from 'react';
 import {
   LayoutGrid, PieChart, Bot, Brain, Landmark, Activity,
-  Wrench, Radio, Settings, Globe, ChevronLeft, ChevronRight,
+  Wrench, Radio, Settings, ChevronLeft, ChevronRight,
   CheckSquare, Users, Hammer, FileText, Monitor, BookOpen, Sparkles,
   Wand2, Swords,
 } from 'lucide-react';
 import { useNavigation, type ViewId } from '../stores/navigation';
-import { useTheme } from '../stores/theme';
-import { ventures } from '../lib/ventures';
 
 const VIEW_ICONS: Record<string, React.FC<{ size: number }>> = {
   'command-center': LayoutGrid,
@@ -68,33 +66,14 @@ const ventureItems: { id: ViewId; label: string }[] = [
 
 export default function NavRail() {
   const [expanded, setExpanded] = useState(() => window.innerWidth >= 1600);
-  const { mode, activeView, activeVenture, setView, switchToGlobal, switchToVenture } = useNavigation();
-  const { applyGlobalTheme, applyVentureTheme } = useTheme();
+  const { mode, activeView, setView } = useNavigation();
 
   const navItems = mode === 'global' ? globalItems : ventureItems;
-
-  function handleGlobal() {
-    switchToGlobal();
-    applyGlobalTheme();
-  }
-
-  function handleVenture(slug: string) {
-    switchToVenture(slug);
-    applyVentureTheme(slug);
-  }
 
   const w = expanded ? 200 : 56;
 
   return (
     <nav className="rail" style={{ width: w }}>
-      {/* Global toggle */}
-      <button className={`rail-btn ${mode === 'global' ? 'active' : ''}`} onClick={handleGlobal} title="Global">
-        <Globe size={18} />
-        {expanded && <span className="rail-text">Global</span>}
-      </button>
-
-      <div className="rail-sep" />
-
       {/* Nav items */}
       <div className="rail-nav">
         {navItems.map((item) => {
@@ -110,35 +89,6 @@ export default function NavRail() {
               <Icon size={17} />
               {expanded && <span className="rail-text">{item.label}</span>}
               {isActive && <span className="rail-indicator" />}
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="rail-sep" />
-
-      {/* Ventures */}
-      <div className="rail-ventures">
-        {expanded && <span className="rail-section-label">Ventures</span>}
-        {ventures.map((v) => {
-          const isActive = activeVenture === v.id;
-          return (
-            <button
-              key={v.id}
-              className={`rail-venture ${isActive ? 'active' : ''}`}
-              onClick={() => handleVenture(v.id)}
-              title={v.name}
-            >
-              <span
-                className="rail-dot"
-                style={{
-                  background: v.color,
-                  boxShadow: isActive ? `0 0 8px ${v.color}, 0 0 2px ${v.color}` : 'none',
-                  width: isActive ? 12 : 8,
-                  height: isActive ? 12 : 8,
-                }}
-              />
-              {expanded && <span className="rail-text" style={isActive ? { color: v.color } : undefined}>{v.name}</span>}
             </button>
           );
         })}
