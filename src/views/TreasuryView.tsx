@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Landmark, Coins, Clock, ArrowUpRight, ArrowDownRight, RefreshCw, Plus, Edit3, Save, X } from 'lucide-react';
+import { Landmark, Coins, Clock, ArrowUpRight, ArrowDownRight, RefreshCw, Edit3, Save, X } from 'lucide-react';
 import { ventures as ventureRegistry } from '../lib/ventures';
 
 interface VentureBurn { venture_id: string; name: string; color: string; revenue: number; expenses: number; burn: number; }
