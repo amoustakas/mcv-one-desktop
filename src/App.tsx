@@ -14,8 +14,8 @@ import { Search } from 'lucide-react';
 // Views
 import NAOSChat from './components/NAOSChat';
 import OpsPanel from './components/OpsPanel';
-// SessionsPanel available for signals view later
 import VentureDashboard from './components/VentureDashboard';
+import CommandCenter from './views/CommandCenter';
 
 // Placeholder views for Phase 2
 function PlaceholderView({ title, description }: { title: string; description: string }) {
@@ -50,7 +50,7 @@ function ViewRouter() {
 
   switch (activeView) {
     case 'command-center':
-      return <PlaceholderView title="Command Center" description="Cross-venture KPI dashboard, venture health grid, activity feed." />;
+      return <CommandCenter />;
     case 'portfolio':
       return <PlaceholderView title="Portfolio" description="Venture portfolio, capital stack, investment tracking." />;
     case 'chat':
