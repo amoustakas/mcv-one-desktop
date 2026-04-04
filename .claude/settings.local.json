@@ -25,7 +25,8 @@
       "mcp__plugin_supabase_supabase__list_tables",
       "mcp__plugin_supabase_supabase__apply_migration",
       "Bash(curl:*)",
-      "Bash(python3 -m json.tool)"
+      "Bash(python3 -m json.tool)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'{len\\(d.get\\(\\\\\"deployments\\\\\",[]\\)\\)} deployments found'\\) if 'deployments' in d else print\\(d\\)\")"
     ]
   }
 }

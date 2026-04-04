@@ -1,7 +1,7 @@
-import { Activity, MessageSquare, BarChart3, Settings } from 'lucide-react';
+import { Activity, MessageSquare, BarChart3, Settings, LayoutDashboard } from 'lucide-react';
 import { APP_VERSION } from '../lib/version';
 
-export type Panel = 'chat' | 'sessions' | 'ops';
+export type Panel = 'chat' | 'dashboard' | 'sessions' | 'ops';
 
 interface TopBarProps {
   activePanel: Panel;
@@ -27,6 +27,13 @@ export default function TopBar({ activePanel, onPanelChange, ventureLabel }: Top
         >
           <MessageSquare size={16} />
           <span>Chat</span>
+        </button>
+        <button
+          className={`topbar-tab ${activePanel === 'dashboard' ? 'active' : ''}`}
+          onClick={() => onPanelChange('dashboard')}
+        >
+          <LayoutDashboard size={16} />
+          <span>Dash</span>
         </button>
         <button
           className={`topbar-tab ${activePanel === 'sessions' ? 'active' : ''}`}
