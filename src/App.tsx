@@ -13,6 +13,7 @@ import { Search, Settings, Bot, Columns2 } from 'lucide-react';
 import VentureMegaMenu from './components/VentureMegaMenu';
 import QuickCapture from './components/QuickCapture';
 import Toasts from './components/Toasts';
+import NotificationCenter from './components/NotificationCenter';
 
 // Lazy-loaded views (code splitting)
 const AegisChat = lazy(() => import('./components/AegisChat'));
@@ -349,6 +350,7 @@ export default function App() {
             >
               <Columns2 size={15} />
             </button>
+            <NotificationCenter />
             <button className="header-icon-btn" onClick={() => setSettingsOpen(true)} title="Settings">
               <Settings size={15} />
             </button>
