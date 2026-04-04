@@ -26,9 +26,10 @@ import TasksView from './views/TasksView';
 import CRMView from './views/CRMView';
 import ForgeView from './views/ForgeView';
 import DocsHub from './views/DocsHub';
+import AIStudioView from './views/AIStudioView';
 import SessionsView from './views/SessionsView';
 
-// Placeholder views for Phase 2
+// Placeholder views
 function PlaceholderView({ title, description }: { title: string; description: string }) {
   return (
     <div className="placeholder-view">
@@ -84,6 +85,8 @@ function ViewRouter() {
       return <ForgeView />;
     case 'docs':
       return <DocsHub />;
+    case 'ai-studio':
+      return <AIStudioView />;
     case 'sessions':
       return <SessionsView />;
     case 'settings':

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import {
   LayoutGrid, PieChart, Bot, Brain, Landmark, Activity,
   Wrench, Radio, Settings, Globe, ChevronLeft, ChevronRight,
-  CheckSquare, Users, Hammer, FileText, Monitor, BookOpen,
+  CheckSquare, Users, Hammer, FileText, Monitor, BookOpen, Sparkles,
 } from 'lucide-react';
 import { useNavigation, type ViewId } from '../stores/navigation';
 import { useTheme } from '../stores/theme';
@@ -21,6 +21,7 @@ const VIEW_ICONS: Record<string, React.FC<{ size: number }>> = {
   'crm': Users,
   'forge': Hammer,
   'docs': BookOpen,
+  'ai-studio': Sparkles,
   'sessions': Monitor,
   'settings': Settings,
   'venture-dashboard': LayoutGrid,
@@ -44,6 +45,7 @@ const globalItems: { id: ViewId; label: string }[] = [
   { id: 'crm', label: 'CRM' },
   { id: 'forge', label: 'Forge' },
   { id: 'docs', label: 'Docs Hub' },
+  { id: 'ai-studio', label: 'AI Studio' },
   { id: 'sessions', label: 'Sessions' },
   { id: 'signals', label: 'Signals' },
 ];

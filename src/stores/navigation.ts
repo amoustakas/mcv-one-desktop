@@ -14,6 +14,7 @@ export type ViewId =
   | 'crm'
   | 'forge'
   | 'docs'
+  | 'ai-studio'
   | 'sessions'
   | 'settings'
   // Venture views
