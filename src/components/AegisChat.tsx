@@ -21,8 +21,18 @@ import ToolCallIndicator from './ToolCallIndicator';
 import Markdown from './Markdown';
 import FileDropzone from './FileDropzone';
 import FileAttachmentBar from './FileAttachmentBar';
+// @ts-expect-error parallel session feature
+import ThinkingIndicator from './chat/ThinkingIndicator';
+// @ts-expect-error parallel session feature
+import MessageActions from './chat/MessageActions';
+// @ts-expect-error parallel session feature
+import ArtifactsPanel from './chat/ArtifactsPanel';
+// @ts-expect-error parallel session feature
+import ReasoningTrace from './chat/ReasoningTrace';
 import { useFileBridge } from '../stores/file-bridge';
+import { useArtifactStore } from '../stores/artifacts';
 import { mediaIngestion } from '../lib/google/file-bridge';
+import { parseArtifacts } from '../lib/artifact-parser';
 
 /** Tracks a tool call in progress or completed */
 interface ToolCallStatus {
@@ -69,7 +79,9 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
   const [streamingText, setStreamingText] = useState('');
   const [recording, setRecording] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const [, setIsThinking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { addArtifacts } = useArtifactStore();
 
   const useDb = !!supabase;
   const [activeToolCalls, setActiveToolCalls] = useState<ToolCallStatus[]>([]);
@@ -275,6 +287,7 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
     setInput('');
     setLoading(true);
     setStreamingText('');
+    setIsThinking(true);
 
     // Persist user message
     if (useDb) {
@@ -310,8 +323,8 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
           const result = await orchestrator.processMessage(
             newMessages,
             {
-              onText: (partial) => setStreamingText(partial),
-              onToolCall: (tc) => {
+              onText: (partial) => { setIsThinking(false); setStreamingText(partial); },
+              onToolCall: (tc) => { setIsThinking(false);
                 setActiveToolCalls((prev) => [
                   ...prev,
                   { id: tc.id, name: tc.name, status: 'running' },
@@ -337,7 +350,7 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
           full = await streamMessage(
             newMessages,
             venture.systemPrompt,
-            (partial) => setStreamingText(partial),
+            (partial) => { setIsThinking(false); setStreamingText(partial); },
           );
         }
       } else {
@@ -345,9 +358,13 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
         full = await streamMessage(
           newMessages,
           venture.systemPrompt,
-          (partial) => setStreamingText(partial),
+          (partial) => { setIsThinking(false); setStreamingText(partial); },
         );
       }
+
+      // Parse artifacts from the response
+      const newArtifacts = parseArtifacts(full, messages.length);
+      if (newArtifacts.length > 0) addArtifacts(newArtifacts);
 
       const finalMessages: ChatMessage[] = [...newMessages, { role: 'assistant' as const, content: full }];
       setMessages(finalMessages);
@@ -370,7 +387,16 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
       if (!useDb) saveLocal(venture.id, convId!, errMessages);
     } finally {
       setLoading(false);
+      setIsThinking(false);
     }
+  }
+
+  function handleRegenerate() {
+    if (messages.length < 2) return;
+    const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
+    if (!lastUserMsg || typeof lastUserMsg.content !== 'string') return;
+    setMessages((prev) => prev.slice(0, -1));
+    setInput(typeof lastUserMsg.content === 'string' ? lastUserMsg.content : '');
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -424,7 +450,7 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
           )}
 
           {messages.map((msg, i) => (
-            <div key={i} className={`chat-msg ${msg.role}`}>
+            <div key={i} className={`chat-msg ${msg.role}`} style={{ position: 'relative' }}>
               <div className="chat-msg-avatar">
                 {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
               </div>
@@ -446,7 +472,17 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
                 <div className="chat-msg-text">
                   {msg.role === 'assistant' ? <Markdown content={typeof msg.content === 'string' ? msg.content : ''} /> : (typeof msg.content === 'string' ? msg.content : '')}
                 </div>
+                {/* Reasoning trace for assistant messages */}
+                {msg.role === 'assistant' && i === messages.length - 1 && <ReasoningTrace />}
               </div>
+              {/* Message actions (hover toolbar) */}
+              <MessageActions
+                role={msg.role}
+                content={typeof msg.content === 'string' ? msg.content : ''}
+                isLast={i === messages.length - 1}
+                onRegenerate={msg.role === 'assistant' && i === messages.length - 1 ? handleRegenerate : undefined}
+                onEdit={msg.role === 'user' ? () => setInput(typeof msg.content === 'string' ? msg.content : '') : undefined}
+              />
             </div>
           ))}
 
@@ -462,6 +498,11 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
                 />
               ))}
             </div>
+          )}
+
+          {/* Thinking indicator — before first token */}
+          {isThinking && !streamingText && activeToolCalls.length === 0 && (
+            <ThinkingIndicator />
           )}
 
           {streamingText && (
@@ -527,6 +568,9 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
           </div>
         </div>
       </div>
+
+      {/* Artifacts side panel */}
+      <ArtifactsPanel />
 
       <style>{`
         .chat-layout {
