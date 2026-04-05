@@ -1,6 +1,19 @@
-import { requireAuth } from "./_auth";
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+
+async function requireAuth(req: VercelRequest, res: VercelResponse): Promise<string | null> {
+  const secretKey = process.env.CLERK_SECRET_KEY;
+  if (!secretKey) return 'no-secret';
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : (req.cookies?.__session || null);
+  if (!token) { res.status(401).json({ error: 'Authentication required' }); return null; }
+  try {
+    const { verifyToken } = await import('@clerk/backend');
+    const payload = await verifyToken(token, { secretKey });
+    return payload.sub;
+  } catch { res.status(401).json({ error: 'Invalid session' }); return null; }
+}
+
 
 // ---------------------------------------------------------------------------
 // Kit Telemetry — Execution Audit Logging
