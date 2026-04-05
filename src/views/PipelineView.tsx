@@ -4,7 +4,7 @@ import {
   Pause, Play, ExternalLink,
   Globe, Server, Container, Zap,
 } from 'lucide-react';
-import { usePipeline } from '../hooks/use-pipeline';
+import { usePipeline, useLocalPipeline } from '../hooks/use-pipeline';
 import { PageHeader, PageShell, GlassCard, Badge, Skeleton } from '../components/ui';
 import { cn, timeAgo, formatDuration } from '../lib/utils';
 import type { PipelineEntry, PipelineSource } from '../lib/types/pipeline';
@@ -138,6 +138,7 @@ function LoadingSkeleton() {
 export default function PipelineView() {
   const [paused, setPaused] = useState(false);
   const { data, isLoading, refetch, isFetching } = usePipeline();
+  const { data: localData, isLoading: localLoading } = useLocalPipeline();
 
   const entries = data?.entries || [];
 
@@ -187,6 +188,41 @@ export default function PipelineView() {
 
       <div className="pipeline-content">
         <KpiStrip entries={entries} isPolling={!paused && !isLoading} />
+
+        {/* Local Machine Data */}
+        {localData && (
+          <div className="pipeline-local">
+            <div className="pipeline-local-header">
+              <Server size={13} /> Local Machine
+              <Badge color="var(--success)" size="sm">LIVE</Badge>
+              <span className="pipeline-local-sub">{localData.stats.commits7d} commits/7d &middot; {localData.stats.worktreeSessions} sessions &middot; {localData.stats.memoryFiles} memories</span>
+            </div>
+            <div className="pipeline-local-grid">
+              {localData.repos.map(r => (
+                <GlassCard key={r.name} className="pipeline-repo-card">
+                  <div className="pipeline-repo-top">
+                    <GitBranch size={12} />
+                    <span className="pipeline-repo-name">{r.name}</span>
+                    <Badge size="sm" color={r.uncommittedChanges > 0 ? 'var(--warning)' : 'var(--success)'}>{r.branch}</Badge>
+                  </div>
+                  <div className="pipeline-repo-stats">
+                    <span>{r.commitCount7d} commits/7d</span>
+                    {r.uncommittedChanges > 0 && <span className="pipeline-repo-uc">{r.uncommittedChanges} uncommitted</span>}
+                    {r.lastCommit && <span>{timeAgo(r.lastCommit)}</span>}
+                  </div>
+                </GlassCard>
+              ))}
+            </div>
+            <div className="pipeline-local-row">
+              <div className="pipeline-local-stat"><span className="pipeline-local-val">{localData.stats.projects}</span><span className="pipeline-local-label">Projects</span></div>
+              <div className="pipeline-local-stat"><span className="pipeline-local-val">{localData.stats.memoryFiles}</span><span className="pipeline-local-label">Memory Files</span></div>
+              <div className="pipeline-local-stat"><span className="pipeline-local-val">{localData.stats.plans}</span><span className="pipeline-local-label">Plans</span></div>
+              <div className="pipeline-local-stat"><span className="pipeline-local-val">{localData.stats.worktreeSessions}</span><span className="pipeline-local-label">Worktrees</span></div>
+              <div className="pipeline-local-stat"><span className="pipeline-local-val">{localData.stats.uncommittedChanges}</span><span className="pipeline-local-label">Uncommitted</span></div>
+            </div>
+          </div>
+        )}
+        {localLoading && <Skeleton variant="rect" height={120} />}
 
         {isLoading ? (
           <LoadingSkeleton />
@@ -298,6 +334,92 @@ export default function PipelineView() {
         }
         .pipeline-activity-list .mcv-feed-item {
           padding: 6px 14px;
+        }
+
+        /* Local Machine Section */
+        .pipeline-local {
+          background: var(--bg-card);
+          border: 1px solid var(--border);
+          border-radius: var(--radius-md);
+          overflow: hidden;
+        }
+        .pipeline-local-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 16px;
+          font-size: 11px;
+          font-weight: 600;
+          color: var(--text-muted);
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+          border-bottom: 1px solid var(--border);
+        }
+        .pipeline-local-sub {
+          margin-left: auto;
+          font-family: var(--font-mono);
+          font-size: 10px;
+          font-weight: 400;
+          text-transform: none;
+          letter-spacing: 0;
+        }
+        .pipeline-local-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+          gap: 8px;
+          padding: 10px 14px;
+        }
+        .pipeline-repo-card {
+          padding: 10px 12px;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .pipeline-repo-top {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          color: var(--text-muted);
+        }
+        .pipeline-repo-name {
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--text-primary);
+          flex: 1;
+        }
+        .pipeline-repo-stats {
+          display: flex;
+          gap: 10px;
+          font-size: 10px;
+          color: var(--text-muted);
+          font-family: var(--font-mono);
+        }
+        .pipeline-repo-uc {
+          color: var(--warning);
+        }
+        .pipeline-local-row {
+          display: flex;
+          gap: 24px;
+          padding: 10px 16px;
+          border-top: 1px solid var(--border);
+        }
+        .pipeline-local-stat {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 2px;
+        }
+        .pipeline-local-val {
+          font-family: var(--font-mono);
+          font-size: 16px;
+          font-weight: 700;
+          color: var(--text-primary);
+        }
+        .pipeline-local-label {
+          font-size: 9px;
+          color: var(--text-muted);
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
         }
       `}</style>
     </PageShell>

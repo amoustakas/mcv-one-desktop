@@ -5,8 +5,10 @@ import {
   Copy, Filter, Activity, Layers,
 } from 'lucide-react';
 import { useProjectMemory, useSessionEvents, useAllEvents, useMemoryDelete } from '../hooks/use-memory';
+import { useLocalPipeline, useLocalFile } from '../hooks/use-pipeline';
 import { PageHeader, PageShell, Button, GlassCard, Badge, EmptyState, Skeleton, Tabs, Input } from '../components/ui';
 import { cn, timeAgo, formatDate } from '../lib/utils';
+import Markdown from '../components/Markdown';
 import type { MemoryEntry, SessionEvent, MemoryType, SessionEventType } from '../lib/types/memory';
 
 /* ── Constants ── */
@@ -66,6 +68,7 @@ const ALL_EVENT_TYPES: SessionEventType[] = [
 /* ── Tab Config ── */
 const VIEW_TABS = [
   { id: 'memory', label: 'Project Memory' },
+  { id: 'local-files', label: 'Local Files' },
   { id: 'events', label: 'Session Events' },
   { id: 'timeline', label: 'Timeline' },
 ];
@@ -137,6 +140,10 @@ export default function MemoryView() {
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
           />
+        )}
+
+        {activeTab === 'local-files' && (
+          <LocalFilesTab />
         )}
 
         {activeTab === 'events' && (
@@ -544,6 +551,91 @@ function summarizePayload(payload: Record<string, unknown>): string {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════ */
+/* Local Files Tab — reads from local pipeline scanner                    */
+/* ═══════════════════════════════════════════════════════════════════════ */
+
+function LocalFilesTab() {
+  const { data: localData, isLoading } = useLocalPipeline();
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [expandedProject, setExpandedProject] = useState<string | null>(null);
+  const { data: fileData } = useLocalFile(selectedFile || '');
+
+  if (isLoading) {
+    return <div className="mv-loading">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} variant="rect" height={52} />)}</div>;
+  }
+
+  if (!localData) {
+    return <EmptyState icon={<FolderOpen size={32} />} title="Local Server Not Connected" description="Start the MCV local server (npm run dev:local) to scan memory files from your machine." />;
+  }
+
+  return (
+    <div className="mv-local-files">
+      <div className="mv-local-sidebar">
+        {localData.memories.map(project => (
+          <div key={project.project} className="mv-local-project">
+            <button className="mv-local-project-header" onClick={() => setExpandedProject(expandedProject === project.project ? null : project.project)}>
+              {expandedProject === project.project ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+              <FolderOpen size={12} />
+              <span className="mv-local-project-name">{project.project.replace(/^[Cc]--Users-moust-?/, '').replace(/-/g, '/').substring(0, 35)}</span>
+              <Badge size="sm">{project.files.length}</Badge>
+            </button>
+            {expandedProject === project.project && (
+              <div className="mv-local-file-list">
+                {project.files.map(f => (
+                  <button key={f.path} className={cn('mv-local-file', selectedFile === f.path && 'active')} onClick={() => setSelectedFile(f.path)}>
+                    <Database size={10} />
+                    <span>{f.name}</span>
+                    <span className="mv-local-file-time">{timeAgo(f.modified)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+
+        {localData.plans.length > 0 && (
+          <div className="mv-local-project">
+            <button className="mv-local-project-header" onClick={() => setExpandedProject(expandedProject === '__plans__' ? null : '__plans__')}>
+              {expandedProject === '__plans__' ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+              <Layers size={12} />
+              <span className="mv-local-project-name">Plans</span>
+              <Badge size="sm">{localData.plans.length}</Badge>
+            </button>
+            {expandedProject === '__plans__' && (
+              <div className="mv-local-file-list">
+                {localData.plans.map(p => (
+                  <button key={p.path} className={cn('mv-local-file', selectedFile === p.path && 'active')} onClick={() => setSelectedFile(p.path)}>
+                    <Rocket size={10} />
+                    <span>{p.name}</span>
+                    <span className="mv-local-file-time">{timeAgo(p.modified)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="mv-local-content">
+        {fileData ? (
+          <div className="mv-local-viewer">
+            <div className="mv-local-viewer-header">
+              <span className="mv-local-viewer-path">{fileData.path.replace(/\\/g, '/').split('.claude/').pop()}</span>
+              <span className="mv-local-viewer-meta">{(fileData.size / 1024).toFixed(1)}KB &middot; {formatDate(fileData.modified)}</span>
+            </div>
+            <div className="mv-local-viewer-body">
+              <Markdown content={fileData.content} />
+            </div>
+          </div>
+        ) : (
+          <EmptyState icon={<Database size={32} />} title="Select a Memory File" description="Choose a file from the sidebar to view its contents." />
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════ */
 /* Scoped Styles                                                          */
 /* ═══════════════════════════════════════════════════════════════════════ */
 
@@ -805,4 +897,23 @@ const mvStyles = `
     from { opacity: 0; transform: translateY(-4px); }
     to { opacity: 1; transform: translateY(0); }
   }
+
+  /* Local Files Tab */
+  .mv-local-files { display: flex; gap: 0; flex: 1; min-height: 0; }
+  .mv-local-sidebar { width: 300px; flex-shrink: 0; border-right: 1px solid var(--border); overflow-y: auto; padding: 8px 0; }
+  .mv-local-project { }
+  .mv-local-project-header { display: flex; align-items: center; gap: 6px; width: 100%; padding: 6px 12px; font-size: 11px; font-weight: 600; color: var(--text-secondary); transition: background 0.1s; text-align: left; }
+  .mv-local-project-header:hover { background: var(--bg-card); }
+  .mv-local-project-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mv-local-file-list { padding-left: 20px; }
+  .mv-local-file { display: flex; align-items: center; gap: 6px; width: 100%; padding: 4px 12px; font-size: 10px; color: var(--text-muted); transition: all 0.1s; text-align: left; }
+  .mv-local-file:hover { background: var(--bg-card); color: var(--text-secondary); }
+  .mv-local-file.active { background: rgba(0,240,255,0.05); color: var(--cyan); border-left: 2px solid var(--cyan); }
+  .mv-local-file-time { margin-left: auto; font-family: var(--font-mono); font-size: 9px; }
+  .mv-local-content { flex: 1; overflow-y: auto; min-width: 0; }
+  .mv-local-viewer { height: 100%; display: flex; flex-direction: column; }
+  .mv-local-viewer-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .mv-local-viewer-path { font-family: var(--font-mono); font-size: 11px; color: var(--cyan); }
+  .mv-local-viewer-meta { font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); }
+  .mv-local-viewer-body { flex: 1; overflow-y: auto; padding: 16px; font-size: 13px; line-height: 1.6; }
 `;
