@@ -1,0 +1,117 @@
+# ═══════════════════════════════════════════════════════════════
+# MCV One Desktop — Core Infrastructure
+# ═══════════════════════════════════════════════════════════════
+# Usage:
+#   docker compose up -d                    # start core services
+#   docker compose --profile tools up -d    # include dev tools
+#   docker compose down                     # stop all
+#   docker compose logs -f                  # tail logs
+# ═══════════════════════════════════════════════════════════════
+
+services:
+  # ── PostgreSQL 16 — Primary database ──
+  postgres:
+    image: postgres:16-alpine
+    container_name: mcv-desktop-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mcv
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mcv_dev_2026}
+      POSTGRES_DB: mcv_desktop
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./supabase:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mcv -d mcv_desktop"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── Redis 7 — Cache, sessions, pub/sub ──
+  redis:
+    image: redis:7-alpine
+    container_name: mcv-desktop-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ── n8n — Workflow automation ──
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: mcv-desktop-n8n
+    restart: unless-stopped
+    environment:
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localhost:5678/
+      - N8N_BASIC_AUTH_ACTIVE=false
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=mcv_desktop
+      - DB_POSTGRESDB_USER=mcv
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD:-mcv_dev_2026}
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── pgAdmin (Optional — enable with --profile tools) ──
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: mcv-desktop-pgadmin
+    profiles: [tools]
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@mcv.one
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── Redis Commander (Optional) ──
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: mcv-desktop-redis-ui
+    profiles: [tools]
+    restart: unless-stopped
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+
+volumes:
+  pgdata:
+    name: mcv-desktop-pgdata
+  redis_data:
+    name: mcv-desktop-redis
+  n8n_data:
+    name: mcv-desktop-n8n
+  pgadmin_data:
+    name: mcv-desktop-pgadmin
+
+networks:
+  default:
+    name: mcv-desktop-network

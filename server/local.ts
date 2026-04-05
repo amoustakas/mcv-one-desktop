@@ -19,6 +19,7 @@ import os from 'os';
 import { execFile } from 'child_process';
 import chokidar from 'chokidar';
 import { registerPipelineRoutes } from './pipeline-routes';
+import { registerDockerRoutes } from './docker-routes';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "3100");
@@ -375,7 +376,7 @@ app.post('/local/exec', (req, res) => {
   if (!command) return res.status(400).json({ error: 'command required' });
 
   // Safety: only allow specific executables
-  const allowed = ['git', 'npm', 'node', 'npx', 'ls', 'dir', 'cat', 'echo', 'pwd', 'whoami', 'hostname', 'where', 'which'];
+  const allowed = ['git', 'npm', 'node', 'npx', 'ls', 'dir', 'cat', 'echo', 'pwd', 'whoami', 'hostname', 'where', 'which', 'docker', 'docker-compose'];
   const cmd = path.basename(command);
   if (!allowed.includes(cmd)) {
     return res.status(403).json({ error: `Command "${cmd}" not allowed. Permitted: ${allowed.join(', ')}` });
@@ -389,6 +390,9 @@ app.post('/local/exec', (req, res) => {
     });
   });
 });
+
+// ── Register modular routes ──
+registerDockerRoutes(app);
 
 // ── Start ──
 app.listen(PORT, () => {

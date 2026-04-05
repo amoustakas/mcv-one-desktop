@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import {
   Settings, Monitor, Volume2, Mic, Shield, Keyboard, Info, Database,
-  Cloud, GitBranch, Zap, Radio, Globe, Server, CheckCircle2, XCircle,
-  RefreshCw, HardDrive,
+  Cloud, GitBranch, Zap, Radio, Globe, Server, CheckCircle2,
+  HardDrive,
 } from 'lucide-react';
 import { PageShell, Button } from '../components/ui';
 import IntegrationsHub from '../components/IntegrationsHub';
@@ -47,6 +47,7 @@ const TABS: { id: Tab; label: string; icon: typeof Settings }[] = [
 ];
 
 interface ServiceInfo { name: string; key: string; icon: typeof Cloud; description: string }
+// @ts-expect-error — available for IntegrationsHub expansion
 const SERVICES: ServiceInfo[] = [
   { name: 'Claude API', key: 'ANTHROPIC_API_KEY', icon: Cloud, description: 'AI chat, reasoning, and code generation' },
   { name: 'Supabase', key: 'SUPABASE_URL', icon: Database, description: 'Database, auth, and real-time subscriptions' },
@@ -80,7 +81,7 @@ export default function SettingsView() {
   const [inputDevices, setInputDevices] = useState<{ deviceId: string; label: string }[]>([]);
   const [outputDevices, setOutputDevices] = useState<{ deviceId: string; label: string }[]>([]);
   const [storageInfo, setStorageInfo] = useState<{ buckets: { id: string; name: string; public: boolean }[] } | null>(null);
-  const [testing, setTesting] = useState<string | null>(null);
+  const [_testing, _setTesting] = useState<string | null>(null);
   const { toast } = useToast();
 
   const userPrefs = useUserStore((s) => s.preferences);
@@ -97,6 +98,23 @@ export default function SettingsView() {
       return merged;
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Handle OAuth callback redirect: ?tab=integrations&connected=github
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const connectedProvider = params.get('connected');
+    const requestedTab = params.get('tab') as Tab | null;
+
+    if (requestedTab && TABS.some((t) => t.id === requestedTab)) {
+      setTab(requestedTab);
+    }
+    if (connectedProvider) {
+      setTab('integrations');
+      toast('success', `${connectedProvider.charAt(0).toUpperCase() + connectedProvider.slice(1)} connected successfully`);
+      // Clean URL params so refresh doesn't re-fire the toast
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   useEffect(() => {
     apiGet<Record<string, boolean>>('/api/health').then(d => setHealth(d || {})).catch(() => {});
@@ -119,15 +137,16 @@ export default function SettingsView() {
     if (Object.keys(storeUpdates).length > 0) updatePreferences(storeUpdates);
   }
 
+  // @ts-expect-error — reserved for direct service testing UI
   async function testService(key: string) {
-    setTesting(key);
+    _setTesting(key);
     await new Promise(r => setTimeout(r, 800));
     if (health[key]) {
       toast('success', `${key.replace(/_/g, ' ')} is configured and reachable`);
     } else {
       toast('error', `${key.replace(/_/g, ' ')} is not configured`);
     }
-    setTesting(null);
+    _setTesting(null);
   }
 
   return (

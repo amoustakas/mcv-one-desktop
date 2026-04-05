@@ -19,6 +19,8 @@ import Toasts from './components/Toasts';
 import HITLModal from './components/control-room/HITLModal';
 import NotificationCenter from './components/NotificationCenter';
 import { useLocalServer } from './lib/local';
+import { usePipelineSync } from './hooks/use-pipeline-sync';
+import { useRealtimeSync } from './hooks/use-realtime';
 
 // Lazy-loaded views (code splitting)
 const AegisChat = lazy(() => import('./components/AegisChat'));
@@ -280,6 +282,8 @@ export default function App() {
   const { sidebarCollapsed, statusBarVisible, presets } = useLayoutStore();
   useTheme();
   useLocalServer(); // Detect local server connection
+  usePipelineSync(); // Auto-sync local data → Supabase every 5min
+  useRealtimeSync(); // Supabase Realtime — live push updates across devices
 
   // Keyboard shortcuts
   useEffect(() => {

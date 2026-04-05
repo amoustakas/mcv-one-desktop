@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useGithubPRs, useGithubPRFiles } from '../../hooks/use-github';
-import { EmptyState, Skeleton, Badge } from '../ui';
+import { EmptyState, Skeleton } from '../ui';
 import { GitPullRequest, ChevronRight } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import DiffViewer from './DiffViewer';

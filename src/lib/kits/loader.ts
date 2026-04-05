@@ -18,6 +18,7 @@ import { manifest as driveManifest, handlers as driveHandlers } from './builtin/
 import { manifest as localManifest, handlers as localHandlers } from './builtin/local-server-kit';
 import { manifest as n8nManifest, handlers as n8nHandlers } from './builtin/n8n-kit';
 import { manifest as cloudflareManifest, handlers as cloudflareHandlers } from './builtin/cloudflare-kit';
+import { manifest as dockerManifest, handlers as dockerHandlers } from './builtin/docker-kit';
 
 // ---------------------------------------------------------------------------
 // Local Kit Registry
@@ -39,6 +40,7 @@ const builtinKits: KitInstance[] = [
   kit(localManifest, localHandlers),
   kit(n8nManifest, n8nHandlers),
   kit(cloudflareManifest, cloudflareHandlers),
+  kit(dockerManifest, dockerHandlers),
 ];
 
 /** Returns all built-in kit instances */
