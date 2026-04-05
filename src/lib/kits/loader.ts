@@ -51,6 +51,15 @@ import { manifest as calendlyManifest, handlers as calendlyHandlers } from './bu
 import { manifest as sentryManifest, handlers as sentryHandlers } from './builtin/sentry-kit';
 import { manifest as hubspotManifest, handlers as hubspotHandlers } from './builtin/hubspot-kit';
 import { manifest as lmstudioManifest, handlers as lmstudioHandlers } from './builtin/lmstudio-kit';
+import { manifest as claudeManifest, handlers as claudeHandlers } from './builtin/claude-kit';
+import { manifest as campaignsManifest, handlers as campaignsHandlers } from './builtin/campaigns-kit';
+import { manifest as futurestateManifest, handlers as futurestateHandlers } from './builtin/futurestate-kit';
+import { manifest as memoryManifest, handlers as memoryHandlers } from './builtin/memory-kit';
+import { manifest as pipelineManifest, handlers as pipelineHandlers } from './builtin/pipeline-kit';
+import { manifest as teamManifest, handlers as teamHandlers } from './builtin/team-kit';
+import { manifest as treasuryManifest, handlers as treasuryHandlers } from './builtin/treasury-kit';
+import { manifest as venturesManifest, handlers as venturesHandlers } from './builtin/ventures-kit';
+import { manifest as commsSyncManifest, handlers as commsSyncHandlers } from './builtin/comms-sync-kit';
 import { manifest as storageSupabaseManifest, handlers as storageSupabaseHandlers } from './builtin/storage-supabase-kit';
 import { manifest as storageLocalManifest, handlers as storageLocalHandlers } from './builtin/storage-local-kit';
 import { manifest as storageGdriveManifest, handlers as storageGdriveHandlers } from './builtin/storage-gdrive-kit';
@@ -62,6 +71,8 @@ import {
   getMcpTools,
   getMcpHandlers,
 } from './builtin/mcp-bridge-kit';
+import { manifest as deviceManifest, handlers as deviceHandlers } from './builtin/device-kit';
+import { manifest as ledgerManifest, handlers as ledgerHandlers } from './builtin/ledger-kit';
 
 // ---------------------------------------------------------------------------
 // Local Kit Registry
@@ -116,12 +127,23 @@ const builtinKits: KitInstance[] = [
   kit(sentryManifest, sentryHandlers),
   kit(hubspotManifest, hubspotHandlers),
   kit(lmstudioManifest, lmstudioHandlers),
+  kit(claudeManifest, claudeHandlers),
+  kit(campaignsManifest, campaignsHandlers),
+  kit(futurestateManifest, futurestateHandlers),
+  kit(memoryManifest, memoryHandlers),
+  kit(pipelineManifest, pipelineHandlers),
+  kit(teamManifest, teamHandlers),
+  kit(treasuryManifest, treasuryHandlers),
+  kit(venturesManifest, venturesHandlers),
+  kit(commsSyncManifest, commsSyncHandlers),
   kit(storageSupabaseManifest, storageSupabaseHandlers),
   kit(storageLocalManifest, storageLocalHandlers),
   kit(storageGdriveManifest, storageGdriveHandlers),
   kit(storageAiManifest, storageAiHandlers),
   kit(googleRagManifest, googleRagHandlers),
   kit(mcpBridgeManifest, mcpBridgeHandlers),
+  kit(deviceManifest, deviceHandlers),
+  kit(ledgerManifest, ledgerHandlers),
 ];
 
 /** Returns all built-in kit instances */
