@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Activity, Cpu, Database, GitBranch, Globe, Shield, Wifi, Zap, RefreshCw, ExternalLink, Cloud, Server, Radio, CheckCircle2 } from 'lucide-react';
+import { InfraOverviewBar, DockerStatsWidget } from './docker';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useGithubRepos, useGithubCommits } from '../hooks/use-github';
@@ -102,6 +103,10 @@ export default function OpsPanel() {
           <RefreshCw size={14} />
         </Button>
       </div>
+
+      {/* Docker Infrastructure Overview */}
+      <InfraOverviewBar />
+      <DockerStatsWidget compact className="ops-docker" />
 
       <div className="ops-grid">
         {/* Left: Systems + DB */}

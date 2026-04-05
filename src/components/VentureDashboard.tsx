@@ -5,6 +5,7 @@ import { type Venture } from '../lib/ventures';
 import { apiGet } from '../lib/api/client';
 import { GlassCard, Button } from './ui';
 import { cn, formatMoney } from '../lib/utils';
+import { VentureInfraCard } from './docker';
 
 // ── Shared Helpers ──
 function formatCAD(n: number) { return new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(n); }
@@ -190,6 +191,9 @@ export default function VentureDashboard({ venture }: VentureDashboardProps) {
         <Button variant="ghost" size="sm" className="vd-refresh" onClick={() => setLoading(!loading)}><RefreshCw size={14}/></Button>
       </div>
       {DashContent ? <DashContent /> : <GenericDash venture={venture} />}
+
+      {/* Infrastructure Card — shows Docker containers for this venture */}
+      <VentureInfraCard ventureId={venture.id} ventureName={venture.name} ventureColor={venture.color} />
 
       <style>{`
         .vd { height:100%; overflow-y:auto; padding:20px 24px; display:flex; flex-direction:column; gap:16px; }

@@ -62,6 +62,8 @@ export function useRealtimeSync() {
       // Messages
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
         queryClient.invalidateQueries({ queryKey: ['conversations'] });
+        queryClient.invalidateQueries({ queryKey: ['comms', 'inbox'] });
+        queryClient.invalidateQueries({ queryKey: ['comms', 'messages'] });
       })
       // Notifications
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {

@@ -169,6 +169,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
     { id: 'v-docs', label: 'Documentation Hub', sublabel: 'Document management', category: 'Views', action: () => { setView('docs'); } },
     { id: 'v-tasks', label: 'Tasks', sublabel: 'Task management', category: 'Views', action: () => { setView('tasks'); } },
     { id: 'v-crm', label: 'CRM', sublabel: 'Contacts & deals', category: 'Views', action: () => { setView('crm'); } },
+    { id: 'v-comms', label: 'Communications Hub', sublabel: 'Unified messaging & social', category: 'Views', action: () => { setView('comms-hub'); } },
     { id: 'v-sessions', label: 'Sessions', sublabel: 'API & agent sessions', category: 'Views', action: () => { setView('sessions'); } },
     { id: 'v-signals', label: 'Signals', sublabel: 'Market intelligence', category: 'Views', action: () => { setView('signals'); } },
     // Ventures

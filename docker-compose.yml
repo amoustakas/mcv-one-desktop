@@ -19,7 +19,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mcv_dev_2026}
       POSTGRES_DB: mcv_desktop
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./supabase:/docker-entrypoint-initdb.d:ro

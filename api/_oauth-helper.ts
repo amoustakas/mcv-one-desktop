@@ -142,6 +142,23 @@ const PROVIDER_CONFIGS: Record<string, () => ProviderTokenConfig> = {
     clientSecret: process.env.FIGMA_CLIENT_SECRET || '',
     scopes: ['files:read'],
   }),
+  linkedin: () => ({
+    authUrl: 'https://www.linkedin.com/oauth/v2/authorization',
+    tokenUrl: 'https://www.linkedin.com/oauth/v2/accessToken',
+    userInfoUrl: 'https://api.linkedin.com/v2/userinfo',
+    clientId: process.env.LINKEDIN_CLIENT_ID || '',
+    clientSecret: process.env.LINKEDIN_CLIENT_SECRET || '',
+    scopes: ['openid', 'profile', 'email', 'w_member_social'],
+  }),
+  twitch: () => ({
+    authUrl: 'https://id.twitch.tv/oauth2/authorize',
+    tokenUrl: 'https://id.twitch.tv/oauth2/token',
+    revokeUrl: 'https://id.twitch.tv/oauth2/revoke',
+    userInfoUrl: 'https://api.twitch.tv/helix/users',
+    clientId: process.env.TWITCH_CLIENT_ID || '',
+    clientSecret: process.env.TWITCH_CLIENT_SECRET || '',
+    scopes: ['user:read:email', 'channel:read:subscriptions'],
+  }),
 };
 
 export function getProviderConfig(provider: string): ProviderTokenConfig {
@@ -199,6 +216,8 @@ export async function getProviderToken(
     discord: process.env.DISCORD_BOT_TOKEN || '',
     linear: process.env.LINEAR_API_KEY || '',
     figma: process.env.FIGMA_ACCESS_TOKEN || '',
+    linkedin: '',
+    twitch: process.env.TWITCH_CLIENT_SECRET || '',
   };
 
   const envToken = envFallbacks[provider];

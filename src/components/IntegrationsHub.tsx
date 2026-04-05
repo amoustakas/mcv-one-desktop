@@ -23,7 +23,7 @@ import { useMcpStore } from '../stores/mcp';
 import McpServerCard from './McpServerCard';
 import McpAddServerModal from './McpAddServerModal';
 import McpServerDetail from './McpServerDetail';
-import type { McpServerConfig } from '../lib/mcp/types';
+// McpServerConfig used indirectly via McpServerCard props
 
 // ---------------------------------------------------------------------------
 // Icon registry

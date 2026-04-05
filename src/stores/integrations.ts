@@ -19,7 +19,7 @@ interface IntegrationsState {
   connections: Record<string, EnrichedConnection>;
 
   // UI state
-  activeTab: IntegrationCategory | 'all' | 'favorites';
+  activeTab: IntegrationCategory | 'all' | 'favorites' | 'mcp';
   filterState: FilterState;
   searchQuery: string;
   sortBy: SortField;

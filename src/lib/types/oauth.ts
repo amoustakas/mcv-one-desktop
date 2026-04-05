@@ -4,7 +4,8 @@
 
 export type OAuthProvider =
   | 'github' | 'google' | 'notion' | 'cloudflare'
-  | 'stripe' | 'slack' | 'discord' | 'linear' | 'figma';
+  | 'stripe' | 'slack' | 'discord' | 'linear' | 'figma'
+  | 'linkedin' | 'twitch';
 
 export interface OAuthConnection {
   id: string;
@@ -161,6 +162,30 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
     clientIdEnvVar: 'FIGMA_CLIENT_ID',
     clientSecretEnvVar: 'FIGMA_CLIENT_SECRET',
   },
+  linkedin: {
+    provider: 'linkedin',
+    name: 'LinkedIn',
+    description: 'Professional networking, posts, company pages, connections',
+    scopes: ['openid', 'profile', 'email', 'w_member_social'],
+    authUrl: 'https://www.linkedin.com/oauth/v2/authorization',
+    tokenUrl: 'https://www.linkedin.com/oauth/v2/accessToken',
+    revokeUrl: undefined,
+    userInfoUrl: 'https://api.linkedin.com/v2/userinfo',
+    clientIdEnvVar: 'LINKEDIN_CLIENT_ID',
+    clientSecretEnvVar: 'LINKEDIN_CLIENT_SECRET',
+  },
+  twitch: {
+    provider: 'twitch',
+    name: 'Twitch',
+    description: 'Streaming, channels, clips, chat, and gaming community',
+    scopes: ['user:read:email', 'channel:read:subscriptions'],
+    authUrl: 'https://id.twitch.tv/oauth2/authorize',
+    tokenUrl: 'https://id.twitch.tv/oauth2/token',
+    revokeUrl: 'https://id.twitch.tv/oauth2/revoke',
+    userInfoUrl: 'https://api.twitch.tv/helix/users',
+    clientIdEnvVar: 'TWITCH_CLIENT_ID',
+    clientSecretEnvVar: 'TWITCH_CLIENT_SECRET',
+  },
 };
 
 /** Services that only support API key auth (no OAuth) */
@@ -186,6 +211,8 @@ export const API_KEY_SERVICES: ApiKeyService[] = [
   { name: 'Plaid', envKey: 'PLAID_SECRET', description: 'Banking data, account linking, financial connections', category: 'finance', docsUrl: 'https://plaid.com/docs' },
   { name: 'Upstash', envKey: 'UPSTASH_REDIS_REST_TOKEN', description: 'Serverless Redis, Kafka, QStash — edge-ready data', category: 'infrastructure', docsUrl: 'https://upstash.com/docs' },
   { name: 'OpenAI', envKey: 'OPENAI_API_KEY', description: 'GPT-4, DALL-E, Whisper — alternative AI provider', category: 'ai', docsUrl: 'https://platform.openai.com/docs' },
+  { name: 'X / Twitter', envKey: 'TWITTER_BEARER_TOKEN', description: 'Tweets, search, profiles, followers, trending', category: 'social', docsUrl: 'https://developer.x.com/en/docs' },
+  { name: 'Vapi', envKey: 'VAPI_API_KEY', description: 'AI voice assistants, outbound calls, phone numbers', category: 'voice', docsUrl: 'https://docs.vapi.ai' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -264,7 +291,9 @@ export type IntegrationCategory =
   | 'communications'  // Twilio, SendGrid, Resend, Slack
   | 'finance'         // Stripe, Plaid
   | 'design'          // Figma
-  | 'community';      // Discord
+  | 'community'       // Discord
+  | 'social'          // X/Twitter, LinkedIn
+  | 'streaming';      // YouTube, Twitch
 
 /** Category display metadata */
 export const CATEGORY_META: Record<IntegrationCategory, { label: string; icon: string; order: number }> = {
@@ -279,7 +308,9 @@ export const CATEGORY_META: Record<IntegrationCategory, { label: string; icon: s
   'data': { label: 'Data Services', icon: 'Database', order: 8 },
   'automation': { label: 'Automation', icon: 'Workflow', order: 9 },
   'design': { label: 'Design', icon: 'Palette', order: 10 },
-  'community': { label: 'Community', icon: 'Users', order: 11 },
+  'social': { label: 'Social Media', icon: 'Share2', order: 11 },
+  'streaming': { label: 'Streaming & Video', icon: 'Video', order: 12 },
+  'community': { label: 'Community', icon: 'Users', order: 13 },
 };
 
 /** Provider → category mapping */
@@ -293,6 +324,8 @@ export const PROVIDER_CATEGORIES: Record<string, IntegrationCategory> = {
   discord: 'community',
   linear: 'source-control',
   figma: 'design',
+  linkedin: 'social',
+  twitch: 'streaming',
 };
 
 /** Which kits/features consume each provider */
@@ -321,4 +354,7 @@ export const PROVIDER_CONSUMERS: Record<string, string[]> = {
   'Plaid': ['Bank Account Linking', 'Financial Data', 'Treasury Dashboard', 'Futurestate RWA'],
   'Upstash': ['Edge Cache', 'Rate Limiting', 'Queue Processing'],
   'OpenAI': ['Alternative AI Provider', 'DALL-E Images', 'Whisper Transcription'],
+  'X / Twitter': ['X Kit', 'Social Intelligence', 'Trend Analysis', 'Growth Dashboard'],
+  linkedin: ['LinkedIn Kit', 'Professional Networking', 'Content Publishing', 'Company Research'],
+  twitch: ['Twitch Kit', 'Stream Monitoring', 'WarForge Streaming', 'Community Events'],
 };

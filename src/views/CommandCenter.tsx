@@ -1,4 +1,5 @@
 import { GitBranch, Cloud, Zap, ExternalLink, CheckSquare, Users, BookOpen, MessageSquare, Activity, Shield, TrendingUp, Cpu, AlertTriangle, Brain, DollarSign, Bell } from 'lucide-react';
+import { InfraOverviewBar } from '../components/docker';
 import { useNavigation } from '../stores/navigation';
 import { useTheme } from '../stores/theme';
 import { ventures } from '../lib/ventures';
@@ -70,6 +71,9 @@ export default function CommandCenter() {
           )}
         </div>
       </div>
+
+      {/* Infrastructure Status Bar */}
+      <InfraOverviewBar />
 
       {/* Morning Brief */}
       {morningBrief && (
