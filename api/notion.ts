@@ -1,4 +1,4 @@
-import { requireAuth } from "./_middleware";
+import { requireAuth } from "./auth-middleware";
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const NOTION_API_KEY = process.env.NOTION_API_KEY || process.env.NOTION_TOKEN || '';

@@ -1,4 +1,4 @@
-import { requireAuth } from "./_middleware";
+import { requireAuth } from "./auth-middleware";
 import Anthropic from '@anthropic-ai/sdk';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 

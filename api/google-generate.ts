@@ -1,4 +1,4 @@
-import { requireAuth } from './_middleware';
+import { requireAuth } from './auth-middleware';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 

@@ -7,10 +7,13 @@
     "allowSyntheticDefaultImports": true,
     "strict": false,
     "skipLibCheck": true,
-    "outDir": "../.vercel/output/functions",
+    "noEmit": true,
+    "isolatedModules": true,
     "rootDir": ".",
     "baseUrl": ".",
-    "types": ["node"]
+    "types": ["node"],
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
   },
   "include": ["./**/*.ts"]
 }
