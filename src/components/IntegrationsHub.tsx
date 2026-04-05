@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   GitBranch, Cloud, Globe, Database, Shield, Mic, Volume2,
   Radio, Zap, XCircle, Link, Unlink, RefreshCw,
@@ -6,7 +6,7 @@ import {
   Grid3X3, List, Layers, ExternalLink, Clock, Activity,
   AlertTriangle, Workflow, Layout, X, Eye,
   CreditCard, MessageSquare, Gamepad2, Palette,
-  Mail, Phone, Landmark, Users,
+  Mail, Phone, Landmark, Users, Plug,
 } from 'lucide-react';
 import { Button, Badge } from './ui';
 import { cn } from '../lib/utils';
@@ -19,6 +19,11 @@ import {
 } from '../lib/types/oauth';
 import { useIntegrations } from '../stores/integrations';
 import { useNotificationStore } from '../stores/notifications';
+import { useMcpStore } from '../stores/mcp';
+import McpServerCard from './McpServerCard';
+import McpAddServerModal from './McpAddServerModal';
+import McpServerDetail from './McpServerDetail';
+import type { McpServerConfig } from '../lib/mcp/types';
 
 // ---------------------------------------------------------------------------
 // Icon registry
@@ -137,6 +142,13 @@ export default function IntegrationsHub() {
     getFilteredConnections, getCategoryCounts, getHealthSummary,
   } = store;
 
+  // MCP state
+  const mcpStore = useMcpStore();
+  const [mcpAddModalOpen, setMcpAddModalOpen] = useState(false);
+  const [mcpDetailServerId, setMcpDetailServerId] = useState<string | null>(null);
+  const mcpServers = Object.values(mcpStore.serverConfigs);
+  const mcpDetailConfig = mcpDetailServerId ? mcpStore.serverConfigs[mcpDetailServerId] : null;
+
   // Sync API data into store
   useEffect(() => {
     if (data) {
@@ -191,13 +203,14 @@ export default function IntegrationsHub() {
   }
 
   // ───── Category tabs ─────
-  const tabItems: Array<{ id: string; label: string; count: number }> = [
+  const tabItems: Array<{ id: string; label: string; count: number; icon?: typeof Plug }> = [
     { id: 'all', label: 'All', count: counts.all || 0 },
     { id: 'favorites', label: 'Favorites', count: counts.favorites || 0 },
     ...Object.entries(CATEGORY_META)
       .sort(([, a], [, b]) => a.order - b.order)
       .filter(([id]) => (counts[id] ?? 0) > 0)
       .map(([id, meta]) => ({ id, label: meta.label, count: counts[id] ?? 0 })),
+    { id: 'mcp', label: 'MCP Servers', count: mcpServers.length, icon: Plug },
   ];
 
   return (
@@ -275,55 +288,111 @@ export default function IntegrationsHub() {
         </div>
       </div>
 
-      {/* ───── Connection cards ───── */}
-      {(viewMode as string) === 'grid' ? (
-        Object.entries(grouped)
-          .sort(([a], [b]) => (CATEGORY_META[a as IntegrationCategory]?.order ?? 99) - (CATEGORY_META[b as IntegrationCategory]?.order ?? 99))
-          .map(([cat, conns]) => (
-            <div key={cat} className="ih2-group">
-              <div className="ih2-group-header">
-                <span className="ih2-group-label">{CATEGORY_META[cat as IntegrationCategory]?.label ?? cat}</span>
-                <Badge size="sm" color="var(--text-muted)">{conns.length}</Badge>
-              </div>
-              <div className={(viewMode as string) === 'grid' ? 'ih2-grid' : 'ih2-list'}>
-                {conns.map((conn) => (
-                  <ConnectionCard
-                    key={conn.provider}
-                    conn={conn}
-                    expanded={expandedProvider === conn.provider}
-                    onExpand={() => setExpandedProvider(expandedProvider === conn.provider ? null : conn.provider)}
-                    onConnect={() => handleConnect(conn.provider)}
-                    onDisconnect={() => handleDisconnect(conn.provider)}
-                    onTest={() => handleTest(conn.provider)}
-                    onFavorite={() => toggleFavorite(conn.provider)}
-                    onOpenDetail={() => openDetail(conn.provider)}
-                    testing={testMutation.isPending}
-                  />
-                ))}
-              </div>
-            </div>
-          ))
-      ) : (
-        <div className={(viewMode as string) === 'grid' ? 'ih2-grid' : 'ih2-list'}>
-          {filtered.map((conn) => (
-            <ConnectionCard
-              key={conn.provider}
-              conn={conn}
-              expanded={expandedProvider === conn.provider}
-              onExpand={() => setExpandedProvider(expandedProvider === conn.provider ? null : conn.provider)}
-              onConnect={() => handleConnect(conn.provider)}
-              onDisconnect={() => handleDisconnect(conn.provider)}
-              onTest={() => handleTest(conn.provider)}
-              onFavorite={() => toggleFavorite(conn.provider)}
-              onOpenDetail={() => openDetail(conn.provider)}
-              testing={testMutation.isPending}
-            />
-          ))}
-        </div>
-      )}
+      {/* ───── MCP Servers tab ───── */}
+      {activeTab === 'mcp' ? (
+        <div className="ih2-mcp-section">
+          <div className="ih2-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+            {mcpServers.map((config) => (
+              <McpServerCard
+                key={config.id}
+                config={config}
+                status={mcpStore.connectionStatus[config.id] || 'disconnected'}
+                tools={mcpStore.serverTools[config.id] || []}
+                error={mcpStore.serverErrors[config.id]}
+                onConnect={() => mcpStore.connectServer(config.id, {}, {})}
+                onDisconnect={() => mcpStore.disconnectServer(config.id)}
+                onRemove={() => mcpStore.removeServer(config.id)}
+                onConfigure={() => setMcpDetailServerId(config.id)}
+              />
+            ))}
+          </div>
 
-      {filtered.length === 0 && (
-        <div className="ih2-empty">No integrations match your filters.</div>
+          <button
+            onClick={() => setMcpAddModalOpen(true)}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+              width: '100%', marginTop: '16px', padding: '14px',
+              background: 'rgba(0,245,255,0.04)', border: '1px dashed rgba(0,245,255,0.2)',
+              borderRadius: '12px', color: '#00F5FF', fontSize: '14px', fontWeight: 500,
+              cursor: 'pointer', transition: 'all 0.2s',
+            }}
+          >
+            <Plug size={14} /> Add MCP Server
+          </button>
+
+          <McpAddServerModal
+            open={mcpAddModalOpen}
+            onClose={() => setMcpAddModalOpen(false)}
+            onAddPreset={(presetId, creds) => mcpStore.addServerFromPreset(presetId, creds)}
+            onAddCustom={(config) => mcpStore.addCustomServer(config)}
+          />
+
+          {mcpDetailConfig && (
+            <McpServerDetail
+              config={mcpDetailConfig}
+              tools={mcpStore.serverTools[mcpDetailServerId!] || []}
+              resources={mcpStore.serverResources[mcpDetailServerId!] || []}
+              onToggleTool={(toolName, enabled) => mcpStore.toggleTool(mcpDetailServerId!, toolName, enabled)}
+              onUpdateConfig={(updates) => mcpStore.updateServer(mcpDetailServerId!, updates)}
+              onClose={() => setMcpDetailServerId(null)}
+            />
+          )}
+        </div>
+      ) : null}
+
+      {/* ───── Connection cards (hidden when MCP tab active) ───── */}
+      {activeTab !== 'mcp' && (
+        <>
+          {(viewMode as string) === 'grid' ? (
+            Object.entries(grouped)
+              .sort(([a], [b]) => (CATEGORY_META[a as IntegrationCategory]?.order ?? 99) - (CATEGORY_META[b as IntegrationCategory]?.order ?? 99))
+              .map(([cat, conns]) => (
+                <div key={cat} className="ih2-group">
+                  <div className="ih2-group-header">
+                    <span className="ih2-group-label">{CATEGORY_META[cat as IntegrationCategory]?.label ?? cat}</span>
+                    <Badge size="sm" color="var(--text-muted)">{conns.length}</Badge>
+                  </div>
+                  <div className={(viewMode as string) === 'grid' ? 'ih2-grid' : 'ih2-list'}>
+                    {conns.map((conn) => (
+                      <ConnectionCard
+                        key={conn.provider}
+                        conn={conn}
+                        expanded={expandedProvider === conn.provider}
+                        onExpand={() => setExpandedProvider(expandedProvider === conn.provider ? null : conn.provider)}
+                        onConnect={() => handleConnect(conn.provider)}
+                        onDisconnect={() => handleDisconnect(conn.provider)}
+                        onTest={() => handleTest(conn.provider)}
+                        onFavorite={() => toggleFavorite(conn.provider)}
+                        onOpenDetail={() => openDetail(conn.provider)}
+                        testing={testMutation.isPending}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))
+          ) : (
+            <div className={(viewMode as string) === 'grid' ? 'ih2-grid' : 'ih2-list'}>
+              {filtered.map((conn) => (
+                <ConnectionCard
+                  key={conn.provider}
+                  conn={conn}
+                  expanded={expandedProvider === conn.provider}
+                  onExpand={() => setExpandedProvider(expandedProvider === conn.provider ? null : conn.provider)}
+                  onConnect={() => handleConnect(conn.provider)}
+                  onDisconnect={() => handleDisconnect(conn.provider)}
+                  onTest={() => handleTest(conn.provider)}
+                  onFavorite={() => toggleFavorite(conn.provider)}
+                  onOpenDetail={() => openDetail(conn.provider)}
+                  testing={testMutation.isPending}
+                />
+              ))}
+            </div>
+          )}
+
+          {filtered.length === 0 && (
+            <div className="ih2-empty">No integrations match your filters.</div>
+          )}
+        </>
       )}
 
       {/* ───── Detail slide-out panel ───── */}
