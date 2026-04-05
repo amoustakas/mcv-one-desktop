@@ -5,6 +5,7 @@ import { useTheme } from '../stores/theme';
 import { ventures } from '../lib/ventures';
 import { apiPost } from '../lib/api/client';
 import { useKitStore } from '../stores/kits';
+import { cn } from '../lib/utils';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -375,7 +376,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
                   return (
                     <button
                       key={item.id}
-                      className={`palette-item ${flatIdx === selectedIndex ? 'selected' : ''}`}
+                      className={cn('palette-item', flatIdx === selectedIndex && 'selected')}
                       onClick={() => handleSelect(item)}
                       onMouseEnter={() => setSelectedIndex(flatIdx)}
                     >

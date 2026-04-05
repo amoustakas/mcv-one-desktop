@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { Plus, X, FileText, CheckSquare, Users, BookOpen, Send, Loader2 } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
 import { apiPost } from '../lib/api/client';
+import { GlassCard } from './ui';
+import { cn } from '../lib/utils';
 
 type CaptureType = 'note' | 'task' | 'contact' | 'document';
 
@@ -74,7 +76,7 @@ export default function QuickCapture({ open, onToggle }: QuickCaptureProps) {
     <>
       {/* Floating Action Button */}
       <button
-        className={`qc-fab ${open ? 'qc-fab-open' : ''}`}
+        className={cn('qc-fab', open && 'qc-fab-open')}
         onClick={onToggle}
         title="Quick Capture (Ctrl+N)"
       >
@@ -83,7 +85,7 @@ export default function QuickCapture({ open, onToggle }: QuickCaptureProps) {
 
       {/* Expanded Form */}
       {open && (
-        <div className="qc-panel glass">
+        <GlassCard className="qc-panel">
           {/* Type Selector */}
           <div className="qc-types">
             {typeOptions.map(opt => {
@@ -91,7 +93,7 @@ export default function QuickCapture({ open, onToggle }: QuickCaptureProps) {
               return (
                 <button
                   key={opt.id}
-                  className={`qc-type-btn ${captureType === opt.id ? 'active' : ''}`}
+                  className={cn('qc-type-btn', captureType === opt.id && 'active')}
                   onClick={() => setCaptureType(opt.id)}
                   style={captureType === opt.id ? { color: opt.color, borderColor: opt.color + '60' } : undefined}
                 >
@@ -140,7 +142,7 @@ export default function QuickCapture({ open, onToggle }: QuickCaptureProps) {
           <div className="qc-hint">
             <kbd>Enter</kbd> to submit &middot; <kbd>Esc</kbd> to close
           </div>
-        </div>
+        </GlassCard>
       )}
 
       <style>{`

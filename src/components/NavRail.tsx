@@ -8,6 +8,7 @@ import {
 import { useNavigation, type ViewId } from '../stores/navigation';
 import { useVentureContextStore } from '../stores/venture-context';
 import { ventures } from '../lib/ventures';
+import { cn } from '../lib/utils';
 
 // ── Icon map ──
 const VIEW_ICONS: Record<string, React.FC<{ size: number }>> = {
@@ -153,7 +154,7 @@ export default function NavRail() {
               {expanded && (
                 <button className="rail-section-header" onClick={() => toggleSection(section.key)}>
                   <span className="rail-section-label">{section.label}</span>
-                  <ChevronDown size={11} className={`rail-section-chevron ${isCollapsed ? 'collapsed' : ''}`} />
+                  <ChevronDown size={11} className={cn('rail-section-chevron', isCollapsed && 'collapsed')} />
                 </button>
               )}
               {!isCollapsed && section.items.map((item) => {
@@ -162,7 +163,7 @@ export default function NavRail() {
                 return (
                   <button
                     key={item.id}
-                    className={`rail-btn ${isActive ? 'active' : ''} ${splitView === item.id ? 'split-active' : ''}`}
+                    className={cn('rail-btn', isActive && 'active', splitView === item.id && 'split-active')}
                     onClick={() => setView(item.id)}
                     onContextMenu={(e) => { e.preventDefault(); openSplit(item.id); }}
                     title={`${item.label} (right-click: open in split)`}
@@ -185,7 +186,7 @@ export default function NavRail() {
 
       {/* Bottom: Settings + Expand toggle */}
       <div className="rail-bottom">
-        <button className={`rail-btn ${activeView === 'settings' ? 'active' : ''}`} onClick={() => setView('settings')} title="Settings">
+        <button className={cn('rail-btn', activeView === 'settings' && 'active')} onClick={() => setView('settings')} title="Settings">
           <Settings size={16} />
           {expanded && <span className="rail-text">Settings</span>}
         </button>

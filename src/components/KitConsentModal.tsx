@@ -1,6 +1,7 @@
 import { Shield, X, Check, Ban } from 'lucide-react';
 import type { KitCapability, KitManifest } from '../lib/kits/types';
 import { grantAllPermissions } from '../lib/kits/permissions';
+import { Button } from './ui';
 
 interface KitConsentModalProps {
   manifest: KitManifest;
@@ -51,7 +52,7 @@ export default function KitConsentModal({
         <div className="kcm-header">
           <Shield size={18} />
           <h3>Kit Permission Request</h3>
-          <button className="kcm-close" onClick={onDeny}><X size={16} /></button>
+          <Button variant="ghost" size="sm" className="kcm-close" onClick={onDeny}><X size={16} /></Button>
         </div>
 
         <div className="kcm-body">
@@ -78,17 +79,17 @@ export default function KitConsentModal({
         </div>
 
         <div className="kcm-footer">
-          <button className="kcm-btn deny" onClick={onDeny}>
-            <Ban size={13} /> Deny
-          </button>
+          <Button variant="ghost" size="sm" onClick={onDeny} icon={<Ban size={13} />}>
+            Deny
+          </Button>
           {onAllowOnce && (
-            <button className="kcm-btn once" onClick={onAllowOnce}>
+            <Button variant="secondary" size="sm" onClick={onAllowOnce}>
               Allow Once
-            </button>
+            </Button>
           )}
-          <button className="kcm-btn allow" onClick={handleAllow}>
-            <Check size={13} /> Allow
-          </button>
+          <Button variant="primary" size="sm" onClick={handleAllow} icon={<Check size={13} />}>
+            Allow
+          </Button>
         </div>
       </div>
 
@@ -173,37 +174,6 @@ export default function KitConsentModal({
           justify-content: flex-end;
         }
 
-        .kcm-btn {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          padding: 6px 14px;
-          border-radius: var(--radius-sm);
-          font-size: var(--text-sm);
-          font-weight: 600;
-          transition: all var(--transition-fast);
-        }
-
-        .kcm-btn.deny {
-          color: var(--text-muted);
-          border: 1px solid var(--border);
-        }
-
-        .kcm-btn.deny:hover { color: rgb(239, 68, 68); border-color: rgba(239, 68, 68, 0.3); }
-
-        .kcm-btn.once {
-          color: var(--text-secondary);
-          border: 1px solid var(--border);
-        }
-
-        .kcm-btn.once:hover { color: var(--text-primary); border-color: var(--border-active); }
-
-        .kcm-btn.allow {
-          background: var(--cyan);
-          color: var(--bg-deep);
-        }
-
-        .kcm-btn.allow:hover { opacity: 0.9; }
       `}</style>
     </div>
   );

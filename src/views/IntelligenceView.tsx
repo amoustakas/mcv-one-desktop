@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Brain, Plus, Search, FileText, Send, Loader2, Trash2 } from 'lucide-react';
+import { PageShell, PageHeader, Button, EmptyState } from '../components/ui';
+import { timeAgo } from '../lib/utils';
 import { useNavigation } from '../stores/navigation';
 import Markdown from '../components/Markdown';
 import { apiPost } from '../lib/api/client';
@@ -11,14 +13,6 @@ interface Doc {
   venture_id: string;
   created_at: string;
   updated_at: string;
-}
-
-function timeAgo(d: string) {
-  const mins = Math.floor((Date.now() - new Date(d).getTime()) / 60000);
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
 }
 
 const DOC_TYPE_COLORS: Record<string, string> = {
@@ -87,29 +81,19 @@ export default function IntelligenceView() {
   }
 
   return (
-    <div className="intel">
-      <div className="intel-header">
-        <div className="intel-title-row">
-          <Brain size={20} />
-          <h1 className="intel-title">Intelligence Hub</h1>
-          <span className="intel-count">{docs.length} docs</span>
-        </div>
-        <div className="intel-actions">
-          <select className="intel-filter" value={filterVenture} onChange={(e) => setFilterVenture(e.target.value)}>
-            <option value="">All Ventures</option>
-            <option value="mcv">MCV One</option>
-            <option value="betedge">BetEdge AI</option>
-            <option value="futurestate">FutureState</option>
-            <option value="warforge">WarForge</option>
-            <option value="edgeiq">EdgeIQ Markets</option>
-            <option value="arqlabs">ARQ Labs</option>
-          </select>
-          <button className="intel-add-btn" onClick={() => setShowAdd(!showAdd)}>
-            <Plus size={14} />
-            <span>Add Doc</span>
-          </button>
-        </div>
-      </div>
+    <PageShell>
+      <PageHeader icon={<Brain size={20} />} title="Intelligence Hub" count={docs.length} loading={loading}>
+        <select className="intel-filter" value={filterVenture} onChange={(e) => setFilterVenture(e.target.value)}>
+          <option value="">All Ventures</option>
+          <option value="mcv">MCV One</option>
+          <option value="betedge">BetEdge AI</option>
+          <option value="futurestate">FutureState</option>
+          <option value="warforge">WarForge</option>
+          <option value="edgeiq">EdgeIQ Markets</option>
+          <option value="arqlabs">ARQ Labs</option>
+        </select>
+        <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => setShowAdd(!showAdd)}>Add Doc</Button>
+      </PageHeader>
 
       <div className="intel-body">
         {/* Ask panel */}
@@ -124,7 +108,7 @@ export default function IntelligenceView() {
               disabled={asking}
             />
             <button className="intel-ask-btn" onClick={handleAsk} disabled={!query.trim() || asking}>
-              {asking ? <Loader2 size={14} className="spin" /> : <Send size={14} />}
+              {asking ? <Loader2 size={14} className="mcv-spin" /> : <Send size={14} />}
             </button>
           </div>
           {answer && (
@@ -158,8 +142,8 @@ export default function IntelligenceView() {
             </div>
             <textarea className="intel-add-content" value={newContent} onChange={(e) => setNewContent(e.target.value)} placeholder="Document content..." rows={4} />
             <div className="intel-add-actions">
-              <button className="intel-save-btn" onClick={handleCreate} disabled={!newTitle.trim()}>Save Document</button>
-              <button className="intel-cancel-btn" onClick={() => setShowAdd(false)}>Cancel</button>
+              <Button variant="primary" size="sm" onClick={handleCreate} disabled={!newTitle.trim()}>Save Document</Button>
+              <Button variant="ghost" size="sm" onClick={() => setShowAdd(false)}>Cancel</Button>
             </div>
           </div>
         )}
@@ -187,76 +171,55 @@ export default function IntelligenceView() {
             </div>
           ))}
           {docs.length === 0 && !loading && (
-            <div className="intel-empty">
-              <Brain size={24} />
-              <p>No documents yet. Add docs or use <code>/note</code> in chat.</p>
-            </div>
+            <EmptyState
+              icon={<Brain size={24} />}
+              title="No documents yet"
+              description="Add docs or use /note in chat."
+            />
           )}
         </div>
       </div>
 
       <style>{`
-        .intel { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+        .intel-filter { padding:5px 10px; background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-secondary); font-size:11px; appearance:auto; }
 
-        .intel-header { padding: 16px 20px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; }
-        .intel-title-row { display: flex; align-items: center; gap: 8px; }
-        .intel-title { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; }
-        .intel-count { font-size: 10px; font-family: var(--font-mono); color: var(--text-muted); background: var(--bg-card); border: 1px solid var(--border); padding: 1px 8px; border-radius: var(--radius-full); }
-
-        .intel-actions { display: flex; gap: 8px; }
-        .intel-filter { padding: 5px 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-secondary); font-size: 11px; appearance: auto; }
-        .intel-add-btn { display: flex; align-items: center; gap: 4px; padding: 5px 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--cyan); font-size: 11px; font-weight: 500; transition: all 0.15s; }
-        .intel-add-btn:hover { background: var(--bg-elevated); border-color: var(--border-active); }
-
-        .intel-body { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 16px; }
+        .intel-body { flex:1; overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column; gap:16px; }
 
         /* Ask */
-        .intel-ask { display: flex; flex-direction: column; gap: 10px; }
-        .intel-ask-input { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); transition: border-color 0.15s; }
-        .intel-ask-input:focus-within { border-color: var(--border-active); }
-        .intel-ask-input input { flex: 1; background: transparent; border: none; color: var(--text-primary); font-size: 13px; outline: none; }
-        .intel-ask-input input::placeholder { color: var(--text-muted); }
-        .intel-ask-btn { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); background: var(--cyan); color: var(--bg-deep); flex-shrink: 0; transition: all 0.15s; }
-        .intel-ask-btn:hover:not(:disabled) { opacity: 0.85; }
-        .intel-ask-btn:disabled { opacity: 0.3; }
-        .intel-answer { padding: 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); }
+        .intel-ask { display:flex; flex-direction:column; gap:10px; }
+        .intel-ask-input { display:flex; align-items:center; gap:8px; padding:8px 14px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); transition:border-color 0.15s; }
+        .intel-ask-input:focus-within { border-color:var(--border-active); }
+        .intel-ask-input input { flex:1; background:transparent; border:none; color:var(--text-primary); font-size:13px; outline:none; }
+        .intel-ask-input input::placeholder { color:var(--text-muted); }
+        .intel-ask-btn { width:30px; height:30px; display:flex; align-items:center; justify-content:center; border-radius:var(--radius-sm); background:var(--cyan); color:var(--bg-deep); flex-shrink:0; transition:all 0.15s; }
+        .intel-ask-btn:hover:not(:disabled) { opacity:0.85; }
+        .intel-ask-btn:disabled { opacity:0.3; }
+        .intel-answer { padding:14px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); }
 
         /* Add form */
-        .intel-add-form { padding: 14px; background: var(--bg-card); border: 1px solid var(--border-active); border-radius: var(--radius-md); display: flex; flex-direction: column; gap: 8px; }
-        .intel-add-row { display: flex; gap: 8px; }
-        .intel-add-input { flex: 1; padding: 6px 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 12px; }
-        .intel-add-input:focus { border-color: var(--border-active); outline: none; }
-        .intel-add-select { padding: 6px 8px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-secondary); font-size: 11px; appearance: auto; }
-        .intel-add-content { padding: 8px 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 12px; resize: vertical; font-family: var(--font-sans); }
-        .intel-add-content:focus { border-color: var(--border-active); outline: none; }
-        .intel-add-actions { display: flex; gap: 8px; }
-        .intel-save-btn { padding: 6px 16px; background: var(--cyan); color: var(--bg-deep); font-size: 11px; font-weight: 600; border-radius: var(--radius-sm); transition: opacity 0.15s; }
-        .intel-save-btn:hover:not(:disabled) { opacity: 0.85; }
-        .intel-save-btn:disabled { opacity: 0.3; }
-        .intel-cancel-btn { padding: 6px 12px; color: var(--text-muted); font-size: 11px; border-radius: var(--radius-sm); transition: color 0.15s; }
-        .intel-cancel-btn:hover { color: var(--text-primary); }
+        .intel-add-form { padding:14px; background:var(--bg-card); border:1px solid var(--border-active); border-radius:var(--radius-md); display:flex; flex-direction:column; gap:8px; }
+        .intel-add-row { display:flex; gap:8px; }
+        .intel-add-input { flex:1; padding:6px 10px; background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-primary); font-size:12px; }
+        .intel-add-input:focus { border-color:var(--border-active); outline:none; }
+        .intel-add-select { padding:6px 8px; background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-secondary); font-size:11px; appearance:auto; }
+        .intel-add-content { padding:8px 10px; background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-primary); font-size:12px; resize:vertical; font-family:var(--font-sans); }
+        .intel-add-content:focus { border-color:var(--border-active); outline:none; }
+        .intel-add-actions { display:flex; gap:8px; }
 
         /* Docs list */
-        .intel-docs { display: flex; flex-direction: column; gap: 4px; }
-        .intel-doc { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); transition: border-color 0.15s; }
-        .intel-doc:hover { border-color: var(--border-active); }
-        .intel-doc-icon { color: var(--text-muted); flex-shrink: 0; }
-        .intel-doc-info { flex: 1; min-width: 0; }
-        .intel-doc-title { font-size: 13px; font-weight: 500; color: var(--text-primary); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .intel-doc-meta { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--text-muted); margin-top: 2px; }
-        .intel-doc-type { font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
-        .intel-doc-sep { opacity: 0.3; }
-        .intel-doc-del { opacity: 0; color: var(--text-muted); padding: 4px; border-radius: 3px; transition: all 0.15s; flex-shrink: 0; }
-        .intel-doc:hover .intel-doc-del { opacity: 1; }
-        .intel-doc-del:hover { color: var(--error); background: rgba(239,68,68,0.1); }
-
-        .intel-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 32px; color: var(--text-muted); text-align: center; }
-        .intel-empty p { font-size: 12px; }
-        .intel-empty code { background: var(--bg-card); padding: 1px 5px; border-radius: 3px; font-size: 11px; }
-
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .spin { animation: spin 1s linear infinite; }
+        .intel-docs { display:flex; flex-direction:column; gap:4px; }
+        .intel-doc { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-sm); transition:border-color 0.15s; }
+        .intel-doc:hover { border-color:var(--border-active); }
+        .intel-doc-icon { color:var(--text-muted); flex-shrink:0; }
+        .intel-doc-info { flex:1; min-width:0; }
+        .intel-doc-title { font-size:13px; font-weight:500; color:var(--text-primary); display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .intel-doc-meta { display:flex; align-items:center; gap:6px; font-size:10px; color:var(--text-muted); margin-top:2px; }
+        .intel-doc-type { font-weight:600; text-transform:uppercase; letter-spacing:0.3px; }
+        .intel-doc-sep { opacity:0.3; }
+        .intel-doc-del { opacity:0; color:var(--text-muted); padding:4px; border-radius:3px; transition:all 0.15s; flex-shrink:0; }
+        .intel-doc:hover .intel-doc-del { opacity:1; }
+        .intel-doc-del:hover { color:var(--error); background:rgba(239,68,68,0.1); }
       `}</style>
-    </div>
+    </PageShell>
   );
 }

@@ -2,6 +2,8 @@ import { useState, lazy, Suspense } from 'react';
 import { MessageSquare, GripVertical } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
 import { getVenture, ventures } from '../lib/ventures';
+import { Badge } from './ui';
+import { cn } from '../lib/utils';
 const AegisChat = lazy(() => import('./AegisChat'));
 
 export default function ChatDock() {
@@ -40,7 +42,7 @@ export default function ChatDock() {
     <div className="dock" style={{ width }}>
       {/* Resize handle */}
       <div
-        className={`dock-resize ${dragging ? 'active' : ''}`}
+        className={cn('dock-resize', dragging && 'active')}
         onMouseDown={handleMouseDown}
       >
         <GripVertical size={10} />
@@ -51,9 +53,9 @@ export default function ChatDock() {
           <div className="dock-title">
             <MessageSquare size={12} />
             <span className="dock-label">Aegis</span>
-            <span className="dock-venture-badge" style={{ color: venture.color, borderColor: `${venture.color}40` }}>
+            <Badge color={venture.color} variant="outline" size="sm">
               {venture.name}
-            </span>
+            </Badge>
           </div>
         </div>
         <div className="dock-body">
@@ -121,14 +123,6 @@ export default function ChatDock() {
         .dock-label {
           font-family: var(--font-display);
           letter-spacing: 0.5px;
-        }
-
-        .dock-venture-badge {
-          font-size: 10px;
-          font-weight: 500;
-          padding: 1px 8px;
-          border: 1px solid;
-          border-radius: var(--radius-full);
         }
 
         .dock-body {

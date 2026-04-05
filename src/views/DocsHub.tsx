@@ -483,9 +483,9 @@ export default function DocsHub() {
                 <option value="title">Title</option>
                 <option value="venture">Venture</option>
               </select>
-              <button className="dh-btn dh-btn-icon dh-btn-tiny" onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')} title={sortDir === 'desc' ? 'Descending' : 'Ascending'}>
+              <Button variant="ghost" size="sm" onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')} title={sortDir === 'desc' ? 'Descending' : 'Ascending'} className="dh-sort-toggle">
                 {sortDir === 'desc' ? <SortDesc size={12} /> : <SortAsc size={12} />}
-              </button>
+              </Button>
             </div>
             <span className="dh-filter-count">{filteredDocs.length} result{filteredDocs.length !== 1 ? 's' : ''}</span>
           </div>
@@ -763,43 +763,7 @@ export default function DocsHub() {
         /* ── Layout Shell ── */
         .dh { height: 100%; display: flex; flex-direction: column; overflow: hidden; background: var(--bg-deep); }
 
-        /* ── Top Bar ── */
-        .dh-topbar {
-          display: flex; align-items: center; justify-content: space-between; gap: 16px;
-          padding: 10px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0;
-          background: rgba(11,17,33,0.8); backdrop-filter: blur(12px);
-        }
-        .dh-topbar-left { display: flex; align-items: center; gap: 8px; color: var(--cyan); flex-shrink: 0; }
-        .dh-topbar-title { font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin: 0; }
-        .dh-topbar-count {
-          font-size: 10px; font-family: var(--font-mono); color: var(--text-muted);
-          background: var(--bg-card); border: 1px solid var(--border); padding: 1px 8px; border-radius: var(--radius-full);
-        }
-        .dh-topbar-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-
-        /* ── Buttons ── */
-        .dh-btn {
-          display: inline-flex; align-items: center; gap: 4px; padding: 5px 12px;
-          border-radius: var(--radius-sm); font-size: 11px; font-weight: 500;
-          transition: all 0.15s; white-space: nowrap; flex-shrink: 0; border: none; cursor: pointer;
-        }
-        .dh-btn-primary {
-          background: var(--cyan); color: var(--bg-deep); font-weight: 600;
-        }
-        .dh-btn-primary:hover:not(:disabled) { opacity: 0.85; }
-        .dh-btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
-        .dh-btn-ghost {
-          background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary);
-        }
-        .dh-btn-ghost:hover { border-color: var(--border-active); color: var(--text-primary); background: var(--bg-elevated); }
-        .dh-btn-icon {
-          width: 30px; height: 30px; padding: 0; display: flex; align-items: center; justify-content: center;
-          background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm);
-          color: var(--text-muted); transition: all 0.15s;
-        }
-        .dh-btn-icon:hover { border-color: var(--border-active); color: var(--text-primary); background: var(--bg-card); }
-        .dh-btn-sm { padding: 3px 10px; font-size: 10px; }
-        .dh-btn-tiny { width: 24px; height: 24px; }
+        .dh-sort-toggle { width: 24px; height: 24px; padding: 0; }
 
         /* ── Inputs ── */
         .dh-input {
@@ -949,11 +913,6 @@ export default function DocsHub() {
         .dh-doc-card-del:hover { color: var(--error); background: rgba(239,68,68,0.1); }
 
         .dh-doc-card-badges { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-        .dh-badge {
-          font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px;
-          padding: 1px 6px; border-radius: var(--radius-full); border: 1px solid;
-          white-space: nowrap;
-        }
         .dh-doc-card-time {
           display: flex; align-items: center; gap: 3px; font-size: 9px; font-family: var(--font-mono);
           color: var(--text-muted); margin-left: auto; flex-shrink: 0;

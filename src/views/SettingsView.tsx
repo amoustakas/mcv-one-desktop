@@ -4,6 +4,7 @@ import {
   Cloud, GitBranch, Zap, Radio, Globe, Server, CheckCircle2, XCircle,
   RefreshCw, HardDrive,
 } from 'lucide-react';
+import { PageShell, Button } from '../components/ui';
 import { APP_VERSION, BUILD_TIME } from '../lib/version';
 import { ventures } from '../lib/ventures';
 import { useToast } from '../components/Toasts';
@@ -82,7 +83,6 @@ export default function SettingsView() {
   const userPrefs = useUserStore((s) => s.preferences);
   const updatePreferences = useUserStore((s) => s.updatePreferences);
 
-  // Hydrate local settings from user store on mount
   useEffect(() => {
     setSettings((prev) => {
       const merged = {
@@ -110,7 +110,6 @@ export default function SettingsView() {
     setSettings(next);
     saveSettings(next);
 
-    // Sync overlapping fields to the user store
     const storeUpdates: Record<string, unknown> = {};
     if ('compactMode' in partial) storeUpdates.compactMode = partial.compactMode;
     if ('autoTTS' in partial) storeUpdates.voiceEnabled = partial.autoTTS;
@@ -119,7 +118,6 @@ export default function SettingsView() {
 
   async function testService(key: string) {
     setTesting(key);
-    // Simple health check — if the key exists in health, it's configured
     await new Promise(r => setTimeout(r, 800));
     if (health[key]) {
       toast('success', `${key.replace(/_/g, ' ')} is configured and reachable`);
@@ -130,7 +128,7 @@ export default function SettingsView() {
   }
 
   return (
-    <div className="sv">
+    <PageShell scroll={false}>
       {/* Sidebar */}
       <div className="sv-sidebar">
         <h2 className="sv-sidebar-title"><Settings size={16} /> Settings</h2>
@@ -148,7 +146,7 @@ export default function SettingsView() {
 
       {/* Content */}
       <div className="sv-content">
-        {/* ── General ── */}
+        {/* General */}
         {tab === 'general' && (
           <div className="sv-panel">
             <h3 className="sv-panel-title"><Monitor size={16} /> General Settings</h3>
@@ -192,7 +190,7 @@ export default function SettingsView() {
           </div>
         )}
 
-        {/* ── Integrations ── */}
+        {/* Integrations */}
         {tab === 'integrations' && (
           <div className="sv-panel">
             <h3 className="sv-panel-title"><Zap size={16} /> Integrations & APIs</h3>
@@ -213,7 +211,7 @@ export default function SettingsView() {
                       <span>{configured ? 'Connected' : 'Not configured'}</span>
                     </div>
                     <button className="sv-svc-test" onClick={() => testService(s.key)} disabled={testing === s.key}>
-                      {testing === s.key ? <RefreshCw size={11} className="spin" /> : 'Test'}
+                      {testing === s.key ? <RefreshCw size={11} className="mcv-spin" /> : 'Test'}
                     </button>
                   </div>
                 );
@@ -222,7 +220,7 @@ export default function SettingsView() {
           </div>
         )}
 
-        {/* ── Audio ── */}
+        {/* Audio */}
         {tab === 'audio' && (
           <div className="sv-panel">
             <h3 className="sv-panel-title"><Volume2 size={16} /> Audio Settings</h3>
@@ -254,7 +252,7 @@ export default function SettingsView() {
           </div>
         )}
 
-        {/* ── Storage ── */}
+        {/* Storage */}
         {tab === 'storage' && (
           <div className="sv-panel">
             <h3 className="sv-panel-title"><HardDrive size={16} /> Storage</h3>
@@ -274,13 +272,13 @@ export default function SettingsView() {
               <label className="sv-label">Local Storage Usage</label>
               <div className="sv-local-storage">
                 <span>{(JSON.stringify(localStorage).length / 1024).toFixed(1)} KB used</span>
-                <button className="sv-danger-btn" onClick={() => { if (confirm('Clear all local storage data?')) { localStorage.clear(); toast('info', 'Local storage cleared'); } }}>Clear Local Storage</button>
+                <Button variant="danger" size="sm" onClick={() => { if (confirm('Clear all local storage data?')) { localStorage.clear(); toast('info', 'Local storage cleared'); } }}>Clear Local Storage</Button>
               </div>
             </div>
           </div>
         )}
 
-        {/* ── Security ── */}
+        {/* Security */}
         {tab === 'security' && (
           <div className="sv-panel">
             <h3 className="sv-panel-title"><Shield size={16} /> Security</h3>
@@ -317,7 +315,7 @@ export default function SettingsView() {
           </div>
         )}
 
-        {/* ── Shortcuts ── */}
+        {/* Shortcuts */}
         {tab === 'shortcuts' && (
           <div className="sv-panel">
             <h3 className="sv-panel-title"><Keyboard size={16} /> Keyboard Shortcuts</h3>
@@ -332,7 +330,7 @@ export default function SettingsView() {
           </div>
         )}
 
-        {/* ── About ── */}
+        {/* About */}
         {tab === 'about' && (
           <div className="sv-panel">
             <h3 className="sv-panel-title"><Info size={16} /> About</h3>
@@ -356,8 +354,6 @@ export default function SettingsView() {
       </div>
 
       <style>{`
-        .sv { height:100%; display:flex; overflow:hidden; }
-
         .sv-sidebar { width:220px; background:var(--bg-surface); border-right:1px solid var(--border); padding:16px 0; flex-shrink:0; display:flex; flex-direction:column; }
         .sv-sidebar-title { font-family:var(--font-display); font-size:14px; font-weight:600; padding:0 16px 12px; display:flex; align-items:center; gap:8px; color:var(--text-secondary); }
         .sv-nav { display:flex; flex-direction:column; gap:1px; }
@@ -409,8 +405,6 @@ export default function SettingsView() {
         .sv-bucket-name { display:block; font-size:13px; font-weight:500; color:var(--text-primary); }
         .sv-bucket-access { display:block; font-size:10px; color:var(--text-muted); }
         .sv-local-storage { display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); font-size:12px; }
-        .sv-danger-btn { padding:4px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-muted); font-size:10px; }
-        .sv-danger-btn:hover { color:var(--error); border-color:var(--error); }
         .sv-muted { font-size:12px; color:var(--text-muted); }
 
         /* Security */
@@ -442,10 +436,7 @@ export default function SettingsView() {
         .sv-about-grid>div { padding:10px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-sm); }
         .sv-about-k { display:block; font-size:9px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.3px; }
         .sv-about-v { display:block; font-size:13px; font-weight:600; margin-top:2px; }
-
-        @keyframes spin { to{transform:rotate(360deg)} }
-        .spin { animation:spin 1s linear infinite; }
       `}</style>
-    </div>
+    </PageShell>
   );
 }

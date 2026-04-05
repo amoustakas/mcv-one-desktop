@@ -8,11 +8,12 @@ interface StatCardProps {
   trend?: { value: number; label?: string };
   color?: string;
   className?: string;
+  onClick?: () => void;
 }
 
-export default function StatCard({ icon, label, value, trend, color, className }: StatCardProps) {
+export default function StatCard({ icon, label, value, trend, color, className, onClick }: StatCardProps) {
   return (
-    <div className={cn('mcv-stat-card', className)}>
+    <div className={cn('mcv-stat-card', onClick && 'mcv-stat-card-clickable', className)} onClick={onClick} role={onClick ? 'button' : undefined} tabIndex={onClick ? 0 : undefined}>
       {icon && <span className="mcv-stat-icon" style={color ? { color } : undefined}>{icon}</span>}
       <div className="mcv-stat-body">
         <span className="mcv-stat-value">{value}</span>

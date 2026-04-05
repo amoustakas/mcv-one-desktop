@@ -1,6 +1,7 @@
 import { Loader2, Wrench, CheckCircle2, XCircle } from 'lucide-react';
 import Markdown from './Markdown';
 import { useState } from 'react';
+import { cn } from '../lib/utils';
 
 interface ToolCallIndicatorProps {
   name: string;
@@ -13,7 +14,7 @@ export default function ToolCallIndicator({ name, status, result }: ToolCallIndi
   const displayName = name.replace(/_/g, ' ');
 
   return (
-    <div className={`tci ${status}`}>
+    <div className={cn('tci', status)}>
       <button
         className="tci-header"
         onClick={() => result && setExpanded(!expanded)}

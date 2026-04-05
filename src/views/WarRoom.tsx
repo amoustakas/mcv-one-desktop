@@ -3,6 +3,7 @@ import {
   Terminal, Radio, Cpu, HardDrive, Wifi, Activity,
   Shield, Wrench, Brain, Eye, RefreshCw, Pause, Play, Filter,
 } from 'lucide-react';
+import { PageShell, Badge } from '../components/ui';
 import { useGithubRepos, useGithubCommits } from '../hooks/use-github';
 import { useDeployments } from '../hooks/use-deployments';
 import { useTasks } from '../hooks/use-tasks';
@@ -63,7 +64,6 @@ const STATUS_META: Record<string, { color: string; label: string; pulse: boolean
 let _logId = 0;
 
 const LOG_TEMPLATES: { severity: Severity; agent: string; messages: string[] }[] = [
-  // Aegis
   { severity: 'AGENT',   agent: 'Aegis',    messages: [
     'Processing natural language query: "Show me Q2 revenue trends"',
     'Routing intent to TreasuryModule.getRevenue()',
@@ -72,7 +72,6 @@ const LOG_TEMPLATES: { severity: Severity; agent: string; messages: string[] }[]
     'Session #4891 completed in 1.2s (cache hit)',
     'Embedding query vector similarity: 0.94',
   ]},
-  // GitHub webhooks
   { severity: 'INFO',    agent: 'GitHub',    messages: [
     'push: moust/mcv-one-desktop main +3 commits (ahead by 7)',
     'pull_request #142 opened: "feat: war-room terminal feed"',
@@ -81,7 +80,6 @@ const LOG_TEMPLATES: { severity: Severity; agent: string; messages: string[] }[]
     'release: v0.8.3 published — 14 assets uploaded',
     'push: moust/futurestate develop +1 commit',
   ]},
-  // Vercel
   { severity: 'SUCCESS', agent: 'Vercel',    messages: [
     'Build completed: mcv-one-desktop (prod) 48s | 2.1MB',
     'Deployment dpl_7xKm3 ready: mcv-one.vercel.app',
@@ -90,7 +88,6 @@ const LOG_TEMPLATES: { severity: Severity; agent: string; messages: string[] }[]
     'Preview deployment dpl_9zRn1 ready for PR #142',
     'Build cache hit ratio: 94.2%',
   ]},
-  // Supabase
   { severity: 'INFO',    agent: 'Supabase',  messages: [
     'realtime: 4 active subscriptions on conversations table',
     'auth: Token refresh for user_mcv01 (session extended)',
@@ -99,7 +96,6 @@ const LOG_TEMPLATES: { severity: Severity; agent: string; messages: string[] }[]
     'edge-function: aegis-router invoked (200 OK, 89ms)',
     'realtime: broadcast on channel:war-room (3 listeners)',
   ]},
-  // Scout
   { severity: 'AGENT',   agent: 'Scout',     messages: [
     'Scanning venture: Futurestate — 14 signals detected',
     'Market data refresh: S&P 500 +0.34%, NASDAQ +0.52%',
@@ -108,7 +104,6 @@ const LOG_TEMPLATES: { severity: Severity; agent: string; messages: string[] }[]
     'Scanning venture: Kolo — social sentiment score: 7.2/10',
     'Data pipeline: 1,204 records processed in 3.1s',
   ]},
-  // Sentry
   { severity: 'WARN',    agent: 'Sentry',    messages: [
     'API latency spike: /api/aegis p95 > 800ms (threshold 500ms)',
     'Rate limit approaching: GitHub API 4,712/5,000 calls',
@@ -117,7 +112,6 @@ const LOG_TEMPLATES: { severity: Severity; agent: string; messages: string[] }[]
     'Anomaly detected: login attempts +340% from AS13335',
     'Disk usage warning: /data at 82% capacity',
   ]},
-  // Smith
   { severity: 'SUCCESS', agent: 'Smith',     messages: [
     'Component generated: InvestorDashboard.tsx (247 lines)',
     'API route scaffolded: /api/portfolio/rebalance',
@@ -126,7 +120,6 @@ const LOG_TEMPLATES: { severity: Severity; agent: string; messages: string[] }[]
     'Code review complete: PR #142 — 3 suggestions, 0 blockers',
     'Template instantiated: venture-landing-page (Kolo)',
   ]},
-  // Director
   { severity: 'AGENT',   agent: 'Director',  messages: [
     'Sprint velocity: 34 pts/week (+12% vs last sprint)',
     'Resource allocation optimized: 3 agents reassigned',
@@ -135,7 +128,6 @@ const LOG_TEMPLATES: { severity: Severity; agent: string; messages: string[] }[]
     'Weekly report generated: 14 deliverables, 2 blockers',
     'Cross-venture dependency resolved: shared-auth-module',
   ]},
-  // System
   { severity: 'INFO',    agent: 'System',    messages: [
     'Health check: all services nominal (uptime 99.97%)',
     'Cache invalidation: 342 keys purged (TTL expired)',
@@ -144,7 +136,6 @@ const LOG_TEMPLATES: { severity: Severity; agent: string; messages: string[] }[]
     'Metrics flush: 1,847 data points shipped to analytics',
     'GC pause: 4ms (heap 128MB / 512MB)',
   ]},
-  // Errors (rare)
   { severity: 'ERROR',   agent: 'System',    messages: [
     'Connection timeout: Supabase realtime (retrying in 5s)',
     'Rate limited: OpenAI API 429 — backoff 30s',
@@ -193,22 +184,18 @@ export default function WarRoom() {
     return seed;
   });
 
-  // TanStack Query hooks for real data
   const { data: ghRepos = [] } = useGithubRepos();
   const { data: ghCommits = [] } = useGithubCommits();
   const { data: vcDeploys = [] } = useDeployments();
   const { data: allTasks = [] } = useTasks();
   const { data: allDocs = [] } = useDocuments();
 
-  // Build real log entries from hook data and inject on change
   useEffect(() => {
-    // Only inject once per data change to avoid duplicates
     const hasData = ghRepos.length > 0 || ghCommits.length > 0 || vcDeploys.length > 0;
     if (!hasData) return;
 
     const entries: LogEntry[] = [];
 
-    // GitHub commits
     for (const c of ghCommits.slice(0, 5)) {
       entries.push({ id: ++_logId, timestamp: new Date(c.commit.author.date), severity: 'INFO', agent: 'GitHub', message: `commit ${c.sha.slice(0, 7)}: ${c.commit.message.split('\n')[0]}` });
     }
@@ -216,19 +203,16 @@ export default function WarRoom() {
       entries.push({ id: ++_logId, timestamp: new Date(), severity: 'SUCCESS', agent: 'GitHub', message: `${ghRepos.length} repositories tracked | ${ghRepos.reduce((s, r) => s + (r.open_issues_count || 0), 0)} open issues` });
     }
 
-    // Vercel deployments
     for (const d of vcDeploys.slice(0, 4)) {
       const sev: Severity = d.state === 'READY' ? 'SUCCESS' : d.state === 'ERROR' ? 'ERROR' : 'INFO';
       entries.push({ id: ++_logId, timestamp: new Date(d.created), severity: sev, agent: 'Vercel', message: `${d.name} → ${d.state} (${d.target || 'preview'}) ${d.url ? d.url : ''}` });
     }
 
-    // Tasks summary
     if (allTasks.length > 0) {
       const active = allTasks.filter(t => t.status !== 'done' && t.status !== 'completed').length;
       entries.push({ id: ++_logId, timestamp: new Date(), severity: 'INFO', agent: 'Director', message: `Task board: ${active} active tasks | ${allTasks.length} total` });
     }
 
-    // Docs summary
     if (allDocs.length > 0) {
       entries.push({ id: ++_logId, timestamp: new Date(), severity: 'INFO', agent: 'Aegis', message: `Knowledge base: ${allDocs.length} documents indexed` });
     }
@@ -239,7 +223,6 @@ export default function WarRoom() {
     }
   }, [ghRepos, ghCommits, vcDeploys, allTasks, allDocs]);
 
-  // Health check — no hook available, use apiGet in a one-time effect
   useEffect(() => {
     let mounted = true;
     apiGet<Record<string, boolean>>('/api/health').then(health => {
@@ -260,7 +243,6 @@ export default function WarRoom() {
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
 
-  // Agent uptimes (set once on mount)
   const [agentUptimes] = useState(() => ({
     Aegis:    Date.now() - 14400000,
     Scout:    Date.now() - 7200000,
@@ -271,7 +253,6 @@ export default function WarRoom() {
 
   const [uptickKey, setUptickKey] = useState(0);
 
-  // Metrics with gentle drift
   const [metrics, setMetrics] = useState({
     cpu: 34,
     memUsed: 2.1,
@@ -280,16 +261,12 @@ export default function WarRoom() {
     connections: 4,
   });
 
-  // Agents store
   const addAgentTask = useAgentsStore((s) => s.addTask);
   const completeAgentTask = useAgentsStore((s) => s.completeTask);
   const activeTaskCount = useAgentsStore((s) => s.activeTaskCount);
 
-  // Tasks — seed from hook data
   const [tasks, setTasks] = useState<TaskInfo[]>([]);
   const tasksSeededRef = useRef(false);
-
-  // Map local task IDs to agents store task IDs
   const storeTaskIdsRef = useRef<Record<string, string>>({});
 
   useEffect(() => {
@@ -307,7 +284,6 @@ export default function WarRoom() {
       }));
     if (active.length > 0) {
       setTasks(active);
-      // Seed agents store with initial tasks
       for (const t of active) {
         const storeId = addAgentTask({
           agentType: 'scout',
@@ -321,28 +297,24 @@ export default function WarRoom() {
     }
   }, [allTasks, addAgentTask]);
 
-  // Auto-scroll terminal
   useEffect(() => {
     if (termRef.current) {
       termRef.current.scrollTop = termRef.current.scrollHeight;
     }
   }, [logs]);
 
-  // Log generation interval
   useEffect(() => {
     const id = setInterval(() => {
       if (!pausedRef.current) {
         setLogs(prev => {
           const next = [...prev, generateLog()];
-          // Cap at 500 entries
           return next.length > 500 ? next.slice(next.length - 500) : next;
         });
       }
-    }, 1800 + Math.random() * 1400); // ~2-3s
+    }, 1800 + Math.random() * 1400);
     return () => clearInterval(id);
   }, []);
 
-  // Metric drift + uptime tick
   useEffect(() => {
     const id = setInterval(() => {
       setMetrics(prev => ({
@@ -357,19 +329,16 @@ export default function WarRoom() {
     return () => clearInterval(id);
   }, []);
 
-  // Task progress drift
   useEffect(() => {
     const id = setInterval(() => {
       setTasks(prev => prev.map(t => {
         let p = t.progress + Math.floor(Math.random() * 4);
         if (p >= 100) {
-          // Complete the task in agents store
           const storeId = storeTaskIdsRef.current[t.id];
           if (storeId) {
             completeAgentTask(storeId, `Completed: ${t.name}`);
           }
 
-          // Reset with new task
           const names = [
             'Schema migration deploy', 'Aegis model sync', 'Edge function warm-up',
             'Market data ingest', 'Venture health scan', 'API stress test',
@@ -377,7 +346,6 @@ export default function WarRoom() {
           ];
           const newName = names[Math.floor(Math.random() * names.length)];
 
-          // Add the new task to agents store
           const newStoreId = addAgentTask({
             agentType: 'scout',
             name: newName,
@@ -400,7 +368,6 @@ export default function WarRoom() {
     return () => clearInterval(id);
   }, [addAgentTask, completeAgentTask]);
 
-  // Command handler
   const handleCommand = useCallback((raw: string) => {
     const trimmed = raw.trim();
     if (!trimmed) return;
@@ -458,7 +425,6 @@ export default function WarRoom() {
       return;
     }
 
-    // Echo user command into log
     setLogs(prev => [...prev, {
       id: ++_logId,
       timestamp: new Date(),
@@ -506,13 +472,12 @@ export default function WarRoom() {
     { name: 'Director', role: 'Orchestrator',     status: 'analyzing',  color: '#8B5CF6', icon: <Brain size={14} />,      lastAction: 'Sprint velocity recalc',       uptime: formatUptime(agentUptimes.Director) },
   ];
 
-  // Force re-render for uptime display
   void uptickKey;
 
   return (
-    <div className="wr">
+    <PageShell scroll={false} className="wr">
       <div className="wr-cols">
-        {/* ── LEFT: Terminal Feed ── */}
+        {/* LEFT: Terminal Feed */}
         <div className="wr-left">
           <div className="wr-term-header">
             <div className="wr-term-title">
@@ -573,14 +538,14 @@ export default function WarRoom() {
           </div>
         </div>
 
-        {/* ── RIGHT: Status Panels ── */}
+        {/* RIGHT: Status Panels */}
         <div className="wr-right">
           {/* Agent Status Grid */}
           <div className="wr-panel">
             <div className="wr-panel-head">
               <Shield size={13} />
               <span>Agent Swarm</span>
-              <span className="wr-panel-badge">{agents.filter(a => a.status !== 'idle').length} online</span>
+              <Badge color="#00F0FF" size="sm">{agents.filter(a => a.status !== 'idle').length} online</Badge>
             </div>
             <div className="wr-agents">
               {agents.map(a => {
@@ -615,7 +580,7 @@ export default function WarRoom() {
             <div className="wr-panel-head">
               <Cpu size={13} />
               <span>System Metrics</span>
-              <span className="wr-panel-badge wr-panel-badge--green">nominal</span>
+              <Badge color="#10B981" size="sm">nominal</Badge>
             </div>
             <div className="wr-metrics">
               <div className="wr-metric">
@@ -670,7 +635,7 @@ export default function WarRoom() {
             <div className="wr-panel-head">
               <Activity size={13} />
               <span>Active Tasks</span>
-              <span className="wr-panel-badge">{activeTaskCount} running</span>
+              <Badge color="#00F0FF" size="sm">{activeTaskCount} running</Badge>
             </div>
             <div className="wr-tasks">
               {tasks.map(t => (
@@ -700,472 +665,139 @@ export default function WarRoom() {
       </div>
 
       <style>{`
-        /* ── Layout ── */
-        .wr {
-          height: 100%;
-          display: flex;
-          flex-direction: column;
-          background: var(--bg-deep);
-          overflow: hidden;
-        }
+        /* Layout */
+        .wr { background:var(--bg-deep); }
         .wr-cols {
-          flex: 1;
-          display: flex;
-          gap: 1px;
-          min-height: 0;
-          background: rgba(0,240,255,0.04);
+          flex:1; display:flex; gap:1px; min-height:0;
+          background:rgba(0,240,255,0.04);
         }
 
-        /* ── Left column: Terminal ── */
-        .wr-left {
-          flex: 0 0 65%;
-          display: flex;
-          flex-direction: column;
-          min-width: 0;
-          background: var(--bg-deep);
-        }
+        /* Left column: Terminal */
+        .wr-left { flex:0 0 65%; display:flex; flex-direction:column; min-width:0; background:var(--bg-deep); }
 
         .wr-term-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 10px 16px;
-          background: #0B1121;
-          border-bottom: 1px solid rgba(0,240,255,0.08);
-          flex-shrink: 0;
+          display:flex; align-items:center; justify-content:space-between;
+          padding:10px 16px; background:#0B1121;
+          border-bottom:1px solid rgba(0,240,255,0.08); flex-shrink:0;
         }
         .wr-term-title {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          color: var(--cyan);
-          font-family: var(--font-display);
-          font-size: 15px;
-          font-weight: 700;
-          letter-spacing: 0.5px;
-          text-transform: uppercase;
+          display:flex; align-items:center; gap:8px; color:var(--cyan);
+          font-family:var(--font-display); font-size:15px; font-weight:700;
+          letter-spacing:0.5px; text-transform:uppercase;
         }
-        .wr-term-controls {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
+        .wr-term-controls { display:flex; align-items:center; gap:8px; }
         .wr-ctrl-btn {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          padding: 3px 8px;
-          background: rgba(255,255,255,0.04);
-          border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 4px;
-          color: var(--text-secondary);
-          font-family: var(--font-mono);
-          font-size: 10px;
-          cursor: pointer;
-          transition: all 150ms;
+          display:flex; align-items:center; gap:4px; padding:3px 8px;
+          background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
+          border-radius:4px; color:var(--text-secondary); font-family:var(--font-mono);
+          font-size:10px; cursor:pointer; transition:all 150ms;
         }
-        .wr-ctrl-btn:hover {
-          background: rgba(0,240,255,0.08);
-          border-color: rgba(0,240,255,0.2);
-          color: var(--cyan);
-        }
+        .wr-ctrl-btn:hover { background:rgba(0,240,255,0.08); border-color:rgba(0,240,255,0.2); color:var(--cyan); }
 
         .wr-live {
-          display: flex;
-          align-items: center;
-          gap: 5px;
-          padding: 3px 10px;
-          border-radius: 4px;
-          font-family: var(--font-mono);
-          font-size: 10px;
-          font-weight: 700;
-          letter-spacing: 1px;
-          color: #10B981;
-          background: rgba(16,185,129,0.1);
-          border: 1px solid rgba(16,185,129,0.25);
+          display:flex; align-items:center; gap:5px; padding:3px 10px; border-radius:4px;
+          font-family:var(--font-mono); font-size:10px; font-weight:700; letter-spacing:1px;
+          color:#10B981; background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.25);
         }
-        .wr-live svg {
-          animation: wr-pulse-radio 1.5s ease-in-out infinite;
-        }
-        .wr-live--paused {
-          color: var(--warning);
-          background: rgba(245,158,11,0.1);
-          border-color: rgba(245,158,11,0.25);
-        }
-        .wr-live--paused svg {
-          animation: none;
-        }
+        .wr-live svg { animation:wr-pulse-radio 1.5s ease-in-out infinite; }
+        .wr-live--paused { color:var(--warning); background:rgba(245,158,11,0.1); border-color:rgba(245,158,11,0.25); }
+        .wr-live--paused svg { animation:none; }
 
-        @keyframes wr-pulse-radio {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.3; }
-        }
+        @keyframes wr-pulse-radio { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
-        /* ── Terminal body ── */
+        /* Terminal body */
         .wr-term {
-          flex: 1;
-          overflow-y: auto;
-          overflow-x: hidden;
-          background: #0a0a0a;
-          padding: 8px 12px;
-          font-family: var(--font-mono);
-          font-size: 12px;
-          line-height: 1.65;
-          cursor: text;
-          scrollbar-width: thin;
-          scrollbar-color: #1a1a2e #0a0a0a;
+          flex:1; overflow-y:auto; overflow-x:hidden; background:#0a0a0a;
+          padding:8px 12px; font-family:var(--font-mono); font-size:12px;
+          line-height:1.65; cursor:text; scrollbar-width:thin; scrollbar-color:#1a1a2e #0a0a0a;
         }
-        .wr-term::-webkit-scrollbar { width: 6px; }
-        .wr-term::-webkit-scrollbar-track { background: #0a0a0a; }
-        .wr-term::-webkit-scrollbar-thumb { background: #1a1a2e; border-radius: 3px; }
-        .wr-term::-webkit-scrollbar-thumb:hover { background: #2a2a4e; }
+        .wr-term::-webkit-scrollbar { width:6px; }
+        .wr-term::-webkit-scrollbar-track { background:#0a0a0a; }
+        .wr-term::-webkit-scrollbar-thumb { background:#1a1a2e; border-radius:3px; }
+        .wr-term::-webkit-scrollbar-thumb:hover { background:#2a2a4e; }
 
-        .wr-log {
-          display: flex;
-          gap: 0;
-          white-space: nowrap;
-          animation: wr-log-in 200ms ease-out;
-        }
-        @keyframes wr-log-in {
-          from { opacity: 0; transform: translateY(4px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        .wr-log-ts {
-          color: #445566;
-          min-width: 70px;
-          flex-shrink: 0;
-        }
-        .wr-log-sev {
-          min-width: 65px;
-          flex-shrink: 0;
-          font-weight: 600;
-        }
-        .wr-log-agent {
-          min-width: 90px;
-          flex-shrink: 0;
-          font-weight: 500;
-        }
-        .wr-log-msg {
-          color: #AABBAA;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
+        .wr-log { display:flex; gap:0; white-space:nowrap; animation:wr-log-in 200ms ease-out; }
+        @keyframes wr-log-in { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+        .wr-log-ts { color:#445566; min-width:70px; flex-shrink:0; }
+        .wr-log-sev { min-width:65px; flex-shrink:0; font-weight:600; }
+        .wr-log-agent { min-width:90px; flex-shrink:0; font-weight:500; }
+        .wr-log-msg { color:#AABBAA; overflow:hidden; text-overflow:ellipsis; }
 
-        /* Blinking cursor at bottom */
-        .wr-cursor {
-          display: inline-block;
-          width: 7px;
-          height: 14px;
-          background: #10B981;
-          margin-top: 2px;
-          animation: wr-blink 1s step-end infinite;
-        }
-        @keyframes wr-blink {
-          0%, 50% { opacity: 1; }
-          51%, 100% { opacity: 0; }
-        }
+        .wr-cursor { display:inline-block; width:7px; height:14px; background:#10B981; margin-top:2px; animation:wr-blink 1s step-end infinite; }
+        @keyframes wr-blink { 0%,50%{opacity:1} 51%,100%{opacity:0} }
 
-        /* ── Input row ── */
-        .wr-input-row {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 8px 12px;
-          background: #0d0d0d;
-          border-top: 1px solid #1a1a2e;
-          flex-shrink: 0;
-        }
-        .wr-prompt {
-          font-family: var(--font-mono);
-          font-size: 12px;
-          color: #10B981;
-          font-weight: 600;
-          white-space: nowrap;
-          flex-shrink: 0;
-        }
-        .wr-input {
-          flex: 1;
-          background: transparent;
-          border: none;
-          outline: none;
-          color: #E0E0E0;
-          font-family: var(--font-mono);
-          font-size: 12px;
-          caret-color: #10B981;
-        }
-        .wr-input::placeholder {
-          color: #334455;
-        }
+        /* Input row */
+        .wr-input-row { display:flex; align-items:center; gap:8px; padding:8px 12px; background:#0d0d0d; border-top:1px solid #1a1a2e; flex-shrink:0; }
+        .wr-prompt { font-family:var(--font-mono); font-size:12px; color:#10B981; font-weight:600; white-space:nowrap; flex-shrink:0; }
+        .wr-input { flex:1; background:transparent; border:none; outline:none; color:#E0E0E0; font-family:var(--font-mono); font-size:12px; caret-color:#10B981; }
+        .wr-input::placeholder { color:#334455; }
 
-        /* ── Right column: Panels ── */
+        /* Right column: Panels */
         .wr-right {
-          flex: 0 0 35%;
-          display: flex;
-          flex-direction: column;
-          gap: 1px;
-          background: rgba(0,240,255,0.04);
-          min-width: 0;
-          overflow-y: auto;
-          scrollbar-width: thin;
-          scrollbar-color: #1a1a2e var(--bg-surface);
+          flex:0 0 35%; display:flex; flex-direction:column; gap:1px;
+          background:rgba(0,240,255,0.04); min-width:0; overflow-y:auto;
+          scrollbar-width:thin; scrollbar-color:#1a1a2e var(--bg-surface);
         }
 
-        .wr-panel {
-          background: var(--bg-surface);
-          display: flex;
-          flex-direction: column;
-          flex-shrink: 0;
-        }
+        .wr-panel { background:var(--bg-surface); display:flex; flex-direction:column; flex-shrink:0; }
         .wr-panel-head {
-          display: flex;
-          align-items: center;
-          gap: 7px;
-          padding: 10px 14px;
-          border-bottom: 1px solid rgba(0,240,255,0.06);
-          color: var(--text-secondary);
-          font-family: var(--font-display);
-          font-size: 12px;
-          font-weight: 600;
-          letter-spacing: 0.5px;
-          text-transform: uppercase;
-        }
-        .wr-panel-badge {
-          margin-left: auto;
-          padding: 1px 7px;
-          border-radius: 3px;
-          font-family: var(--font-mono);
-          font-size: 9px;
-          font-weight: 600;
-          color: var(--cyan);
-          background: rgba(0,240,255,0.08);
-          border: 1px solid rgba(0,240,255,0.15);
-          text-transform: none;
-          letter-spacing: 0;
-        }
-        .wr-panel-badge--green {
-          color: var(--success);
-          background: rgba(16,185,129,0.08);
-          border-color: rgba(16,185,129,0.15);
+          display:flex; align-items:center; gap:7px; padding:10px 14px;
+          border-bottom:1px solid rgba(0,240,255,0.06); color:var(--text-secondary);
+          font-family:var(--font-display); font-size:12px; font-weight:600;
+          letter-spacing:0.5px; text-transform:uppercase;
         }
 
-        /* ── Agents ── */
-        .wr-agents {
-          display: flex;
-          flex-direction: column;
-          gap: 1px;
-          background: rgba(0,0,0,0.2);
-        }
-        .wr-agent {
-          padding: 9px 14px;
-          background: var(--bg-surface);
-          cursor: pointer;
-          transition: background 150ms;
-        }
-        .wr-agent:hover {
-          background: var(--bg-card);
-        }
-        .wr-agent-top {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-        .wr-agent-icon {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 26px;
-          height: 26px;
-          border-radius: 6px;
-          background: rgba(255,255,255,0.03);
-          border: 1px solid rgba(255,255,255,0.06);
-          flex-shrink: 0;
-        }
-        .wr-agent-info {
-          display: flex;
-          flex-direction: column;
-          min-width: 0;
-        }
-        .wr-agent-name {
-          font-family: var(--font-display);
-          font-size: 13px;
-          font-weight: 700;
-          color: var(--text-primary);
-          line-height: 1.2;
-        }
-        .wr-agent-role {
-          font-size: 10px;
-          color: var(--text-muted);
-          line-height: 1.2;
-        }
-        .wr-agent-status {
-          display: flex;
-          align-items: center;
-          gap: 5px;
-          margin-left: auto;
-          flex-shrink: 0;
-        }
-        .wr-dot {
-          width: 7px;
-          height: 7px;
-          border-radius: 50%;
-          flex-shrink: 0;
-        }
-        .wr-dot--pulse {
-          animation: wr-dot-pulse 2s ease-in-out infinite;
-        }
-        @keyframes wr-dot-pulse {
-          0%, 100% { opacity: 1; box-shadow: 0 0 0 0 currentColor; }
-          50% { opacity: 0.6; box-shadow: 0 0 6px 2px currentColor; }
-        }
-        .wr-agent-bottom {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin-top: 4px;
-          padding-left: 34px;
-        }
-        .wr-agent-action {
-          font-family: var(--font-mono);
-          font-size: 10px;
-          color: var(--text-muted);
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-        .wr-agent-uptime {
-          font-family: var(--font-mono);
-          font-size: 10px;
-          color: #334455;
-          flex-shrink: 0;
-        }
+        /* Agents */
+        .wr-agents { display:flex; flex-direction:column; gap:1px; background:rgba(0,0,0,0.2); }
+        .wr-agent { padding:9px 14px; background:var(--bg-surface); cursor:pointer; transition:background 150ms; }
+        .wr-agent:hover { background:var(--bg-card); }
+        .wr-agent-top { display:flex; align-items:center; gap:8px; }
+        .wr-agent-icon { display:flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:6px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); flex-shrink:0; }
+        .wr-agent-info { display:flex; flex-direction:column; min-width:0; }
+        .wr-agent-name { font-family:var(--font-display); font-size:13px; font-weight:700; color:var(--text-primary); line-height:1.2; }
+        .wr-agent-role { font-size:10px; color:var(--text-muted); line-height:1.2; }
+        .wr-agent-status { display:flex; align-items:center; gap:5px; margin-left:auto; flex-shrink:0; }
+        .wr-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+        .wr-dot--pulse { animation:wr-dot-pulse 2s ease-in-out infinite; }
+        @keyframes wr-dot-pulse { 0%,100%{opacity:1;box-shadow:0 0 0 0 currentColor} 50%{opacity:0.6;box-shadow:0 0 6px 2px currentColor} }
+        .wr-agent-bottom { display:flex; align-items:center; justify-content:space-between; margin-top:4px; padding-left:34px; }
+        .wr-agent-action { font-family:var(--font-mono); font-size:10px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .wr-agent-uptime { font-family:var(--font-mono); font-size:10px; color:#334455; flex-shrink:0; }
 
-        /* ── Metrics ── */
-        .wr-metrics {
-          padding: 12px 14px;
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-        }
-        .wr-metric-row {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          font-size: 11px;
-          color: var(--text-secondary);
-        }
-        .wr-metric-val {
-          margin-left: auto;
-          font-family: var(--font-mono);
-          font-weight: 600;
-          color: var(--text-primary);
-          font-size: 11px;
-        }
-        .wr-metric-val--mono {
-          font-size: 14px;
-          letter-spacing: -0.5px;
-        }
-        .wr-bar {
-          height: 4px;
-          background: rgba(255,255,255,0.04);
-          border-radius: 2px;
-          overflow: hidden;
-          margin-top: 4px;
-        }
-        .wr-bar-fill {
-          height: 100%;
-          border-radius: 2px;
-          transition: width 1s ease;
-        }
-        .wr-metric-nums {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 10px;
-          margin-top: 2px;
-        }
-        .wr-metric-num {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          font-size: 11px;
-          color: var(--text-secondary);
-          padding: 8px 10px;
-          background: rgba(255,255,255,0.02);
-          border-radius: 6px;
-          border: 1px solid rgba(255,255,255,0.04);
-        }
+        /* Metrics */
+        .wr-metrics { padding:12px 14px; display:flex; flex-direction:column; gap:10px; }
+        .wr-metric-row { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-secondary); }
+        .wr-metric-val { margin-left:auto; font-family:var(--font-mono); font-weight:600; color:var(--text-primary); font-size:11px; }
+        .wr-metric-val--mono { font-size:14px; letter-spacing:-0.5px; }
+        .wr-bar { height:4px; background:rgba(255,255,255,0.04); border-radius:2px; overflow:hidden; margin-top:4px; }
+        .wr-bar-fill { height:100%; border-radius:2px; transition:width 1s ease; }
+        .wr-metric-nums { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:2px; }
+        .wr-metric-num { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-secondary); padding:8px 10px; background:rgba(255,255,255,0.02); border-radius:6px; border:1px solid rgba(255,255,255,0.04); }
 
-        /* ── Tasks ── */
-        .wr-tasks {
-          display: flex;
-          flex-direction: column;
-          gap: 1px;
-          background: rgba(0,0,0,0.2);
-        }
-        .wr-task {
-          padding: 9px 14px;
-          background: var(--bg-surface);
-        }
-        .wr-task-top {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin-bottom: 5px;
-        }
-        .wr-task-name {
-          font-size: 11px;
-          color: var(--text-primary);
-          font-weight: 500;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-        .wr-task-venture {
-          font-family: var(--font-mono);
-          font-size: 9px;
-          color: var(--text-muted);
-          padding: 1px 6px;
-          background: rgba(255,255,255,0.03);
-          border-radius: 3px;
-          flex-shrink: 0;
-        }
-        .wr-task-bottom {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-        .wr-bar--task {
-          flex: 1;
-        }
-        .wr-task-pct {
-          font-family: var(--font-mono);
-          font-size: 10px;
-          font-weight: 600;
-          color: var(--text-secondary);
-          min-width: 28px;
-          text-align: right;
-        }
-        .wr-task-eta {
-          font-family: var(--font-mono);
-          font-size: 9px;
-          color: var(--text-muted);
-          min-width: 28px;
-          text-align: right;
-        }
+        /* Tasks */
+        .wr-tasks { display:flex; flex-direction:column; gap:1px; background:rgba(0,0,0,0.2); }
+        .wr-task { padding:9px 14px; background:var(--bg-surface); }
+        .wr-task-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:5px; }
+        .wr-task-name { font-size:11px; color:var(--text-primary); font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .wr-task-venture { font-family:var(--font-mono); font-size:9px; color:var(--text-muted); padding:1px 6px; background:rgba(255,255,255,0.03); border-radius:3px; flex-shrink:0; }
+        .wr-task-bottom { display:flex; align-items:center; gap:8px; }
+        .wr-bar--task { flex:1; }
+        .wr-task-pct { font-family:var(--font-mono); font-size:10px; font-weight:600; color:var(--text-secondary); min-width:28px; text-align:right; }
+        .wr-task-eta { font-family:var(--font-mono); font-size:9px; color:var(--text-muted); min-width:28px; text-align:right; }
 
-        /* ── Responsive density for 4K ── */
-        @media (min-width: 2560px) {
-          .wr-term { font-size: 13px; padding: 12px 16px; }
-          .wr-log-ts { min-width: 80px; }
-          .wr-log-sev { min-width: 75px; }
-          .wr-log-agent { min-width: 100px; }
-          .wr-agent { padding: 11px 18px; }
-          .wr-agent-name { font-size: 14px; }
-          .wr-metrics { padding: 14px 18px; }
-          .wr-panel-head { padding: 12px 18px; font-size: 13px; }
-          .wr-input { font-size: 13px; }
-          .wr-prompt { font-size: 13px; }
+        @media (min-width:2560px) {
+          .wr-term { font-size:13px; padding:12px 16px; }
+          .wr-log-ts { min-width:80px; }
+          .wr-log-sev { min-width:75px; }
+          .wr-log-agent { min-width:100px; }
+          .wr-agent { padding:11px 18px; }
+          .wr-agent-name { font-size:14px; }
+          .wr-metrics { padding:14px 18px; }
+          .wr-panel-head { padding:12px 18px; font-size:13px; }
+          .wr-input { font-size:13px; }
+          .wr-prompt { font-size:13px; }
         }
       `}</style>
-    </div>
+    </PageShell>
   );
 }

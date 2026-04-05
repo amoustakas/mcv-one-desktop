@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Monitor, RefreshCw, MessageSquare, FileText, Cloud, GitBranch, Clock, Database, Terminal } from 'lucide-react';
+import { Monitor, MessageSquare, FileText, Cloud, GitBranch, Clock, Database, Terminal } from 'lucide-react';
+import { PageShell, PageHeader, Badge, GridLayout, StatCard } from '../components/ui';
+import { timeAgo } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { apiGet } from '../lib/api/client';
 
 interface ConvData { id: string; venture_id: string; title: string; updated_at: string; }
 interface HealthData { configured: Record<string, boolean>; }
-
-function timeAgo(d: string) { const mins = Math.floor((Date.now() - new Date(d).getTime()) / 60000); if (mins < 1) return 'now'; if (mins < 60) return `${mins}m`; const h = Math.floor(mins / 60); if (h < 24) return `${h}h`; return `${Math.floor(h / 24)}d`; }
 
 export default function SessionsView() {
   const [convs, setConvs] = useState<ConvData[]>([]);
@@ -46,22 +46,19 @@ export default function SessionsView() {
   const totalApis = health ? Object.keys(health.configured).length : 0;
 
   return (
-    <div className="sess">
-      <div className="sess-header">
-        <Monitor size={20} />
-        <h1 className="sess-title">Sessions & Activity</h1>
-        <span className="sess-badge">Live Data</span>
-        <button className="sess-refresh" onClick={load}><RefreshCw size={14} className={loading ? 'spin' : ''} /></button>
-      </div>
+    <PageShell scroll={false}>
+      <PageHeader icon={<Monitor size={20} />} title="Sessions & Activity" loading={loading} onRefresh={load}>
+        <Badge color="#10B981" variant="dot">Live Data</Badge>
+      </PageHeader>
 
-      <div className="sess-kpis">
-        <div className="sess-kpi"><MessageSquare size={14} /><div><span className="sess-kpi-v">{convs.length}</span><span className="sess-kpi-l">Conversations</span></div></div>
-        <div className="sess-kpi"><Terminal size={14} /><div><span className="sess-kpi-v">{msgCount}</span><span className="sess-kpi-l">Messages</span></div></div>
-        <div className="sess-kpi"><FileText size={14} /><div><span className="sess-kpi-v">{docCount}</span><span className="sess-kpi-l">Documents</span></div></div>
-        <div className="sess-kpi"><Database size={14} /><div><span className="sess-kpi-v">{taskCount}</span><span className="sess-kpi-l">Tasks</span></div></div>
-        <div className="sess-kpi"><Cloud size={14} /><div><span className="sess-kpi-v">{connectedCount}/{totalApis}</span><span className="sess-kpi-l">APIs Online</span></div></div>
-        <div className="sess-kpi"><GitBranch size={14} /><div><span className="sess-kpi-v">{contactCount}</span><span className="sess-kpi-l">Contacts</span></div></div>
-      </div>
+      <GridLayout cols={6} gap="sm" className="sess-kpis">
+        <StatCard icon={<MessageSquare size={14} />} label="Conversations" value={convs.length} />
+        <StatCard icon={<Terminal size={14} />} label="Messages" value={msgCount} />
+        <StatCard icon={<FileText size={14} />} label="Documents" value={docCount} />
+        <StatCard icon={<Database size={14} />} label="Tasks" value={taskCount} />
+        <StatCard icon={<Cloud size={14} />} label="APIs Online" value={`${connectedCount}/${totalApis}`} />
+        <StatCard icon={<GitBranch size={14} />} label="Contacts" value={contactCount} />
+      </GridLayout>
 
       <div className="sess-grid">
         <div className="sess-panel">
@@ -106,17 +103,7 @@ export default function SessionsView() {
       </div>
 
       <style>{`
-        .sess { height:100%; display:flex; flex-direction:column; overflow:hidden; }
-        .sess-header { display:flex; align-items:center; gap:8px; padding:16px 20px 12px; flex-shrink:0; }
-        .sess-title { font-family:var(--font-display); font-size:1.25rem; font-weight:700; flex:1; }
-        .sess-badge { font-size:9px; font-weight:600; color:var(--success); background:rgba(16,185,129,0.1); padding:2px 8px; border-radius:var(--radius-full); }
-        .sess-refresh { width:30px; height:30px; display:flex; align-items:center; justify-content:center; border-radius:var(--radius-sm); color:var(--text-muted); }
-
-        .sess-kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:6px; padding:0 20px 12px; }
-        .sess-kpi { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); color:var(--text-muted); }
-        .sess-kpi>div { display:flex; flex-direction:column; }
-        .sess-kpi-v { font-family:var(--font-mono); font-size:1rem; font-weight:700; color:var(--text-primary); }
-        .sess-kpi-l { font-size:9px; text-transform:uppercase; letter-spacing:0.5px; }
+        .sess-kpis { padding:0 20px 12px; }
 
         .sess-grid { flex:1; display:grid; grid-template-columns:1fr 1fr 1fr; gap:1px; background:var(--border); overflow:hidden; }
         .sess-panel { background:var(--bg-deep); display:flex; flex-direction:column; }
@@ -136,9 +123,7 @@ export default function SessionsView() {
         .sess-badge-sm.live { background:rgba(16,185,129,0.15); color:var(--success); }
         .sess-badge-sm.other { background:rgba(245,158,11,0.15); color:var(--warning); }
         .sess-empty { padding:20px; text-align:center; font-size:11px; color:var(--text-muted); }
-        @keyframes spin { to{transform:rotate(360deg)} }
-        .spin { animation:spin 1s linear infinite; }
       `}</style>
-    </div>
+    </PageShell>
   );
 }

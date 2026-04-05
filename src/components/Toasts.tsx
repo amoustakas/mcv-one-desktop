@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { create } from 'zustand';
 import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-react';
+import { cn } from '../lib/utils';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -86,7 +87,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
 
   return (
     <div
-      className={`mcv-toast ${exiting ? 'mcv-toast-exit' : 'mcv-toast-enter'}`}
+      className={cn('mcv-toast', exiting ? 'mcv-toast-exit' : 'mcv-toast-enter')}
       style={{ '--toast-color': color } as React.CSSProperties}
       role="alert"
     >

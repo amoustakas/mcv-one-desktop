@@ -5,8 +5,8 @@ import { supabase } from '../lib/supabase';
 import { useGithubRepos, useGithubCommits } from '../hooks/use-github';
 import { useDeployments } from '../hooks/use-deployments';
 import { apiGet } from '../lib/api/client';
-
-function timeAgo(d: string | number) { const mins = Math.floor((Date.now() - (typeof d === 'number' ? d : new Date(d).getTime())) / 60000); if (mins < 1) return 'now'; if (mins < 60) return `${mins}m`; const h = Math.floor(mins / 60); if (h < 24) return `${h}h`; return `${Math.floor(h / 24)}d`; }
+import { Button, Badge } from './ui';
+import { timeAgo } from '../lib/utils';
 
 interface ServiceStatus { name: string; icon: React.ReactNode; status: 'online' | 'offline' | 'degraded'; latency?: string; detail?: string }
 
@@ -98,9 +98,9 @@ export default function OpsPanel() {
           <span className="ops-stat-pill">{mappedRepos.length} Repos</span>
           <span className="ops-stat-pill">{liveCount} Live</span>
         </div>
-        <button className="ops-refresh" onClick={handleRefresh} disabled={loading}>
-          <RefreshCw size={14} className={loading ? 'spin' : ''} />
-        </button>
+        <Button variant="ghost" size="sm" className="ops-refresh" onClick={handleRefresh} disabled={loading} loading={loading}>
+          <RefreshCw size={14} />
+        </Button>
       </div>
 
       <div className="ops-grid">
@@ -140,7 +140,7 @@ export default function OpsPanel() {
                 <div key={r.name} className="ops-repo">
                   <span className="ops-repo-name">{r.name}</span>
                   <span className="ops-repo-time">{r.updated ? timeAgo(r.updated) : '—'}</span>
-                  {r.open_issues > 0 && <span className="ops-repo-issues">{r.open_issues}</span>}
+                  {r.open_issues > 0 && <Badge color="var(--warning)" size="sm">{r.open_issues}</Badge>}
                 </div>
               ))}
             </div>
@@ -167,12 +167,15 @@ export default function OpsPanel() {
           <div className="ops-deploys">
             {deploys.map((d, i) => (
               <a key={i} href={d.url} target="_blank" rel="noreferrer" className="ops-deploy">
-                <span className={`ops-deploy-badge ${d.state === 'READY' ? 'live' : d.state === 'ERROR' ? 'err' : 'other'}`}>
+                <Badge
+                  color={d.state === 'READY' ? 'var(--success)' : d.state === 'ERROR' ? 'var(--error)' : 'var(--warning)'}
+                  size="sm"
+                >
                   {d.state === 'READY' ? 'LIVE' : d.state}
-                </span>
+                </Badge>
                 <span className="ops-deploy-name">{d.name}</span>
                 <span className="ops-deploy-target">{d.target || 'preview'}</span>
-                {d.created && <span className="ops-deploy-time">{timeAgo(d.created)}</span>}
+                {d.created && <span className="ops-deploy-time">{timeAgo(new Date(d.created).toISOString())}</span>}
                 <ExternalLink size={9} className="ops-deploy-link" />
               </a>
             ))}
@@ -211,7 +214,6 @@ export default function OpsPanel() {
         .ops-repo { display:flex; align-items:center; gap:8px; padding:6px 14px; font-size:11px; border-bottom:1px solid var(--border); }
         .ops-repo-name { flex:1; font-weight:500; color:var(--text-primary); }
         .ops-repo-time { font-size:10px; color:var(--text-muted); font-family:var(--font-mono); }
-        .ops-repo-issues { font-size:9px; font-weight:600; color:var(--warning); background:rgba(245,158,11,0.1); padding:1px 5px; border-radius:3px; }
 
         .ops-commits { display:flex; flex-direction:column; }
         .ops-commit { display:flex; align-items:baseline; gap:8px; padding:6px 14px; border-bottom:1px solid var(--border); }
@@ -222,17 +224,11 @@ export default function OpsPanel() {
         .ops-deploys { display:flex; flex-direction:column; }
         .ops-deploy { display:flex; align-items:center; gap:8px; padding:6px 14px; border-bottom:1px solid var(--border); text-decoration:none; transition:background 0.1s; }
         .ops-deploy:hover { background:var(--bg-card); }
-        .ops-deploy-badge { font-size:8px; font-weight:700; padding:1px 6px; border-radius:3px; text-transform:uppercase; flex-shrink:0; }
-        .ops-deploy-badge.live { background:rgba(16,185,129,0.15); color:var(--success); }
-        .ops-deploy-badge.err { background:rgba(239,68,68,0.15); color:var(--error); }
-        .ops-deploy-badge.other { background:rgba(245,158,11,0.15); color:var(--warning); }
         .ops-deploy-name { flex:1; font-size:11px; color:var(--text-secondary); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
         .ops-deploy-target { font-size:9px; color:var(--text-muted); }
         .ops-deploy-time { font-size:9px; color:var(--text-muted); font-family:var(--font-mono); }
         .ops-deploy-link { color:var(--text-muted); }
 
-        @keyframes spin { to{transform:rotate(360deg)} }
-        .spin { animation:spin 1s linear infinite; }
       `}</style>
     </div>
   );

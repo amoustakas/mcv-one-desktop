@@ -3,6 +3,8 @@ import { ChevronDown, Globe } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
 import { useTheme } from '../stores/theme';
 import { ventures } from '../lib/ventures';
+import { Button, Badge } from './ui';
+import { cn } from '../lib/utils';
 
 const statusLabels: Record<string, string> = { active: 'ACTIVE', development: 'DEV', planned: 'PLANNED', concept: 'CONCEPT' };
 const statusColors: Record<string, string> = { active: '#10B981', development: '#00F0FF', planned: '#8B5CF6', concept: '#6B7280' };
@@ -36,12 +38,12 @@ export default function VentureMegaMenu() {
     <div className="vmm" ref={ref}>
       {/* Pill Buttons */}
       <div className="vmm-pills">
-        <button className={`vmm-pill ${mode === 'global' ? 'active' : ''}`} onClick={handleGlobal}>
+        <button className={cn('vmm-pill', mode === 'global' && 'active')} onClick={handleGlobal}>
           <Globe size={12} />
           <span>Global</span>
         </button>
         <button
-          className={`vmm-pill venture-pill ${mode === 'venture' ? 'active' : ''}`}
+          className={cn('vmm-pill', 'venture-pill', mode === 'venture' && 'active')}
           onClick={() => setOpen(!open)}
           style={current ? { borderColor: `${current.color}40`, color: mode === 'venture' ? current.color : undefined } : undefined}
         >
@@ -53,7 +55,7 @@ export default function VentureMegaMenu() {
           ) : (
             <span>Ventures</span>
           )}
-          <ChevronDown size={12} className={`vmm-chevron ${open ? 'open' : ''}`} />
+          <ChevronDown size={12} className={cn('vmm-chevron', open && 'open')} />
         </button>
       </div>
 
@@ -77,7 +79,7 @@ export default function VentureMegaMenu() {
                     return (
                       <button
                         key={v.id}
-                        className={`vmm-card ${isActive ? 'active' : ''}`}
+                        className={cn('vmm-card', isActive && 'active')}
                         onClick={() => handleVenture(v.id)}
                       >
                         <div className="vmm-card-accent" style={{ background: v.color }} />
@@ -90,9 +92,9 @@ export default function VentureMegaMenu() {
                         </div>
                         <div className="vmm-card-bottom">
                           <span className="vmm-card-domain">{v.domain}</span>
-                          <span className="vmm-card-status" style={{ color: statusColors[v.status] }}>{statusLabels[v.status]}</span>
+                          <Badge color={statusColors[v.status]} variant="outline" size="sm">{statusLabels[v.status]}</Badge>
                         </div>
-                        {isActive && <span className="vmm-card-active-badge">Current</span>}
+                        {isActive && <Badge color="var(--cyan)" size="sm" className="vmm-card-active-badge">Current</Badge>}
                       </button>
                     );
                   })}
@@ -102,9 +104,9 @@ export default function VentureMegaMenu() {
           </div>
 
           <div className="vmm-dropdown-footer">
-            <button className="vmm-footer-btn" onClick={handleGlobal}>
-              <Globe size={12} /> Back to Global View
-            </button>
+            <Button variant="ghost" size="sm" className="vmm-footer-btn" onClick={handleGlobal} icon={<Globe size={12} />}>
+              Back to Global View
+            </Button>
           </div>
         </div>
       )}

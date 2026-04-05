@@ -3,6 +3,8 @@ import { Volume2, Mic, Monitor, Moon, Sun, RotateCcw, Package, ToggleLeft, Toggl
 import { useKitStore } from '../stores/kits';
 import { APP_VERSION, BUILD_TIME } from '../lib/version';
 import { apiGet } from '../lib/api/client';
+import { Button } from './ui';
+import { cn } from '../lib/utils';
 
 interface AudioDevice {
   deviceId: string;
@@ -89,7 +91,7 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
       <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
         <div className="settings-header">
           <h2>Settings</h2>
-          <button className="settings-close" onClick={onClose}>&times;</button>
+          <Button variant="ghost" size="sm" className="settings-close" onClick={onClose}>&times;</Button>
         </div>
 
         <div className="settings-scroll">
@@ -158,12 +160,12 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             <h3><Monitor size={14} /> Display</h3>
             <label className="settings-label">Theme</label>
             <div className="settings-btn-group">
-              <button className={settings.theme === 'dark' ? 'active' : ''} onClick={() => update({ theme: 'dark' })}>
-                <Moon size={12} /> Dark
-              </button>
-              <button className={settings.theme === 'auto' ? 'active' : ''} onClick={() => update({ theme: 'auto' })}>
-                <Sun size={12} /> Auto
-              </button>
+              <Button variant={settings.theme === 'dark' ? 'primary' : 'secondary'} size="sm" onClick={() => update({ theme: 'dark' })} icon={<Moon size={12} />}>
+                Dark
+              </Button>
+              <Button variant={settings.theme === 'auto' ? 'primary' : 'secondary'} size="sm" onClick={() => update({ theme: 'auto' })} icon={<Sun size={12} />}>
+                Auto
+              </Button>
             </div>
             <label className="settings-toggle-row">
               <input type="checkbox" checked={settings.compactMode} onChange={(e) => update({ compactMode: e.target.checked })} />
@@ -181,7 +183,7 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             <div className="settings-api-grid">
               {Object.entries(health).map(([key, ok]) => (
                 <div key={key} className="settings-api-row">
-                  <div className={`settings-api-dot ${ok ? 'ok' : 'off'}`} />
+                  <div className={cn('settings-api-dot', ok ? 'ok' : 'off')} />
                   <span>{key.replace(/_/g, ' ').replace(/API KEY|KEY|TOKEN/gi, '').trim()}</span>
                 </div>
               ))}
@@ -221,9 +223,9 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               <span className="settings-muted">Built {BUILD_TIME.slice(0, 16).replace('T', ' ')}</span>
               <span className="settings-muted">EdgeIQ Holdings</span>
             </div>
-            <button className="settings-reset" onClick={() => { update(DEFAULT_SETTINGS); }}>
-              <RotateCcw size={12} /> Reset to defaults
-            </button>
+            <Button variant="ghost" size="sm" className="settings-reset" onClick={() => { update(DEFAULT_SETTINGS); }} icon={<RotateCcw size={12} />}>
+              Reset to defaults
+            </Button>
           </div>
         </div>
 
@@ -313,7 +315,7 @@ function KitsSettingsSection() {
       <div className="kits-section-list">
         {kits.map((kit) => (
           <div key={kit.manifest.id} className="kits-section-row">
-            <div className={`kits-section-dot ${kit.status}`} />
+            <div className={cn('kits-section-dot', kit.status)} />
             <div className="kits-section-info">
               <div className="kits-section-name">{kit.manifest.name} <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>v{kit.manifest.version}</span></div>
               <div className="kits-section-tools">{kit.manifest.tools.length} tools · {kit.source}</div>

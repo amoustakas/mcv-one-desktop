@@ -6,6 +6,7 @@ import { useNavigation } from '../stores/navigation';
 import { getVenture } from '../lib/ventures';
 import { useLocalStore } from '../lib/local';
 import { apiGet } from '../lib/api/client';
+import { cn } from '../lib/utils';
 
 export default function StatusBar() {
   const [health, setHealth] = useState<Record<string, boolean>>({});
@@ -61,15 +62,15 @@ export default function StatusBar() {
       </div>
 
       <div className="status-right">
-        <span className={`status-dot ${localConnected ? 'ok' : 'off'}`} title={localConnected ? 'Local Server Connected' : 'Local Server Offline'}><HardDrive size={10} /></span>
+        <span className={cn('status-dot', localConnected ? 'ok' : 'off')} title={localConnected ? 'Local Server Connected' : 'Local Server Offline'}><HardDrive size={10} /></span>
         <span className="status-services"><Cpu size={9} /> {onlineServices} services</span>
         <span className="status-sep" />
-        <span className={`status-dot ${online ? 'ok' : 'err'}`} title={online ? 'Online' : 'Offline'}>
+        <span className={cn('status-dot', online ? 'ok' : 'err')} title={online ? 'Online' : 'Offline'}>
           {online ? <Wifi size={10} /> : <WifiOff size={10} />}
         </span>
-        <span className={`status-dot ${health.SUPABASE_URL ? 'ok' : 'off'}`} title="Supabase"><Database size={10} /></span>
-        <span className={`status-dot ${health.GITHUB_TOKEN ? 'ok' : 'off'}`} title="GitHub"><GitBranch size={10} /></span>
-        <span className={`status-dot ${health.ANTHROPIC_API_KEY ? 'ok' : 'off'}`} title="Claude"><Cloud size={10} /></span>
+        <span className={cn('status-dot', health.SUPABASE_URL ? 'ok' : 'off')} title="Supabase"><Database size={10} /></span>
+        <span className={cn('status-dot', health.GITHUB_TOKEN ? 'ok' : 'off')} title="GitHub"><GitBranch size={10} /></span>
+        <span className={cn('status-dot', health.ANTHROPIC_API_KEY ? 'ok' : 'off')} title="Claude"><Cloud size={10} /></span>
         <span className="status-sep" />
         <span className="status-version">v{APP_VERSION}</span>
       </div>

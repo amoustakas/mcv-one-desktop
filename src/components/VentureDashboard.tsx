@@ -3,10 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import { RefreshCw, TrendingUp, Building, Users, DollarSign, Coins, Target, Zap, Shield, Gamepad2, BarChart3, Brain, Globe } from 'lucide-react';
 import { type Venture } from '../lib/ventures';
 import { apiGet } from '../lib/api/client';
+import { GlassCard, Button } from './ui';
+import { cn, formatMoney } from '../lib/utils';
 
 // ── Shared Helpers ──
 function formatCAD(n: number) { return new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(n); }
-function formatCompact(n: number) { if (n >= 1e6) return `$${(n/1e6).toFixed(1)}M`; if (n >= 1e3) return `$${(n/1e3).toFixed(0)}K`; return `$${n}`; }
 
 // ── FutureState Dashboard ──
 function FutureStateDash() {
@@ -27,17 +28,17 @@ function FutureStateDash() {
   return (
     <>
       <div className="vd-kpi-row">
-        <div className="vd-kpi"><DollarSign size={14}/><div><span className="vd-kpi-val">{formatCompact(stats?.totalAUM||0)}</span><span className="vd-kpi-label">AUM</span></div></div>
+        <div className="vd-kpi"><DollarSign size={14}/><div><span className="vd-kpi-val">{formatMoney(stats?.totalAUM||0)}</span><span className="vd-kpi-label">AUM</span></div></div>
         <div className="vd-kpi"><Users size={14}/><div><span className="vd-kpi-val">{stats?.totalInvestors||0}</span><span className="vd-kpi-label">Investors</span></div></div>
         <div className="vd-kpi"><Building size={14}/><div><span className="vd-kpi-val">{stats?.propertiesListed||0}</span><span className="vd-kpi-label">Properties</span></div></div>
         <div className="vd-kpi"><TrendingUp size={14}/><div><span className="vd-kpi-val">{stats?.avgYield||0}%</span><span className="vd-kpi-label">Avg Yield</span></div></div>
-        <div className="vd-kpi"><Coins size={14}/><div><span className="vd-kpi-val">{formatCompact(stats?.totalYieldDistributed||0)}</span><span className="vd-kpi-label">Yield Paid</span></div></div>
+        <div className="vd-kpi"><Coins size={14}/><div><span className="vd-kpi-val">{formatMoney(stats?.totalYieldDistributed||0)}</span><span className="vd-kpi-label">Yield Paid</span></div></div>
       </div>
       {portfolio && (
         <div className="vd-portfolio-bar">
           <div className="vd-port-item"><span className="vd-port-label">Invested</span><span className="vd-port-val">{formatCAD(portfolio.totalInvested)}</span></div>
           <div className="vd-port-item"><span className="vd-port-label">Current</span><span className="vd-port-val gain">{formatCAD(portfolio.currentValue)}</span></div>
-          <div className="vd-port-item"><span className="vd-port-label">P&L</span><span className={`vd-port-val ${portfolio.currentValue>=portfolio.totalInvested?'gain':'loss'}`}>{portfolio.currentValue>=portfolio.totalInvested?'+':''}{formatCAD(portfolio.currentValue-portfolio.totalInvested)}</span></div>
+          <div className="vd-port-item"><span className="vd-port-label">P&L</span><span className={cn('vd-port-val', portfolio.currentValue>=portfolio.totalInvested ? 'gain' : 'loss')}>{portfolio.currentValue>=portfolio.totalInvested?'+':''}{formatCAD(portfolio.currentValue-portfolio.totalInvested)}</span></div>
           <div className="vd-port-item highlight"><span className="vd-port-label">Unclaimed</span><span className="vd-port-val">{formatCAD(portfolio.unclaimedYield)}</span></div>
         </div>
       )}
@@ -45,7 +46,7 @@ function FutureStateDash() {
         {properties.map((p: any) => {
           const funded = p.tokensIssued>0 ? Math.round((p.tokensSold/p.tokensIssued)*100) : 0;
           return (
-            <div key={p.id} className="vd-prop-card glass">
+            <GlassCard key={p.id} className="vd-prop-card">
               <div className="vd-prop-top"><span className="vd-prop-status" style={{color: p.status==='YIELDING'?'var(--success)':p.status==='FUNDING'?'var(--cyan)':'var(--purple)'}}>{p.status}</span><span className="vd-prop-sym">{p.tokenSymbol}</span></div>
               <h4 className="vd-prop-name">{p.name}</h4>
               <span className="vd-prop-loc">{p.city} &middot; {p.type?.replace('_',' ')}</span>
@@ -55,8 +56,8 @@ function FutureStateDash() {
                 <div><span className="vd-stat-val">{p.occupancyRate}%</span><span className="vd-stat-label">Occ</span></div>
               </div>
               <div className="vd-fund-bar"><div className="vd-fund-fill" style={{width:`${funded}%`}}/></div>
-              <span className="vd-fund-text">{funded}% funded &middot; {formatCompact(p.totalValue)}</span>
-            </div>
+              <span className="vd-fund-text">{funded}% funded &middot; {formatMoney(p.totalValue)}</span>
+            </GlassCard>
           );
         })}
       </div>
@@ -88,16 +89,16 @@ function BetEdgeDash() {
           <div key={m.sport} className="vd-table-row">
             <span className="vd-table-sport"><span className="vd-dot" style={{background:m.color}}/>{m.sport}</span>
             <span className="vd-table-acc">{m.accuracy}%</span>
-            <span className={`vd-table-trend ${m.trend.startsWith('+')?'gain':'loss'}`}>{m.trend}</span>
+            <span className={cn('vd-table-trend', m.trend.startsWith('+') ? 'gain' : 'loss')}>{m.trend}</span>
             <span className="vd-table-games">{m.games.toLocaleString()}</span>
           </div>
         ))}
       </div>
       <h3 className="vd-section-title">Pricing Tiers</h3>
       <div className="vd-tier-grid">
-        <div className="vd-tier glass"><span className="vd-tier-name">Free</span><span className="vd-tier-price">$0/mo</span><span className="vd-tier-desc">Basic predictions, 2 sports</span></div>
-        <div className="vd-tier glass highlight"><span className="vd-tier-name">Pro</span><span className="vd-tier-price">$99/mo</span><span className="vd-tier-desc">All sports, CLV tracking, alerts</span></div>
-        <div className="vd-tier glass"><span className="vd-tier-name">Elite</span><span className="vd-tier-price">$299/mo</span><span className="vd-tier-desc">Full API, custom models, priority</span></div>
+        <GlassCard className="vd-tier"><span className="vd-tier-name">Free</span><span className="vd-tier-price">$0/mo</span><span className="vd-tier-desc">Basic predictions, 2 sports</span></GlassCard>
+        <GlassCard className="vd-tier highlight"><span className="vd-tier-name">Pro</span><span className="vd-tier-price">$99/mo</span><span className="vd-tier-desc">All sports, CLV tracking, alerts</span></GlassCard>
+        <GlassCard className="vd-tier"><span className="vd-tier-name">Elite</span><span className="vd-tier-price">$299/mo</span><span className="vd-tier-desc">Full API, custom models, priority</span></GlassCard>
       </div>
     </>
   );
@@ -116,10 +117,10 @@ function WarForgeDash() {
       <h3 className="vd-section-title">Core Systems</h3>
       <div className="vd-grid">
         {['Combat & PvP', 'Guild Economies', 'NFT Item System', 'AI-Driven NPCs', 'Play-to-Earn', 'World Building'].map(s => (
-          <div key={s} className="vd-system-card glass">
+          <GlassCard key={s} className="vd-system-card">
             <span className="vd-system-name">{s}</span>
             <span className="vd-system-status">Design Phase</span>
-          </div>
+          </GlassCard>
         ))}
       </div>
     </>
@@ -139,10 +140,10 @@ function EdgeIQDash() {
       <h3 className="vd-section-title">Product Suite</h3>
       <div className="vd-grid">
         {[{n:'Prediction Markets',s:'In Development'},{n:'Liquidity Pools',s:'Planned'},{n:'Governance',s:'Planned'},{n:'AI Analytics',s:'In Development'}].map(p => (
-          <div key={p.n} className="vd-system-card glass">
+          <GlassCard key={p.n} className="vd-system-card">
             <span className="vd-system-name">{p.n}</span>
             <span className="vd-system-status">{p.s}</span>
-          </div>
+          </GlassCard>
         ))}
       </div>
     </>
@@ -186,7 +187,7 @@ export default function VentureDashboard({ venture }: VentureDashboardProps) {
           <h1 className="vd-title" style={{ color: venture.color }}>{venture.name}</h1>
           <span className="vd-subtitle">{venture.tagline} &middot; {venture.domain}</span>
         </div>
-        <button className="vd-refresh" onClick={() => setLoading(!loading)}><RefreshCw size={14}/></button>
+        <Button variant="ghost" size="sm" className="vd-refresh" onClick={() => setLoading(!loading)}><RefreshCw size={14}/></Button>
       </div>
       {DashContent ? <DashContent /> : <GenericDash venture={venture} />}
 
@@ -216,10 +217,6 @@ export default function VentureDashboard({ venture }: VentureDashboardProps) {
         .vd-port-val { font-size:1rem; font-weight:700; font-family:var(--font-mono); }
         .vd-port-val.gain { color:var(--success); }
         .vd-port-val.loss { color:var(--error); }
-
-        /* Glass cards */
-        .glass { background:rgba(11,17,33,0.8); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,0.06); }
-        .glass:hover { border-color:rgba(255,255,255,0.12); box-shadow:0 0 20px rgba(0,240,255,0.04); }
 
         /* Property grid */
         .vd-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:8px; }

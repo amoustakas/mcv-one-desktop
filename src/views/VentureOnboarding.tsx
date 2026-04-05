@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ChevronRight, ChevronLeft, Check, Rocket, Globe, Users, Sparkles, Zap } from 'lucide-react';
+import { PageShell, Button } from '../components/ui';
 import { useNavigation } from '../stores/navigation';
 import { apiPost } from '../lib/api/client';
 
@@ -111,7 +112,7 @@ export default function VentureOnboarding() {
   }
 
   return (
-    <div className="vo">
+    <PageShell scroll={false}>
       {/* Step Indicator */}
       <div className="vo-steps">
         {STEPS.map((s, i) => {
@@ -226,22 +227,22 @@ export default function VentureOnboarding() {
                 <div key={i} className="vo-team-row">
                   <input value={m.name} onChange={e => updateTeam(i, 'name', e.target.value)} placeholder="Name" />
                   <input value={m.role} onChange={e => updateTeam(i, 'role', e.target.value)} placeholder="Role" />
-                  {form.teamMembers.length > 1 && <button className="vo-remove" onClick={() => removeTeam(i)}>×</button>}
+                  {form.teamMembers.length > 1 && <button className="vo-remove" onClick={() => removeTeam(i)}>x</button>}
                 </div>
               ))}
-              <button className="vo-add-btn" onClick={addTeamMember}>+ Add Team Member</button>
+              <Button variant="ghost" size="sm" onClick={addTeamMember}>+ Add Team Member</Button>
             </div>
 
             <h3 className="vo-sub-title">Tech Stack</h3>
             <div className="vo-tags-section">
               <div className="vo-tags">
                 {form.techStack.map(t => (
-                  <span key={t} className="vo-tag">{t}<button className="vo-tag-x" onClick={() => setForm(f => ({ ...f, techStack: f.techStack.filter(x => x !== t) }))}>×</button></span>
+                  <span key={t} className="vo-tag">{t}<button className="vo-tag-x" onClick={() => setForm(f => ({ ...f, techStack: f.techStack.filter(x => x !== t) }))}>x</button></span>
                 ))}
               </div>
               <div className="vo-tag-input-row">
                 <input value={newTech} onChange={e => setNewTech(e.target.value)} onKeyDown={e => e.key === 'Enter' && addTech()} placeholder="Add technology..." />
-                <button onClick={addTech} className="vo-tag-add">Add</button>
+                <Button variant="secondary" size="sm" onClick={addTech}>Add</Button>
               </div>
             </div>
 
@@ -249,12 +250,12 @@ export default function VentureOnboarding() {
             <div className="vo-tags-section">
               <div className="vo-tags">
                 {form.competitors.map(c => (
-                  <span key={c} className="vo-tag comp">{c}<button className="vo-tag-x" onClick={() => setForm(f => ({ ...f, competitors: f.competitors.filter(x => x !== c) }))}>×</button></span>
+                  <span key={c} className="vo-tag comp">{c}<button className="vo-tag-x" onClick={() => setForm(f => ({ ...f, competitors: f.competitors.filter(x => x !== c) }))}>x</button></span>
                 ))}
               </div>
               <div className="vo-tag-input-row">
                 <input value={newComp} onChange={e => setNewComp(e.target.value)} onKeyDown={e => e.key === 'Enter' && addComp()} placeholder="Add competitor..." />
-                <button onClick={addComp} className="vo-tag-add">Add</button>
+                <Button variant="secondary" size="sm" onClick={addComp}>Add</Button>
               </div>
             </div>
           </div>
@@ -293,15 +294,11 @@ export default function VentureOnboarding() {
             )}
 
             {!generating && genesisLog.length === 0 && (
-              <button className="vo-genesis-btn" onClick={runGenesis} disabled={!form.name.trim()}>
-                <Sparkles size={14} /> Initialize Venture Genesis
-              </button>
+              <Button variant="primary" icon={<Sparkles size={14} />} onClick={runGenesis} disabled={!form.name.trim()}>Initialize Venture Genesis</Button>
             )}
 
             {!generating && genesisLog.length > 0 && (
-              <button className="vo-genesis-btn done" onClick={switchToGlobal}>
-                <Check size={14} /> Go to Portfolio
-              </button>
+              <Button variant="primary" icon={<Check size={14} />} onClick={switchToGlobal} className="vo-genesis-btn-done">Go to Portfolio</Button>
             )}
           </div>
         )}
@@ -310,16 +307,14 @@ export default function VentureOnboarding() {
       {/* Footer Nav */}
       <div className="vo-footer">
         {stepIdx > 0 ? (
-          <button className="vo-nav-btn" onClick={prev}><ChevronLeft size={14} /> Back</button>
+          <Button variant="ghost" icon={<ChevronLeft size={14} />} onClick={prev}>Back</Button>
         ) : <span />}
         {stepIdx < STEPS.length - 1 && (
-          <button className="vo-nav-btn primary" onClick={next}>Next <ChevronRight size={14} /></button>
+          <Button variant="secondary" onClick={next}>Next <ChevronRight size={14} /></Button>
         )}
       </div>
 
       <style>{`
-        .vo { height:100%; display:flex; flex-direction:column; overflow:hidden; }
-
         .vo-steps { display:flex; align-items:center; justify-content:center; gap:0; padding:16px 24px; border-bottom:1px solid var(--border); flex-shrink:0; }
         .vo-step { display:flex; align-items:center; gap:8px; padding:6px 14px; border-radius:var(--radius-full); font-size:12px; color:var(--text-muted); transition:all 0.15s; position:relative; }
         .vo-step.current { background:rgba(0,240,255,0.08); color:var(--cyan); }
@@ -358,7 +353,6 @@ export default function VentureOnboarding() {
         .vo-team-row input:focus { border-color:var(--border-active); outline:none; }
         .vo-remove { width:28px; height:36px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); font-size:16px; border-radius:var(--radius-sm); }
         .vo-remove:hover { color:var(--error); background:rgba(239,68,68,0.1); }
-        .vo-add-btn { font-size:11px; color:var(--cyan); padding:6px 0; text-align:left; }
 
         .vo-tags-section { margin-bottom:8px; }
         .vo-tags { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:8px; }
@@ -369,7 +363,6 @@ export default function VentureOnboarding() {
         .vo-tag-input-row { display:flex; gap:6px; }
         .vo-tag-input-row input { flex:1; padding:6px 10px; background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-primary); font-size:12px; }
         .vo-tag-input-row input:focus { border-color:var(--border-active); outline:none; }
-        .vo-tag-add { padding:6px 14px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--cyan); font-size:11px; }
 
         .vo-genesis-summary { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); padding:16px; margin-bottom:16px; }
         .vo-gen-header { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
@@ -385,18 +378,11 @@ export default function VentureOnboarding() {
         .vo-log-line { padding:2px 0; color:var(--text-secondary); display:flex; align-items:center; gap:6px; min-height:18px; }
         .vo-log-prefix { color:var(--cyan); }
 
-        .vo-genesis-btn { display:flex; align-items:center; gap:8px; padding:10px 24px; background:var(--cyan); color:var(--bg-deep); font-size:13px; font-weight:600; border-radius:var(--radius-sm); transition:all 0.15s; }
-        .vo-genesis-btn:hover { transform:translateY(-1px); box-shadow:0 4px 16px rgba(0,240,255,0.2); }
-        .vo-genesis-btn:disabled { opacity:0.4; cursor:not-allowed; transform:none; box-shadow:none; }
-        .vo-genesis-btn.done { background:var(--success); }
+        .vo-genesis-btn-done { background:var(--success) !important; }
 
         .vo-footer { display:flex; justify-content:space-between; padding:12px 24px; border-top:1px solid var(--border); flex-shrink:0; }
-        .vo-nav-btn { display:flex; align-items:center; gap:4px; padding:8px 16px; border-radius:var(--radius-sm); color:var(--text-muted); font-size:12px; transition:all 0.15s; }
-        .vo-nav-btn:hover { background:var(--bg-card); color:var(--text-primary); }
-        .vo-nav-btn.primary { background:var(--bg-card); border:1px solid var(--border); color:var(--cyan); }
-        .vo-nav-btn.primary:hover { border-color:var(--cyan); }
       `}</style>
-    </div>
+    </PageShell>
   );
 }
 
