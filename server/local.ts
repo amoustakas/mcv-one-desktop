@@ -232,7 +232,8 @@ app.post('/local/search', (req, res) => {
 });
 
 // ── Watch directory ──
-const watchers: Map<string, { watcher: chokidar.FSWatcher; events: { type: string; path: string; time: string }[] }> = new Map();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const watchers: Map<string, { watcher: any; events: { type: string; path: string; time: string }[] }> = new Map();
 
 app.post('/local/watch', (req, res) => {
   const watchPath = req.body.path;
