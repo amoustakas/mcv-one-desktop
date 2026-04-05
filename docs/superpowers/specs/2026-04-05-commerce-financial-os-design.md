@@ -1,7 +1,7 @@
 # MCV Commerce & Financial Operating System
 
 > **Spec ID:** SPEC-002
-> **Version:** 1.0.0
+> **Version:** 2.0.0
 > **Date:** 2026-04-05
 > **Status:** Draft
 > **Tier:** 2-7 (Cross-cutting)
@@ -12,11 +12,15 @@
 
 ## Executive Summary
 
-The MCV Commerce & Financial Operating System is the foundational infrastructure layer that powers all monetary operations across the MCV ecosystem. It replaces fragmented payment integrations with a unified, cost-optimized, multi-processor financial engine that supports every commerce model — retail, digital, physical goods, subscriptions, metered billing, credit systems, overages, invoicing, loans/BNPL, and marketplace transactions.
+The MCV Commerce & Financial Operating System is the foundational infrastructure layer that powers all monetary operations across the MCV ecosystem. It replaces fragmented payment integrations with a unified, cost-optimized, multi-processor financial engine that supports every commerce model — retail, digital, physical goods, subscriptions, metered billing, credit systems, overages, invoicing, loans/BNPL, marketplace transactions, creator royalties, escrow, micropayments, and vendor/supplier payments.
 
 **This is not a feature. This is the financial rails of a new-era PaaS ecosystem.**
 
-Every venture (Futurestate, BetEdge, WarForge, mcv.gg, EdgeIQ, ARQ Labs), every partner app, and every external integration consumes this as infrastructure. The system provides a universal double-entry ledger, intelligent payment routing across fiat and crypto rails, comprehensive financial reporting (replacing QuickBooks/Xero), multi-jurisdiction tax compliance, and a platform API with partner SDK.
+**Receipts are dead.** Traditional receipts (PDFs, paper, email confirmations) are replaced by **Transaction Intelligence** — living, queryable, real-time transaction records with full provenance chains, smart categorization, and cross-reference to every related financial event. Every transaction is a node in a knowledge graph, not a dead document.
+
+**Creators get paid automatically.** Every resale, stream, usage, or derivative work triggers automatic, transparent, on-chain-verifiable royalty splits. Creator economics are a first-class primitive, not a bolt-on.
+
+Every venture (Futurestate, BetEdge, WarForge, mcv.gg, EdgeIQ, ARQ Labs), every partner app, and every external integration consumes this as infrastructure. The system provides a universal double-entry ledger, intelligent payment routing across fiat and crypto rails, comprehensive financial reporting (replacing QuickBooks/Xero), multi-jurisdiction tax compliance, fraud detection, revenue recognition (ASC 606), financial forecasting, and a platform API with partner SDK.
 
 ### Architecture Position
 
@@ -580,8 +584,13 @@ type ProductType =
   | 'service'               // one-time service (consulting, design)
   | 'service_retainer'      // ongoing retainer (monthly hours block)
 
+  // Creator Economy
+  | 'creator_content'       // royalty-bearing content (music, art, video, code, templates)
+  | 'creator_membership'    // creator fan subscription with royalty passthrough
+
   // Marketplace
   | 'marketplace_listing'   // third-party seller product
+  | 'marketplace_escrow'    // escrow-protected marketplace transaction
 
 // ═══════════════════════════════════════════════════════════
 // PRODUCT — the universal product entity
@@ -607,6 +616,8 @@ interface Product {
   credit: CreditConfig | null
   loan: LoanConfig | null
   investment: InvestmentConfig | null
+  creator: CreatorRoyaltyConfig | null
+  escrow: EscrowConfig | null
 
   // Gifting & transfers
   gift: GiftConfig
@@ -1777,30 +1788,969 @@ All financial events emit to an internal event bus for:
 
 ---
 
+## Section 7: Transaction Intelligence (Receipts Are Dead)
+
+### Overview
+
+Traditional receipts — PDFs, paper printouts, email confirmations — are information graveyards. They're generated, sent, and forgotten. The MCV Commerce OS replaces them with **Transaction Intelligence**: every transaction becomes a living node in a financial knowledge graph.
+
+### Transaction Record (replaces Receipt)
+
+```typescript
+// ═══════════════════════════════════════════════════════════
+// TRANSACTION INTELLIGENCE — the receipt killer
+// ═══════════════════════════════════════════════════════════
+
+interface TransactionRecord {
+  id: string
+  ventureId: string
+  transactionNumber: string         // human-readable: TXN-2026-04-00001
+  type: TransactionType
+  status: TransactionStatus
+  timestamp: Date
+
+  // Parties
+  payer: PartyRef                   // who paid
+  payee: PartyRef                   // who received
+  intermediaries: PartyRef[]        // platform, tax authorities, royalty recipients
+
+  // Money
+  amount: number
+  currency: string
+  exchangeRate: number | null       // if cross-currency
+  fees: TransactionFee[]            // all fees broken out
+  netAmount: number                 // after fees
+
+  // Smart routing provenance
+  rail: string                      // which processor handled it
+  railTransactionId: string         // processor's reference
+  routingDecisionId: string         // FK to routing_decisions (why this rail)
+  costSaved: number                 // savings vs default routing
+
+  // Provenance chain — every related financial event
+  relatedRecords: RelatedRecord[]
+  // e.g., for a subscription renewal:
+  //   - Original subscription creation
+  //   - Previous renewals
+  //   - Associated invoice
+  //   - Credit applied
+  //   - Journal entry in ledger
+  //   - Tax calculated
+  //   - Royalty splits triggered
+
+  // Smart categorization
+  categories: string[]              // auto-tagged: "subscription", "recurring", "b2b"
+  productRef: { productId: string; productName: string } | null
+  subscriptionRef: { subscriptionId: string; planName: string } | null
+  invoiceRef: { invoiceId: string; invoiceNumber: string } | null
+  orderRef: { orderId: string } | null
+
+  // Lifecycle events (replaces static receipt)
+  events: TransactionEvent[]
+  // e.g.: initiated → processing → succeeded → settled → reconciled
+  // Each event has timestamp, actor, metadata
+
+  // Access & sharing
+  accessUrl: string                 // unique URL to view this record (no auth needed, signed)
+  shareableLink: string             // short link for sharing
+  qrCode: string                    // QR code data URL
+
+  // Tax & compliance
+  taxBreakdown: TaxComponent[] | null
+  complianceTier: string | null
+  jurisdictions: string[]           // tax jurisdictions involved
+
+  metadata: Record<string, unknown>
+}
+
+type TransactionType =
+  | 'purchase' | 'subscription_renewal' | 'refund' | 'credit_grant'
+  | 'credit_consume' | 'transfer' | 'payout' | 'loan_disbursement'
+  | 'loan_repayment' | 'royalty_distribution' | 'yield_distribution'
+  | 'platform_fee' | 'tax_remittance' | 'escrow_hold' | 'escrow_release'
+
+type TransactionStatus =
+  | 'initiated' | 'processing' | 'succeeded' | 'failed'
+  | 'refunded' | 'partially_refunded' | 'disputed' | 'settled'
+  | 'reconciled'
+
+interface TransactionEvent {
+  timestamp: Date
+  event: string                     // "payment.initiated", "payment.succeeded", etc.
+  actor: string                     // userId or "system"
+  metadata: Record<string, unknown>
+}
+
+interface RelatedRecord {
+  type: 'transaction' | 'invoice' | 'subscription' | 'order' | 'journal_entry'
+       | 'royalty_split' | 'credit_movement' | 'tax_return' | 'dispute'
+  id: string
+  relationship: string              // "parent" | "child" | "sibling" | "reversal"
+  description: string
+}
+
+// No more PDF receipts. Ever.
+// Instead: a living URL that shows the full transaction story,
+// updates as events occur (settlement, reconciliation, disputes),
+// and links to every related financial record.
+//
+// Users can:
+//   - View any transaction at its URL (signed, no login needed)
+//   - See the full provenance chain (what triggered this, what it triggered)
+//   - Export to any format if they REALLY want a PDF (legacy compat)
+//   - Search across all transactions with smart filters
+//   - Set up transaction alerts and watchlists
+```
+
+### Transaction Search & Intelligence
+
+```typescript
+interface TransactionSearch {
+  // Full-text search across descriptions, notes, product names
+  query?: string
+  // Structured filters
+  ventureId?: string
+  type?: TransactionType[]
+  status?: TransactionStatus[]
+  dateRange?: { start: Date; end: Date }
+  amountRange?: { min: number; max: number }
+  currency?: string
+  rail?: string
+  customerId?: string
+  productId?: string
+  // Smart filters
+  hasRoyalties?: boolean
+  hasSplits?: boolean
+  isRecurring?: boolean
+  isDisputed?: boolean
+  // Aggregations
+  groupBy?: 'day' | 'week' | 'month' | 'rail' | 'venture' | 'product_type'
+}
+
+// The transaction graph enables:
+// - "Show me all revenue from creator X across all ventures"
+// - "What's my total processing cost for Interac vs Stripe this quarter?"
+// - "Trace this refund back to the original purchase and all splits"
+// - "Alert me when any single-day revenue exceeds $50K"
+```
+
+---
+
+## Section 8: Creator Royalties & Revenue Sharing
+
+### Overview
+
+Creator economics are a first-class primitive in MCV Commerce. Every piece of content, every digital good, every marketplace listing can have automatic, transparent royalty splits that trigger on every sale, resale, stream, usage, or derivative work.
+
+This isn't just "creator payouts." This is an **economic engine** where creators set terms once and get paid forever — automatically, across all ventures, across all rails, with full ledger tracking.
+
+### Royalty Configuration
+
+```typescript
+// ═══════════════════════════════════════════════════════════
+// CREATOR ROYALTIES — automatic revenue sharing
+// ═══════════════════════════════════════════════════════════
+
+interface CreatorRoyaltyConfig {
+  creatorId: string                   // userId of the creator
+  royaltyType: RoyaltyType
+  splits: RoyaltySplit[]              // who gets what
+  resaleRoyalty: number | null        // % on secondary sales (e.g., 10%)
+  streamingRate: number | null        // per-stream/per-view rate
+  derivativePolicy: DerivativePolicy
+  minimumPayout: number               // minimum balance before auto-payout
+  payoutFrequency: 'realtime' | 'daily' | 'weekly' | 'monthly'
+  payoutRail: string | null           // preferred payout rail (null = smart route)
+  transparencyLevel: 'public' | 'holders_only' | 'private'
+}
+
+type RoyaltyType =
+  | 'fixed_percentage'     // X% of every sale
+  | 'tiered'               // percentage changes with volume
+  | 'declining'            // percentage decreases over time
+  | 'perpetual'            // fixed forever
+  | 'time_limited'         // royalties expire after N years
+  | 'performance_based'    // scales with engagement metrics
+
+interface RoyaltySplit {
+  recipientId: string                 // userId, ventureId, or external
+  recipientType: 'creator' | 'collaborator' | 'label' | 'publisher'
+                | 'platform' | 'charity'
+  percentage: number                  // share of royalty pool
+  description: string                 // "Primary artist 60%", "Producer 15%"
+  vestingSchedule: VestingSchedule | null  // optional: royalties vest over time
+}
+
+interface VestingSchedule {
+  cliffMonths: number                 // months before any royalties
+  vestingMonths: number               // total vesting period
+  vestingPercentageAtCliff: number    // % unlocked at cliff
+  // Linear vesting after cliff
+}
+
+interface DerivativePolicy {
+  allowDerivatives: boolean
+  derivativeRoyaltyPercent: number    // % from derivative works
+  requireAttribution: boolean
+  requireApproval: boolean            // creator must approve derivatives
+}
+
+// ═══════════════════════════════════════════════════════════
+// ROYALTY DISTRIBUTION — how payments flow to creators
+// ═══════════════════════════════════════════════════════════
+
+// When a sale occurs for a royalty-bearing product:
+//
+// 1. Sale of $100 digital art with 15% creator royalty:
+//    Total splits:
+//      Creator (primary):    $12.00 (80% of 15%)
+//      Collaborator:         $1.50  (10% of 15%)
+//      Publisher:            $1.50  (10% of 15%)
+//      Platform fee:         $5.00  (5%)
+//      Seller revenue:       $80.00
+//
+// 2. Resale on marketplace ($150) with 10% resale royalty:
+//    Creator (primary):      $12.00 (80% of 10%)
+//    Collaborator:           $1.50  (10% of 10%)
+//    Publisher:              $1.50  (10% of 10%)
+//    Platform fee:           $7.50  (5%)
+//    Seller (reseller):      $127.50
+//
+// 3. Each split generates:
+//    - A SplitPaymentItem in the payment router
+//    - A JournalEntry line in the ledger
+//    - A TransactionRecord linking to the royalty agreement
+//    - An update to the creator's RoyaltyDashboard metrics
+//
+// On-chain enforcement (Solana Token-2022):
+//   Transfer Hook validates royalty payment before token transfer
+//   Royalty is enforced at the protocol level, not just the app level
+
+// ═══════════════════════════════════════════════════════════
+// REVENUE SHARING / AFFILIATE PROGRAMS
+// ═══════════════════════════════════════════════════════════
+
+interface RevenueSharingProgram {
+  id: string
+  ventureId: string
+  name: string                        // "Affiliate Program", "Partner Revenue Share"
+  type: 'affiliate' | 'referral' | 'reseller' | 'white_label'
+  commissionStructure: CommissionStructure
+  cookieDurationDays: number          // attribution window
+  minimumPayout: number
+  payoutFrequency: 'monthly' | 'biweekly'
+  status: 'active' | 'paused' | 'archived'
+  terms: string                       // legal terms URL
+}
+
+interface CommissionStructure {
+  type: 'flat' | 'percentage' | 'tiered' | 'recurring'
+  flatAmount?: number
+  percentage?: number
+  tiers?: { minRevenue: number; maxRevenue: number; percentage: number }[]
+  recurringMonths?: number            // for recurring: how many months of commissions
+  // e.g., SaaS affiliate: 20% of first 12 months of subscription revenue
+}
+
+interface AffiliatePartner {
+  id: string
+  programId: string
+  userId: string
+  referralCode: string
+  customLink: string                  // vanity URL
+  totalReferrals: number
+  totalRevenue: number
+  totalCommissions: number
+  pendingPayout: number
+  status: 'active' | 'suspended'
+}
+```
+
+### Creator Dashboard (Venture-Scoped View)
+
+```
+Creator Hub (new NavRail section in venture mode):
+  ├── Overview          # Total earnings, active royalties, pending payouts
+  ├── Content           # My royalty-bearing products/content
+  ├── Royalties         # Royalty agreement details, split breakdowns
+  ├── Earnings          # Earnings history, projections, by-product breakdown
+  ├── Payouts           # Payout history, pending, schedule
+  ├── Analytics         # Stream counts, resale volume, derivative tracking
+  └── Collaborators     # Manage collaborator splits, invitations
+```
+
+---
+
+## Section 9: Escrow Service
+
+### Overview
+
+Escrow is missing from most commerce platforms and it shouldn't be. Any marketplace transaction, milestone-based service, or high-value exchange needs a trusted intermediary. MCV's escrow is a ledger primitive — funds are held in escrow accounts (a liability) until release conditions are met.
+
+```typescript
+// ═══════════════════════════════════════════════════════════
+// ESCROW — trusted intermediary for high-value transactions
+// ═══════════════════════════════════════════════════════════
+
+interface EscrowConfig {
+  releaseCondition: EscrowReleaseCondition
+  disputeResolutionMethod: 'platform_arbitration' | 'mutual_agreement' | 'time_based'
+  autoReleaseDays: number | null      // auto-release after N days if no dispute
+  inspectionPeriodDays: number        // buyer inspection period after delivery
+  platformEscrowFee: number           // percentage fee for escrow service
+}
+
+type EscrowReleaseCondition =
+  | 'buyer_confirms'           // buyer manually confirms satisfaction
+  | 'milestone_complete'       // specific milestones met
+  | 'time_based'               // auto-release after period
+  | 'dual_approval'            // both parties must approve
+  | 'third_party_verification' // external verifier confirms
+
+interface EscrowAgreement {
+  id: string
+  ventureId: string
+  buyerId: string
+  sellerId: string
+  amount: number
+  currency: string
+  status: 'pending_funding' | 'funded' | 'in_progress' | 'pending_release'
+         | 'released' | 'disputed' | 'refunded' | 'canceled'
+  milestones: EscrowMilestone[]       // for milestone-based release
+  escrowAccountId: string             // ledger account holding the funds
+  releaseCondition: EscrowReleaseCondition
+  expiresAt: Date
+  metadata: Record<string, unknown>
+}
+
+interface EscrowMilestone {
+  id: string
+  name: string
+  description: string
+  amount: number                      // portion of total released at this milestone
+  status: 'pending' | 'submitted' | 'approved' | 'rejected'
+  dueDate: Date | null
+  submittedAt: Date | null
+  approvedAt: Date | null
+  evidence: string[]                  // URLs to proof of completion
+}
+
+// Escrow ledger flow:
+//
+// Fund escrow:
+//   DR: Escrow Holding Account (1095)    $5,000
+//   CR: Cash (1010)                      $5,000
+//
+// Release milestone (50%):
+//   DR: Escrow Fee Expense               $125   (2.5% fee)
+//   DR: Seller Payout                    $2,375
+//   CR: Escrow Holding Account (1095)    $2,500
+//
+// Dispute → refund:
+//   DR: Cash (buyer refund)              $2,500
+//   CR: Escrow Holding Account (1095)    $2,500
+```
+
+---
+
+## Section 10: Micropayments & Batching
+
+### Overview
+
+Sub-$1 transactions are economically impossible on traditional payment rails (a $0.10 purchase costs $0.33 on Stripe). MCV solves this with **credit-based micropayments** and **batch settlement** — transactions accumulate as credit movements and settle to real rails periodically.
+
+```typescript
+// ═══════════════════════════════════════════════════════════
+// MICROPAYMENTS — sub-$1 economics that actually work
+// ═══════════════════════════════════════════════════════════
+
+interface MicropaymentConfig {
+  // Threshold below which payments use credits instead of real rails
+  micropaymentThreshold: number       // e.g., $5.00
+  // How credits are topped up
+  autoTopUpEnabled: boolean
+  autoTopUpAmount: number             // e.g., $25.00
+  autoTopUpTrigger: number            // top up when balance falls below this
+  autoTopUpRail: string               // which rail to charge for top-up
+  // Batch settlement
+  batchSettlementFrequency: 'hourly' | 'daily' | 'weekly'
+  batchSettlementMinimum: number      // minimum accumulated before settling
+}
+
+// Use cases:
+//   WarForge: $0.25 in-game item purchase → credit deduction (instant, $0 fee)
+//   EdgeIQ: $0.001 per API call → usage accumulated, invoiced monthly
+//   mcv.gg: $0.50 tip to creator → credit transfer (instant, $0 fee)
+//   BetEdge: $0.10 micro-bet → credit deduction (instant, $0 fee)
+//
+// Economics:
+//   User tops up $25 via Stripe card → $0.73 + $0.30 fee = $1.03 (4.1%)
+//   User makes 100 x $0.25 purchases = $25.00 total
+//   Effective fee: $1.03 / $25.00 = 4.1% (vs $103.00 if each was a card charge = 412%!)
+//   Savings: 99% vs per-transaction card charging
+//
+// Even better with crypto:
+//   User tops up $25 via USDC → $0.005 fee (0.02%)
+//   100 purchases still cost $0.005 total in fees
+```
+
+---
+
+## Section 11: Vendor & Supplier Payments (Accounts Payable)
+
+### Overview
+
+The spec originally focused on **collecting** money. But ventures also need to **pay** people — vendors, suppliers, contractors, creators, affiliates. The AP (Accounts Payable) system manages outbound payments with the same smart routing and ledger tracking.
+
+```typescript
+// ═══════════════════════════════════════════════════════════
+// ACCOUNTS PAYABLE — paying vendors, suppliers, contractors
+// ═══════════════════════════════════════════════════════════
+
+interface Vendor {
+  id: string
+  ventureId: string
+  name: string
+  email: string
+  type: 'supplier' | 'contractor' | 'creator' | 'affiliate' | 'service_provider'
+  taxId: string | null                // for 1099/T4A reporting
+  paymentPreferences: {
+    preferredRail: string | null
+    preferredCurrency: string
+    bankAccountId: string | null      // for ACH/wire
+    walletAddress: string | null      // for crypto
+    paypalEmail: string | null
+  }
+  defaultPaymentTerms: string         // "net_30", "on_receipt", etc.
+  status: 'active' | 'inactive'
+  ytdPayments: number                 // year-to-date for tax reporting
+}
+
+interface Bill {
+  id: string
+  ventureId: string
+  vendorId: string
+  billNumber: string
+  amount: number
+  currency: string
+  status: 'draft' | 'pending_approval' | 'approved' | 'scheduled' | 'paid' | 'voided'
+  dueDate: Date
+  paymentTerms: string
+  lineItems: BillLineItem[]
+  approvalChainId: string | null      // multi-step approval for large payments
+  scheduledPayDate: Date | null
+  paidAt: Date | null
+  paidVia: string | null              // which rail was used
+  attachments: string[]               // invoice scans, contracts
+}
+
+interface BillLineItem {
+  description: string
+  amount: number
+  accountId: string                   // which expense account to debit
+  taxAmount: number
+  projectId: string | null            // cost center tracking
+}
+
+// Bill payment journal entry:
+//   DR: Expense Account (5xxx)       $1,000
+//   CR: Accounts Payable (2010)      $1,000
+//
+// When paid:
+//   DR: Accounts Payable (2010)      $1,000
+//   CR: Cash (1010)                  $1,000
+
+// Batch payouts:
+//   Accumulate multiple vendor payments and send in a single batch
+//   Reduces per-transaction fees (especially for wire/ACH)
+//   Schedule: "Pay all approved bills every Friday"
+
+// Tax reporting:
+//   Track YTD payments per vendor for 1099 (US) / T4A (Canada) filing
+//   Auto-generate tax forms at year end
+//   Flag vendors approaching reporting thresholds ($600 US, $500 CA)
+```
+
+---
+
+## Section 12: Fraud Detection & Prevention
+
+### Overview
+
+Every payment system is a target. MCV Commerce includes built-in fraud detection that scores every transaction before it reaches a processor, using velocity checks, behavioral analysis, and configurable rules.
+
+```typescript
+// ═══════════════════════════════════════════════════════════
+// FRAUD DETECTION — ML-scored transaction risk
+// ═══════════════════════════════════════════════════════════
+
+interface FraudCheckResult {
+  transactionId: string
+  riskScore: number                   // 0-100 (0 = safe, 100 = definitely fraud)
+  decision: 'allow' | 'review' | 'block'
+  signals: FraudSignal[]
+  requiresVerification: boolean       // trigger 3D Secure, OTP, etc.
+}
+
+interface FraudSignal {
+  type: FraudSignalType
+  severity: 'low' | 'medium' | 'high' | 'critical'
+  description: string
+  score: number                       // contribution to overall risk score
+}
+
+type FraudSignalType =
+  | 'velocity_amount'          // too much spend in short time
+  | 'velocity_count'           // too many transactions in short time
+  | 'geo_mismatch'             // billing country != IP country
+  | 'device_fingerprint'       // new/suspicious device
+  | 'card_testing'             // small amounts testing card validity
+  | 'account_age'              // very new account making large purchase
+  | 'unusual_amount'           // amount far outside user's normal range
+  | 'time_anomaly'             // transaction at unusual time for user
+  | 'repeated_decline'         // multiple failed attempts
+  | 'known_fraud_pattern'      // matches known fraud behavior
+
+interface FraudRule {
+  id: string
+  ventureId: string | null            // null = platform-wide
+  name: string
+  condition: string                   // rule expression: "amount > 10000 AND account_age < 7d"
+  action: 'block' | 'review' | 'require_3ds' | 'flag' | 'add_score'
+  scoreImpact: number                 // how much to add to risk score
+  enabled: boolean
+}
+
+// Chargeback prevention:
+// - 3D Secure 2.0 for high-risk transactions (shifts liability to issuer)
+// - Address Verification (AVS) on all card transactions
+// - CVV/CVC verification required
+// - IP geolocation vs billing address comparison
+// - Device fingerprinting for repeat fraud detection
+// - Velocity limits configurable per venture
+// - Real-time fraud score visible in Super Admin
+```
+
+---
+
+## Section 13: Revenue Recognition (ASC 606)
+
+### Overview
+
+For fundraising, audits, and proper GAAP compliance, MCV needs automated revenue recognition following ASC 606 (the standard that governs when revenue can be "recognized" on financial statements). This is critical for subscriptions, credits, and multi-element arrangements.
+
+```typescript
+// ═══════════════════════════════════════════════════════════
+// REVENUE RECOGNITION — ASC 606 compliance
+// ═══════════════════════════════════════════════════════════
+
+interface RevenueSchedule {
+  id: string
+  ventureId: string
+  sourceType: 'subscription' | 'credit_pack' | 'service' | 'license' | 'bundle'
+  sourceId: string
+  totalAmount: number
+  recognizedAmount: number
+  deferredAmount: number
+  startDate: Date
+  endDate: Date
+  recognitionMethod: RecognitionMethod
+  entries: RevenueEntry[]
+  status: 'active' | 'completed' | 'voided'
+}
+
+type RecognitionMethod =
+  | 'straight_line'         // evenly over period (subscriptions)
+  | 'usage_based'           // as usage occurs (metered)
+  | 'milestone'             // at completion milestones (services)
+  | 'point_in_time'         // immediately on delivery (one-time sales)
+  | 'proportional'          // based on stand-alone selling prices (bundles)
+
+interface RevenueEntry {
+  id: string
+  scheduleId: string
+  periodId: string
+  amount: number
+  type: 'recognition' | 'deferral' | 'adjustment'
+  journalEntryId: string              // FK to ledger
+  recognizedAt: Date
+}
+
+// Subscription revenue recognition:
+//   Customer pays $120 for annual plan on March 15
+//   
+//   On payment:
+//     DR: Cash $120
+//     CR: Unearned Revenue (2030) $120     ← liability, not revenue yet
+//   
+//   Each month (Mar-Feb):
+//     DR: Unearned Revenue $10
+//     CR: Revenue - Subscriptions $10      ← now it's revenue
+//   
+//   March (partial): $10 * (16/31) = $5.16 recognized
+//   April-February: $10/month
+//   March (remaining): $10 * (15/31) = $4.84 recognized
+
+// Credit pack revenue recognition:
+//   Customer buys 1000 credits for $50
+//   Revenue recognized as credits are consumed (usage-based)
+//   Unused credits at expiry → breakage revenue
+```
+
+---
+
+## Section 14: Financial Forecasting & Intelligence
+
+### Overview
+
+The ledger contains enough data to predict the future. AI-powered financial forecasting uses historical ledger data, subscription metrics, and external signals to project revenue, expenses, cash flow, and runway.
+
+```typescript
+// ═══════════════════════════════════════════════════════════
+// FINANCIAL FORECASTING — AI-powered projections
+// ═══════════════════════════════════════════════════════════
+
+interface ForecastRequest {
+  ventureId: string | null            // null = consolidated
+  metric: ForecastMetric
+  horizonMonths: number               // how far to project (3, 6, 12, 24)
+  scenarios: ('conservative' | 'base' | 'optimistic')[]
+  includeSeasonality: boolean
+  externalSignals?: string[]          // "market_conditions", "industry_trends"
+}
+
+type ForecastMetric =
+  | 'revenue'              // total revenue projection
+  | 'mrr'                  // MRR trajectory
+  | 'expenses'             // expense projection
+  | 'cash_flow'            // net cash flow
+  | 'runway'               // months until cash runs out
+  | 'churn'                // churn rate projection
+  | 'customer_count'       // subscriber growth
+  | 'ltv'                  // LTV evolution
+  | 'processing_costs'     // payment processing cost trend
+
+interface ForecastResult {
+  metric: ForecastMetric
+  horizonMonths: number
+  scenarios: {
+    conservative: ForecastDataPoint[]
+    base: ForecastDataPoint[]
+    optimistic: ForecastDataPoint[]
+  }
+  confidence: number                  // 0-1 confidence level
+  keyDrivers: string[]                // what's driving the forecast
+  risks: ForecastRisk[]               // what could go wrong
+}
+
+interface ForecastDataPoint {
+  date: Date
+  value: number
+  upperBound: number                  // confidence interval
+  lowerBound: number
+}
+
+interface ForecastRisk {
+  description: string
+  probability: number                 // 0-1
+  impact: number                      // dollar impact
+  mitigation: string                  // suggested action
+}
+
+// Forecast inputs (from ledger + metrics):
+//   - Historical MRR/ARR with growth rate
+//   - Churn cohort analysis (when do customers leave?)
+//   - Seasonal patterns (Q4 spike, summer dip, etc.)
+//   - Expansion/contraction revenue trends
+//   - Processing cost trends (are we optimizing over time?)
+//   - Credit consumption velocity (how fast do users spend credits?)
+//   - Loan repayment patterns (default rate projections)
+//
+// Output: visual projections on the Financials Dashboard
+//   with confidence intervals and scenario comparisons
+```
+
+---
+
+## Section 15: Multi-Entity Consolidation
+
+### Overview
+
+EdgeIQ Holdings is the parent entity. Each venture is a separate financial entity. The consolidation engine produces combined financial statements with inter-venture elimination entries — essential for corporate reporting, fundraising, and tax compliance.
+
+```typescript
+// ═══════════════════════════════════════════════════════════
+// CONSOLIDATION — holding company financial rollup
+// ═══════════════════════════════════════════════════════════
+
+interface ConsolidatedReport {
+  parentEntity: string                // "EdgeIQ Holdings"
+  reportType: 'income_statement' | 'balance_sheet' | 'cash_flow'
+  period: { start: Date; end: Date }
+  currency: string                    // reporting currency (USD)
+
+  // Individual venture statements
+  ventureStatements: Record<string, IncomeStatement | BalanceSheet | CashFlowStatement>
+
+  // Elimination entries
+  eliminations: EliminationEntry[]
+
+  // Consolidated result
+  consolidated: IncomeStatement | BalanceSheet | CashFlowStatement
+}
+
+interface EliminationEntry {
+  description: string
+  debitAccount: string
+  debitAmount: number
+  creditAccount: string
+  creditAmount: number
+  reason: 'intercompany_revenue' | 'intercompany_payable' | 'intercompany_investment'
+          | 'unrealized_profit' | 'platform_fee_internal'
+}
+
+// Example: Futurestate pays MCV Platform a 1% platform fee
+//   On Futurestate's books: Expense $1,000
+//   On MCV Platform's books: Revenue $1,000
+//   Elimination: Remove both — it's internal money movement
+//
+// Example: BetEdge uses ARQ Labs' AI service
+//   BetEdge: Expense $5,000
+//   ARQ Labs: Revenue $5,000
+//   Elimination: Remove both on consolidated statements
+
+// Minority interest tracking (if ventures have external investors):
+//   Futurestate may have external LPs
+//   Their share of profit/loss shown separately on consolidated P&L
+```
+
+---
+
+## Section 16: Dunning & Payment Recovery
+
+### Overview
+
+Failed payments are the #1 revenue leak in subscription businesses. MCV Commerce includes a configurable dunning engine that automatically retries failed payments, sends escalating notifications, and manages grace periods before cancellation.
+
+```typescript
+// ═══════════════════════════════════════════════════════════
+// DUNNING — automated failed payment recovery
+// ═══════════════════════════════════════════════════════════
+
+interface DunningConfig {
+  ventureId: string
+  retrySchedule: DunningRetry[]       // when and how to retry
+  notificationSchedule: DunningNotification[]
+  gracePeriodDays: number             // days before subscription canceled
+  finalAction: 'cancel' | 'pause' | 'downgrade_to_free'
+  smartRetryEnabled: boolean          // AI picks optimal retry time
+}
+
+interface DunningRetry {
+  dayAfterFailure: number             // e.g., 1, 3, 5, 7
+  retryTime: string | 'smart'        // "09:00" or "smart" (AI-optimized)
+  rail: string | 'same'              // try different rail? or same
+}
+
+interface DunningNotification {
+  dayAfterFailure: number
+  channel: 'email' | 'sms' | 'push' | 'in_app'
+  template: string                    // notification template ID
+  includeUpdatePaymentLink: boolean
+  tone: 'friendly' | 'urgent' | 'final'
+}
+
+// Default dunning flow:
+//   Day 0:  Payment fails → retry immediately on same rail
+//   Day 1:  Retry on different rail + friendly email
+//   Day 3:  Retry + "action needed" email with payment update link
+//   Day 5:  Retry (smart timing) + urgent push notification
+//   Day 7:  Final retry + "last chance" email
+//   Day 10: Grace period expires → final action (cancel/pause/downgrade)
+//
+// Smart retry (AI-optimized):
+//   Analyzes when the customer's payments historically succeed
+//   Retries at the optimal time (e.g., payday patterns)
+//   Tries different rails (card failed? try ACH/bank)
+//   Industry benchmark: smart retry recovers 30-40% more than dumb retry
+
+// Dunning dashboard in Super Admin:
+//   - Currently in dunning: count + total revenue at risk
+//   - Recovery rate (% of failed payments successfully retried)
+//   - Revenue recovered this month
+//   - Average days to recovery
+//   - Dunning funnel (how many at each stage)
+```
+
+---
+
+## Section 17: Price Localization
+
+### Overview
+
+A $50 product in the US shouldn't cost $50 in India. Price localization automatically adjusts prices based on customer geography and purchasing power parity, maximizing global revenue while remaining fair.
+
+```typescript
+// ═══════════════════════════════════════════════════════════
+// PRICE LOCALIZATION — geography-aware pricing
+// ═══════════════════════════════════════════════════════════
+
+interface PriceLocalizationConfig {
+  ventureId: string
+  enabled: boolean
+  baseCurrency: string                // prices authored in this currency
+  strategy: 'purchasing_power_parity' | 'exchange_rate_only' | 'manual_override'
+  roundingRule: 'nearest_99' | 'nearest_dollar' | 'exact'
+  minimumPrice: Record<string, number>  // per-currency minimum (e.g., INR: 50)
+  countryOverrides: CountryPriceOverride[]
+}
+
+interface CountryPriceOverride {
+  country: string                     // ISO code
+  currency: string
+  multiplier: number                  // e.g., 0.4 for India (60% discount)
+  reason: string                      // "PPP adjustment" or "market pricing"
+}
+
+// Example: $50 USD subscription
+//   US:     $50.00 USD (base)
+//   Canada: $67.99 CAD (exchange rate)
+//   India:  ₹999 INR (PPP: ~$12 equivalent — 76% discount)
+//   Brazil: R$79.90 BRL (PPP: ~$16 equivalent — 68% discount)
+//   UK:     £39.99 GBP (exchange rate + rounding)
+//   EU:     €44.99 EUR (exchange rate + rounding)
+//
+// VPN/fraud prevention:
+//   Localized price tied to billing address, not IP
+//   Payment method country must match pricing country
+//   Gift purchases use buyer's pricing, not recipient's
+```
+
+---
+
+## Section 18: Orchestration Integration
+
+### Overview
+
+The Commerce & Financial OS integrates with MCV's existing Algorithmic Orchestration Engine (SPEC-001) to surface commerce tasks, financial alerts, and operational intelligence in the Command Center.
+
+### Task Integration
+
+Commerce events automatically create orchestration tasks:
+
+```typescript
+// Commerce → Orchestration task mapping
+interface CommerceTaskTrigger {
+  event: string
+  taskTemplate: {
+    type: 'epic' | 'sprint' | 'story' | 'task' | 'sub_atomic'
+    title: string
+    priority: 'critical' | 'high' | 'medium' | 'low'
+    assignee: string | 'auto'         // auto = based on venture/role
+    ventureId: string
+  }
+}
+
+// Auto-generated tasks:
+//   invoice.overdue            → "Follow up on overdue invoice INV-001 ($5,000)"
+//   subscription.past_due      → "Recover failed payment for customer X"
+//   tax.nexus.threshold_reached → "Register for sales tax in California (threshold hit)"
+//   fraud.high_risk            → "Review flagged transaction TXN-001 (risk: 87)"
+//   loan.past_due              → "Contact borrower about late payment on loan LOAN-001"
+//   vendor.payment_due         → "Approve vendor payment batch ($12,500)"
+//   revenue.anomaly            → "Investigate 40% revenue drop in BetEdge (last 24h)"
+//   payout.failed              → "Resolve failed payout to Venture X connected account"
+//   escrow.dispute             → "Arbitrate escrow dispute #ESC-001 ($3,200)"
+//   royalty.payout_ready       → "Process creator royalty batch ($8,750 to 23 creators)"
+//   dunning.final_stage        → "12 subscriptions entering final dunning stage ($3,600 MRR)"
+//   cost.optimization          → "Enable ACH for US subs — estimated savings $2,400/mo"
+
+// Session tracking:
+//   Long-running financial operations (batch payouts, tax filing, bank reconciliation)
+//   tracked as Sessions in the orchestration engine
+//   visible in Command Center with progress indicators
+```
+
+### Command Center Widgets
+
+New widgets for the Command Center dashboard:
+
+```
+Commerce Widgets:
+  - Revenue Ticker (real-time rolling 24h revenue)
+  - Active Subscriptions gauge with MRR
+  - Payment Rail Health (green/yellow/red per processor)
+  - Smart Routing Savings counter
+  - Dunning Recovery funnel
+  - Outstanding AR aging mini-chart
+
+Financial Widgets:
+  - Cash Position (all wallets + banks + crypto)
+  - Burn Rate + Runway indicator
+  - Revenue Forecast sparkline (next 6 months)
+  - Cost Intelligence score (how optimized are we?)
+  - Tax Filing Calendar (upcoming deadlines)
+  - Creator Royalty payout queue
+```
+
+---
+
 ## Verification Plan
+
+(Expanded from v1.0 to cover new sections)
 
 ### How to Test End-to-End
 
-1. **Ledger:** Create a venture, verify chart of accounts auto-created. Create manual journal entry, verify balances update. Verify debits = credits constraint.
+### How to Test End-to-End
 
-2. **Payment Router:** Configure two processors for a venture. Submit payment, verify router picks cheapest rail. Verify fallback on simulated failure. Verify journal entry created in ledger.
+**Core (Sections 1-6):**
 
-3. **Products:** Create one of each product type. Verify type-specific config stored correctly. Create checkout session for each type.
+1. **Ledger:** Create venture → verify chart of accounts auto-created. Create manual journal entry → verify balances update. Verify debits = credits constraint.
 
-4. **Subscriptions:** Create subscription with trial. Verify trial → active transition. Simulate overage, verify charge/block/throttle per config.
+2. **Payment Router:** Configure two processors for a venture. Submit payment → verify router picks cheapest rail. Verify fallback on simulated failure. Verify journal entry created in ledger.
 
-5. **Credits:** Grant credits, consume credits, verify ledger entries (liability created on grant, revenue recognized on consumption).
+3. **Products:** Create one of each product type (all 17). Verify type-specific config stored correctly. Create checkout session for each type.
 
-6. **Invoicing:** Create invoice, send, verify reminder schedule, record payment, verify ledger entries.
+4. **Subscriptions:** Create subscription with trial. Verify trial → active transition. Simulate overage → verify charge/block/throttle per config.
 
-7. **Loans:** Create loan, verify repayment schedule generated. Record repayment, verify principal/interest split in ledger.
+5. **Credits:** Grant credits → consume credits → verify ledger entries (liability on grant, revenue on consumption). Test credit expiry and transfer.
 
-8. **Tax:** Calculate tax for CA-ON customer, verify HST 13%. Calculate for US-CA, verify state tax. Verify nexus threshold tracking.
+6. **Invoicing:** Create invoice → send → verify reminder schedule → record payment → verify ledger entries.
 
-9. **Financials:** After running above flows, generate P&L and verify revenue/expense totals match. Generate balance sheet and verify assets = liabilities + equity.
+7. **Loans:** Create loan → verify repayment schedule generated. Record repayment → verify principal/interest split in ledger.
 
-10. **Cost Intelligence:** After routing multiple payments, verify savings calculation. Verify recommendations generated.
+8. **Tax:** Calculate tax for CA-ON customer (verify HST 13%), US-CA (state tax), EU-DE (VAT 19%). Verify nexus threshold tracking.
 
-11. **API:** Hit each endpoint via SDK, verify responses match types. Register webhook, trigger event, verify delivery.
+9. **Financials:** After all above flows, generate P&L → verify totals match. Generate balance sheet → verify assets = liabilities + equity.
 
-12. **Super Admin UI:** Navigate to Commerce Overview, verify data populated. Switch to venture mode, verify scoped data.
+10. **Cost Intelligence:** After routing multiple payments, verify savings calculation and recommendations generated.
+
+11. **API:** Hit each endpoint via SDK → verify responses match types. Register webhook → trigger event → verify delivery with HMAC signature.
+
+12. **Super Admin UI:** Navigate Commerce Overview → verify data populated. Switch to venture mode → verify scoped data.
+
+**Expanded (Sections 7-18):**
+
+13. **Transaction Intelligence:** Verify every payment generates a TransactionRecord (not a receipt). Verify provenance chain links related records. Verify signed access URL works without auth.
+
+14. **Creator Royalties:** Create royalty-bearing product → sell it → verify automatic splits to creator + collaborators. Resell on marketplace → verify resale royalty triggers. Verify on-chain enforcement via Token-2022 Transfer Hook.
+
+15. **Escrow:** Create escrow agreement → fund it → verify funds in escrow ledger account. Submit milestone → approve → verify partial release. Simulate dispute → verify refund flow.
+
+16. **Micropayments:** Top up credits → make 100 sub-$1 purchases → verify zero per-transaction fees. Verify batch settlement to real rail at configured frequency.
+
+17. **Vendor Payments:** Create vendor → create bill → approve → pay → verify AP ledger entries. Test batch payouts. Verify YTD tracking for tax form generation.
+
+18. **Fraud Detection:** Submit high-risk transaction → verify risk score > 80 → verify review/block action. Verify velocity checks catch card testing patterns.
+
+19. **Revenue Recognition:** Create annual subscription → verify $120 deferred as unearned revenue. Advance 1 month → verify $10 recognized. Verify schedule entries match ledger.
+
+20. **Forecasting:** Request 6-month MRR forecast → verify 3 scenarios generated with confidence intervals. Verify key drivers and risks populated.
+
+21. **Consolidation:** Generate P&L for 2 ventures + consolidated → verify inter-venture eliminations applied. Verify consolidated total matches.
+
+22. **Dunning:** Simulate failed payment → verify retry schedule executes. Verify notifications sent at configured intervals. Verify smart retry selects optimal time.
+
+23. **Price Localization:** Set base price $50 USD → request price for India → verify PPP-adjusted price (~₹999). Verify billing address validation prevents VPN abuse.
+
+24. **Orchestration:** Trigger an overdue invoice → verify task created in orchestration engine. Verify Command Center widget shows commerce metrics.
