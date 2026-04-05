@@ -3435,7 +3435,7 @@ const webhookService = new FormWebhookService(db, tenantId);
 const slackWebhook = await webhookService.create({
   formId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
   name: 'Slack Notification',
-  url: 'https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX',
+  url: 'https://example.com/webhook/slack-placeholder',
   method: 'POST',
   events: [WebhookEvent.SUBMISSION_CREATED],
   headers: {
