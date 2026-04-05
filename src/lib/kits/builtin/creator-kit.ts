@@ -101,7 +101,7 @@ const listEscrows: KitToolHandler = async (input, ctx) => {
   const params: Record<string, string> = {};
   if (input.status) params.status = String(input.status);
 
-  const result = await creatorGet('list-transactions', { ...params, type: 'escrow_hold' }, ctx);
+  await creatorGet('list-transactions', { ...params, type: 'escrow_hold' }, ctx);
   // Fetch actual escrow_agreements
   const escrowResult = await creatorGet('list-agreements', {}, ctx);
   const escrows = (escrowResult.data as Array<Record<string, unknown>>) ?? [];
