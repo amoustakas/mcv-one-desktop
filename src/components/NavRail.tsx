@@ -4,7 +4,7 @@ import {
   Wrench, Radio, Settings, ChevronLeft, ChevronRight, ChevronDown,
   CheckSquare, Users, Hammer, BookOpen, Monitor, Sparkles,
   Wand2, Swords, TrendingUp, FileText, Plus, Package,
-  Database, GitBranch, Radar,
+  Database, GitBranch, Radar, MessageSquare, FolderOpen, Archive,
 } from 'lucide-react';
 import { useNavigation, type ViewId } from '../stores/navigation';
 import { useVentureContextStore } from '../stores/venture-context';
@@ -16,7 +16,7 @@ const VIEW_ICONS: Record<string, React.FC<{ size: number }>> = {
   'command-center': LayoutGrid, portfolio: PieChart, chat: Bot,
   intelligence: Brain, treasury: Landmark, signals: Radio,
   engineering: Wrench, ops: Activity, forge: Hammer, sessions: Monitor, 'war-room': Swords,
-  crm: Users, growth: TrendingUp,
+  crm: Users, growth: TrendingUp, 'comms-hub': MessageSquare,
   tasks: CheckSquare, docs: BookOpen,
   team: Users,
   'ai-studio': Sparkles, 'prompt-composer': Wand2,
@@ -30,6 +30,7 @@ const VIEW_ICONS: Record<string, React.FC<{ size: number }>> = {
   'venture-operations': Activity, 'venture-docs': BookOpen,
   'venture-forge': Hammer, 'venture-tasks': CheckSquare,
   'venture-settings': Settings, 'venture-onboarding': Plus,
+  files: FolderOpen, 'venture-workspace': Archive,
 };
 
 // ── Section definitions ──
@@ -68,6 +69,7 @@ const globalSections: NavSection[] = [
     items: [
       { id: 'crm', label: 'CRM Pipeline' },
       { id: 'growth', label: 'Growth Studio' },
+      { id: 'comms-hub', label: 'Comms Hub' },
     ],
   },
   {
@@ -75,6 +77,7 @@ const globalSections: NavSection[] = [
     items: [
       { id: 'tasks', label: 'Task Board' },
       { id: 'docs', label: 'Docs Hub' },
+      { id: 'files', label: 'Files' },
       { id: 'team', label: 'Team' },
       { id: 'pipeline', label: 'Pipeline' },
     ],
@@ -105,6 +108,7 @@ const ventureSections: NavSection[] = [
       { id: 'venture-engineering', label: 'Engineering' },
       { id: 'venture-forge', label: 'The Forge' },
       { id: 'venture-docs', label: 'Documents' },
+      { id: 'venture-workspace', label: 'Workspace' },
     ],
   },
   {

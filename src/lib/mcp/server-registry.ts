@@ -1,5 +1,5 @@
 import type { McpServerConfig } from './types';
-import { getPreset, type McpServerPreset } from './presets';
+import { type McpServerPreset } from './presets';
 
 const STORAGE_KEY = 'mcv-mcp-servers';
 

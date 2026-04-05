@@ -19,6 +19,7 @@ export type ViewId =
   // Growth & Marketing
   | 'crm'
   | 'growth'
+  | 'comms-hub'
   // Operations
   | 'tasks'
   | 'docs'
@@ -46,7 +47,10 @@ export type ViewId =
   | 'memory'
   | 'pipeline'
   // Operator views
-  | 'control-room';
+  | 'control-room'
+  // Files & Storage
+  | 'files'
+  | 'venture-workspace';
 
 export type ContextMode = 'global' | 'venture';
 
@@ -90,7 +94,7 @@ const VIEW_LABELS: Record<string, string> = {
   intelligence: 'Intelligence', treasury: 'Treasury', signals: 'Signals',
   engineering: 'Engineering', ops: 'Operations', forge: 'Forge',
   sessions: 'Sessions', 'war-room': 'War Room', crm: 'CRM',
-  growth: 'Growth', tasks: 'Tasks', docs: 'Documents',
+  growth: 'Growth', 'comms-hub': 'Communications Hub', tasks: 'Tasks', docs: 'Documents',
   'ai-studio': 'AI Studio', 'prompt-composer': 'Prompt Composer',
   team: 'Team', settings: 'Settings', 'kit-store': 'Kit Store', 'kit-studio': 'Kit Studio',
   memory: 'Memory Hub', pipeline: 'Pipeline', 'control-room': 'Control Room',
@@ -99,6 +103,7 @@ const VIEW_LABELS: Record<string, string> = {
   'venture-operations': 'Operations', 'venture-docs': 'Documents',
   'venture-forge': 'Forge', 'venture-tasks': 'Tasks',
   'venture-settings': 'Settings', 'venture-onboarding': 'Onboarding',
+  files: 'Files', 'venture-workspace': 'Workspace',
 };
 
 export const useNavigation = create<NavigationState>()(

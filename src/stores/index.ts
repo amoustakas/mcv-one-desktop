@@ -8,3 +8,4 @@ export { useLayoutStore, type WorkspacePreset } from './layout';
 export { useVentureContextStore, type VentureContext, type VentureHealth } from './venture-context';
 export { useChatStore } from './chat';
 export { useAgentsStore, type AgentTask, type AgentStatus } from './agents';
+export { useFilesStore } from './files';

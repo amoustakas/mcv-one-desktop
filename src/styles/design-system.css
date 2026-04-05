@@ -85,6 +85,27 @@
   /* Layout */
   --sidebar-width: 260px;
   --topbar-height: 56px;
+
+  /* Card enhancements (FutureState patterns) */
+  --card-gradient-opacity: 0.05;
+  --card-glow-radius: 20px;
+  --card-hover-lift: -4px;
+
+  /* Cinema / Discovery layer */
+  --hero-height: 320px;
+  --hero-height-mobile: 200px;
+  --carousel-card-width: 200px;
+  --carousel-card-width-lg: 280px;
+  --carousel-gap: 16px;
+  --carousel-fade-width: 60px;
+
+  /* Provider colors */
+  --provider-supabase: #3ECF8E;
+  --provider-local: #F59E0B;
+  --provider-gdrive: #4285F4;
+  --provider-vercel: #FFFFFF;
+  --provider-r2: #F6821F;
+  --provider-gcp: #4285F4;
 }
 
 /* ═══════════════════════════════════════════ */

@@ -26,6 +26,27 @@ import { manifest as twilioManifest, handlers as twilioHandlers } from './builti
 import { manifest as plaidManifest, handlers as plaidHandlers } from './builtin/plaid-kit';
 import { manifest as linearManifest, handlers as linearHandlers } from './builtin/linear-kit';
 import { manifest as discordManifest, handlers as discordHandlers } from './builtin/discord-kit';
+import { manifest as youtubeManifest, handlers as youtubeHandlers } from './builtin/youtube-kit';
+import { manifest as twitterManifest, handlers as twitterHandlers } from './builtin/twitter-kit';
+import { manifest as linkedinManifest, handlers as linkedinHandlers } from './builtin/linkedin-kit';
+import { manifest as gmailManifest, handlers as gmailHandlers } from './builtin/gmail-kit';
+import { manifest as twitchManifest, handlers as twitchHandlers } from './builtin/twitch-kit';
+import { manifest as elevenlabsManifest, handlers as elevenlabsHandlers } from './builtin/elevenlabs-kit';
+import { manifest as vapiManifest, handlers as vapiHandlers } from './builtin/vapi-kit';
+import { manifest as gcalManifest, handlers as gcalHandlers } from './builtin/google-calendar-kit';
+import { manifest as gdriveManifest, handlers as gdriveHandlers } from './builtin/google-drive-kit';
+import { manifest as gsheetsManifest, handlers as gsheetsHandlers } from './builtin/google-sheets-kit';
+import { manifest as gaManifest, handlers as gaHandlers } from './builtin/google-analytics-kit';
+import { manifest as gscManifest, handlers as gscHandlers } from './builtin/google-search-console-kit';
+import { manifest as deepgramManifest, handlers as deepgramHandlers } from './builtin/deepgram-kit';
+import { manifest as whatsappManifest, handlers as whatsappHandlers } from './builtin/whatsapp-kit';
+import { manifest as messengerManifest, handlers as messengerHandlers } from './builtin/messenger-kit';
+import { manifest as telegramManifest, handlers as telegramHandlers } from './builtin/telegram-kit';
+import { manifest as sendgridManifest, handlers as sendgridHandlers } from './builtin/sendgrid-kit';
+import { manifest as resendManifest, handlers as resendHandlers } from './builtin/resend-kit';
+import { manifest as storageSupabaseManifest, handlers as storageSupabaseHandlers } from './builtin/storage-supabase-kit';
+import { manifest as storageLocalManifest, handlers as storageLocalHandlers } from './builtin/storage-local-kit';
+import { manifest as storageGdriveManifest, handlers as storageGdriveHandlers } from './builtin/storage-gdrive-kit';
 
 // ---------------------------------------------------------------------------
 // Local Kit Registry
@@ -55,6 +76,27 @@ const builtinKits: KitInstance[] = [
   kit(plaidManifest, plaidHandlers),
   kit(linearManifest, linearHandlers),
   kit(discordManifest, discordHandlers),
+  kit(youtubeManifest, youtubeHandlers),
+  kit(twitterManifest, twitterHandlers),
+  kit(linkedinManifest, linkedinHandlers),
+  kit(gmailManifest, gmailHandlers),
+  kit(twitchManifest, twitchHandlers),
+  kit(elevenlabsManifest, elevenlabsHandlers),
+  kit(vapiManifest, vapiHandlers),
+  kit(gcalManifest, gcalHandlers),
+  kit(gdriveManifest, gdriveHandlers),
+  kit(gsheetsManifest, gsheetsHandlers),
+  kit(gaManifest, gaHandlers),
+  kit(gscManifest, gscHandlers),
+  kit(deepgramManifest, deepgramHandlers),
+  kit(whatsappManifest, whatsappHandlers),
+  kit(messengerManifest, messengerHandlers),
+  kit(telegramManifest, telegramHandlers),
+  kit(sendgridManifest, sendgridHandlers),
+  kit(resendManifest, resendHandlers),
+  kit(storageSupabaseManifest, storageSupabaseHandlers),
+  kit(storageLocalManifest, storageLocalHandlers),
+  kit(storageGdriveManifest, storageGdriveHandlers),
 ];
 
 /** Returns all built-in kit instances */

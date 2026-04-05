@@ -49,6 +49,9 @@ const VentureOnboarding = lazy(() => import('./views/VentureOnboarding'));
 const MemoryView = lazy(() => import('./views/MemoryView'));
 const PipelineView = lazy(() => import('./views/PipelineView'));
 const OperatorControlRoom = lazy(() => import('./views/OperatorControlRoom'));
+const CommsHub = lazy(() => import('./views/CommsHub'));
+const FilesView = lazy(() => import('./views/FilesView'));
+const VentureWorkspaceView = lazy(() => import('./views/VentureWorkspaceView'));
 
 // Placeholder views
 function PlaceholderView({ title, description }: { title: string; description: string }) {
@@ -110,6 +113,8 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <TasksView />;
     case 'crm':
       return <CRMView />;
+    case 'comms-hub':
+      return <CommsHub />;
     case 'forge':
       return <ForgeView />;
     case 'docs':
@@ -134,6 +139,8 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <OperatorControlRoom />;
     case 'settings':
       return <SettingsView />;
+    case 'files':
+      return <FilesView />;
     // Venture views
     case 'venture-dashboard':
       return <VentureDashboard venture={venture} />;
@@ -155,6 +162,8 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <PlaceholderView title={`${venture.name} — Settings`} description="Venture configuration." />;
     case 'venture-onboarding':
       return <VentureOnboarding />;
+    case 'venture-workspace':
+      return <VentureWorkspaceView />;
     case 'growth':
       return <GrowthView />;
     default:
@@ -235,6 +244,7 @@ const VIEW_LABELS: Record<string, string> = {
   'venture-operations': 'Operations', 'venture-docs': 'Documents',
   'venture-forge': 'The Forge', 'venture-tasks': 'Tasks',
   'venture-settings': 'Settings', 'venture-onboarding': 'New Venture',
+  files: 'Files', 'venture-workspace': 'Workspace',
 };
 
 const SECTION_MAP: Record<string, string> = {
@@ -243,7 +253,7 @@ const SECTION_MAP: Record<string, string> = {
   engineering: 'Engineering', ops: 'Engineering', forge: 'Engineering',
   sessions: 'Engineering', 'war-room': 'Engineering',
   crm: 'Growth & CRM', growth: 'Growth & CRM',
-  tasks: 'Operations', docs: 'Operations', team: 'Operations',
+  tasks: 'Operations', docs: 'Operations', files: 'Operations', team: 'Operations',
   'ai-studio': 'AI Tools', 'prompt-composer': 'AI Tools',
   settings: 'System',
 };
