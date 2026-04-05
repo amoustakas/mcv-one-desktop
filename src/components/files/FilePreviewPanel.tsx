@@ -10,6 +10,7 @@ import StorageProviderBadge from './StorageProviderBadge';
 import StatusBadge from './StatusBadge';
 import StageProgressBar from './StageProgressBar';
 import type { StorageItem, AuditEntry } from '../../lib/storage/types';
+import NFTCertificationPanel from './NFTCertificationPanel';
 import { getFileAuditLog } from '../../lib/storage/audit';
 
 function getIcon(item: StorageItem) {
@@ -202,6 +203,13 @@ export default function FilePreviewPanel({ file, onClose, onDownload, onDelete, 
                 <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                   {file.aiSummary}
                 </p>
+              </div>
+            )}
+
+            {/* NFT Certification */}
+            {file.certificationJson && (
+              <div className="preview-section">
+                <NFTCertificationPanel file={file} certification={file.certificationJson} />
               </div>
             )}
 
