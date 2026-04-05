@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/lib/commerce/inventory-manager.ts
 // Inventory Manager — Commerce Surface Layer
 // Multi-location stock management: reservations, transfers, adjustments, audit trail

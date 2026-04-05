@@ -13,6 +13,8 @@ import { useLayoutStore } from './stores/layout';
 import { getVenture, ventures } from './lib/ventures';
 // UserButton removed — unused
 import { Search, Settings, Bot, Columns2 } from 'lucide-react';
+import WorkspaceRenderer, { setViewPanelComponent } from './components/WorkspaceRenderer';
+import { useWorkspaceStore, LAYOUT_TEMPLATES, countPanels } from './stores/workspace';
 import { usePresence } from './hooks/use-presence';
 import PresenceAvatar from './components/PresenceAvatar';
 import PresenceCard from './components/PresenceCard';
@@ -194,6 +196,7 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <CreativeCanvasView />;
     case 'ad-studio':
       return <AdStudioView />;
+    case 'naos-command':
     // Venture views
     case 'venture-dashboard':
       return <VentureDashboard venture={venture} />;
@@ -297,64 +300,10 @@ function ViewPanel({ viewId }: { viewId?: ViewId }) {
   );
 }
 
-function SplitWorkspace() {
-  const { splitView, splitRatio, splitDirection, setSplitRatio, setSplitDirection, closeSplit, swapPanels } = useNavigation();
-  const [dragging, setDragging] = useState(false);
+// Register ViewPanel with WorkspaceRenderer for multi-panel layouts
+setViewPanelComponent(ViewPanel);
 
-  function handleMouseDown() {
-    setDragging(true);
-    function onMove(e: MouseEvent) {
-      const container = document.querySelector('.app-workspace') as HTMLElement;
-      if (!container) return;
-      const rect = container.getBoundingClientRect();
-      const ratio = splitDirection === 'horizontal'
-        ? (e.clientX - rect.left) / rect.width
-        : (e.clientY - rect.top) / rect.height;
-      setSplitRatio(ratio);
-    }
-    function onUp() {
-      setDragging(false);
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    }
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-  }
 
-  if (!splitView) {
-    return (
-      <div className="app-content">
-        <ViewPanel />
-      </div>
-    );
-  }
-
-  const isH = splitDirection === 'horizontal';
-  const firstStyle = isH ? { width: `${splitRatio * 100}%` } : { height: `${splitRatio * 100}%` };
-  const secondStyle = isH ? { width: `${(1 - splitRatio) * 100}%` } : { height: `${(1 - splitRatio) * 100}%` };
-  const dividerClass = `split-divider ${isH ? 'split-h' : 'split-v'} ${dragging ? 'active' : ''}`;
-
-  return (
-    <div className={`split-container ${isH ? 'split-horizontal' : 'split-vertical'}`}>
-      <div className="app-content split-pane" style={firstStyle}>
-        <ViewPanel />
-      </div>
-      <div className={dividerClass} onMouseDown={handleMouseDown}>
-        <div className="split-divider-line" />
-        <div className="split-divider-actions">
-          <button className="split-action-btn" onClick={() => setSplitDirection(isH ? 'vertical' : 'horizontal')} title={isH ? 'Switch to vertical split' : 'Switch to horizontal split'}>
-            {isH ? '⏛' : '⏚'}
-          </button>
-          <button className="split-action-btn" onClick={swapPanels} title="Swap panels">⇄</button>
-          <button className="split-action-btn" onClick={closeSplit} title="Close split (Ctrl+\\)">✕</button>
-        </div>
-      </div>
-      <div className="app-content split-pane" style={secondStyle}>
-        <ViewPanel viewId={splitView} />
-      </div>
-    </div>
-  );
-}
 
 const VIEW_LABELS: Record<string, string> = {
   'command-center': 'Command Center', portfolio: 'Portfolio', chat: 'Aegis AI',
@@ -425,9 +374,10 @@ function Breadcrumbs() {
 }
 
 function LayoutPicker() {
-  const { splitView, splitDirection, openSplit, closeSplit, setSplitDirection, toggleSplit, activeView } = useNavigation();
+  const { applyTemplate, activeTemplateId, layout } = useWorkspaceStore();
   const [showMenu, setShowMenu] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const panelCount = countPanels(layout);
 
   useEffect(() => {
     if (!showMenu) return;
@@ -438,50 +388,30 @@ function LayoutPicker() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showMenu]);
 
-  const layouts = [
-    { id: 'single', label: 'Single View', icon: '▣', active: !splitView },
-    { id: 'h-split', label: 'Side by Side', icon: '◫', active: splitView && splitDirection === 'horizontal' },
-    { id: 'v-split', label: 'Top & Bottom', icon: '⬓', active: splitView && splitDirection === 'vertical' },
-  ];
-
-  function handleLayout(id: string) {
-    if (id === 'single') {
-      closeSplit();
-    } else if (id === 'h-split') {
-      if (!splitView) toggleSplit();
-      setSplitDirection('horizontal');
-    } else if (id === 'v-split') {
-      if (!splitView) toggleSplit();
-      setSplitDirection('vertical');
-    }
-    setShowMenu(false);
-  }
-
   return (
     <div className="layout-picker" ref={ref}>
       <button
         className="header-icon-btn"
         onClick={() => setShowMenu(!showMenu)}
-        title="Layout (Ctrl+\\"
-        style={splitView ? { color: 'var(--cyan)' } : undefined}
+        title="Layout"
+        style={panelCount > 1 ? { color: 'var(--cyan)' } : undefined}
       >
         <Columns2 size={15} />
       </button>
       {showMenu && (
         <div className="layout-menu">
-          <div className="layout-menu-title">Layout</div>
-          {layouts.map(l => (
-            <button key={l.id} className={`layout-option ${l.active ? 'active' : ''}`} onClick={() => handleLayout(l.id)}>
-              <span className="layout-option-icon">{l.icon}</span>
-              <span>{l.label}</span>
-            </button>
-          ))}
-          <div className="layout-menu-sep" />
-          <div className="layout-menu-title">Quick Split</div>
-          {(['chat', 'docs', 'tasks', 'engineering', 'war-room'] as ViewId[]).filter(v => v !== activeView).map(v => (
-            <button key={v} className="layout-option" onClick={() => { openSplit(v); setShowMenu(false); }}>
-              <span className="layout-option-icon">+</span>
-              <span>{VIEW_LABELS[v] || v}</span>
+          <div className="layout-menu-title">Layouts</div>
+          {LAYOUT_TEMPLATES.map(t => (
+            <button
+              key={t.id}
+              className={`layout-option ${activeTemplateId === t.id ? 'active' : ''}`}
+              onClick={() => { applyTemplate(t.id); setShowMenu(false); }}
+            >
+              <span className="layout-option-icon">{t.icon}</span>
+              <span className="layout-option-text">
+                <span className="layout-option-name">{t.name}</span>
+                <span className="layout-option-desc">{t.description}</span>
+              </span>
             </button>
           ))}
         </div>
@@ -489,6 +419,7 @@ function LayoutPicker() {
     </div>
   );
 }
+
 
 export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -631,7 +562,7 @@ export default function App() {
 
         {/* Content Area */}
         <div className="app-workspace">
-          <SplitWorkspace />
+          <WorkspaceRenderer />
 
           {/* Chat Dock */}
           {chatDocked && <ChatDock />}
@@ -911,7 +842,10 @@ export default function App() {
         }
         .layout-option:hover { background: var(--bg-elevated); color: var(--text-primary); }
         .layout-option.active { color: var(--cyan); background: rgba(0,240,255,0.05); }
-        .layout-option-icon { width: 18px; text-align: center; font-size: 14px; }
+        .layout-option-icon { width: 18px; text-align: center; font-size: 14px; flex-shrink: 0; }
+        .layout-option-text { display: flex; flex-direction: column; }
+        .layout-option-name { font-weight: 500; }
+        .layout-option-desc { font-size: 9px; color: var(--text-muted); }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
     </div>

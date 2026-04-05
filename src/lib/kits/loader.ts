@@ -66,6 +66,7 @@ import { manifest as storageGdriveManifest, handlers as storageGdriveHandlers } 
 import { manifest as storageAiManifest, handlers as storageAiHandlers } from './builtin/storage-ai-kit';
 import { manifest as googleRagManifest, handlers as googleRagHandlers } from './builtin/google-rag-kit';
 import { manifest as adStudioManifest, handlers as adStudioHandlers } from './builtin/ad-studio-kit';
+import { manifest as naosCommandManifest, handlers as naosCommandHandlers } from './builtin/naos-command-kit';
 import {
   manifest as mcpBridgeManifest,
   handlers as mcpBridgeHandlers,
@@ -167,6 +168,7 @@ const builtinKits: KitInstance[] = [
   kit(storageAiManifest, storageAiHandlers),
   kit(googleRagManifest, googleRagHandlers),
   kit(adStudioManifest, adStudioHandlers),
+  kit(naosCommandManifest, naosCommandHandlers),
   kit(mcpBridgeManifest, mcpBridgeHandlers),
   kit(deviceManifest, deviceHandlers),
   kit(ledgerManifest, ledgerHandlers),

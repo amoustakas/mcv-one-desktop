@@ -95,7 +95,9 @@ export type ViewId =
   | 'creator-royalties'
   | 'creator-escrow'
   // Checkout view
-  | 'checkout';
+  | 'checkout'
+  // NAOS Command
+  | 'naos-command';
 
 export type ContextMode = 'global' | 'venture';
 
@@ -168,6 +170,7 @@ const VIEW_LABELS: Record<string, string> = {
   'financials-reporting': 'Reporting',
   'venture-financials': 'Financials',
   'creator-hub': 'Creator Hub', 'creator-royalties': 'Royalties', 'creator-escrow': 'Escrow',
+  'naos-command': 'NAOS Command',
 };
 
 export const useNavigation = create<NavigationState>()(

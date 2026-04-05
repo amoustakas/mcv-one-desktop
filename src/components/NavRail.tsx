@@ -6,7 +6,7 @@ import {
   Wand2, Swords, TrendingUp, FileText, Plus, Package,
   Database, GitBranch, Radar, MessageSquare, FolderOpen, Archive, Megaphone,
   Cpu, Grid3x3, AudioLines, MonitorSmartphone,
-  ShoppingCart, BarChart3, CreditCard, Receipt, Tag, Banknote, FileBarChart, BookMarked,
+  ShoppingCart, BarChart3, CreditCard, Receipt, Tag, Banknote, FileBarChart, BookMarked, Shield,
   Truck, Star, Gift, Users2, Layers, Percent, SlidersHorizontal,
 } from 'lucide-react';
 import { useNavigation, type ViewId } from '../stores/navigation';
@@ -65,7 +65,7 @@ const VIEW_ICONS: Record<string, React.FC<{ size: number }>> = {
   'venture-operations': Activity, 'venture-docs': BookOpen,
   'venture-forge': Hammer, 'venture-tasks': CheckSquare,
   'venture-settings': Settings, 'venture-onboarding': Plus,
-  files: FolderOpen, 'venture-workspace': Archive, 'ad-studio': Megaphone,
+  files: FolderOpen, 'venture-workspace': Archive, 'ad-studio': Megaphone, 'naos-command': Shield,
 };
 
 // ── Section definitions ──
@@ -76,6 +76,7 @@ const globalSections: NavSection[] = [
     label: 'Command', key: 'command',
     items: [
       { id: 'command-center', label: 'Command Center' },
+      { id: 'naos-command', label: 'NAOS Command' },
       { id: 'portfolio', label: 'Portfolio' },
       { id: 'chat', label: 'Aegis AI' },
     ],

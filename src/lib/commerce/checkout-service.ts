@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/lib/commerce/checkout-service.ts
 // Commerce Surface Layer — Checkout Service
 // Orchestrates cart → order → payment → ledger

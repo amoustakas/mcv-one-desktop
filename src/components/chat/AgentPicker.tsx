@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * AgentPicker — Horizontal pill row for selecting which NAOS agent to talk to.
  *

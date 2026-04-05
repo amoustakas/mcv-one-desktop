@@ -1,0 +1,88 @@
+/* MCV One — NAOS Command Styles */
+
+/* ── KPI Strip ── */
+.naos-kpi-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 0 var(--space-lg); margin-bottom: var(--space-sm); position: relative; }
+.naos-kpi-strip::before { content: ""; position: absolute; top: -1px; left: 15%; right: 15%; height: 1px; background: linear-gradient(to right, transparent, var(--cyan), var(--purple), transparent); }
+
+/* ── Tabs ── */
+.naos-tabs { margin: 0 var(--space-lg) var(--space-sm); }
+
+/* ── Body ── */
+.naos-body { flex: 1; overflow-y: auto; padding: 0 var(--space-lg) var(--space-lg); }
+.naos-loading { display: flex; align-items: center; justify-content: center; height: 200px; color: var(--text-muted); font-size: 12px; font-family: var(--font-mono); }
+
+/* ── Layout (org chart + detail) ── */
+.naos-layout { display: grid; grid-template-columns: 1fr 360px; gap: var(--space-md); }
+.naos-main { min-width: 0; }
+.naos-detail-panel { min-width: 0; }
+
+/* ── Empty State ── */
+.naos-empty-state { display: flex; flex-direction: column; align-items: center; gap: var(--space-sm); padding: var(--space-2xl); text-align: center; }
+.naos-empty-state h3 { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+.naos-empty-state p { font-size: 12px; color: var(--text-muted); max-width: 400px; }
+.naos-empty { font-size: 12px; color: var(--text-muted); text-align: center; padding: var(--space-xl); }
+
+/* ── Org Chart Nodes ── */
+.naos-org-chart { display: flex; flex-wrap: wrap; gap: var(--space-md); padding: var(--space-sm); }
+.naos-org-node { position: relative; padding: 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); cursor: pointer; transition: all 0.2s; min-width: 180px; overflow: hidden; }
+.naos-org-node:hover { border-color: var(--border-active); transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.25); }
+.naos-org-node.selected { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan), 0 0 20px var(--cyan-glow); }
+.naos-org-node-gradient { position: absolute; top: 0; left: 10%; right: 10%; height: 2px; background: linear-gradient(to right, transparent, var(--tier-color, var(--cyan)), transparent); }
+.naos-org-node-codename { font-size: 16px; font-weight: 700; color: var(--text-primary); font-family: var(--font-display); letter-spacing: 1px; }
+.naos-org-node-title { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.naos-org-node-meta { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+.naos-org-node-milestone { font-size: 9px; color: var(--text-muted); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* ── Detail Panel ── */
+.naos-detail-header { margin-bottom: var(--space-md); }
+.naos-detail-codename { font-size: 22px; font-weight: 700; font-family: var(--font-display); background: linear-gradient(135deg, var(--cyan), var(--purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; letter-spacing: 1px; }
+.naos-detail-fullname { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+.naos-detail-title { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+.naos-detail-story { font-size: 11px; color: var(--text-secondary); line-height: 1.5; padding: var(--space-sm) 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin: var(--space-sm) 0; font-style: italic; }
+.naos-detail-stats { display: flex; flex-direction: column; gap: 6px; margin-bottom: var(--space-md); }
+.naos-detail-stat { display: flex; justify-content: space-between; font-size: 11px; }
+.naos-detail-stat-label { color: var(--text-muted); }
+.naos-detail-stat-value { color: var(--text-primary); font-family: var(--font-mono); font-size: 10px; }
+.naos-detail-achievements { display: flex; gap: 4px; flex-wrap: wrap; }
+.naos-achievement-pill { font-size: 9px; padding: 2px 8px; border-radius: var(--radius-full); background: var(--cyan-glow); color: var(--cyan); border: 1px solid rgba(0,240,255,0.15); }
+
+/* ── Roster ── */
+.naos-roster { display: flex; flex-direction: column; gap: 2px; }
+.naos-roster-row { display: flex; align-items: center; gap: var(--space-md); padding: 10px 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer; transition: all 0.15s; }
+.naos-roster-row:hover { border-color: var(--border-active); transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+.naos-roster-row.selected { border-color: var(--cyan); background: rgba(0,240,255,0.03); }
+.naos-roster-codename { font-size: 13px; font-weight: 600; color: var(--text-primary); font-family: var(--font-display); width: 120px; letter-spacing: 0.5px; }
+.naos-roster-title { flex: 1; font-size: 11px; color: var(--text-secondary); }
+.naos-roster-milestone { font-size: 9px; color: var(--text-muted); font-family: var(--font-mono); text-transform: uppercase; width: 80px; }
+.naos-roster-status { font-size: 9px; width: 60px; text-align: right; }
+
+/* ── Culture Pulse ── */
+.naos-culture { display: flex; flex-direction: column; gap: 12px; max-width: 600px; }
+.naos-culture-bar { display: flex; align-items: center; gap: 12px; }
+.naos-culture-label { font-size: 11px; color: var(--text-muted); width: 140px; text-align: right; }
+.naos-culture-track { flex: 1; height: 8px; background: var(--bg-elevated); border-radius: 4px; overflow: hidden; }
+.naos-culture-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+.naos-culture-value { font-size: 12px; font-weight: 600; font-family: var(--font-mono); color: var(--text-primary); width: 30px; }
+.naos-culture-meta { font-size: 10px; color: var(--text-muted); text-align: center; margin-top: var(--space-sm); font-family: var(--font-mono); }
+
+/* ── Personality Bars ── */
+.naos-personality-bars { display: flex; flex-direction: column; gap: 6px; }
+.naos-trait-row { display: flex; align-items: center; gap: 8px; }
+.naos-trait-label { font-size: 9px; color: var(--text-muted); width: 100px; text-align: right; text-transform: uppercase; letter-spacing: 0.3px; }
+.naos-trait-bar { flex: 1; height: 6px; background: var(--bg-elevated); border-radius: 3px; overflow: hidden; }
+.naos-trait-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+.naos-trait-value { font-size: 9px; font-family: var(--font-mono); color: var(--text-secondary); width: 24px; text-align: right; }
+
+/* ── Emotional Indicator ── */
+.naos-emotional { display: flex; align-items: center; gap: 6px; }
+.naos-emotional-emoji { font-size: 16px; }
+.naos-emotional-momentum { display: flex; align-items: center; gap: 4px; }
+.naos-emotional-bar { width: 40px; height: 4px; background: var(--bg-elevated); border-radius: 2px; overflow: hidden; }
+.naos-emotional-fill { height: 100%; border-radius: 2px; }
+.naos-emotional-label { font-size: 9px; color: var(--text-muted); font-family: var(--font-mono); }
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+  .naos-kpi-strip { grid-template-columns: repeat(2, 1fr); }
+  .naos-layout { grid-template-columns: 1fr; }
+}

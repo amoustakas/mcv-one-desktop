@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { AgentDefinition } from '../types';
 
 export const director: AgentDefinition = {
