@@ -76,6 +76,7 @@ export interface AppInstanceMetadata {
   screenLabel?: string;          // Multi-monitor: screen label from getScreenDetails()
   screenPosition?: { x: number; y: number; width: number; height: number };
   pixelRatio: number;            // window.devicePixelRatio
+  orientation?: string;          // 'portrait-primary' | 'portrait-secondary' | 'landscape-primary' | 'landscape-secondary'
 
   // Device
   deviceType: string;            // 'desktop' | 'tablet' | 'phone'
@@ -125,7 +126,12 @@ export type DeviceInputEventType =
   | 'text-scan'
   | 'agent-message'
   | 'midi-note'
-  | 'midi-cc';
+  | 'midi-cc'
+  | 'screen-resize'
+  | 'view-change'
+  | 'venture-switch'
+  | 'instance-connect'
+  | 'instance-disconnect';
 
 export interface DeviceInputEvent {
   id: string;
@@ -148,7 +154,10 @@ export type DeviceOutputCommandType =
   | 'set-effect'
   | 'route-audio'
   | 'set-brightness'
-  | 'send-agent-command';
+  | 'send-agent-command'
+  | 'navigate-to-view'
+  | 'switch-venture'
+  | 'set-split-view';
 
 export interface DeviceOutputCommand {
   id: string;
@@ -213,6 +222,39 @@ export interface AudioRoute {
 export interface AudioRoutingPreset {
   routes: AudioRoute[];
   effects?: Record<string, unknown>;
+}
+
+/** Full GoXLR state snapshot — captures every controllable parameter */
+export interface AudioRoutingState {
+  /** All active input→output routes */
+  routes: AudioRoute[];
+
+  /** Fader assignments and positions (0–255) keyed by fader name (A/B/C/D) */
+  faders: Record<string, { assignment: string; position: number }>;
+
+  /** Per-channel mute states keyed by channel name */
+  muteStates: Record<string, boolean>;
+
+  /** Effects bank settings (reverb, echo, pitch, gender, megaphone, robot, hard-tune) */
+  effects: {
+    activePreset: string;
+    reverb: { enabled: boolean; amount: number; style: string };
+    echo: { enabled: boolean; amount: number; delayMs: number; feedback: number };
+    pitch: { enabled: boolean; amount: number; style: string };
+    gender: { enabled: boolean; amount: number };
+    megaphone: { enabled: boolean; style: string };
+    robot: { enabled: boolean; style: string };
+    hardTune: { enabled: boolean; style: string; amount: number };
+  };
+
+  /** Sampler bank state — which pads have samples loaded */
+  samplerBanks: Record<string, { pads: Array<{ loaded: boolean; label?: string }> }>;
+
+  /** Lighting/LED state per zone */
+  lighting?: Record<string, { color: string; style: string }>;
+
+  /** Timestamp of last state read */
+  capturedAt: number;
 }
 
 // ---------------------------------------------------------------------------

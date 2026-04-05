@@ -18,6 +18,7 @@ import PresenceAvatar from './components/PresenceAvatar';
 import PresenceCard from './components/PresenceCard';
 import VentureMegaMenu from './components/VentureMegaMenu';
 import QuickCapture from './components/QuickCapture';
+import CommsActionFAB from './components/CommsActionFAB';
 import Toasts from './components/Toasts';
 import HITLModal from './components/control-room/HITLModal';
 import NotificationCenter from './components/NotificationCenter';
@@ -478,6 +479,8 @@ export default function App() {
 
       {/* Quick Capture FAB */}
       <QuickCapture open={quickCaptureOpen} onToggle={() => setQuickCaptureOpen(o => !o)} />
+      {/* Global Comms FAB (Ctrl+M) */}
+      <CommsActionFAB />
 
       {/* Overlays */}
       <CommandPalette open={paletteOpen} onClose={closePalette} />

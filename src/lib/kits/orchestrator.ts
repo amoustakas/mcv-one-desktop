@@ -122,15 +122,61 @@ export class AgentOrchestrator {
         prompt += 'The user has the following physical devices and agent sessions connected:\n\n';
         for (const d of connected) {
           prompt += `- **${d.name}** (${d.class}) — capabilities: ${d.capabilities.join(', ')}\n`;
+
+          // Enrich app-instance entries with screen & mobile details
+          if (d.class === 'app-instance' && d.metadata) {
+            const meta = d.metadata as Record<string, unknown>;
+            if (meta.screenIndex !== undefined) {
+              prompt += `    Screen ${(meta.screenIndex as number) + 1}: ${meta.screenResolution as string} (${meta.screenClass as string})`;
+              if (meta.orientation) prompt += ` [${meta.orientation as string}]`;
+              prompt += '\n';
+            }
+            // Mobile-specific info
+            if (meta.deviceType === 'phone' || meta.deviceType === 'tablet') {
+              const parts: string[] = [];
+              if (meta.batteryLevel !== undefined) {
+                parts.push(`battery: ${meta.batteryLevel as number}%${meta.batteryCharging ? ' (charging)' : ''}`);
+              }
+              if (meta.networkType) parts.push(`network: ${meta.networkType as string}`);
+              if (parts.length > 0) prompt += `    Mobile: ${parts.join(', ')}\n`;
+            }
+          }
         }
+
+        // Screen layout summary
+        const appInstances = connected.filter((d) => d.class === 'app-instance');
+        if (appInstances.length > 0) {
+          const screenCount = new Set(
+            appInstances
+              .map((d) => (d.metadata as Record<string, unknown>).screenLabel)
+              .filter(Boolean),
+          ).size;
+          if (screenCount > 1) {
+            prompt += `\nScreen layout: ${screenCount} screens across ${appInstances.length} instance(s).\n`;
+          }
+        }
+
+        // Active device profile
         const activeProfile = deviceState.activeProfileId
           ? deviceState.profiles[deviceState.activeProfileId]
           : null;
         if (activeProfile) {
           prompt += `\nActive device profile: **${activeProfile.name}**`;
+          if (activeProfile.description) prompt += ` — ${activeProfile.description}`;
           if (activeProfile.ventureId) prompt += ` (venture: ${activeProfile.ventureId})`;
+          // Summarize what the profile controls
+          const mappingCount = activeProfile.mappings?.length ?? 0;
+          const hasStreamDeck = (activeProfile.streamDeckPages?.length ?? 0) > 0;
+          const hasAudio = !!activeProfile.audioRouting;
+          const controls: string[] = [];
+          if (mappingCount > 0) controls.push(`${mappingCount} mappings`);
+          if (hasStreamDeck) controls.push('Stream Deck pages');
+          if (hasAudio) controls.push('audio routing');
+          if (activeProfile.goxlrPreset) controls.push(`GoXLR preset: ${activeProfile.goxlrPreset}`);
+          if (controls.length > 0) prompt += ` | Controls: ${controls.join(', ')}`;
           prompt += '\n';
         }
+
         prompt += '\nYou can control these devices using the device-hub kit tools (list_devices, send_device_command, etc.). ';
         prompt += 'Proactively suggest device configurations when relevant to the user\'s workflow.\n';
       }

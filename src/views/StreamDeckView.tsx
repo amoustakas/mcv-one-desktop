@@ -1,10 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Grid3x3, ChevronLeft, ChevronRight, Settings, Download, Upload } from 'lucide-react';
+import { Grid3x3, ChevronLeft, ChevronRight, Settings, Download, Upload, Plus, Pencil, Check } from 'lucide-react';
 import { PageShell, PageHeader, GlassCard, EmptyState, Button } from '../components/ui';
 import { staggerContainer, fadeInUp } from '../lib/animations';
 import { useDeviceStore } from '../stores/devices';
-import type { StreamDeckButton, StreamDeckPage } from '../lib/devices/types';
+import type { StreamDeckButton, StreamDeckPage, DeviceProfile } from '../lib/devices/types';
 import { cn } from '../lib/utils';
 
 const GRID_LAYOUTS: Record<string, { cols: number; rows: number }> = {
@@ -54,9 +54,11 @@ function StreamDeckButtonCell({
 }
 
 export default function StreamDeckView() {
-  const { devices, profiles, activeProfileId } = useDeviceStore();
+  const { devices, profiles, activeProfileId, addProfile, setActiveProfile } = useDeviceStore();
   const [selectedButton, setSelectedButton] = useState<number | null>(null);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
+  const [editingPageName, setEditingPageName] = useState(false);
+  const [pageNameDraft, setPageNameDraft] = useState('');
 
   const streamDecks = useMemo(
     () => Object.values(devices).filter((d) => d.class === 'stream-deck'),
@@ -87,6 +89,78 @@ export default function StreamDeckView() {
     return map;
   }, [currentPage]);
 
+  /** Persist updated profile back to the store */
+  const updateProfile = useCallback(
+    (updater: (profile: DeviceProfile) => DeviceProfile) => {
+      if (!activeProfile) return;
+      const updated = updater(activeProfile);
+      addProfile(updated);
+    },
+    [activeProfile, addProfile],
+  );
+
+  /** Update a button property on the current page and persist */
+  const updateButton = useCallback(
+    (index: number, patch: Partial<StreamDeckButton>) => {
+      if (!activeProfile || !currentPage) return;
+      const existingButtons = [...currentPage.buttons];
+      const btnIdx = existingButtons.findIndex((b) => b.index === index);
+      if (btnIdx >= 0) {
+        existingButtons[btnIdx] = { ...existingButtons[btnIdx], ...patch };
+      } else {
+        existingButtons.push({ index, ...patch } as StreamDeckButton);
+      }
+      const updatedPages = [...pages];
+      updatedPages[currentPageIndex] = { ...currentPage, buttons: existingButtons };
+      updateProfile((p) => ({ ...p, streamDeckPages: updatedPages }));
+    },
+    [activeProfile, currentPage, pages, currentPageIndex, updateProfile],
+  );
+
+  /** Create a new page in the active profile */
+  const handleCreatePage = useCallback(() => {
+    const newPage: StreamDeckPage = {
+      id: `page-${Date.now()}`,
+      name: `Page ${pages.length + 1}`,
+      buttons: [],
+    };
+    updateProfile((p) => ({
+      ...p,
+      streamDeckPages: [...(p.streamDeckPages ?? []), newPage],
+    }));
+    setCurrentPageIndex(pages.length); // navigate to the new page
+  }, [pages, updateProfile]);
+
+  /** Save page name edit */
+  const handleSavePageName = useCallback(() => {
+    if (!currentPage || !pageNameDraft.trim()) {
+      setEditingPageName(false);
+      return;
+    }
+    const updatedPages = [...pages];
+    updatedPages[currentPageIndex] = { ...currentPage, name: pageNameDraft.trim() };
+    updateProfile((p) => ({ ...p, streamDeckPages: updatedPages }));
+    setEditingPageName(false);
+  }, [currentPage, pageNameDraft, pages, currentPageIndex, updateProfile]);
+
+  /** Create a default profile with one empty page */
+  const handleCreateDefaultProfile = useCallback(() => {
+    const profileId = `profile-${Date.now()}`;
+    const defaultProfile: DeviceProfile = {
+      id: profileId,
+      name: 'Default Profile',
+      description: 'Auto-created default Stream Deck profile',
+      mappings: [],
+      streamDeckPages: [
+        { id: `page-${Date.now()}`, name: 'Main', buttons: [] },
+      ],
+      activateOn: 'manual',
+    };
+    addProfile(defaultProfile);
+    setActiveProfile(profileId);
+    setCurrentPageIndex(0);
+  }, [addProfile, setActiveProfile]);
+
   return (
     <PageShell>
       <PageHeader
@@ -105,33 +179,77 @@ export default function StreamDeckView() {
           title="No Stream Deck connected"
           description="Connect an Elgato Stream Deck via USB. Supported: Mini, MK.2, XL, Plus, Pedal."
         />
+      ) : !activeProfile ? (
+        <EmptyState
+          icon={<Settings size={40} />}
+          title="No profile loaded"
+          description="Create a default profile to start configuring your Stream Deck buttons."
+          action={
+            <Button variant="primary" size="sm" onClick={handleCreateDefaultProfile}>
+              <Plus size={14} /> Create Default Profile
+            </Button>
+          }
+        />
       ) : (
         <div className="flex gap-6">
           {/* Button grid */}
           <div className="flex-1">
             {/* Page navigation */}
-            {pages.length > 0 && (
-              <div className="flex items-center gap-3 mb-4">
-                <Button
-                  variant="ghost" size="sm"
-                  disabled={currentPageIndex <= 0}
-                  onClick={() => setCurrentPageIndex((i) => Math.max(0, i - 1))}
+            <div className="flex items-center gap-3 mb-4">
+              <Button
+                variant="ghost" size="sm"
+                disabled={currentPageIndex <= 0}
+                onClick={() => setCurrentPageIndex((i) => Math.max(0, i - 1))}
+              >
+                <ChevronLeft size={14} />
+              </Button>
+
+              {editingPageName ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={pageNameDraft}
+                    onChange={(e) => setPageNameDraft(e.target.value)}
+                    className="bg-white/5 border border-cyan-400/50 rounded-md px-2 py-0.5 text-sm text-white focus:outline-none w-32"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSavePageName();
+                      if (e.key === 'Escape') setEditingPageName(false);
+                    }}
+                  />
+                  <Button variant="ghost" size="sm" onClick={handleSavePageName}>
+                    <Check size={14} />
+                  </Button>
+                </div>
+              ) : (
+                <button
+                  className="text-sm text-white/60 hover:text-white/80 transition-colors flex items-center gap-1.5"
+                  onClick={() => {
+                    setPageNameDraft(currentPage?.name ?? '');
+                    setEditingPageName(true);
+                  }}
+                  title="Click to rename page"
                 >
-                  <ChevronLeft size={14} />
-                </Button>
-                <span className="text-sm text-white/60">
                   Page {currentPageIndex + 1} of {pages.length}
                   {currentPage?.name && ` — ${currentPage.name}`}
-                </span>
-                <Button
-                  variant="ghost" size="sm"
-                  disabled={currentPageIndex >= pages.length - 1}
-                  onClick={() => setCurrentPageIndex((i) => Math.min(pages.length - 1, i + 1))}
-                >
-                  <ChevronRight size={14} />
-                </Button>
-              </div>
-            )}
+                  <Pencil size={10} className="text-white/30" />
+                </button>
+              )}
+
+              <Button
+                variant="ghost" size="sm"
+                disabled={currentPageIndex >= pages.length - 1}
+                onClick={() => setCurrentPageIndex((i) => Math.min(pages.length - 1, i + 1))}
+              >
+                <ChevronRight size={14} />
+              </Button>
+
+              <div className="flex-1" />
+
+              <Button variant="ghost" size="sm" onClick={handleCreatePage}>
+                <Plus size={14} /> Add Page
+              </Button>
+            </div>
 
             {/* Grid */}
             <motion.div
@@ -169,7 +287,8 @@ export default function StreamDeckView() {
                       type="text"
                       className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-1.5 text-sm text-white placeholder:text-white/20 focus:border-cyan-400/50 focus:outline-none"
                       placeholder="Button label..."
-                      defaultValue={buttonMap[selectedButton]?.label ?? ''}
+                      value={buttonMap[selectedButton]?.label ?? ''}
+                      onChange={(e) => updateButton(selectedButton, { label: e.target.value })}
                     />
                   </div>
                   <div>
@@ -188,8 +307,14 @@ export default function StreamDeckView() {
                       {['#00F0FF', '#8B5CF6', '#10B981', '#EF4444', '#F59E0B', '#3B82F6'].map((c) => (
                         <button
                           key={c}
-                          className="w-6 h-6 rounded border border-white/10 hover:scale-110 transition-transform"
+                          className={cn(
+                            'w-6 h-6 rounded border hover:scale-110 transition-transform',
+                            buttonMap[selectedButton]?.color === c
+                              ? 'border-white ring-1 ring-white/30'
+                              : 'border-white/10',
+                          )}
                           style={{ backgroundColor: c }}
+                          onClick={() => updateButton(selectedButton, { color: c })}
                         />
                       ))}
                     </div>

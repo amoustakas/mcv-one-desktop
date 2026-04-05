@@ -20,6 +20,7 @@ import {
 import type { Contact } from '../lib/schemas/crm';
 import { PageHeader, Button, GlassCard, Badge, StatCard, Tabs, EmptyState, GridLayout } from '../components/ui';
 import { timeAgo, formatMoney, formatDate } from '../lib/utils';
+import ContextCommsMenu from '../components/ContextCommsMenu';
 
 // ── Constants ──
 const TYPE_COLORS: Record<string, string> = { lead: '#F59E0B', prospect: '#00F0FF', client: '#10B981', partner: '#8B5CF6', investor: '#3B82F6', vendor: '#6B7280' };
@@ -455,6 +456,7 @@ export default function CRMView() {
                     <span className="crm-name">
                       <span className="crm-avatar-sm" style={{ background: TYPE_COLORS[c.type] || '#6B7280' }}>{c.name.charAt(0).toUpperCase()}</span>
                       {c.name}{c.role && <span className="crm-role">{c.role}</span>}
+                      <ContextCommsMenu contact={{ name: c.name, email: c.email, phone: c.phone }} />
                     </span>
                     <span className="crm-company"><Building size={10} /> {c.company || '—'}</span>
                     <Badge color={TYPE_COLORS[c.type]} variant="outline">{c.type}</Badge>

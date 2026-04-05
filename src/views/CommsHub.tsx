@@ -1046,6 +1046,8 @@ function StatusTab() {
       {/* Data Ingestion Pipeline Status */}
       <CommsSyncStatus />
 
+      {/* Automation Trigger Rules */}
+
       {/* Platform Connection Status */}
       <GridLayout cols={2} gap="sm">
         {statuses.map((s) => {

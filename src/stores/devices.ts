@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type {
   DeviceDescriptor,
+  DeviceClass,
   DeviceInputEvent,
   DeviceOutputCommand,
   DeviceMapping,
@@ -10,6 +11,11 @@ import type {
 
 const MAX_EVENT_LOG = 500;
 const LOCAL_SERVER = 'http://localhost:3100';
+
+export interface CommandResult {
+  ok: boolean;
+  error?: string;
+}
 
 interface DeviceState {
   devices: Record<string, DeviceDescriptor>;
@@ -28,7 +34,7 @@ interface DeviceState {
   clearEventLog: () => void;
 
   // Commands
-  sendCommand: (command: DeviceOutputCommand) => Promise<void>;
+  sendCommand: (command: DeviceOutputCommand) => Promise<CommandResult>;
 
   // Profiles
   setActiveProfile: (profileId: string | null) => void;
@@ -41,11 +47,14 @@ interface DeviceState {
 
   // Scan
   scanDevices: () => Promise<void>;
+
+  // Derived getters
+  getDevicesByClass: (deviceClass: DeviceClass) => DeviceDescriptor[];
 }
 
 export const useDeviceStore = create<DeviceState>()(
   persist(
-    (set, _get) => ({
+    (set, get) => ({
       devices: {},
       profiles: {},
       activeProfileId: null,
@@ -81,15 +90,23 @@ export const useDeviceStore = create<DeviceState>()(
 
       clearEventLog: () => set({ eventLog: [] }),
 
-      sendCommand: async (command) => {
+      sendCommand: async (command): Promise<CommandResult> => {
         try {
-          await fetch(`${LOCAL_SERVER}/devices/command`, {
+          const res = await fetch(`${LOCAL_SERVER}/devices/command`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(command),
           });
-        } catch {
-          console.error('[DeviceStore] Failed to send command:', command.type);
+          if (!res.ok) {
+            const msg = `HTTP ${res.status}: ${res.statusText}`;
+            console.error('[DeviceStore] Command failed:', msg);
+            return { ok: false, error: msg };
+          }
+          return { ok: true };
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Network error';
+          console.error('[DeviceStore] Failed to send command:', command.type, msg);
+          return { ok: false, error: msg };
         }
       },
 
@@ -117,29 +134,45 @@ export const useDeviceStore = create<DeviceState>()(
         try {
           const res = await fetch(`${LOCAL_SERVER}/devices/scan`);
           if (!res.ok) return;
-          const data = await res.json();
-          const devices: Record<string, DeviceDescriptor> = {};
+          const data: { devices?: DeviceDescriptor[] } = await res.json();
+          const scanned: Record<string, DeviceDescriptor> = {};
           for (const d of data.devices ?? []) {
-            devices[d.id] = d;
+            scanned[d.id] = d;
           }
-          // Merge: keep existing devices that are still present, add new ones
+
           set((s) => {
             const merged = { ...s.devices };
-            // Mark missing devices as disconnected
+
+            // Preserve app-instance devices (from presence system) — scan only
+            // covers hardware devices, so we must not clobber presence entries.
+            const appInstanceIds = new Set(
+              Object.keys(merged).filter((id) => merged[id].class === 'app-instance'),
+            );
+
+            // Mark non-instance devices missing from scan as disconnected
             for (const id of Object.keys(merged)) {
-              if (!devices[id]) {
+              if (appInstanceIds.has(id)) continue; // skip app-instances
+              if (!scanned[id]) {
                 merged[id] = { ...merged[id], status: 'disconnected' };
               }
             }
+
             // Add/update scanned devices
-            for (const [id, d] of Object.entries(devices)) {
+            for (const [id, d] of Object.entries(scanned)) {
               merged[id] = d;
             }
+
             return { devices: merged };
           });
         } catch {
           console.warn('[DeviceStore] Local server not available for device scan');
         }
+      },
+
+      // Derived getter — filter devices by class
+      getDevicesByClass: (deviceClass) => {
+        const { devices } = get();
+        return Object.values(devices).filter((d) => d.class === deviceClass);
       },
     }),
     {
@@ -148,7 +181,7 @@ export const useDeviceStore = create<DeviceState>()(
         profiles: s.profiles,
         activeProfileId: s.activeProfileId,
         mappings: s.mappings,
-        // Don't persist devices (re-scanned on load) or eventLog (ephemeral)
+        // Don't persist: devices (re-scanned), eventLog (ephemeral)
       }),
     },
   ),

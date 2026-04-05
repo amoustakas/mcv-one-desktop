@@ -1,10 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   AudioLines, Volume2, Mic, Headphones, Radio,
-  Music, MessageSquare, Monitor, Sparkles,
+  Music, MessageSquare, Monitor, Sparkles, Check,
 } from 'lucide-react';
 import { PageShell, PageHeader, GlassCard, EmptyState } from '../components/ui';
 import { useDeviceStore } from '../stores/devices';
+import type { AudioRoute, DeviceProfile } from '../lib/devices/types';
 import { cn } from '../lib/utils';
 
 // GoXLR routing inputs and outputs
@@ -24,16 +25,19 @@ const OUTPUTS = [
   { id: 'chat-mic', label: 'Chat Mic', icon: <MessageSquare size={14} /> },
 ];
 
+const FADER_SOURCES: Record<string, { label: string; icon: React.ReactNode }> = {
+  A: { label: 'Mic', icon: <Mic size={12} /> },
+  B: { label: 'Game', icon: <Monitor size={12} /> },
+  C: { label: 'Music', icon: <Music size={12} /> },
+  D: { label: 'Chat', icon: <MessageSquare size={12} /> },
+};
+
 const FADERS = ['A', 'B', 'C', 'D'];
 
-function RoutingMatrix() {
-  const [routes, setRoutes] = useState<Record<string, boolean>>({});
-
-  function toggleRoute(input: string, output: string) {
-    const key = `${input}:${output}`;
-    setRoutes((prev) => ({ ...prev, [key]: !prev[key] }));
-  }
-
+function RoutingMatrix({ routes, onToggle }: {
+  routes: Record<string, boolean>;
+  onToggle: (input: string, output: string) => void;
+}) {
   return (
     <GlassCard className="p-4 overflow-x-auto">
       <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-4">
@@ -68,7 +72,7 @@ function RoutingMatrix() {
                 return (
                   <td key={out.id} className="text-center py-2">
                     <button
-                      onClick={() => toggleRoute(inp.id, out.id)}
+                      onClick={() => onToggle(inp.id, out.id)}
                       className={cn(
                         'w-8 h-8 rounded-md border transition-all mx-auto',
                         active
@@ -85,6 +89,92 @@ function RoutingMatrix() {
           ))}
         </tbody>
       </table>
+    </GlassCard>
+  );
+}
+
+function MicMonitorPanel() {
+  const [gain, setGain] = useState(75);
+  const [gate, setGate] = useState(30);
+  const [compressor, setCompressor] = useState(50);
+  const [eqLow, setEqLow] = useState(50);
+  const [eqMid, setEqMid] = useState(50);
+  const [eqHigh, setEqHigh] = useState(50);
+
+  const sliders: { label: string; value: number; onChange: (v: number) => void; color: string }[] = [
+    { label: 'Gain', value: gain, onChange: setGain, color: '#10B981' },
+    { label: 'Gate', value: gate, onChange: setGate, color: '#F59E0B' },
+    { label: 'Comp', value: compressor, onChange: setCompressor, color: '#8B5CF6' },
+    { label: 'EQ Lo', value: eqLow, onChange: setEqLow, color: '#EF4444' },
+    { label: 'EQ Mid', value: eqMid, onChange: setEqMid, color: '#3B82F6' },
+    { label: 'EQ Hi', value: eqHigh, onChange: setEqHigh, color: '#00F0FF' },
+  ];
+
+  return (
+    <GlassCard className="p-4">
+      <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-4">
+        Mic Monitor
+      </h3>
+      <div className="flex justify-center gap-6">
+        {sliders.map((s) => (
+          <div key={s.label} className="flex flex-col items-center gap-2">
+            <span className="text-[10px] text-white/40 font-mono">{s.label}</span>
+            <div className="relative w-6 h-28 bg-white/[0.03] rounded-full border border-white/10">
+              <div
+                className="absolute bottom-0 left-0 right-0 rounded-full transition-all"
+                style={{ height: `${s.value}%`, backgroundColor: `${s.color}40` }}
+              />
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={s.value}
+                onChange={(e) => s.onChange(Number(e.target.value))}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-ns-resize"
+                style={{ writingMode: 'vertical-lr', direction: 'rtl' } as React.CSSProperties}
+              />
+            </div>
+            <span className="text-[10px] text-white/30 font-mono">{s.value}</span>
+          </div>
+        ))}
+      </div>
+    </GlassCard>
+  );
+}
+
+function PresetsPanel({ profiles, onActivate }: {
+  profiles: DeviceProfile[];
+  onActivate: (profileId: string) => void;
+}) {
+  const presetsWithGoxlr = profiles.filter((p) => p.goxlrPreset);
+  return (
+    <GlassCard className="p-4">
+      <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">
+        Presets
+      </h3>
+      {presetsWithGoxlr.length === 0 ? (
+        <p className="text-xs text-white/30 text-center py-4">
+          No GoXLR presets saved. Create a profile with a GoXLR preset to see it here.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {presetsWithGoxlr.map((profile) => (
+            <button
+              key={profile.id}
+              onClick={() => onActivate(profile.id)}
+              className="w-full flex items-center justify-between px-3 py-2 rounded-md border border-white/10 bg-white/[0.02] hover:border-cyan-400/40 hover:bg-cyan-400/5 transition-all text-left"
+            >
+              <div>
+                <span className="text-sm text-white">{profile.name}</span>
+                {profile.goxlrPreset && (
+                  <span className="text-xs text-white/30 ml-2">{profile.goxlrPreset}</span>
+                )}
+              </div>
+              <Check size={14} className="text-white/20" />
+            </button>
+          ))}
+        </div>
+      )}
     </GlassCard>
   );
 }
@@ -161,10 +251,45 @@ function SamplerGrid() {
 }
 
 export default function AudioRouterView() {
-  const { devices } = useDeviceStore();
+  const { devices, profiles, activeProfileId, addProfile, setActiveProfile } = useDeviceStore();
+
+  // Persist fader values: initialize from active profile or defaults
+  const activeProfile = activeProfileId ? profiles[activeProfileId] : null;
   const [faderValues, setFaderValues] = useState<Record<string, number>>({
     A: 0.75, B: 0.6, C: 0.5, D: 0.4,
   });
+
+  // Persist routing: initialize from active profile audioRouting
+  const [routes, setRoutes] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    if (activeProfile?.audioRouting) {
+      for (const route of activeProfile.audioRouting.routes) {
+        initial[`${route.input}:${route.output}`] = route.enabled;
+      }
+    }
+    return initial;
+  });
+
+  // Sync routes back to store whenever they change
+  useEffect(() => {
+    if (!activeProfile) return;
+    const audioRoutes: AudioRoute[] = Object.entries(routes).map(([key, enabled]) => {
+      const [input, output] = key.split(':');
+      return { input, output, enabled };
+    });
+    const updated = {
+      ...activeProfile,
+      audioRouting: { ...activeProfile.audioRouting, routes: audioRoutes },
+    };
+    addProfile(updated);
+    // Intentionally not including activeProfile in deps to avoid infinite loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routes]);
+
+  const toggleRoute = useCallback((input: string, output: string) => {
+    const key = `${input}:${output}`;
+    setRoutes((prev) => ({ ...prev, [key]: !prev[key] }));
+  }, []);
 
   const goxlr = useMemo(
     () => Object.values(devices).find((d) => d.class === 'goxlr'),
@@ -175,6 +300,20 @@ export default function AudioRouterView() {
     () => Object.values(devices).filter((d) => d.class === 'audio-interface'),
     [devices],
   );
+
+  const profileList = useMemo(() => Object.values(profiles), [profiles]);
+
+  const handleActivatePreset = useCallback((profileId: string) => {
+    setActiveProfile(profileId);
+    const profile = profiles[profileId];
+    if (profile?.audioRouting) {
+      const loaded: Record<string, boolean> = {};
+      for (const route of profile.audioRouting.routes) {
+        loaded[`${route.input}:${route.output}`] = route.enabled;
+      }
+      setRoutes(loaded);
+    }
+  }, [profiles, setActiveProfile]);
 
   return (
     <PageShell>
@@ -193,25 +332,39 @@ export default function AudioRouterView() {
 
       {/* Always show the UI for visual design even without hardware */}
       <div className="space-y-6">
-        {/* Faders */}
+        {/* Faders with source labels */}
         <GlassCard className="p-4">
           <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-4">
             Faders
           </h3>
           <div className="flex justify-center gap-8">
-            {FADERS.map((name) => (
-              <FaderControl
-                key={name}
-                name={name}
-                value={faderValues[name] ?? 0.5}
-                onChange={(v) => setFaderValues((prev) => ({ ...prev, [name]: v }))}
-              />
-            ))}
+            {FADERS.map((name) => {
+              const source = FADER_SOURCES[name];
+              return (
+                <div key={name} className="flex flex-col items-center gap-1">
+                  <div className="flex items-center gap-1 text-white/30">
+                    {source.icon}
+                    <span className="text-[10px] font-mono">{source.label}</span>
+                  </div>
+                  <FaderControl
+                    name={name}
+                    value={faderValues[name] ?? 0.5}
+                    onChange={(v) => setFaderValues((prev) => ({ ...prev, [name]: v }))}
+                  />
+                </div>
+              );
+            })}
           </div>
         </GlassCard>
 
-        {/* Routing matrix */}
-        <RoutingMatrix />
+        {/* Routing matrix — persisted */}
+        <RoutingMatrix routes={routes} onToggle={toggleRoute} />
+
+        {/* Mic Monitor */}
+        <MicMonitorPanel />
+
+        {/* Presets */}
+        <PresetsPanel profiles={profileList} onActivate={handleActivatePreset} />
 
         {/* Effects + Sampler side by side */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

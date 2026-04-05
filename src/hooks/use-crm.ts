@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as api from '../lib/api/crm';
 import type { Contact, Deal, Activity, Account } from '../lib/schemas/crm';
+import { onDealStageChanged, onContactCreated } from '../lib/commerce-comms-bridge';
 
 // ── Query Keys ──
 export const crmKeys = {
@@ -32,7 +33,13 @@ export function useCreateContact() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (contact: Partial<Contact>) => api.createContact(contact),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['crm', 'contacts'] }); },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['crm', 'contacts'] });
+      // Commerce-Comms Bridge: trigger welcome flow
+      if (vars.name) {
+        onContactCreated({ name: vars.name, email: vars.email, venture_id: vars.venture_id });
+      }
+    },
   });
 }
 
@@ -75,7 +82,13 @@ export function useUpdateDeal() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (deal: Partial<Deal> & { id: string }) => api.updateDeal(deal),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['crm', 'deals'] }); },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['crm', 'deals'] });
+      // Commerce-Comms Bridge: trigger comms on deal stage change
+      if (vars.stage) {
+        onDealStageChanged({ title: vars.title || '', stage: vars.stage, value: vars.value, contact_id: vars.contact_id, venture_id: vars.venture_id });
+      }
+    },
   });
 }
 

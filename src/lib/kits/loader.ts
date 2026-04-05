@@ -94,6 +94,7 @@ import { manifest as gtmManifest, handlers as gtmHandlers } from './builtin/goog
 import { manifest as paymentsManifest, handlers as paymentsHandlers } from './builtin/payments-kit';
 import { manifest as commerceManifest, handlers as commerceHandlers } from './builtin/commerce-kit';
 import { manifest as financeManifest, handlers as financeHandlers } from './builtin/finance-kit';
+import { manifest as creatorManifest, handlers as creatorHandlers } from './builtin/creator-kit';
 
 // ---------------------------------------------------------------------------
 // Local Kit Registry
@@ -186,6 +187,7 @@ const builtinKits: KitInstance[] = [
   kit(paymentsManifest, paymentsHandlers),
   kit(commerceManifest, commerceHandlers),
   kit(financeManifest, financeHandlers),
+  kit(creatorManifest, creatorHandlers),
 ];
 
 /** Returns all built-in kit instances */
