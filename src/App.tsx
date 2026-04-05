@@ -74,10 +74,20 @@ const ConnectedSessionsView = lazy(() => import('./views/ConnectedSessionsView')
 const CommerceOverview = lazy(() => import('./views/CommerceOverview'));
 const CommerceProducts = lazy(() => import('./views/CommerceProducts'));
 const CommerceSubscriptions = lazy(() => import('./views/CommerceSubscriptions'));
+const CommerceOrders = lazy(() => import('./views/CommerceOrders'));
+const CommerceCustomers = lazy(() => import('./views/CommerceCustomers'));
+const CommerceInventory = lazy(() => import('./views/CommerceInventory'));
+const CommerceFulfillment = lazy(() => import('./views/CommerceFulfillment'));
+const CommerceDiscounts = lazy(() => import('./views/CommerceDiscounts'));
+const CommerceReviews = lazy(() => import('./views/CommerceReviews'));
+const CommerceGiftCards = lazy(() => import('./views/CommerceGiftCards'));
+const CommerceAnalytics = lazy(() => import('./views/CommerceAnalytics'));
+const CommerceShopSettings = lazy(() => import('./views/CommerceShopSettings'));
 const FinancialsDashboard = lazy(() => import('./views/FinancialsDashboard'));
 const FinancialsStatements = lazy(() => import('./views/FinancialsStatements'));
 const CostIntelligence = lazy(() => import('./views/CostIntelligence'));
 const FinancialsLedger = lazy(() => import('./views/FinancialsLedger'));
+const Checkout = lazy(() => import('./views/Checkout'));
 
 // Placeholder views
 function PlaceholderView({ title, description }: { title: string; description: string }) {
@@ -219,7 +229,23 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
     case 'commerce-invoices':
       return <PlaceholderView title="Invoices" description="Invoice management — AR tracking, send & collect." />;
     case 'commerce-orders':
-      return <PlaceholderView title="Orders" description="Order management — physical and digital fulfillment." />;
+      return <CommerceOrders />;
+    case 'commerce-customers':
+      return <CommerceCustomers />;
+    case 'commerce-inventory':
+      return <CommerceInventory />;
+    case 'commerce-fulfillment':
+      return <CommerceFulfillment />;
+    case 'commerce-discounts':
+      return <CommerceDiscounts />;
+    case 'commerce-reviews':
+      return <CommerceReviews />;
+    case 'commerce-gift-cards':
+      return <CommerceGiftCards />;
+    case 'commerce-analytics':
+      return <CommerceAnalytics />;
+    case 'commerce-shop-settings':
+      return <CommerceShopSettings />;
     case 'commerce-credits':
       return <PlaceholderView title="Credits & Wallets" description="Credit ledgers, wallet balances, and grant management." />;
     case 'commerce-loans':
