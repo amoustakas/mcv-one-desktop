@@ -59,16 +59,40 @@ const geocodeAddress: KitToolHandler = async (input, ctx) => {
   };
 };
 
+// Epic 8: Cloud code execution handler
+const geminiCodeExecute: KitToolHandler = async (input, ctx) => {
+  const prompt = (input.prompt || input.code || input.query) as string;
+  const data = await postJson('/api/google-generate', { action: 'generate-with-code-execution', prompt }, ctx);
+  let md = data.content || '';
+  if (data.codeResults?.length) {
+    md += '\n\n**Code Execution:**\n';
+    for (const cr of data.codeResults) {
+      if (cr.code) md += `\`\`\`${cr.language || 'python'}\n${cr.code}\n\`\`\`\n`;
+      if (cr.output) md += `Output: ${cr.output}\n`;
+    }
+  }
+  return { success: true, data, displayMarkdown: md };
+};
+
+// Epic 8: Search grounding handler
+const geminiSearch: KitToolHandler = async (input, ctx) => {
+  const query = (input.query || input.prompt) as string;
+  const data = await postJson('/api/google-generate', { action: 'generate-with-search', prompt: query }, ctx);
+  let md = data.content || '';
+  if (data.groundingMetadata) md += '\n\n*Grounded with Google Search*';
+  return { success: true, data, displayMarkdown: md };
+};
+
 export const manifest: KitManifest = {
   id: 'gemini-intelligence',
   name: 'Gemini Intelligence',
-  version: '1.0.0',
-  description: 'Use Google Gemini for text generation, summarization, and Google Places/Geocoding APIs.',
+  version: '2.0.0',
+  description: 'Google Gemini for text generation, summarization, code execution, web search grounding, and Google Places/Geocoding APIs.',
   author: 'MCV',
   capabilities: ['network', 'llm'],
   runtime: 'inline',
   ventureScope: '*',
-  instructions: 'Use gemini_generate for long-context analysis or alternative AI perspective. Use gemini_summarize for condensing text. Use places_search and geocode_address for location-related queries.',
+  instructions: 'Use gemini_generate for long-context analysis. Use gemini_summarize for condensing text. Use gemini_code_execute when you need to run Python for math, data analysis, or computation. Use gemini_search to look up live web data. Use places_search and geocode_address for location queries.',
   tools: [
     {
       name: 'gemini_generate',
@@ -106,6 +130,27 @@ export const manifest: KitManifest = {
         required: ['address'],
       },
     },
+    {
+      name: 'gemini_code_execute',
+      description: 'Execute Python code using Gemini cloud compute. Use for mathematical calculations, data analysis, statistical computations, or any task requiring actual code execution.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          prompt: { type: 'string', description: 'Description of the computation or code to execute' },
+          code: { type: 'string', description: 'Optional: specific Python code to run' },
+        },
+        required: ['prompt'],
+      },
+    },
+    {
+      name: 'gemini_search',
+      description: 'Search the live web using Google Search grounding. Use to find current prices, news, facts, or any real-time information.',
+      input_schema: {
+        type: 'object',
+        properties: { query: { type: 'string', description: 'Search query for live web data' } },
+        required: ['query'],
+      },
+    },
   ],
 };
 
@@ -114,4 +159,6 @@ export const handlers: Record<string, KitToolHandler> = {
   gemini_summarize: geminiSummarize,
   places_search: placesSearch,
   geocode_address: geocodeAddress,
+  gemini_code_execute: geminiCodeExecute,
+  gemini_search: geminiSearch,
 };

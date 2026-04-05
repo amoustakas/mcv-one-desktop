@@ -1,9 +1,13 @@
-import type { KitInstance, KitToolSchema, KitExecutionContext, ToolCallResult } from './types';
+import type { KitInstance, KitToolSchema, KitExecutionContext, ToolCallResult, UploadedFile } from './types';
 import { streamMessageWithTools, type ChatMessage, type ToolCallEvent, type StreamWithToolsCallbacks } from '../claude';
 import { executeKitTool as executeKitToolFromLoader } from './loader';
 import { executeKitTool as executeKitToolFromBridge } from './bridge';
 import { searchKits } from './registry-client';
 import { notifyToolError } from './kit-notifications';
+import { flightRecorder } from '../telemetry/flight-recorder';
+import { contextCacheManager } from '../google/context-cache-manager';
+import { hybridComputeRouter } from '../google/hybrid-compute';
+import { hitlGate } from '../hitl/intercept-gate';
 
 // ---------------------------------------------------------------------------
 // Agent Orchestrator
@@ -57,6 +61,29 @@ export class AgentOrchestrator {
     return tools;
   }
 
+  /**
+   * Extract the cacheable portion of the system prompt (kit schemas + instructions).
+   * This is the payload that benefits from Google AI context caching.
+   */
+  getCacheablePayload(): string {
+    const activeKits = this.kits.filter((kit) => {
+      if (kit.status !== 'loaded') return false;
+      const scope = kit.manifest.ventureScope;
+      return scope === '*' || scope.includes(this.ventureId);
+    });
+
+    if (activeKits.length === 0) return '';
+
+    let payload = '## Kit Schemas & Instructions\n\n';
+    for (const kit of activeKits) {
+      payload += `### ${kit.manifest.name} (v${kit.manifest.version})\n`;
+      payload += `${kit.manifest.description}\n`;
+      if (kit.manifest.instructions) payload += `${kit.manifest.instructions}\n`;
+      payload += `Tools: ${JSON.stringify(kit.manifest.tools, null, 2)}\n\n`;
+    }
+    return payload;
+  }
+
   /** Build the full system prompt with kit instructions appended */
   buildSystemPrompt(): string {
     let prompt = this.baseSystemPrompt;
@@ -89,24 +116,50 @@ export class AgentOrchestrator {
   /**
    * Process a user message through the orchestrator.
    * Handles tool assembly, system prompt enrichment, and the tool-calling loop.
+   * Optionally accepts uploaded files to inject as Gemini file parts.
    */
   async processMessage(
     messages: ChatMessage[],
     callbacks: OrchestratorCallbacks,
     maxToolRounds = 5,
+    files?: UploadedFile[],
   ): Promise<OrchestratorResult> {
+    const assemblyStart = Date.now();
     const tools = this.assembleTools();
-    const systemPrompt = this.buildSystemPrompt();
+    let systemPrompt = this.buildSystemPrompt();
+
+    flightRecorder.addStep('tool_assembly', `Assembled ${tools.length} tools from ${this.kits.filter((k) => k.status === 'loaded').length} kits`, { toolCount: tools.length }, Date.now() - assemblyStart);
 
     if (tools.length === 0) {
-      // No tools available — signal caller to fall back to plain streaming
       throw new Error('NO_TOOLS');
+    }
+
+    // Epic 7: Attempt context caching for large kit payloads
+    const cacheablePayload = this.getCacheablePayload();
+    const cacheName = await contextCacheManager.getOrCreateCache(cacheablePayload).catch(() => null);
+    if (cacheName) {
+      flightRecorder.addStep('cache_lookup', `Using cached context: ${cacheName}`);
+    }
+
+    // If files are attached, add context about them to the system prompt
+    if (files && files.length > 0) {
+      systemPrompt += '\n\n## Attached Files\n\n';
+      systemPrompt += 'The user has attached the following files to this conversation. You can reference their contents in your responses.\n\n';
+      for (const f of files) {
+        systemPrompt += `- **${f.localName}** (${f.mimeType}, ${(f.sizeBytes / 1024).toFixed(0)}KB)\n`;
+      }
     }
 
     const toolExecutor = async (toolCall: ToolCallEvent): Promise<ToolCallResult> => {
       // Check if it's a meta-tool
       const metaResult = await this.handleMetaTool(toolCall);
       if (metaResult) return metaResult;
+
+      // Epic 8: Check if this should be routed to Gemini cloud
+      const cloudAction = hybridComputeRouter.shouldUseCloud(toolCall);
+      if (cloudAction) {
+        return hybridComputeRouter.executeCloud(toolCall, cloudAction);
+      }
 
       // Find the kit that owns this tool
       const kit = this.kits.find(
@@ -117,6 +170,22 @@ export class AgentOrchestrator {
         return { success: false, error: `No kit found for tool "${toolCall.name}"` };
       }
 
+      // Epic 10: HITL gate — check if operator approval is required
+      if (hitlGate.shouldIntercept(kit)) {
+        const approval = await hitlGate.requestApproval(kit, toolCall);
+        if (!approval.approved) {
+          return { success: false, error: approval.error };
+        }
+        // Use potentially modified input
+        toolCall = { ...toolCall, input: approval.input };
+      }
+
+      // Telemetry: tool dispatch
+      flightRecorder.recordToolDispatch(kit.manifest.id, toolCall.name);
+      flightRecorder.addStep('tool_dispatch', `Dispatching ${kit.manifest.id}/${toolCall.name}`, { input: toolCall.input });
+
+      const execStart = Date.now();
+
       // Route through bridge for non-inline kits, loader for inline
       let result: ToolCallResult;
       if (kit.manifest.runtime === 'inline') {
@@ -124,6 +193,12 @@ export class AgentOrchestrator {
       } else {
         result = await executeKitToolFromBridge(kit, toolCall.name, toolCall.input, this.context);
       }
+
+      const execDuration = Date.now() - execStart;
+
+      // Telemetry: tool result
+      flightRecorder.recordToolResult(kit.manifest.id, toolCall.name, result.success, execDuration);
+      flightRecorder.addStep('tool_result', `${toolCall.name} → ${result.success ? 'success' : 'error'}`, { success: result.success }, execDuration);
 
       // Notify on errors so they appear in the notification center
       if (!result.success) {
@@ -139,7 +214,10 @@ export class AgentOrchestrator {
       onToolResult: callbacks.onToolResult,
     };
 
-    return streamMessageWithTools(
+    const apiStart = Date.now();
+    flightRecorder.addStep('api_call', 'Starting Claude streaming with tools');
+
+    const result = await streamMessageWithTools(
       messages,
       systemPrompt,
       tools,
@@ -147,6 +225,15 @@ export class AgentOrchestrator {
       streamCallbacks,
       maxToolRounds,
     );
+
+    flightRecorder.addStep('api_call', `Streaming complete — ${result.toolCalls.length} tool calls`, { toolCallCount: result.toolCalls.length }, Date.now() - apiStart);
+
+    // Clear files after successful send
+    if (files && files.length > 0) {
+      // Files remain in store for re-use; user can manually clear
+    }
+
+    return result;
   }
 
   // -------------------------------------------------------------------------

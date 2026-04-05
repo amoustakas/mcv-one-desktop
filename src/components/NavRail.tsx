@@ -4,7 +4,7 @@ import {
   Wrench, Radio, Settings, ChevronLeft, ChevronRight, ChevronDown,
   CheckSquare, Users, Hammer, BookOpen, Monitor, Sparkles,
   Wand2, Swords, TrendingUp, FileText, Plus, Package,
-  Database, GitBranch,
+  Database, GitBranch, Radar,
 } from 'lucide-react';
 import { useNavigation, type ViewId } from '../stores/navigation';
 import { useVentureContextStore } from '../stores/venture-context';
@@ -21,6 +21,7 @@ const VIEW_ICONS: Record<string, React.FC<{ size: number }>> = {
   team: Users,
   'ai-studio': Sparkles, 'prompt-composer': Wand2,
   'kit-store': Package,
+  'control-room': Radar,
   memory: Database,
   pipeline: GitBranch,
   settings: Settings,
@@ -84,6 +85,7 @@ const globalSections: NavSection[] = [
       { id: 'ai-studio', label: 'AI Studio' },
       { id: 'prompt-composer', label: 'Prompt Composer' },
       { id: 'kit-store', label: 'Kit Store' },
+      { id: 'control-room', label: 'Control Room' },
     ],
   },
 ];

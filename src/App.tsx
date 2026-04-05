@@ -16,6 +16,7 @@ import { Search, Settings, Bot, Columns2 } from 'lucide-react';
 import VentureMegaMenu from './components/VentureMegaMenu';
 import QuickCapture from './components/QuickCapture';
 import Toasts from './components/Toasts';
+import HITLModal from './components/control-room/HITLModal';
 import NotificationCenter from './components/NotificationCenter';
 import { useLocalServer } from './lib/local';
 
@@ -45,6 +46,7 @@ const SettingsView = lazy(() => import('./views/SettingsView'));
 const VentureOnboarding = lazy(() => import('./views/VentureOnboarding'));
 const MemoryView = lazy(() => import('./views/MemoryView'));
 const PipelineView = lazy(() => import('./views/PipelineView'));
+const OperatorControlRoom = lazy(() => import('./views/OperatorControlRoom'));
 
 // Placeholder views
 function PlaceholderView({ title, description }: { title: string; description: string }) {
@@ -126,6 +128,8 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <MemoryView />;
     case 'pipeline':
       return <PipelineView />;
+    case 'control-room':
+      return <OperatorControlRoom />;
     case 'settings':
       return <SettingsView />;
     // Venture views
@@ -423,6 +427,7 @@ export default function App() {
       <CommandPalette open={paletteOpen} onClose={closePalette} />
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <Toasts />
+      <HITLModal />
 
       <style>{`
         .app-shell {

@@ -19,6 +19,10 @@ import { useChatStore } from '../stores/chat';
 import { AgentOrchestrator } from '../lib/kits/orchestrator';
 import ToolCallIndicator from './ToolCallIndicator';
 import Markdown from './Markdown';
+import FileDropzone from './FileDropzone';
+import FileAttachmentBar from './FileAttachmentBar';
+import { useFileBridge } from '../stores/file-bridge';
+import { mediaIngestion } from '../lib/google/file-bridge';
 
 /** Tracks a tool call in progress or completed */
 interface ToolCallStatus {
@@ -302,6 +306,7 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
         });
 
         try {
+          const activeFiles = useFileBridge.getState().getActiveFiles();
           const result = await orchestrator.processMessage(
             newMessages,
             {
@@ -322,6 +327,8 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
                 );
               },
             },
+            5, // maxToolRounds
+            activeFiles.length > 0 ? activeFiles : undefined,
           );
           full = result.text;
           toolCallLog = result.toolCalls.map((tc) => ({ id: tc.id, name: tc.name, input: tc.input }));
@@ -473,7 +480,19 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
         </div>
 
         <div className="chat-input-area">
+          <FileAttachmentBar
+            files={useFileBridge.getState().uploadedFiles}
+            onRemove={(fileId) => mediaIngestion.deleteFile(fileId)}
+          />
           <div className="chat-input-wrap">
+            <FileDropzone
+              onFiles={async (files) => {
+                for (const f of files) {
+                  try { await mediaIngestion.upload(f); } catch { /* store tracks failure */ }
+                }
+              }}
+              disabled={loading}
+            />
             {hasVoice && (
               <button
                 className={`chat-voice-btn ${recording ? 'recording' : ''}`}

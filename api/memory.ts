@@ -7,6 +7,36 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '',
 );
 
+/* ── Snake-to-camelCase mappers ── */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapMemory(row: any) {
+  return {
+    id: row.id,
+    type: row.memory_type,
+    key: row.key,
+    value: row.value,
+    sessionId: row.session_id,
+    ventureId: row.venture_id,
+    userId: row.user_id,
+    ttlSeconds: row.ttl_seconds,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapEvent(row: any) {
+  return {
+    id: row.id,
+    sessionId: row.session_id,
+    userId: row.user_id,
+    eventType: row.event_type,
+    payload: row.payload,
+    ventureId: row.venture_id,
+    createdAt: row.created_at,
+  };
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const userId = await requireAuth(req, res); if (!userId) return;
 
@@ -38,7 +68,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const { data, error } = await q;
         if (error) throw error;
-        return res.json({ events: data || [] });
+        return res.json({ events: (data || []).map(mapEvent) });
       }
 
       // Project memory mode
@@ -59,7 +89,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       let results = data || [];
 
-      // Client-side search filter (key + value text match)
+      // Server-side search filter (key + value text match)
       if (search) {
         const lower = search.toLowerCase();
         results = results.filter((m: Record<string, unknown>) =>
@@ -68,7 +98,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         );
       }
 
-      return res.json({ memories: results });
+      return res.json({ memories: results.map(mapMemory) });
     }
 
     // ── POST /api/memory ──
@@ -89,7 +119,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           venture_id: ventureId || null,
         }).select().single();
         if (error) throw error;
-        return res.json({ event: data });
+        return res.json({ event: mapEvent(data) });
       }
 
       // Project memory upsert mode
@@ -115,7 +145,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .select()
         .single();
       if (error) throw error;
-      return res.json({ memory: data });
+      return res.json({ memory: mapMemory(data) });
     }
 
     return res.status(405).json({ error: 'Method not allowed' });

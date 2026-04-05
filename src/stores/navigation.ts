@@ -44,7 +44,9 @@ export type ViewId =
   | 'kit-studio'
   // System views
   | 'memory'
-  | 'pipeline';
+  | 'pipeline'
+  // Operator views
+  | 'control-room';
 
 export type ContextMode = 'global' | 'venture';
 
@@ -91,7 +93,7 @@ const VIEW_LABELS: Record<string, string> = {
   growth: 'Growth', tasks: 'Tasks', docs: 'Documents',
   'ai-studio': 'AI Studio', 'prompt-composer': 'Prompt Composer',
   team: 'Team', settings: 'Settings', 'kit-store': 'Kit Store', 'kit-studio': 'Kit Studio',
-  memory: 'Memory Hub', pipeline: 'Pipeline',
+  memory: 'Memory Hub', pipeline: 'Pipeline', 'control-room': 'Control Room',
   'venture-dashboard': 'Dashboard', 'venture-profile': 'Profile',
   'venture-engineering': 'Engineering', 'venture-growth': 'Growth',
   'venture-operations': 'Operations', 'venture-docs': 'Documents',
