@@ -60,7 +60,32 @@ export type ViewId =
   | 'voice-studio'
   | 'video-studio'
   | 'creative-canvas'
-  | 'ad-studio';
+  | 'ad-studio'
+  // Commerce views (global)
+  | 'commerce-overview'
+  | 'commerce-products'
+  | 'commerce-subscriptions'
+  | 'commerce-invoices'
+  | 'commerce-orders'
+  | 'commerce-credits'
+  | 'commerce-loans'
+  | 'commerce-tax'
+  // Commerce views (venture)
+  | 'venture-commerce'
+  | 'venture-products'
+  | 'venture-subscriptions'
+  // Financials views (global)
+  | 'financials-dashboard'
+  | 'financials-statements'
+  | 'financials-cost-intelligence'
+  | 'financials-ledger'
+  | 'financials-reporting'
+  // Financials views (venture)
+  | 'venture-financials'
+  // Creator views
+  | 'creator-hub'
+  | 'creator-royalties'
+  | 'creator-escrow';
 
 export type ContextMode = 'global' | 'venture';
 
@@ -117,6 +142,16 @@ const VIEW_LABELS: Record<string, string> = {
   'venture-settings': 'Settings', 'venture-onboarding': 'Onboarding',
   files: 'Files', 'venture-workspace': 'Workspace', 'ad-studio': 'Ad Studio',
   'voice-studio': 'Voice Studio', 'video-studio': 'Video Studio', 'creative-canvas': 'Creative Canvas',
+  'commerce-overview': 'Commerce Overview', 'commerce-products': 'Products',
+  'commerce-subscriptions': 'Subscriptions', 'commerce-invoices': 'Invoices',
+  'commerce-orders': 'Orders', 'commerce-credits': 'Credits & Wallets',
+  'commerce-loans': 'Loans', 'commerce-tax': 'Tax',
+  'venture-commerce': 'Commerce', 'venture-products': 'Products', 'venture-subscriptions': 'Subscriptions',
+  'financials-dashboard': 'Financials', 'financials-statements': 'Statements',
+  'financials-cost-intelligence': 'Cost Intelligence', 'financials-ledger': 'Ledger',
+  'financials-reporting': 'Reporting',
+  'venture-financials': 'Financials',
+  'creator-hub': 'Creator Hub', 'creator-royalties': 'Royalties', 'creator-escrow': 'Escrow',
 };
 
 export const useNavigation = create<NavigationState>()(
