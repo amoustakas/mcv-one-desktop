@@ -58,3 +58,44 @@ export function usePipelineByVenture(ventureId: string) {
     } : undefined,
   };
 }
+
+// ═══════════════════════════════════════════
+// Local Pipeline — reads from local server (port 3100)
+// ═══════════════════════════════════════════
+
+import { localPipeline, type PipelineData, type PipelineCommit } from '../lib/local';
+import { useLocalStore } from '../lib/local';
+
+/** Full local pipeline scan — all Claude sessions, git repos, memories, plans */
+export function useLocalPipeline() {
+  const connected = useLocalStore((s) => s.connected);
+  return useQuery<PipelineData>({
+    queryKey: ['local-pipeline'],
+    queryFn: () => localPipeline.scan(),
+    enabled: connected,
+    refetchInterval: 30_000,
+    staleTime: 15_000,
+  });
+}
+
+/** Git log for a specific local repo */
+export function useLocalGitLog(repo: string, limit = 20) {
+  const connected = useLocalStore((s) => s.connected);
+  return useQuery<{ repo: string; commits: PipelineCommit[] }>({
+    queryKey: ['local-pipeline', 'git-log', repo, limit],
+    queryFn: () => localPipeline.gitLog(repo, limit),
+    enabled: connected && !!repo,
+    staleTime: 30_000,
+  });
+}
+
+/** Read a local memory/plan file */
+export function useLocalFile(filePath: string) {
+  const connected = useLocalStore((s) => s.connected);
+  return useQuery({
+    queryKey: ['local-pipeline', 'file', filePath],
+    queryFn: () => localPipeline.readFile(filePath),
+    enabled: connected && !!filePath,
+    staleTime: 60_000,
+  });
+}

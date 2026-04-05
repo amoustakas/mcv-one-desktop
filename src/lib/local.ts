@@ -131,3 +131,77 @@ export function useLocalServer() {
 
   return { connected, health, drives, fs: localFS, system: localSystem };
 }
+
+// ═══════════════════════════════════════════
+// Pipeline API — Claude Code sessions, git, memory
+// ═══════════════════════════════════════════
+
+export interface PipelineMemoryFile {
+  name: string;
+  path: string;
+  size: number;
+  modified: string;
+}
+
+export interface PipelineProject {
+  project: string;
+  files: PipelineMemoryFile[];
+}
+
+export interface PipelinePlan {
+  name: string;
+  path: string;
+  size: number;
+  modified: string;
+}
+
+export interface PipelineRepo {
+  name: string;
+  path: string;
+  branch: string;
+  lastCommit: string;
+  commitCount7d: number;
+  uncommittedChanges: number;
+}
+
+export interface PipelineData {
+  stats: {
+    projects: number;
+    memoryFiles: number;
+    plans: number;
+    repos: number;
+    commits7d: number;
+    uncommittedChanges: number;
+    worktreeSessions: number;
+  };
+  memories: PipelineProject[];
+  plans: PipelinePlan[];
+  repos: PipelineRepo[];
+  worktrees: Record<string, number>;
+  scannedAt: string;
+}
+
+export interface PipelineCommit {
+  sha: string;
+  date: string;
+  author: string;
+  message: string;
+}
+
+export const localPipeline = {
+  /** Full pipeline scan — all sessions, repos, memories, plans */
+  async scan(): Promise<PipelineData> {
+    return localFetch('/pipeline');
+  },
+
+  /** Read a specific memory or plan file */
+  async readFile(filePath: string): Promise<{ path: string; content: string; size: number; modified: string }> {
+    return localFetch(`/pipeline/read?path=${encodeURIComponent(filePath)}`);
+  },
+
+  /** Get git log for a specific repo */
+  async gitLog(repo: string, limit = 20): Promise<{ repo: string; commits: PipelineCommit[] }> {
+    return localFetch(`/pipeline/git-log?repo=${encodeURIComponent(repo)}&limit=${limit}`);
+  },
+};
+
