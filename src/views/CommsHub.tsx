@@ -30,6 +30,7 @@ import type {
   SocialPost, PlatformStatus,
 } from '../lib/types/comms';
 import { PLATFORM_META } from '../lib/types/comms';
+import CommsSyncStatus from '../components/comms/CommsSyncStatus';
 
 // ── Constants ──
 
@@ -1020,6 +1021,10 @@ function StatusTab() {
 
   return (
     <div className="comms-status">
+      {/* Data Ingestion Pipeline Status */}
+      <CommsSyncStatus />
+
+      {/* Platform Connection Status */}
       <GridLayout cols={2} gap="sm">
         {statuses.map((s) => {
           const meta = PLATFORM_META[s.platform];

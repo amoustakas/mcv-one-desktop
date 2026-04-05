@@ -44,6 +44,13 @@ import { manifest as messengerManifest, handlers as messengerHandlers } from './
 import { manifest as telegramManifest, handlers as telegramHandlers } from './builtin/telegram-kit';
 import { manifest as sendgridManifest, handlers as sendgridHandlers } from './builtin/sendgrid-kit';
 import { manifest as resendManifest, handlers as resendHandlers } from './builtin/resend-kit';
+import { manifest as figmaManifest, handlers as figmaHandlers } from './builtin/figma-kit';
+import { manifest as openaiManifest, handlers as openaiHandlers } from './builtin/openai-kit';
+import { manifest as upstashManifest, handlers as upstashHandlers } from './builtin/upstash-kit';
+import { manifest as calendlyManifest, handlers as calendlyHandlers } from './builtin/calendly-kit';
+import { manifest as sentryManifest, handlers as sentryHandlers } from './builtin/sentry-kit';
+import { manifest as hubspotManifest, handlers as hubspotHandlers } from './builtin/hubspot-kit';
+import { manifest as lmstudioManifest, handlers as lmstudioHandlers } from './builtin/lmstudio-kit';
 import { manifest as storageSupabaseManifest, handlers as storageSupabaseHandlers } from './builtin/storage-supabase-kit';
 import { manifest as storageLocalManifest, handlers as storageLocalHandlers } from './builtin/storage-local-kit';
 import { manifest as storageGdriveManifest, handlers as storageGdriveHandlers } from './builtin/storage-gdrive-kit';
@@ -102,6 +109,13 @@ const builtinKits: KitInstance[] = [
   kit(telegramManifest, telegramHandlers),
   kit(sendgridManifest, sendgridHandlers),
   kit(resendManifest, resendHandlers),
+  kit(figmaManifest, figmaHandlers),
+  kit(openaiManifest, openaiHandlers),
+  kit(upstashManifest, upstashHandlers),
+  kit(calendlyManifest, calendlyHandlers),
+  kit(sentryManifest, sentryHandlers),
+  kit(hubspotManifest, hubspotHandlers),
+  kit(lmstudioManifest, lmstudioHandlers),
   kit(storageSupabaseManifest, storageSupabaseHandlers),
   kit(storageLocalManifest, storageLocalHandlers),
   kit(storageGdriveManifest, storageGdriveHandlers),

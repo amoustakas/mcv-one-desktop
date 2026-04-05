@@ -20,6 +20,7 @@ import HITLModal from './components/control-room/HITLModal';
 import NotificationCenter from './components/NotificationCenter';
 import { useLocalServer } from './lib/local';
 import { usePipelineSync } from './hooks/use-pipeline-sync';
+import { useCommsSync } from './hooks/use-comms-sync';
 import { useRealtimeSync } from './hooks/use-realtime';
 
 // Lazy-loaded views (code splitting)
@@ -294,6 +295,7 @@ export default function App() {
   useLocalServer(); // Detect local server connection
   usePipelineSync(); // Auto-sync local data → Supabase every 5min
   useRealtimeSync(); // Supabase Realtime — live push updates across devices
+  useCommsSync();    // Auto-ingest comms data → Knowledge Base, CRM, Tasks every 5min
 
   // Keyboard shortcuts
   useEffect(() => {

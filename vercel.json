@@ -1,4 +1,7 @@
 {
+  "functions": {
+    "api/comms-sync.ts": { "maxDuration": 60 }
+  },
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
