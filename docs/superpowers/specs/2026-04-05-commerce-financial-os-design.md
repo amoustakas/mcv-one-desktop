@@ -2695,6 +2695,415 @@ Financial Widgets:
 
 ---
 
+## Section 19: Device Hub — Physical-Digital Bridge Infrastructure
+
+### 19.1 Purpose & Scope
+
+The Device Hub transforms MCV One Desktop from a software-only interface into a **workstation operating system** that treats physical hardware as first-class citizens of the intelligence layer. Every connected device becomes both a sensor (feeding data into NAOS) and an actuator (receiving commands from NAOS).
+
+**This is the physical-digital bridge for the entire MCV ecosystem.**
+
+The operator's desk — Stream Deck, GoXLR mixer, MIDI controllers, audio interfaces, barcode scanners, serial peripherals — is no longer separate from the build system. Every button press, fader move, and voice input can trigger agent workflows, navigate ventures, execute kit tools, and feed into the orchestration engine. Conversely, the system pushes state back to devices: Stream Deck buttons light up with venture status, GoXLR faders reflect audio routing decisions, LEDs indicate build health.
+
+Connected Claude Code sessions and remote NAOS agents are also modeled as devices — unifying hardware peripherals and software agents under a single discovery, mapping, and control framework.
+
+### 19.2 Device Discovery Protocol
+
+```
+Discovery Sources:
+  ├── USB HID         — node-hid enumeration (vendorId/productId matching)
+  ├── Stream Deck     — @elgato-stream-deck/node auto-detection
+  ├── GoXLR           — GoXLR utility daemon (localhost WebSocket probe)
+  ├── MIDI            — @julusian/midi port scanning
+  ├── Serial          — serialport library enumeration
+  ├── Web Audio       — navigator.mediaDevices.enumerateDevices()
+  ├── Bluetooth       — Web Bluetooth API (future, behind flag)
+  └── Agent Sessions  — ~/.claude/projects/ filesystem scan + Supabase active_sessions
+```
+
+**Discovery is continuous**: the local server polls USB/HID every 3 seconds and diffs against known devices. Hot-plug events trigger immediate re-scan. GoXLR utility connection is persistent (reconnect on drop). Agent session discovery runs on 10-second intervals.
+
+### 19.3 Device Registry
+
+Central state managed by `useDeviceStore` (Zustand, persisted to localStorage). Every device — physical or software — gets a `DeviceDescriptor`:
+
+```typescript
+type DeviceTransport = 'usb-hid' | 'midi' | 'web-audio' | 'serial' | 'bluetooth' | 'websocket' | 'http';
+
+type DeviceClass =
+  | 'stream-deck'       // Elgato Stream Deck (all models)
+  | 'goxlr'             // TC-Helicon GoXLR / GoXLR Mini
+  | 'midi-controller'   // Generic MIDI controller
+  | 'audio-interface'   // Audio input/output devices
+  | 'barcode-scanner'   // USB HID barcode/NFC scanners
+  | 'hid-generic'       // Any unrecognized USB HID device
+  | 'serial-generic'    // Serial port devices
+  | 'agent-session';    // Claude Code / NAOS agent instance
+
+type DeviceCapability =
+  | 'button-input'      // Pressable buttons (Stream Deck, MIDI pads)
+  | 'fader-input'       // Sliding faders (GoXLR, MIDI)
+  | 'encoder-input'     // Rotary encoders
+  | 'audio-input'       // Microphone capture
+  | 'audio-output'      // Speaker/headphone output
+  | 'audio-routing'     // Programmable audio routing matrix (GoXLR)
+  | 'display-output'    // Pixel display on buttons (Stream Deck LCD)
+  | 'led-output'        // Controllable LED indicators
+  | 'sampler'           // Audio sample playback (GoXLR sampler)
+  | 'effects'           // Audio effects engine (GoXLR reverb, echo, pitch)
+  | 'text-input'        // Text/barcode data input
+  | 'agent-io';         // Bidirectional agent communication
+
+interface DeviceDescriptor {
+  id: string;                          // Unique: USB serial, generated UUID, or session ID
+  class: DeviceClass;
+  transport: DeviceTransport;
+  name: string;                        // Human-readable: "Stream Deck XL", "GoXLR Mini"
+  manufacturer?: string;
+  model?: string;
+  firmware?: string;
+  capabilities: DeviceCapability[];
+  status: 'connected' | 'disconnected' | 'error' | 'initializing';
+  lastSeen: number;                    // Unix timestamp
+  metadata: Record<string, unknown>;   // Device-specific (button count, fader count, etc.)
+}
+```
+
+### 19.4 Input Ingestion Pipeline
+
+Every physical interaction flows through a normalized pipeline into the intelligence layer:
+
+```
+Physical Device (button press, fader move, voice, scan)
+  │
+  ▼
+Local Server (Node.js, port 3100)
+  │  — Raw protocol handling (HID reports, MIDI messages, serial data)
+  │  — Device-specific normalization
+  │
+  ▼
+SSE Stream → Browser
+  │  — Server-Sent Events per device (or multiplexed)
+  │
+  ▼
+DeviceStore.pushEvent(event: DeviceInputEvent)
+  │  — Ring buffer (last 500 events)
+  │  — Event published to subscribers
+  │
+  ▼
+Mapping Engine
+  │  — Matches event against active DeviceMappings
+  │  — Checks venture context scope
+  │
+  ▼
+Action Dispatcher
+  ├── navigate(viewId)           — Switch MCV Desktop view
+  ├── kit-tool(kitId, tool, input)  — Execute any loaded kit tool
+  ├── agent-command(prompt)      — Inject prompt into Aegis/NAOS
+  ├── webhook(url, method, body) — Fire external webhook
+  ├── audio-route(routing)       — Modify GoXLR routing matrix
+  ├── command-palette(command)   — Trigger any command palette action
+  └── composite(actions[])       — Chain multiple actions sequentially
+```
+
+```typescript
+interface DeviceInputEvent {
+  id: string;
+  deviceId: string;
+  timestamp: number;
+  type: 'button-press' | 'button-release' | 'fader-change' | 'encoder-rotate' |
+        'audio-level' | 'text-scan' | 'agent-message' | 'midi-note' | 'midi-cc';
+  payload: Record<string, unknown>;    // Type-specific data
+  // Examples:
+  //   button-press:   { buttonIndex: 3, page: 0 }
+  //   fader-change:   { faderName: 'A', value: 0.75 }
+  //   midi-note:      { note: 60, velocity: 127, channel: 0 }
+  //   text-scan:      { text: 'SKU-12345', format: 'code128' }
+  //   agent-message:  { sessionId: 'abc', content: '...', role: 'assistant' }
+}
+```
+
+### 19.5 Output Control Pipeline
+
+The system pushes state and commands back to physical devices:
+
+```
+NAOS Agent / Kit Tool / UI Action / Orchestration Event
+  │
+  ▼
+DeviceStore.sendCommand(command: DeviceOutputCommand)
+  │
+  ▼
+HTTP POST → Local Server (port 3100)
+  │  — Route to device-specific driver
+  │
+  ▼
+Device Driver
+  ├── node-hid write (raw HID output reports)
+  ├── @elgato-stream-deck/node (set button image, brightness)
+  ├── GoXLR utility WebSocket (set fader, route audio, trigger sampler)
+  ├── MIDI output (note, CC, sysex)
+  └── Serial write (raw bytes)
+  │
+  ▼
+Physical Device (LED lights up, fader moves, image changes, sound plays)
+```
+
+```typescript
+interface DeviceOutputCommand {
+  id: string;
+  deviceId: string;
+  type: 'set-button-image' | 'set-button-color' | 'set-fader-position' |
+        'set-led-color' | 'play-sample' | 'set-effect' | 'route-audio' |
+        'set-brightness' | 'send-agent-command';
+  payload: Record<string, unknown>;
+  // Examples:
+  //   set-button-image: { buttonIndex: 3, imageBuffer: Uint8Array, format: 'rgb' }
+  //   set-fader-position: { faderName: 'A', value: 0.5 }
+  //   route-audio: { input: 'mic', output: 'stream', enabled: true }
+  //   play-sample: { bank: 'A', slot: 1 }
+  //   send-agent-command: { sessionId: 'abc', prompt: 'run the tests' }
+}
+```
+
+### 19.6 Stream Deck Integration
+
+Elgato Stream Deck (all models: Mini 6-button, MK.2 15-button, XL 32-button, Plus with encoders+LCD strip, Pedal 3-button) serves as a **physical command palette** for MCV operations.
+
+**Button Mapping Architecture:**
+
+```text
+Stream Deck Page (per-venture or global)
+  └── Button[index]
+       ├── icon: Dynamic image (venture logo, status indicator, real-time metric)
+       ├── label: Short text overlay
+       └── mapping: DeviceMapping → action on press/release
+```
+
+**Dynamic Icon Generation:**
+- Icons generated server-side using `canvas` (node-canvas)
+- Real-time data rendered onto buttons: build status (green/red), MRR sparkline, active sessions count
+- Venture logos pre-loaded, status badges overlaid dynamically
+- Stream Deck Plus LCD strip shows scrolling ticker (revenue, alerts, session names)
+
+**Page System:**
+
+```text
+Page 0: Global Command
+  ├── [0] Command Center    [1] Portfolio    [2] Aegis AI
+  ├── [3] BetEdge           [4] Futurestate  [5] WarForge
+  ├── [6] mcv.gg            [7] EdgeIQ       [8] ARQ Labs
+  ├── [9] Sessions          [10] Build       [11] Deploy
+  └── [12] Mute Mic         [13] DND Toggle  [14] Lock
+
+Page 1: BetEdge Context (auto-switch when venture = betedge)
+  ├── [0] Dashboard         [1] Live Bets    [2] Analytics
+  ├── ...venture-specific actions...
+  └── [14] Back to Global
+
+Page N: Per-venture pages...
+```
+
+**Auto-page switching:** When the user switches ventures in MCV Desktop, the Stream Deck automatically switches to that venture's page. The mapping engine checks `contextId` on each mapping.
+
+### 19.7 GoXLR Integration
+
+The GoXLR (TC-Helicon) is a professional audio mixer with programmable routing, effects, sampler, and motorized faders. Integration via the open-source **GoXLR Utility** daemon which exposes a localhost WebSocket API.
+
+**Capabilities exposed:**
+
+| Feature | Input (from GoXLR) | Output (to GoXLR) |
+|---------|--------------------|--------------------|
+| **Faders** | Fader position changes (A/B/C/D, 0-255) | Set fader position programmatically |
+| **Routing Matrix** | — | Route any input to any output (mic→stream, game→headphones, etc.) |
+| **Mute Buttons** | Mute state changes | Toggle mutes programmatically |
+| **Effects** | — | Set reverb, echo, pitch, megaphone, robot, hardtune parameters |
+| **Sampler** | Sample playback triggers | Play, stop, assign samples to banks A/B/C |
+| **Mic Settings** | — | Gate, compressor, EQ, de-esser configuration |
+| **Profiles** | Profile switch events | Load named GoXLR profile |
+
+**NAOS-Aware Audio Routing:**
+- "Meeting mode": GoXLR routes mic to stream, mutes game audio, activates compressor
+- "Build mode": GoXLR routes music to headphones, mic to push-to-talk, sampler armed for sound effects
+- "Stream mode": Full routing — mic to stream+monitor, game to stream, music to headphones only
+- Profiles auto-switch based on MCV Desktop venture context or NAOS agent commands
+
+### 19.8 Connected Sessions
+
+Claude Code instances and remote NAOS agents are modeled as devices with `class: 'agent-session'` and capability `'agent-io'`.
+
+**Discovery:**
+
+```text
+Local Discovery:
+  ~/.claude/projects/
+    ├── c--Users-moust-mcv-one-desktop/     → active session if lock file exists
+    ├── c--Users-moust-Documents-GitHub-.../  → another session
+    └── ...
+
+Remote Discovery (future):
+  Supabase table: active_sessions
+    ├── session_id, user_id, project, device, status, last_heartbeat
+    └── Realtime subscription for live updates
+```
+
+**Session-as-Device model:**
+```typescript
+// A connected Claude Code session
+{
+  id: 'session-abc123',
+  class: 'agent-session',
+  transport: 'websocket',
+  name: 'mcv-one-desktop (master)',
+  capabilities: ['agent-io'],
+  status: 'connected',
+  metadata: {
+    projectDir: 'C:/Users/moust/mcv-one-desktop',
+    branch: 'master',
+    model: 'claude-opus-4-6',
+    loadedKits: ['github', 'tasks', 'docs'],
+    activeView: 'engineering',
+    lastMessage: 'Building device hub components...',
+    pid: 12345
+  }
+}
+```
+
+**Cross-session capabilities:**
+- View all active sessions across the workstation and network
+- Send a prompt to any session ("run the test suite in Futurestate")
+- Broadcast commands by venture ("all BetEdge sessions: pull latest and rebuild")
+- Monitor session health and activity (message rate, last command, errors)
+- Stream Deck button per active session with status color
+
+### 19.9 Device Profiles & Presets
+
+Named profiles bundle device configurations for specific contexts:
+
+```typescript
+interface DeviceProfile {
+  id: string;
+  name: string;                        // "Trading Desk", "Build Mode", "Stream Setup"
+  description?: string;
+  ventureId?: string;                  // null = global, otherwise venture-scoped
+  mappings: DeviceMapping[];           // All button/fader/input mappings for this profile
+  streamDeckPages?: StreamDeckPage[];  // Stream Deck page layouts
+  goxlrPreset?: string;               // GoXLR profile name to load
+  audioRouting?: AudioRoutingPreset;   // Audio routing matrix state
+  activateOn: 'venture-switch' | 'manual' | 'schedule' | 'trigger';
+}
+
+interface DeviceMapping {
+  id: string;
+  deviceId: string;
+  inputPattern: {
+    type: DeviceInputEvent['type'];
+    filter?: Record<string, unknown>;  // e.g., { buttonIndex: 3 } or { faderName: 'A' }
+  };
+  action: DeviceMappingAction;
+  contextId?: string;                  // Venture scope (null = any)
+}
+
+type DeviceMappingAction =
+  | { type: 'navigate'; viewId: string }
+  | { type: 'kit-tool'; kitId: string; toolName: string; input: Record<string, unknown> }
+  | { type: 'agent-command'; prompt: string; ventureId?: string }
+  | { type: 'webhook'; url: string; method: string; body: Record<string, unknown> }
+  | { type: 'command-palette'; command: string }
+  | { type: 'audio-route'; routing: Record<string, unknown> }
+  | { type: 'composite'; actions: DeviceMappingAction[] };
+
+interface StreamDeckPage {
+  id: string;
+  name: string;
+  buttons: Array<{
+    index: number;
+    icon?: string;                     // URL or base64 image
+    label?: string;                    // Text overlay
+    color?: string;                    // Background color
+    mappingId?: string;                // FK to DeviceMapping
+  }>;
+}
+
+interface AudioRoutingPreset {
+  routes: Array<{
+    input: string;                     // 'mic' | 'game' | 'music' | 'chat' | 'system' | 'sample'
+    output: string;                    // 'headphones' | 'stream' | 'line-out' | 'chat-mic'
+    enabled: boolean;
+    volume?: number;                   // 0-1
+  }>;
+  effects?: Record<string, unknown>;   // Reverb, echo, pitch settings
+}
+```
+
+**Auto-activation:** When the user switches to BetEdge in the NavRail, the "Trading Desk" profile activates — Stream Deck switches to the BetEdge page, GoXLR loads the trading audio profile, and mappings update to BetEdge-specific actions.
+
+### 19.10 Security
+
+| Concern | Mitigation |
+|---------|------------|
+| **Local server exposure** | CORS origin validation: only `localhost:5173` (Vite dev) and `localhost:4173` (preview) accepted |
+| **USB HID access** | Node-level: `node-hid` requires explicit vendorId/productId open. No blanket HID enumeration of sensitive devices |
+| **GoXLR daemon** | Connection to `localhost:14564` only (GoXLR utility default). No external network access |
+| **Remote sessions** | Authenticated via Clerk JWT. Session discovery requires matching `userId` in Supabase |
+| **Agent command injection** | All `agent-command` actions are logged and rate-limited (max 10/minute per device). Destructive prompts require HITL confirmation |
+| **Audit trail** | Every `DeviceInputEvent` and `DeviceOutputCommand` logged to FlightRecorder telemetry |
+| **Device permissions** | First-time device access prompts user confirmation in the Device Hub UI |
+
+### 19.11 Kit Integration
+
+The **Device Kit** (`device-kit.ts`) is a builtin kit registered in the AgentOrchestrator, making device operations available as tools in any NAOS/Aegis conversation:
+
+```text
+Kit: device-kit
+Scope: * (all ventures)
+Tools:
+  ├── list_devices          — List all connected devices with status
+  ├── get_device_state      — Detailed state of a specific device
+  ├── send_device_command   — Send output command (set button, move fader, play sample)
+  ├── set_device_mapping    — Create or update an input→action mapping
+  ├── activate_device_profile — Switch to a named device profile
+  ├── list_device_profiles  — List available profiles
+  └── get_device_events     — Recent events from the ring buffer (last N)
+```
+
+**Example NAOS interaction:**
+
+```text
+User: "Set up my Stream Deck for the BetEdge trading session"
+
+NAOS: [calls list_devices] → finds Stream Deck XL
+      [calls activate_device_profile] → activates "Trading Desk" profile
+      [calls send_device_command] → sets button 0 to BetEdge logo
+      [calls send_device_command] → sets button 1 to live odds feed icon
+      → "Done. Your Stream Deck is configured for BetEdge trading.
+         Button 0: BetEdge dashboard, Button 1: Live odds, Button 2: Place bet..."
+```
+
+### 19.12 Architecture Position
+
+```text
+Tier 7: MCV One Desktop (Device Hub UI)
+Tier 6: Device Kit (NAOS tool interface)
+Tier 5: Device Store + Mapping Engine (application state)
+Tier 3: Local Server Device Bridge (protocol translation)
+Tier 1: Physical Devices (USB HID, GoXLR, Stream Deck, MIDI, Audio, Agent Sessions)
+```
+
+### Navigation Integration
+
+New top-level NavRail section between Engineering and Growth & CRM:
+
+```text
+Devices (new NavRail section)
+  ├── Device Hub           # Dashboard: all devices, status, events, profiles
+  ├── Stream Deck          # Button grid, page layouts, mapping editor
+  ├── Audio Router         # GoXLR routing matrix, faders, effects, sampler
+  └── Sessions             # Connected Claude Code instances, cross-session commands
+```
+
+---
+
 ## Verification Plan
 
 (Expanded from v1.0 to cover new sections)
@@ -2754,3 +3163,7 @@ Financial Widgets:
 23. **Price Localization:** Set base price $50 USD → request price for India → verify PPP-adjusted price (~₹999). Verify billing address validation prevents VPN abuse.
 
 24. **Orchestration:** Trigger an overdue invoice → verify task created in orchestration engine. Verify Command Center widget shows commerce metrics.
+
+**Device Hub (Section 19):**
+
+25. **Device Hub:** Navigate to Device Hub → verify scan endpoint returns (empty list OK). Connect Stream Deck → verify auto-detected and displayed. Map button to navigate action → press button → verify view changes. Switch venture → verify Stream Deck page auto-switches. Verify GoXLR status endpoint returns state (or graceful "not found"). Verify connected sessions lists active Claude Code instances from `~/.claude/projects/`. In Aegis chat, say "list my devices" → verify `list_devices` kit tool executes and returns results.

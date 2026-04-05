@@ -5,7 +5,7 @@
 create table if not exists oauth_connections (
   id uuid primary key default uuid_generate_v4(),
   user_id text not null,
-  provider text not null check (provider in ('github', 'google', 'notion', 'cloudflare', 'stripe', 'slack', 'discord', 'linear', 'figma', 'linkedin', 'twitch')),
+  provider text not null check (provider in ('github', 'google', 'notion', 'cloudflare', 'stripe', 'slack', 'discord', 'linear', 'figma', 'linkedin', 'twitch', 'microsoft')),
   access_token_encrypted text not null,
   refresh_token_encrypted text,
   token_expires_at timestamptz,

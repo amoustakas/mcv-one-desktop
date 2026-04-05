@@ -1,4 +1,42 @@
 import { create } from 'zustand';
+import { usePresenceStore } from './presence';
+
+// ── Notification Routing ──
+// Routes notifications based on user presence and device priority.
+
+export type DeliveryMode = 'deliver' | 'badge-only' | 'queue';
+
+export function routeNotification(notification: { type: string }): DeliveryMode {
+  const presence = usePresenceStore.getState().ownPresence;
+  if (!presence) return 'deliver';
+
+  // In meeting or on call: only critical (error) notifications
+  if (presence.status === 'in-meeting' || presence.status === 'on-call') {
+    return notification.type === 'error' ? 'deliver' : 'queue';
+  }
+
+  // Focus mode: only errors and warnings
+  if (presence.status === 'focus') {
+    return notification.type === 'error' || notification.type === 'warning' ? 'deliver' : 'badge-only';
+  }
+
+  // Sleeping: queue everything
+  if (presence.status === 'sleeping') {
+    return 'queue';
+  }
+
+  // Check if this is the primary (most recently active) device
+  const allPresences = usePresenceStore.getState().allPresences;
+  const myDevices = Object.values(allPresences).filter((p) => p.userId === presence.userId);
+  if (myDevices.length > 1) {
+    const primary = myDevices.sort((a, b) =>
+      new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime(),
+    )[0];
+    if (primary.deviceId !== presence.deviceId) return 'badge-only';
+  }
+
+  return 'deliver';
+}
 
 export interface AppNotification {
   id: string;

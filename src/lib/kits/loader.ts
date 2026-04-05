@@ -73,6 +73,11 @@ import {
 } from './builtin/mcp-bridge-kit';
 import { manifest as deviceManifest, handlers as deviceHandlers } from './builtin/device-kit';
 import { manifest as ledgerManifest, handlers as ledgerHandlers } from './builtin/ledger-kit';
+import { manifest as msTeamsManifest, handlers as msTeamsHandlers } from './builtin/microsoft-teams-kit';
+import { manifest as msOutlookManifest, handlers as msOutlookHandlers } from './builtin/microsoft-outlook-kit';
+import { manifest as msOnedriveManifest, handlers as msOnedriveHandlers } from './builtin/microsoft-onedrive-kit';
+import { manifest as msSharepointManifest, handlers as msSharepointHandlers } from './builtin/microsoft-sharepoint-kit';
+import { manifest as msEntraManifest, handlers as msEntraHandlers } from './builtin/microsoft-entra-kit';
 
 // ---------------------------------------------------------------------------
 // Local Kit Registry
@@ -144,6 +149,11 @@ const builtinKits: KitInstance[] = [
   kit(mcpBridgeManifest, mcpBridgeHandlers),
   kit(deviceManifest, deviceHandlers),
   kit(ledgerManifest, ledgerHandlers),
+  kit(msTeamsManifest, msTeamsHandlers),
+  kit(msOutlookManifest, msOutlookHandlers),
+  kit(msOnedriveManifest, msOnedriveHandlers),
+  kit(msSharepointManifest, msSharepointHandlers),
+  kit(msEntraManifest, msEntraHandlers),
 ];
 
 /** Returns all built-in kit instances */

@@ -11,8 +11,11 @@ import { useTheme } from './stores/theme';
 import { useCommandStore } from './stores/command';
 import { useLayoutStore } from './stores/layout';
 import { getVenture, ventures } from './lib/ventures';
-import { UserButton } from './lib/auth';
+// UserButton removed — unused
 import { Search, Settings, Bot, Columns2 } from 'lucide-react';
+import { usePresence } from './hooks/use-presence';
+import PresenceAvatar from './components/PresenceAvatar';
+import PresenceCard from './components/PresenceCard';
 import VentureMegaMenu from './components/VentureMegaMenu';
 import QuickCapture from './components/QuickCapture';
 import Toasts from './components/Toasts';
@@ -53,6 +56,10 @@ const OperatorControlRoom = lazy(() => import('./views/OperatorControlRoom'));
 const CommsHub = lazy(() => import('./views/CommsHub'));
 const FilesView = lazy(() => import('./views/FilesView'));
 const VentureWorkspaceView = lazy(() => import('./views/VentureWorkspaceView'));
+const DeviceHubView = lazy(() => import('./views/DeviceHubView'));
+const StreamDeckView = lazy(() => import('./views/StreamDeckView'));
+const AudioRouterView = lazy(() => import('./views/AudioRouterView'));
+const ConnectedSessionsView = lazy(() => import('./views/ConnectedSessionsView'));
 
 // Placeholder views
 function PlaceholderView({ title, description }: { title: string; description: string }) {
@@ -128,6 +135,14 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <PromptComposer />;
     case 'war-room':
       return <WarRoom />;
+    case 'device-hub':
+      return <DeviceHubView />;
+    case 'stream-deck':
+      return <StreamDeckView />;
+    case 'audio-router':
+      return <AudioRouterView />;
+    case 'connected-sessions':
+      return <ConnectedSessionsView />;
     case 'team':
       return <TeamView />;
     case 'kit-store':
@@ -296,6 +311,8 @@ export default function App() {
   usePipelineSync(); // Auto-sync local data → Supabase every 5min
   useRealtimeSync(); // Supabase Realtime — live push updates across devices
   useCommsSync();    // Auto-ingest comms data → Knowledge Base, CRM, Tasks every 5min
+  usePresence();     // Device detection + AI status inference + Supabase presence broadcast
+  const [presenceCardOpen, setPresenceCardOpen] = useState(false);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -420,7 +437,8 @@ export default function App() {
             >
               <Bot size={15} />
             </button>
-            <UserButton afterSignOutUrl="/" />
+            <PresenceAvatar size={28} onClick={() => setPresenceCardOpen(!presenceCardOpen)} />
+            {presenceCardOpen && <PresenceCard onClose={() => setPresenceCardOpen(false)} />}
           </div>
         </header>
 

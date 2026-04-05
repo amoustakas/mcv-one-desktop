@@ -401,3 +401,27 @@ pre {
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
 }
+
+/* ── Device-Adaptive Layout Rules ──
+   Set by usePresence hook via document.documentElement.dataset.screenClass */
+
+/* Ultrawide: maximize horizontal real estate */
+[data-screen-class="ultrawide"] .mcv-page-header { padding-left: 32px; padding-right: 32px; }
+[data-screen-class="ultrawide"] .app-content { max-width: none; }
+
+/* Cinema (4K): dense grids, expanded KPIs */
+[data-screen-class="cinema"] .mcv-stat-card { padding: 16px 20px; }
+
+/* Phone: hide sidebar, use bottom nav pattern */
+[data-screen-class="phone"] .app-sidebar { display: none; }
+[data-screen-class="phone"] .app-header { padding: 0 8px; }
+[data-screen-class="phone"] .mcv-page-header { padding: 8px 12px; }
+[data-screen-class="phone"] .status-bar { display: none; }
+
+/* Tablet: larger touch targets */
+[data-device-type="tablet"] .mcv-tab { padding: 8px 16px; font-size: 12px; }
+[data-device-type="tablet"] button { min-height: 40px; }
+
+/* Portrait monitors: optimize for vertical scroll */
+[data-screen-class="portrait"] .app-content { overflow-y: auto; }
+[data-screen-class="portrait"] .mcv-page-header { position: sticky; top: 0; z-index: 5; background: var(--bg-deep); }

@@ -1,0 +1,5 @@
+{
+  "name": "One shot arcade",
+  "description": "An AI powered retro gaming experience that uses Nano Banana Pro to transform user photos into playable 8-bit sprites within a fully functional retro style maze game.",
+  "requestFramePermissions": []
+}

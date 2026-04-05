@@ -1,5 +1,5 @@
 import { useState, lazy, Suspense } from 'react';
-import { MessageSquare, GripVertical } from 'lucide-react';
+import { MessageSquare, Minimize2, Maximize2 } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
 import { getVenture, ventures } from '../lib/ventures';
 import { Badge } from './ui';
@@ -7,13 +7,14 @@ import { cn } from '../lib/utils';
 const AegisChat = lazy(() => import('./AegisChat'));
 
 export default function ChatDock() {
-  const { chatVenture } = useNavigation();
+  const { chatVenture, toggleChatDock } = useNavigation();
   const venture = getVenture(chatVenture) ?? ventures[0];
   const [width, setWidth] = useState(() => {
     const saved = localStorage.getItem('mcv-dock-width');
     return saved ? parseInt(saved) : Math.min(480, Math.floor(window.innerWidth * 0.25));
   });
   const [dragging, setDragging] = useState(false);
+  const [minimized, setMinimized] = useState(false);
 
   function handleMouseDown(e: React.MouseEvent) {
     e.preventDefault();
@@ -39,30 +40,57 @@ export default function ChatDock() {
   }
 
   return (
-    <div className="dock" style={{ width }}>
+    <div className={cn('dock', minimized && 'dock-minimized')} style={{ width: minimized ? 48 : width }}>
       {/* Resize handle */}
-      <div
-        className={cn('dock-resize', dragging && 'active')}
-        onMouseDown={handleMouseDown}
-      >
-        <GripVertical size={10} />
-      </div>
+      {!minimized && (
+        <div
+          className={cn('dock-resize', dragging && 'active')}
+          onMouseDown={handleMouseDown}
+        >
+          <div className="dock-resize-line" />
+        </div>
+      )}
 
       <div className="dock-inner">
         <div className="dock-header">
+          <div className="dock-header-glow" />
           <div className="dock-title">
-            <MessageSquare size={12} />
-            <span className="dock-label">Aegis</span>
-            <Badge color={venture.color} variant="outline" size="sm">
-              {venture.name}
-            </Badge>
+            <div className="dock-icon-wrap">
+              <MessageSquare size={12} />
+              <div className="dock-icon-pulse" />
+            </div>
+            {!minimized && (
+              <>
+                <span className="dock-label">AEGIS</span>
+                <Badge color={venture.color} variant="outline" size="sm">
+                  {venture.name}
+                </Badge>
+              </>
+            )}
           </div>
+          {!minimized && (
+            <div className="dock-controls">
+              <button className="dock-ctrl-btn" onClick={() => setMinimized(true)} title="Minimize">
+                <Minimize2 size={11} />
+              </button>
+              <button className="dock-ctrl-btn" onClick={toggleChatDock} title="Close (Ctrl+/)">
+                ×
+              </button>
+            </div>
+          )}
+          {minimized && (
+            <button className="dock-ctrl-btn dock-expand-btn" onClick={() => setMinimized(false)} title="Expand">
+              <Maximize2 size={12} />
+            </button>
+          )}
         </div>
-        <div className="dock-body">
-          <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontSize: 11 }}>Loading Aegis...</div>}>
-            <AegisChat venture={venture} docked />
-          </Suspense>
-        </div>
+        {!minimized && (
+          <div className="dock-body">
+            <Suspense fallback={<div className="dock-loading">Initializing Aegis...</div>}>
+              <AegisChat venture={venture} docked />
+            </Suspense>
+          </div>
+        )}
       </div>
 
       <style>{`
@@ -71,6 +99,10 @@ export default function ChatDock() {
           display: flex;
           flex-shrink: 0;
           position: relative;
+          transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .dock-minimized {
+          width: 48px !important;
         }
 
         .dock-resize {
@@ -80,35 +112,56 @@ export default function ChatDock() {
           display: flex;
           align-items: center;
           justify-content: center;
-          color: transparent;
-          background: var(--border);
-          transition: all 0.15s;
           flex-shrink: 0;
+          position: relative;
+          transition: all 0.15s;
         }
-
-        .dock-resize:hover, .dock-resize.active {
+        .dock-resize-line {
+          width: 2px;
+          height: 40px;
+          border-radius: 1px;
+          background: var(--border);
+          transition: all 0.2s;
+        }
+        .dock-resize:hover .dock-resize-line,
+        .dock-resize.active .dock-resize-line {
           background: var(--cyan);
-          color: var(--bg-deep);
-          width: 8px;
+          height: 60px;
+          box-shadow: 0 0 8px var(--cyan-glow);
+        }
+        .dock-resize:hover, .dock-resize.active {
+          background: rgba(0,240,255,0.03);
         }
 
         .dock-inner {
           flex: 1;
           display: flex;
           flex-direction: column;
-          background: var(--bg-deep);
+          background: linear-gradient(180deg, rgba(6,12,24,0.98), rgba(4,8,18,0.99));
           overflow: hidden;
           min-width: 0;
+          border-left: 1px solid rgba(0,240,255,0.06);
         }
 
         .dock-header {
-          height: 40px;
+          height: 42px;
           display: flex;
           align-items: center;
+          justify-content: space-between;
           padding: 0 14px;
-          border-bottom: 1px solid var(--border);
-          background: var(--bg-surface);
+          border-bottom: 1px solid rgba(0,240,255,0.06);
+          background: linear-gradient(180deg, rgba(11,17,33,0.95), rgba(8,14,28,0.9));
           flex-shrink: 0;
+          position: relative;
+          backdrop-filter: blur(12px);
+        }
+        .dock-header-glow {
+          position: absolute;
+          bottom: 0;
+          left: 10%;
+          right: 10%;
+          height: 1px;
+          background: linear-gradient(90deg, transparent, rgba(0,240,255,0.2), transparent);
         }
 
         .dock-title {
@@ -120,14 +173,85 @@ export default function ChatDock() {
           color: var(--text-secondary);
         }
 
+        .dock-icon-wrap {
+          position: relative;
+          display: flex;
+          align-items: center;
+          color: var(--cyan);
+        }
+        .dock-icon-pulse {
+          position: absolute;
+          inset: -3px;
+          border-radius: 50%;
+          background: var(--cyan);
+          opacity: 0;
+          animation: dock-pulse 3s ease-in-out infinite;
+        }
+        @keyframes dock-pulse {
+          0%, 100% { opacity: 0; transform: scale(0.8); }
+          50% { opacity: 0.15; transform: scale(1.4); }
+        }
+
         .dock-label {
           font-family: var(--font-display);
-          letter-spacing: 0.5px;
+          letter-spacing: 2px;
+          font-size: 11px;
+          font-weight: 700;
+          color: var(--cyan);
+          text-shadow: 0 0 8px rgba(0,240,255,0.3);
+        }
+
+        .dock-controls {
+          display: flex;
+          align-items: center;
+          gap: 2px;
+        }
+        .dock-ctrl-btn {
+          width: 24px;
+          height: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: var(--radius-sm);
+          color: var(--text-muted);
+          cursor: pointer;
+          background: none;
+          border: none;
+          transition: all 0.15s;
+          font-size: 14px;
+        }
+        .dock-ctrl-btn:hover {
+          color: var(--text-primary);
+          background: rgba(0,240,255,0.06);
+        }
+        .dock-expand-btn {
+          margin-top: 4px;
+          color: var(--cyan);
         }
 
         .dock-body {
           flex: 1;
           overflow: hidden;
+        }
+
+        .dock-loading {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          height: 100%;
+          color: var(--text-muted);
+          font-size: 11px;
+          font-family: var(--font-mono);
+        }
+
+        .dock-minimized .dock-inner {
+          align-items: center;
+        }
+        .dock-minimized .dock-header {
+          flex-direction: column;
+          padding: 10px 0;
+          height: auto;
+          gap: 8px;
         }
       `}</style>
     </div>

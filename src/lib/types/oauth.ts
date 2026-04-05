@@ -5,7 +5,7 @@
 export type OAuthProvider =
   | 'github' | 'google' | 'notion' | 'cloudflare'
   | 'stripe' | 'slack' | 'discord' | 'linear' | 'figma'
-  | 'linkedin' | 'twitch';
+  | 'linkedin' | 'twitch' | 'microsoft';
 
 export interface OAuthConnection {
   id: string;
@@ -186,6 +186,24 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
     clientIdEnvVar: 'TWITCH_CLIENT_ID',
     clientSecretEnvVar: 'TWITCH_CLIENT_SECRET',
   },
+  microsoft: {
+    provider: 'microsoft',
+    name: 'Microsoft 365',
+    description: 'Teams, Outlook, OneDrive, SharePoint, Calendar, Contacts, Entra ID, Planner, To Do',
+    scopes: [
+      'User.Read', 'Mail.ReadWrite', 'Mail.Send', 'Calendars.ReadWrite',
+      'Contacts.Read', 'Files.ReadWrite.All', 'Sites.Read.All',
+      'Team.ReadBasic.All', 'Channel.ReadBasic.All', 'ChannelMessage.Send',
+      'Chat.ReadWrite', 'Presence.Read.All', 'OnlineMeetings.ReadWrite',
+      'Group.Read.All', 'Tasks.ReadWrite',
+    ],
+    authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+    tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+    revokeUrl: undefined,
+    userInfoUrl: 'https://graph.microsoft.com/v1.0/me',
+    clientIdEnvVar: 'MICROSOFT_CLIENT_ID',
+    clientSecretEnvVar: 'MICROSOFT_CLIENT_SECRET',
+  },
 };
 
 /** Services that only support API key auth (no OAuth) */
@@ -326,6 +344,7 @@ export const PROVIDER_CATEGORIES: Record<string, IntegrationCategory> = {
   figma: 'design',
   linkedin: 'social',
   twitch: 'streaming',
+  microsoft: 'productivity',
 };
 
 /** Which kits/features consume each provider */
@@ -357,4 +376,5 @@ export const PROVIDER_CONSUMERS: Record<string, string[]> = {
   'X / Twitter': ['X Kit', 'Social Intelligence', 'Trend Analysis', 'Growth Dashboard'],
   linkedin: ['LinkedIn Kit', 'Professional Networking', 'Content Publishing', 'Company Research'],
   twitch: ['Twitch Kit', 'Stream Monitoring', 'WarForge Streaming', 'Community Events'],
+  microsoft: ['Teams Kit', 'Outlook Kit', 'OneDrive Kit', 'SharePoint Kit', 'Entra Kit', 'Planner', 'To Do', 'Calendar'],
 };

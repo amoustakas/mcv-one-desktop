@@ -8,6 +8,7 @@ import { flightRecorder } from '../telemetry/flight-recorder';
 import { contextCacheManager } from '../google/context-cache-manager';
 import { hybridComputeRouter } from '../google/hybrid-compute';
 import { hitlGate } from '../hitl/intercept-gate';
+import { usePresenceStore } from '../../stores/presence';
 
 // ---------------------------------------------------------------------------
 // Agent Orchestrator
@@ -109,6 +110,22 @@ export class AgentOrchestrator {
       prompt += 'When a user request can be fulfilled by a tool, use the tool rather than giving a generic response. ';
       prompt += 'You can chain multiple tool calls to complete complex requests.\n';
     }
+
+    // Inject user presence context (if available)
+    try {
+      const presence = usePresenceStore.getState().ownPresence;
+      if (presence) {
+        prompt += '\n\n## Current User Context\n\n';
+        prompt += `- **Status:** ${presence.status} (${presence.statusText})\n`;
+        prompt += `- **Device:** ${presence.deviceType} (${presence.screenClass})\n`;
+        prompt += `- **Location:** ${presence.city || 'Unknown'}, ${presence.timezone}\n`;
+        prompt += `- **Role:** ${presence.role} (${presence.accessTier})\n`;
+        prompt += `- **Venture:** ${presence.activeVenture}\n`;
+        prompt += '\nAdapt your responses to the user\'s current state and device. ';
+        prompt += 'On smaller screens, prefer concise card-based responses. ';
+        prompt += 'If the user is in a meeting or on a call, keep responses brief.\n';
+      }
+    } catch { /* presence store not available */ }
 
     return prompt;
   }

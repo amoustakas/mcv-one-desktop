@@ -40,6 +40,11 @@ export type ViewId =
   | 'venture-tasks'
   | 'venture-settings'
   | 'venture-onboarding'
+  // Device views
+  | 'device-hub'
+  | 'stream-deck'
+  | 'audio-router'
+  | 'connected-sessions'
   // Kit views
   | 'kit-store'
   | 'kit-studio'
@@ -98,6 +103,8 @@ const VIEW_LABELS: Record<string, string> = {
   'ai-studio': 'AI Studio', 'prompt-composer': 'Prompt Composer',
   team: 'Team', settings: 'Settings', 'kit-store': 'Kit Store', 'kit-studio': 'Kit Studio',
   memory: 'Memory Hub', pipeline: 'Pipeline', 'control-room': 'Control Room',
+  'device-hub': 'Device Hub', 'stream-deck': 'Stream Deck',
+  'audio-router': 'Audio Router', 'connected-sessions': 'Connected Sessions',
   'venture-dashboard': 'Dashboard', 'venture-profile': 'Profile',
   'venture-engineering': 'Engineering', 'venture-growth': 'Growth',
   'venture-operations': 'Operations', 'venture-docs': 'Documents',

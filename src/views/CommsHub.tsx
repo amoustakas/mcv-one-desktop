@@ -31,6 +31,7 @@ import type {
 } from '../lib/types/comms';
 import { PLATFORM_META } from '../lib/types/comms';
 import CommsSyncStatus from '../components/comms/CommsSyncStatus';
+import { usePresenceStore, STATUS_COLORS, STATUS_LABELS } from '../stores/presence';
 
 // ── Constants ──
 
@@ -196,6 +197,24 @@ function MessageRow({ message, onClick }: { message: UnifiedMessage; onClick: ()
 // Live Command Strip (always visible above tabs)
 // ═══════════════════════════════════════════
 
+function PresenceWidget() {
+  const presence = usePresenceStore((s) => s.ownPresence);
+  const deviceCount = usePresenceStore((s) => s.getDeviceCount());
+  if (!presence) return null;
+  const color = STATUS_COLORS[presence.status];
+  return (
+    <div className="lcs-widget">
+      <span className="lcs-icon" style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block' }} />
+      <div className="lcs-widget-body">
+        <span className="lcs-widget-label">{STATUS_LABELS[presence.status]}</span>
+        <span className="lcs-widget-value">
+          {presence.city && `${presence.city} · `}{deviceCount} device{deviceCount !== 1 ? 's' : ''}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function LiveCommandStrip() {
   const { data: calOverview } = useCalendarOverview();
   const { data: events = [] } = useUpcomingEvents(3);
@@ -280,6 +299,9 @@ function LiveCommandStrip() {
           <span className="lcs-widget-value">{calOverview?.upcoming_events ?? 0} events</span>
         </div>
       </div>
+
+      {/* Presence */}
+      <PresenceWidget />
     </div>
   );
 }

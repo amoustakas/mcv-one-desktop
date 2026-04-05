@@ -159,6 +159,14 @@ const PROVIDER_CONFIGS: Record<string, () => ProviderTokenConfig> = {
     clientSecret: process.env.TWITCH_CLIENT_SECRET || '',
     scopes: ['user:read:email', 'channel:read:subscriptions'],
   }),
+  microsoft: () => ({
+    authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+    tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+    userInfoUrl: 'https://graph.microsoft.com/v1.0/me',
+    clientId: process.env.MICROSOFT_CLIENT_ID || '',
+    clientSecret: process.env.MICROSOFT_CLIENT_SECRET || '',
+    scopes: ['User.Read', 'Mail.ReadWrite', 'Mail.Send', 'Calendars.ReadWrite', 'Contacts.Read', 'Files.ReadWrite.All', 'Sites.Read.All', 'Team.ReadBasic.All', 'Channel.ReadBasic.All', 'ChannelMessage.Send', 'Chat.ReadWrite', 'Presence.Read.All', 'OnlineMeetings.ReadWrite', 'Group.Read.All', 'Tasks.ReadWrite', 'offline_access'],
+  }),
 };
 
 export function getProviderConfig(provider: string): ProviderTokenConfig {
@@ -218,6 +226,7 @@ export async function getProviderToken(
     figma: process.env.FIGMA_ACCESS_TOKEN || '',
     linkedin: '',
     twitch: process.env.TWITCH_CLIENT_SECRET || '',
+    microsoft: '',
   };
 
   const envToken = envFallbacks[provider];

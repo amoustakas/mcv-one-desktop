@@ -105,7 +105,7 @@ export const creditsProcessor: PaymentProcessor = {
   // Practical approach: the router layer should call createPayment result and
   // store the mapping. Here we parse the ventureId from the paymentId prefix
   // and expect callers to use the paymentId returned from createPayment.
-  async refundPayment(paymentId: string, amount?: number): Promise<RefundResult> {
+  async refundPayment(_paymentId: string, _amount?: number): Promise<RefundResult> {
     // paymentId format: crd_{timestamp}_{randomSuffix}
     // We cannot restore credits without knowing the venture + owner.
     // The refund must be initiated with context. Return a clear error so the

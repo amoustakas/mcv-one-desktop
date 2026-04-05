@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Wifi, WifiOff, Database, GitBranch, Cloud, FileText, CheckSquare, Columns2, Cpu, HardDrive } from 'lucide-react';
+import { Wifi, WifiOff, Database, GitBranch, Cloud, FileText, CheckSquare, Columns2, Cpu, HardDrive, Monitor } from 'lucide-react';
 import { APP_VERSION } from '../lib/version';
 import { supabase } from '../lib/supabase';
 import { useNavigation } from '../stores/navigation';
@@ -7,6 +7,8 @@ import { getVenture } from '../lib/ventures';
 import { useLocalStore } from '../lib/local';
 import { apiGet } from '../lib/api/client';
 import { cn } from '../lib/utils';
+import { usePresenceStore, STATUS_COLORS, STATUS_LABELS } from '../stores/presence';
+import { getTimezoneAbbr } from '../lib/device';
 
 export default function StatusBar() {
   const [health, setHealth] = useState<Record<string, boolean>>({});
@@ -35,12 +37,25 @@ export default function StatusBar() {
 
   const venture = activeVenture ? getVenture(activeVenture) : null;
   const onlineServices = Object.values(health).filter(Boolean).length;
+  const presence = usePresenceStore((s) => s.ownPresence);
+  const deviceCount = usePresenceStore((s) => s.getDeviceCount());
 
   return (
     <div className="status-bar">
       <div className="status-left">
         <span className="status-edge">EDGE $0.025</span>
         <span className="status-sep" />
+        {presence && (
+          <>
+            <span className="status-presence">
+              <span className="status-presence-dot" style={{ background: STATUS_COLORS[presence.status] }} />
+              {STATUS_LABELS[presence.status]}
+              {presence.city && <> · {presence.city} {getTimezoneAbbr()}</>}
+              {deviceCount > 1 && <> · <Monitor size={9} /> {deviceCount}</>}
+            </span>
+            <span className="status-sep" />
+          </>
+        )}
         {mode === 'venture' && venture && (
           <>
             <span className="status-venture" style={{ color: venture.color }}>
@@ -105,6 +120,8 @@ export default function StatusBar() {
         .status-edge { font-family: var(--font-mono); font-weight: 600; color: var(--purple); }
         .status-sep { width: 1px; height: 12px; background: var(--border); }
         .status-item { display: flex; align-items: center; gap: 3px; }
+        .status-presence { display: flex; align-items: center; gap: 4px; font-weight: 500; }
+        .status-presence-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
         .status-item.split { color: var(--cyan); }
 
         .status-venture { display: flex; align-items: center; gap: 4px; font-weight: 500; font-size: 10px; }

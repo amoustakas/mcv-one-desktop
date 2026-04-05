@@ -21,6 +21,7 @@ import chokidar from 'chokidar';
 import { registerPipelineRoutes } from './pipeline-routes';
 import { registerDockerRoutes } from './docker-routes';
 import { registerMcpRoutes } from './mcp-routes';
+import { registerDeviceRoutes } from './device-routes';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "3100");
@@ -395,6 +396,7 @@ app.post('/local/exec', (req, res) => {
 // ── Register modular routes ──
 registerDockerRoutes(app);
 registerMcpRoutes(app);
+registerDeviceRoutes(app);
 
 // ── Start ──
 app.listen(PORT, () => {

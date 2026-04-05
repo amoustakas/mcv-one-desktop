@@ -74,6 +74,39 @@ const geminiCodeExecute: KitToolHandler = async (input, ctx) => {
   return { success: true, data, displayMarkdown: md };
 };
 
+// Image generation via Imagen
+const geminiImageGen: KitToolHandler = async (input, ctx) => {
+  const data = await postJson('/api/google', { action: 'imagen-generate', prompt: input.prompt, aspectRatio: input.aspectRatio }, ctx);
+  if (data.images?.length) {
+    return { success: true, data, displayMarkdown: `## Generated Image\n\n*Prompt: "${(input.prompt as string).slice(0, 80)}"*\n\n${data.images.length} image(s) generated.` };
+  }
+  return { success: true, data, displayMarkdown: data.content || 'Image generation completed.' };
+};
+
+// Vision (image analysis)
+const geminiVision: KitToolHandler = async (input, ctx) => {
+  const data = await postJson('/api/google', { action: 'gemini-vision', imageUrl: input.imageUrl, imageBase64: input.imageBase64, prompt: input.prompt || 'Describe this image.' }, ctx);
+  return { success: true, data, displayMarkdown: data.content || 'No analysis returned.' };
+};
+
+// Structured JSON output
+const geminiStructured: KitToolHandler = async (input, ctx) => {
+  const data = await postJson('/api/google-generate', { action: 'generate-structured', prompt: input.prompt, responseSchema: input.schema, model: input.model }, ctx);
+  try {
+    const parsed = JSON.parse(data.content || '{}');
+    return { success: true, data: parsed, displayMarkdown: `## Structured Output\n\n\`\`\`json\n${JSON.stringify(parsed, null, 2)}\n\`\`\`` };
+  } catch {
+    return { success: true, data: data.content, displayMarkdown: data.content || 'No output.' };
+  }
+};
+
+// Embeddings
+const geminiEmbeddings: KitToolHandler = async (input, ctx) => {
+  const data = await postJson('/api/google', { action: 'gemini-embed', text: input.text, model: input.model || 'text-embedding-004' }, ctx);
+  const dim = data.embedding?.values?.length ?? 0;
+  return { success: true, data, displayMarkdown: `Gemini embedding generated: **${dim} dimensions**` };
+};
+
 // Epic 8: Search grounding handler
 const geminiSearch: KitToolHandler = async (input, ctx) => {
   const query = (input.query || input.prompt) as string;
@@ -86,8 +119,8 @@ const geminiSearch: KitToolHandler = async (input, ctx) => {
 export const manifest: KitManifest = {
   id: 'gemini-intelligence',
   name: 'Gemini Intelligence',
-  version: '2.0.0',
-  description: 'Google Gemini for text generation, summarization, code execution, web search grounding, and Google Places/Geocoding APIs.',
+  version: '3.0.0',
+  description: 'Google Gemini — text generation, vision, image generation, structured output, embeddings, code execution, search grounding, summarization, and Google Places/Geocoding.',
   author: 'MCV',
   capabilities: ['network', 'llm'],
   runtime: 'inline',
@@ -151,6 +184,41 @@ export const manifest: KitManifest = {
         required: ['query'],
       },
     },
+    {
+      name: 'gemini_image_gen',
+      description: 'Generate images using Google Imagen. Provide a text prompt to create an image.',
+      input_schema: {
+        type: 'object',
+        properties: { prompt: { type: 'string' }, aspectRatio: { type: 'string', description: '1:1, 16:9, 9:16, 4:3, 3:4' } },
+        required: ['prompt'],
+      },
+    },
+    {
+      name: 'gemini_vision',
+      description: 'Analyze an image using Gemini vision capabilities.',
+      input_schema: {
+        type: 'object',
+        properties: { imageUrl: { type: 'string' }, imageBase64: { type: 'string' }, prompt: { type: 'string', description: 'What to analyze (default: describe)' } },
+      },
+    },
+    {
+      name: 'gemini_structured',
+      description: 'Get structured JSON output from Gemini using a response schema.',
+      input_schema: {
+        type: 'object',
+        properties: { prompt: { type: 'string' }, schema: { type: 'object', description: 'JSON Schema for response format' }, model: { type: 'string' } },
+        required: ['prompt', 'schema'],
+      },
+    },
+    {
+      name: 'gemini_embeddings',
+      description: 'Generate text embeddings with Gemini (text-embedding-004).',
+      input_schema: {
+        type: 'object',
+        properties: { text: { type: 'string' }, model: { type: 'string' } },
+        required: ['text'],
+      },
+    },
   ],
 };
 
@@ -161,4 +229,8 @@ export const handlers: Record<string, KitToolHandler> = {
   geocode_address: geocodeAddress,
   gemini_code_execute: geminiCodeExecute,
   gemini_search: geminiSearch,
+  gemini_image_gen: geminiImageGen,
+  gemini_vision: geminiVision,
+  gemini_structured: geminiStructured,
+  gemini_embeddings: geminiEmbeddings,
 };
