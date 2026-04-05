@@ -49,6 +49,7 @@ export function getMcpTools(): KitToolSchema[] {
 }
 
 /** Single routing handler for all MCP tool calls */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const mcpToolRouter: KitToolHandler = async (input, _context) => {
   if (!connectionManager) {
     return { success: false, error: 'MCP Bridge not initialized' };

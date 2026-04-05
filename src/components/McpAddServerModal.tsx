@@ -11,8 +11,8 @@ import {
   Terminal,
   Link,
 } from 'lucide-react';
-import { MCP_PRESETS, McpServerPreset } from '../lib/mcp/presets';
-import { McpServerConfig } from '../lib/mcp/types';
+import { MCP_PRESETS, type McpServerPreset } from '../lib/mcp/presets';
+import type { McpServerConfig } from '../lib/mcp/types';
 
 // ---------------------------------------------------------------------------
 // Types
