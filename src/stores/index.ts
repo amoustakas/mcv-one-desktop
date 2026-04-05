@@ -9,3 +9,4 @@ export { useVentureContextStore, type VentureContext, type VentureHealth } from 
 export { useChatStore } from './chat';
 export { useAgentsStore, type AgentTask, type AgentStatus } from './agents';
 export { useFilesStore } from './files';
+export { useMcpStore } from './mcp';
