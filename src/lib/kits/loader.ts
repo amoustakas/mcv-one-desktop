@@ -47,6 +47,12 @@ import { manifest as resendManifest, handlers as resendHandlers } from './builti
 import { manifest as storageSupabaseManifest, handlers as storageSupabaseHandlers } from './builtin/storage-supabase-kit';
 import { manifest as storageLocalManifest, handlers as storageLocalHandlers } from './builtin/storage-local-kit';
 import { manifest as storageGdriveManifest, handlers as storageGdriveHandlers } from './builtin/storage-gdrive-kit';
+import {
+  manifest as mcpBridgeManifest,
+  handlers as mcpBridgeHandlers,
+  getMcpTools,
+  getMcpHandlers,
+} from './builtin/mcp-bridge-kit';
 
 // ---------------------------------------------------------------------------
 // Local Kit Registry
@@ -97,6 +103,7 @@ const builtinKits: KitInstance[] = [
   kit(storageSupabaseManifest, storageSupabaseHandlers),
   kit(storageLocalManifest, storageLocalHandlers),
   kit(storageGdriveManifest, storageGdriveHandlers),
+  kit(mcpBridgeManifest, mcpBridgeHandlers),
 ];
 
 /** Returns all built-in kit instances */
@@ -171,4 +178,17 @@ export function buildKitInstructions(kits: KitInstance[], ventureId: string): st
   }
 
   return instructions;
+}
+
+/** Refresh the MCP Bridge Kit's tools and handlers in the kit list */
+export function refreshMcpBridgeKit(kits: KitInstance[]): void {
+  const bridgeKit = kits.find((k) => k.manifest.id === 'mcp-bridge');
+  if (!bridgeKit) return;
+
+  // Rebuild dynamic tools and handlers
+  bridgeKit.manifest = {
+    ...bridgeKit.manifest,
+    tools: getMcpTools(),
+  };
+  bridgeKit.handlers = getMcpHandlers();
 }
