@@ -1,0 +1,77 @@
+import { createClient } from '@supabase/supabase-js';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+
+async function requireAuth(req: VercelRequest, res: VercelResponse): Promise<string | null> {
+  const secretKey = process.env.CLERK_SECRET_KEY;
+  if (!secretKey) return 'no-secret';
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : (req.cookies?.__session || null);
+  if (!token) { res.status(401).json({ error: 'Authentication required' }); return null; }
+  try {
+    const { verifyToken } = await import('@clerk/backend');
+    const payload = await verifyToken(token, { secretKey });
+    return payload.sub;
+  } catch { res.status(401).json({ error: 'Invalid session' }); return null; }
+}
+
+const supabase = createClient(
+  process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '',
+);
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const userId = await requireAuth(req, res);
+  if (!userId) return;
+  const action = req.body?.action || req.query.action;
+
+  try {
+    switch (action) {
+      case 'log': {
+        const { file_id, audit_action, provider, user_id, venture_id, details, previous_state } = req.body;
+        const { error } = await supabase.from('storage_audit_log').insert({
+          user_id: user_id || userId,
+          file_id,
+          action: audit_action,
+          provider,
+          venture_id,
+          details: details || {},
+          previous_state,
+        });
+        if (error) throw error;
+        return res.json({ success: true });
+      }
+
+      case 'list': {
+        const fileId = req.query.file_id || req.body?.file_id;
+        const limit = parseInt(String(req.query.limit || '20'));
+        const { data, error } = await supabase
+          .from('storage_audit_log')
+          .select('*')
+          .eq('file_id', fileId)
+          .order('timestamp', { ascending: false })
+          .limit(limit);
+        if (error) throw error;
+        return res.json({ entries: data });
+      }
+
+      case 'search': {
+        let query = supabase.from('storage_audit_log').select('*').order('timestamp', { ascending: false });
+        const p = { ...req.query, ...req.body };
+        if (p.userId) query = query.eq('user_id', p.userId);
+        if (p.ventureId) query = query.eq('venture_id', p.ventureId);
+        if (p.action && p.action !== 'search') query = query.eq('action', p.action);
+        if (p.dateFrom) query = query.gte('timestamp', p.dateFrom);
+        if (p.dateTo) query = query.lte('timestamp', p.dateTo);
+        query = query.limit(parseInt(String(p.limit || '50')));
+        const { data, error } = await query;
+        if (error) throw error;
+        return res.json({ entries: data });
+      }
+
+      default:
+        return res.status(400).json({ error: `Unknown action: ${action}` });
+    }
+  } catch (error) {
+    return res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
+  }
+}

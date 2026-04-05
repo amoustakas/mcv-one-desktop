@@ -47,6 +47,8 @@ import { manifest as resendManifest, handlers as resendHandlers } from './builti
 import { manifest as storageSupabaseManifest, handlers as storageSupabaseHandlers } from './builtin/storage-supabase-kit';
 import { manifest as storageLocalManifest, handlers as storageLocalHandlers } from './builtin/storage-local-kit';
 import { manifest as storageGdriveManifest, handlers as storageGdriveHandlers } from './builtin/storage-gdrive-kit';
+import { manifest as storageAiManifest, handlers as storageAiHandlers } from './builtin/storage-ai-kit';
+import { manifest as googleRagManifest, handlers as googleRagHandlers } from './builtin/google-rag-kit';
 import {
   manifest as mcpBridgeManifest,
   handlers as mcpBridgeHandlers,
@@ -103,6 +105,8 @@ const builtinKits: KitInstance[] = [
   kit(storageSupabaseManifest, storageSupabaseHandlers),
   kit(storageLocalManifest, storageLocalHandlers),
   kit(storageGdriveManifest, storageGdriveHandlers),
+  kit(storageAiManifest, storageAiHandlers),
+  kit(googleRagManifest, googleRagHandlers),
   kit(mcpBridgeManifest, mcpBridgeHandlers),
 ];
 

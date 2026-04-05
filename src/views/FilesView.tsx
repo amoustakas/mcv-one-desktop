@@ -1,11 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { LayoutGrid, List, Upload, FolderPlus, Sparkles } from 'lucide-react';
 import { PageShell, PageHeader, Tabs } from '../components/ui';
 import BreadcrumbBar from '../components/files/BreadcrumbBar';
 import FileGrid from '../components/files/FileGrid';
+import FilePreviewPanel from '../components/files/FilePreviewPanel';
 import DiscoverView from '../components/cinema/DiscoverView';
 import { useFilesStore } from '../stores/files';
-import { useFileList } from '../hooks/use-files';
+import { useFileList, useFileDownload, useFileDelete } from '../hooks/use-files';
 import type { StorageItem } from '../lib/storage/types';
 import '../styles/files.css';
 
@@ -20,20 +21,38 @@ export default function FilesView() {
     viewMode, setViewMode, displayMode, setDisplayMode,
     displayStyle, setDisplayStyle, currentProvider, currentPath,
     breadcrumbs, navigateTo, files, folders, selectedIds,
-    toggleSelect, setPreviewFile, loading,
+    toggleSelect, previewFileId, setPreviewFile, loading,
   } = useFilesStore();
 
   const { refetch } = useFileList(currentProvider, currentPath);
+  const downloadMutation = useFileDownload();
+  const deleteMutation = useFileDelete();
 
   useEffect(() => { refetch(); }, [currentProvider, currentPath, refetch]);
 
-  const allItems = [...folders, ...files];
+  const allItems = useMemo(() => [...folders, ...files], [folders, files]);
+
+  const previewFile = useMemo(
+    () => allItems.find(f => f.id === previewFileId) || null,
+    [allItems, previewFileId],
+  );
 
   function handleItemClick(item: StorageItem) {
     if (item.isFolder) {
       navigateTo(item.path, item.provider);
     } else {
       setPreviewFile(item.id);
+    }
+  }
+
+  function handleDownload(file: StorageItem) {
+    downloadMutation.mutate({ provider: file.provider, path: file.path, filename: file.name });
+  }
+
+  function handleDelete(file: StorageItem) {
+    if (confirm(`Delete "${file.name}"?`)) {
+      deleteMutation.mutate({ provider: file.provider, path: file.path });
+      setPreviewFile(null);
     }
   }
 
@@ -105,6 +124,14 @@ export default function FilesView() {
                 />
               )}
             </div>
+
+            {/* File Preview Slide-in Panel */}
+            <FilePreviewPanel
+              file={previewFile}
+              onClose={() => setPreviewFile(null)}
+              onDownload={handleDownload}
+              onDelete={handleDelete}
+            />
           </div>
         </div>
       ) : (
