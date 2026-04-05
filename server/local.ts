@@ -20,6 +20,7 @@ import { execFile } from 'child_process';
 import chokidar from 'chokidar';
 import { registerPipelineRoutes } from './pipeline-routes';
 import { registerDockerRoutes } from './docker-routes';
+import { registerMcpRoutes } from './mcp-routes';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "3100");
@@ -393,6 +394,7 @@ app.post('/local/exec', (req, res) => {
 
 // ── Register modular routes ──
 registerDockerRoutes(app);
+registerMcpRoutes(app);
 
 // ── Start ──
 app.listen(PORT, () => {
@@ -401,5 +403,6 @@ app.listen(PORT, () => {
   console.log(`  👤 User: ${os.userInfo().username}`);
   console.log(`  💻 ${os.cpus().length} CPUs | ${Math.round(os.totalmem() / 1e9)}GB RAM`);
   console.log(`  📡 Endpoints: /local/health, /local/drives, /local/ls, /local/read, /local/write, /local/search, /local/exec`);
-  console.log(`  🔗 Pipeline:  /local/pipeline, /local/pipeline/read, /local/pipeline/git-log\n`);
+  console.log(`  🔗 Pipeline:  /local/pipeline, /local/pipeline/read, /local/pipeline/git-log`);
+  console.log(`  🔌 MCP Proxy: /mcp/spawn, /mcp/message/:id, /mcp/kill/:id, /mcp/status\n`);
 });
