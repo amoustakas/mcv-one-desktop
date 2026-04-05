@@ -27,7 +27,7 @@ export default function handler(_req: VercelRequest, res: VercelResponse) {
 
   return res.json({
     status: 'healthy',
-    version: '0.6.0',
+    version: '5.4.0',
     configured: keys,
     env_names: allEnvNames,
   });
