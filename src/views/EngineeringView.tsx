@@ -7,8 +7,11 @@ import { useGithubRepos, useGithubCommits, useGithubPRs } from '../hooks/use-git
 import { useDeployments } from '../hooks/use-deployments';
 import {
   PageHeader, PageShell, KpiCard, WidgetContainer, Badge,
-  DataTable, Pagination,
+  DataTable, Pagination, Tabs,
 } from '../components/ui';
+import { lazy, Suspense } from 'react';
+const RepoExplorer = lazy(() => import('../components/github/RepoExplorer'));
+const PRReviewPanel = lazy(() => import('../components/github/PRReviewPanel'));
 import type { ColumnDef, SortState } from '../components/ui/DataTable';
 import { SparkLine, McvAreaChart } from '../components/charts';
 import { cn, timeAgo } from '../lib/utils';
@@ -156,7 +159,10 @@ function buildDeployChartData(deployments: Deployment[]): Record<string, unknown
 
 /* ─── main component ────────────────────────────────────────── */
 
+type EngTab = 'overview' | 'explorer' | 'pr-review';
+
 export default function EngineeringView() {
+  const [engTab, setEngTab] = useState<EngTab>('overview');
   const [activeRepo, setActiveRepo] = useState('mcv-one-desktop');
   const [commitPage, setCommitPage] = useState(1);
   const [commitSort, setCommitSort] = useState<SortState>({ key: 'date', direction: 'desc' });
@@ -243,6 +249,39 @@ export default function EngineeringView() {
         loading={loading}
         onRefresh={refresh}
       />
+
+      {/* ── TAB STRIP ──────────────────────────────────────────── */}
+      <Tabs
+        tabs={[
+          { id: 'overview', label: 'Overview' },
+          { id: 'explorer', label: 'Explorer' },
+          { id: 'pr-review', label: 'PR Review' },
+        ]}
+        active={engTab}
+        onChange={(id) => setEngTab(id as EngTab)}
+        className="eng2-tabs"
+      />
+
+      {/* ── EXPLORER TAB ─────────────────────────────────────────── */}
+      {engTab === 'explorer' && (
+        <div className="eng2-explorer-wrap">
+          <Suspense fallback={<div style={{ padding: 24, color: 'var(--text-muted)' }}>Loading explorer...</div>}>
+            <RepoExplorer repo={activeRepo} />
+          </Suspense>
+        </div>
+      )}
+
+      {/* ── PR REVIEW TAB ────────────────────────────────────────── */}
+      {engTab === 'pr-review' && (
+        <div className="eng2-explorer-wrap">
+          <Suspense fallback={<div style={{ padding: 24, color: 'var(--text-muted)' }}>Loading PR review...</div>}>
+            <PRReviewPanel repo={activeRepo} />
+          </Suspense>
+        </div>
+      )}
+
+      {/* ── OVERVIEW TAB (existing content below) ────────────────── */}
+      {engTab === 'overview' && (<>
 
       {/* ── KPI STRIP ─────────────────────────────────────────── */}
       <div className="eng2-kpi-strip">
@@ -850,7 +889,10 @@ export default function EngineeringView() {
             grid-template-columns: 1fr;
           }
         }
+        .eng2-tabs { margin: 0 var(--space-lg) var(--space-sm); flex-shrink: 0; }
+        .eng2-explorer-wrap { flex: 1; overflow: hidden; margin: 0 var(--space-lg) var(--space-lg); border-radius: var(--radius-md); border: 1px solid var(--border); }
       `}</style>
+      </>)}
     </PageShell>
   );
 }

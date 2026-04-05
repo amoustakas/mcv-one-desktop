@@ -154,9 +154,103 @@ export const manifest: KitManifest = {
   ],
 };
 
+// ---------------------------------------------------------------------------
+// Phase B: Repository Browsing Tools
+// ---------------------------------------------------------------------------
+
+const browseRepoTree: KitToolHandler = async (input, ctx) => {
+  const repo = (input.repo as string) || 'mcv-one-desktop';
+  const branch = (input.branch as string) || 'master';
+  const data = await fetchJson(`/api/github?action=tree&repo=${encodeURIComponent(repo)}&branch=${encodeURIComponent(branch)}`, ctx);
+  const entries = data.tree ?? [];
+  const folders = entries.filter((e: { type: string }) => e.type === 'tree');
+  const files = entries.filter((e: { type: string }) => e.type === 'blob');
+  let md = `## ${repo} (${branch})\n\n`;
+  md += `*${folders.length} folders, ${files.length} files*\n\n`;
+  // Show top-level structure
+  const topLevel = entries.filter((e: { path: string }) => !e.path.includes('/'));
+  for (const e of topLevel.slice(0, 30)) {
+    md += `- ${e.type === 'tree' ? '📁' : '📄'} ${e.path}\n`;
+  }
+  if (topLevel.length > 30) md += `\n*... ${topLevel.length - 30} more*`;
+  return { success: true, data: entries, displayMarkdown: md };
+};
+
+const readRepoFile: KitToolHandler = async (input, ctx) => {
+  const repo = (input.repo as string) || 'mcv-one-desktop';
+  const path = input.path as string;
+  const branch = (input.branch as string) || 'master';
+  const data = await fetchJson(`/api/github?action=file&repo=${encodeURIComponent(repo)}&path=${encodeURIComponent(path)}&branch=${encodeURIComponent(branch)}`, ctx);
+  const content = data.content ?? '';
+  const preview = content.length > 3000 ? content.slice(0, 3000) + '\n\n*... truncated*' : content;
+  const ext = path.split('.').pop() || '';
+  return {
+    success: true,
+    data: { path: data.path, size: data.size },
+    displayMarkdown: `## ${data.path}\n\n\`\`\`${ext}\n${preview}\n\`\`\`\n\n*${data.size} bytes*`,
+  };
+};
+
+const getPrDiff: KitToolHandler = async (input, ctx) => {
+  const repo = (input.repo as string) || 'mcv-one-desktop';
+  const pr = input.pr_number as string;
+  const data = await fetchJson(`/api/github?action=pr-files&repo=${encodeURIComponent(repo)}&pr=${pr}`, ctx);
+  const files = data.files ?? [];
+  const totalAdd = files.reduce((s: number, f: { additions: number }) => s + f.additions, 0);
+  const totalDel = files.reduce((s: number, f: { deletions: number }) => s + f.deletions, 0);
+  let md = `## PR #${pr} — ${files.length} files changed (+${totalAdd} -${totalDel})\n\n`;
+  for (const f of files) {
+    md += `- **${f.filename}** \`${f.status}\` +${f.additions}/-${f.deletions}\n`;
+  }
+  return { success: true, data: files, displayMarkdown: md };
+};
+
+// Update manifest tools to include new ones
+manifest.tools.push(
+  {
+    name: 'browse_repo_tree',
+    description: 'Browse the file/folder structure of a GitHub repository. Returns the full directory tree.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        repo: { type: 'string', description: 'Repository name (default: mcv-one-desktop)' },
+        branch: { type: 'string', description: 'Branch name (default: master)' },
+      },
+    },
+  },
+  {
+    name: 'read_repo_file',
+    description: 'Read the contents of a specific file from a GitHub repository.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        repo: { type: 'string', description: 'Repository name' },
+        path: { type: 'string', description: 'File path within the repo (e.g. "src/App.tsx")' },
+        branch: { type: 'string', description: 'Branch name (default: master)' },
+      },
+      required: ['path'],
+    },
+  },
+  {
+    name: 'get_pr_diff',
+    description: 'Get the file changes (diff) for a pull request. Shows which files were modified and the line counts.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        repo: { type: 'string', description: 'Repository name' },
+        pr_number: { type: 'string', description: 'Pull request number' },
+      },
+      required: ['pr_number'],
+    },
+  },
+);
+
 export const handlers: Record<string, KitToolHandler> = {
   list_repos: listRepos,
   list_prs: listPrs,
   list_commits: listCommits,
   check_status: checkStatus,
+  browse_repo_tree: browseRepoTree,
+  read_repo_file: readRepoFile,
+  get_pr_diff: getPrDiff,
 };

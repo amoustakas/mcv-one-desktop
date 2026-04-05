@@ -45,6 +45,11 @@
   --warning: #F59E0B;
   --error: #EF4444;
 
+  /* Diff Colors */
+  --diff-add: rgba(34, 197, 94, 0.12);
+  --diff-remove: rgba(239, 68, 68, 0.12);
+  --diff-context: transparent;
+
   /* Spacing */
   --space-xs: 4px;
   --space-sm: 8px;
