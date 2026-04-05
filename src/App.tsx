@@ -278,6 +278,8 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <PlaceholderView title="Royalties" description="Royalty tracking, splits, and automated distributions." />;
     case 'creator-escrow':
       return <PlaceholderView title="Escrow" description="Deal escrow, milestone-based releases, and disputes." />;
+    case 'checkout':
+      return <Checkout />;
     default:
       return <AegisChat venture={venture} />;
   }
