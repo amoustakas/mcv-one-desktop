@@ -28,7 +28,8 @@ async function fetchJson(url: string, ctx: KitExecutionContext) {
 
 const listRepos: KitToolHandler = async (_input, ctx) => {
   const data = await fetchJson('/api/github?action=repos', ctx);
-  const lines = data.repos.map(
+  const repos = data.repos ?? [];
+  const lines = repos.map(
     (r: { name: string; updated: string; open_issues: number; description?: string; error?: string }) =>
       r.error
         ? `- **${r.name}** — ${r.error}`
@@ -36,7 +37,7 @@ const listRepos: KitToolHandler = async (_input, ctx) => {
   );
   return {
     success: true,
-    data: data.repos,
+    data: repos,
     displayMarkdown: `## Repositories\n\n${lines.join('\n')}`,
   };
 };
@@ -63,13 +64,14 @@ const listPrs: KitToolHandler = async (input, ctx) => {
 const listCommits: KitToolHandler = async (input, ctx) => {
   const repo = (input.repo as string) || 'mcv-one-desktop';
   const data = await fetchJson(`/api/github?action=commits&repo=${encodeURIComponent(repo)}`, ctx);
-  const lines = data.commits.map(
+  const commits = data.commits ?? [];
+  const lines = commits.map(
     (c: { sha: string; message: string; author: string; date: string }) =>
       `- \`${c.sha}\` ${c.message} — ${c.author}, ${timeAgo(c.date)}`,
   );
   return {
     success: true,
-    data: data.commits,
+    data: commits,
     displayMarkdown: `## Recent Commits — ${repo}\n\n${lines.join('\n')}`,
   };
 };

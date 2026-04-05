@@ -47,12 +47,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const response = client.messages.stream(params);
 
       // Track current content block for tool_use events
-      let currentBlock: { type: string; id?: string; name?: string; input?: string } | null = null;
+      let currentBlock: { type: string; id?: string; name?: string; input?: unknown } | null = null;
 
       response.on('contentBlockStart', (event) => {
         const block = event.content_block;
         if (block.type === 'tool_use') {
-          currentBlock = { type: 'tool_use', id: block.id, name: block.name, input: '' };
+          currentBlock = { type: 'tool_use', id: block.id, name: block.name, input: {} };
         } else {
           currentBlock = { type: 'text' };
         }
@@ -63,6 +63,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
 
       response.on('inputJson', (_delta, snapshot) => {
+        // snapshot is already a parsed object from the SDK
         if (currentBlock?.type === 'tool_use') {
           currentBlock.input = snapshot;
         }
@@ -70,18 +71,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       response.on('contentBlockStop', () => {
         if (currentBlock?.type === 'tool_use') {
-          let parsedInput = {};
-          try {
-            parsedInput = typeof currentBlock.input === 'string'
-              ? JSON.parse(currentBlock.input)
-              : currentBlock.input;
-          } catch { /* keep empty object */ }
-
           res.write(`data: ${JSON.stringify({
             type: 'tool_use',
             id: currentBlock.id,
             name: currentBlock.name,
-            input: parsedInput,
+            input: currentBlock.input ?? {},
           })}\n\n`);
         }
         currentBlock = null;

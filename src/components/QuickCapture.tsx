@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Plus, X, FileText, CheckSquare, Users, BookOpen, Send, Loader2 } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
+import { apiPost } from '../lib/api/client';
 
 type CaptureType = 'note' | 'task' | 'contact' | 'document';
 
@@ -43,25 +44,13 @@ export default function QuickCapture({ open, onToggle }: QuickCaptureProps) {
     setSubmitting(true);
     try {
       if (captureType === 'note') {
-        await fetch('/api/docs', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'create', title: input, content: '', doc_type: 'note', venture_id: 'mcv' }),
-        });
+        await apiPost('/api/docs', { action: 'create', title: input, content: '', doc_type: 'note', venture_id: 'mcv' });
         setFlash('Note created');
       } else if (captureType === 'task') {
-        await fetch('/api/tasks', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'create', title: input, status: 'todo', priority: 'medium' }),
-        });
+        await apiPost('/api/tasks', { action: 'create', title: input, status: 'todo', priority: 'medium' });
         setFlash('Task created');
       } else if (captureType === 'contact') {
-        await fetch('/api/crm', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'create-contact', name: input }),
-        });
+        await apiPost('/api/crm', { action: 'create-contact', name: input });
         setFlash('Contact created');
       }
       setInput('');

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Monitor, RefreshCw, MessageSquare, FileText, Cloud, GitBranch, Clock, Database, Terminal } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { apiGet } from '../lib/api/client';
 
 interface ConvData { id: string; venture_id: string; title: string; updated_at: string; }
 interface HealthData { configured: Record<string, boolean>; }
@@ -25,8 +26,8 @@ export default function SessionsView() {
       supabase?.from('documents').select('*', { count: 'exact', head: true }),
       supabase?.from('tasks').select('*', { count: 'exact', head: true }),
       supabase?.from('contacts').select('*', { count: 'exact', head: true }),
-      fetch('/api/health').then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('/api/vercel-status?action=deployments').then(r => r.ok ? r.json() : null).catch(() => null),
+      apiGet<HealthData>('/api/health').catch(() => null),
+      apiGet<{ deployments?: unknown[] }>('/api/vercel-status', { action: 'deployments' }).catch(() => null),
     ]);
 
     setConvs(results[0]?.data || []);

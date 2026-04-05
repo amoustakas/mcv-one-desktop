@@ -115,13 +115,64 @@ export class KitSandbox {
     this.terminate();
   }
 
+  /** Check if a URL is safe to proxy (SSRF prevention) */
+  private isUrlAllowed(url: string): boolean {
+    try {
+      const parsed = new URL(url, window.location.origin);
+
+      // Allow relative URLs (same-origin API calls like /api/*)
+      if (parsed.origin === window.location.origin) return true;
+
+      // Block non-HTTP protocols
+      if (!['https:', 'http:'].includes(parsed.protocol)) return false;
+
+      const host = parsed.hostname;
+
+      // Block private/internal IP ranges
+      if (host === 'localhost' || host === '127.0.0.1' || host === '::1') return false;
+      if (/^169\.254\./.test(host)) return false;  // AWS/GCP/Azure IMDS
+      if (/^10\./.test(host)) return false;
+      if (/^192\.168\./.test(host)) return false;
+      if (/^172\.(1[6-9]|2\d|3[01])\./.test(host)) return false;
+      if (host.endsWith('.internal') || host.endsWith('.local')) return false;
+
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   /** Proxy fetch requests from the worker through the main thread (with auth) */
   private async handleFetchProxy(request: FetchProxyRequest): Promise<void> {
     if (!this.worker) return;
 
+    // SSRF protection — validate URL before proxying
+    if (!this.isUrlAllowed(request.url)) {
+      this.worker.postMessage({
+        type: 'fetch_response',
+        fetchId: request.fetchId,
+        ok: false,
+        status: 403,
+        error: `URL not allowed: ${request.url}`,
+      });
+      return;
+    }
+
+    // Strip sensitive headers from worker requests to prevent auth leakage to third-party origins
+    const sanitizedOptions = { ...request.options };
     try {
-      // Perform the actual fetch on the main thread (has Clerk JWT interceptor)
-      const res = await fetch(request.url, request.options);
+      const parsed = new URL(request.url, window.location.origin);
+      if (parsed.origin !== window.location.origin) {
+        // External request — strip auth headers
+        const headers = new Headers(sanitizedOptions.headers as HeadersInit);
+        headers.delete('Authorization');
+        headers.delete('Cookie');
+        sanitizedOptions.headers = Object.fromEntries(headers.entries());
+      }
+    } catch { /* keep original options */ }
+
+    try {
+      const res = await fetch(request.url, sanitizedOptions);
       const data = await res.json().catch(() => null);
 
       this.worker.postMessage({

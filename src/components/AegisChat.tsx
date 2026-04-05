@@ -70,7 +70,7 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
   const hasVoice = isRecordingSupported();
 
   // Kit system — initialize on mount and get tools for current venture
-  const { initBuiltins, getToolsForVenture, getLoadedKits } = useKitStore();
+  const { initBuiltins, getLoadedKits } = useKitStore();
   useEffect(() => { initBuiltins(); }, [initBuiltins]);
 
   async function handleMicToggle() {
@@ -269,10 +269,10 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
 
     try {
       const loadedKits = getLoadedKits();
-      const tools = getToolsForVenture(venture.id);
 
       let full: string;
-      if (tools.length > 0) {
+      // Use orchestrator when any kits are loaded (meta-tools are always available)
+      if (loadedKits.length > 0) {
         // Use Agent Orchestrator for tool-calling path
         setActiveToolCalls([]);
 
@@ -298,10 +298,10 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
                 { id: tc.id, name: tc.name, status: 'running' },
               ]);
             },
-            onToolResult: (toolName, result) => {
+            onToolResult: (toolCallId, result) => {
               setActiveToolCalls((prev) =>
                 prev.map((tc) =>
-                  tc.name === toolName
+                  tc.id === toolCallId
                     ? { ...tc, status: result.success ? 'done' : 'error', result: result.displayMarkdown || result.error }
                     : tc,
                 ),

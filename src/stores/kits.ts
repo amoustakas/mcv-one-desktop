@@ -38,7 +38,10 @@ export const useKitStore = create<KitState>()(
       initialized: false,
 
       initBuiltins: () => {
-        if (get().initialized) return;
+        // Always re-register builtins — handlers (functions) aren't serializable
+        // so loadedKits is empty after page refresh even if initialized was persisted
+        const { initialized, loadedKits } = get();
+        if (initialized && Object.keys(loadedKits).length > 0) return;
         const kits: Record<string, KitInstance> = {};
         for (const kit of getBuiltinKits()) {
           kits[kit.manifest.id] = kit;

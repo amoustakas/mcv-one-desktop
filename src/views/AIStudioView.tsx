@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { Sparkles, Code, Image, Eye, FileSearch, Zap, Copy, Check, Loader2, Upload } from 'lucide-react';
 import Markdown from '../components/Markdown';
+import { apiPost } from '../lib/api/client';
 
 /* ───── Types ───── */
 type ToolId = 'text' | 'code' | 'image' | 'vision' | 'document' | 'summarize';
@@ -29,13 +30,7 @@ const ASPECT_RATIOS = ['1:1', '16:9', '9:16', '4:3'];
 
 /* ───── API Helper ───── */
 async function callApi(body: Record<string, unknown>) {
-  const res = await fetch('/api/google', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`API Error: ${res.status} ${res.statusText}`);
-  return res.json();
+  return apiPost<Record<string, unknown>>('/api/google', body);
 }
 
 /* ───── Styles ───── */

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ChevronRight, ChevronLeft, Check, Rocket, Globe, Users, Sparkles, Zap } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
+import { apiPost } from '../lib/api/client';
 
 type Step = 'identity' | 'links' | 'team' | 'genesis';
 const STEPS: { id: Step; label: string; icon: React.FC<{ size: number }> }[] = [
@@ -91,8 +92,7 @@ export default function VentureOnboarding() {
         key_metrics: {},
         system_prompt: systemPrompt,
       };
-      const res = await fetch('/api/ventures', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'create', venture: ventureData }) });
-      const data = await res.json();
+      const data = await apiPost<{ venture?: { id: string }; error?: string }>('/api/ventures', { action: 'create', venture: ventureData });
       if (data.venture) {
         log(`Venture registered with ID: ${data.venture.id}`);
       } else {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Volume2, Mic, Monitor, Moon, Sun, RotateCcw } from 'lucide-react';
 import { APP_VERSION, BUILD_TIME } from '../lib/version';
+import { apiGet } from '../lib/api/client';
 
 interface AudioDevice {
   deviceId: string;
@@ -71,7 +72,7 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
     }).catch(() => {});
 
     // Load health
-    fetch('/api/health').then((r) => r.json()).then((d) => setHealth(d.configured || {})).catch(() => {});
+    apiGet<{ configured: Record<string, boolean> }>('/api/health').then((d) => setHealth(d.configured || {})).catch(() => {});
   }, [open]);
 
   function update(partial: Partial<Settings>) {

@@ -49,13 +49,15 @@ export async function streamMessage(
 
   const decoder = new TextDecoder();
   let full = '';
+  let buffer = '';
 
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
 
-    const chunk = decoder.decode(value, { stream: true });
-    const lines = chunk.split('\n');
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
 
     for (const line of lines) {
       if (line.startsWith('data: ')) {
@@ -90,7 +92,7 @@ export interface ToolCallEvent {
 export interface StreamWithToolsCallbacks {
   onText: (fullText: string) => void;
   onToolCall: (toolCall: ToolCallEvent) => void;
-  onToolResult: (toolName: string, result: ToolCallResult) => void;
+  onToolResult: (toolCallId: string, result: ToolCallResult) => void;
 }
 
 /**
@@ -153,7 +155,7 @@ export async function streamMessageWithTools(
       callbacks.onToolCall(tc);
 
       const result = await toolExecutor(tc);
-      callbacks.onToolResult(tc.name, result);
+      callbacks.onToolResult(tc.id, result);
 
       const resultContent = result.displayMarkdown || (result.success
         ? JSON.stringify(result.data ?? 'Tool executed successfully.')

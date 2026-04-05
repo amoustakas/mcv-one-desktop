@@ -78,21 +78,34 @@ function buildSandboxedExecutor(code: string): {
   const moduleExports: Record<string, unknown> = {};
 
   try {
-    // Use indirect eval via Function constructor for sandbox isolation
-    // This is intentional — the Worker context IS the sandbox
+    // Use Function constructor with shadowed Worker globals.
+    // This prevents kit code from accessing dangerous APIs directly.
+    // NOTE: This is defense-in-depth, not a true security boundary.
+    // Determined attackers could still escape via prototype walking.
+    // True isolation requires ShadowRealm (not yet widely available).
     const factory = Function(  // eslint-disable-line no-new-func
       'exports',
       'fetch',
       'console',
+      // Shadow dangerous Worker globals with undefined
+      'self', 'globalThis',
+      'XMLHttpRequest', 'importScripts',
+      'indexedDB', 'caches',
+      'postMessage', 'close',
+      'WebSocket', 'EventSource',
+      'Worker', 'SharedWorker',
       code,
     );
 
+    const noop = undefined;
     factory(
       moduleExports,
       proxiedFetch,
-      { log() {}, warn() {}, error() {} }, // silenced console
+      { log() {}, warn() {}, error() {} },
+      // All shadowed globals → undefined
+      noop, noop, noop, noop, noop, noop, noop, noop, noop, noop, noop,
     );
-  } catch (err) {
+  } catch {
     return null;
   }
 

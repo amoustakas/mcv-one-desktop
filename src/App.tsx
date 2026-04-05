@@ -8,6 +8,8 @@ import SettingsPanel from './components/SettingsPanel';
 import { ViewErrorBoundary } from './components/ErrorBoundary';
 import { useNavigation, type ViewId } from './stores/navigation';
 import { useTheme } from './stores/theme';
+import { useCommandStore } from './stores/command';
+import { useLayoutStore } from './stores/layout';
 import { getVenture, ventures } from './lib/ventures';
 import { UserButton } from './lib/auth';
 import { Search, Settings, Bot, Columns2 } from 'lucide-react';
@@ -261,10 +263,11 @@ function Breadcrumbs() {
 }
 
 export default function App() {
-  const [paletteOpen, setPaletteOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
   const { chatDocked, toggleChatDock, setView, toggleSplit, splitView, mode, switchToGlobal, switchToVenture } = useNavigation();
+  const { isOpen: paletteOpen, toggle: togglePalette, close: closePalette } = useCommandStore();
+  const { sidebarCollapsed, statusBarVisible } = useLayoutStore();
   useTheme();
   useLocalServer(); // Detect local server connection
 
@@ -279,7 +282,7 @@ export default function App() {
 
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
-        setPaletteOpen((o) => !o);
+        togglePalette();
       }
       if ((e.metaKey || e.ctrlKey) && e.key === '/') {
         e.preventDefault();
@@ -294,7 +297,7 @@ export default function App() {
         toggleSplit();
       }
       if (e.key === 'Escape') {
-        if (paletteOpen) setPaletteOpen(false);
+        if (paletteOpen) closePalette();
         if (settingsOpen) setSettingsOpen(false);
       }
       // Ctrl+E — toggle global/venture mode
@@ -321,7 +324,7 @@ export default function App() {
     }
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [paletteOpen, settingsOpen, toggleChatDock, setView, toggleSplit, mode, switchToGlobal, switchToVenture]);
+  }, [paletteOpen, settingsOpen, togglePalette, closePalette, toggleChatDock, setView, toggleSplit, mode, switchToGlobal, switchToVenture]);
 
   // Context used by VentureMegaMenu in header
 
@@ -330,7 +333,7 @@ export default function App() {
       <AnimatedBackground />
 
       {/* Nav Rail */}
-      <NavRail />
+      {!sidebarCollapsed && <NavRail />}
 
       {/* Main Column */}
       <div className="app-main-col">
@@ -347,7 +350,7 @@ export default function App() {
             <Breadcrumbs />
           </div>
 
-          <button className="header-search" onClick={() => setPaletteOpen(true)}>
+          <button className="header-search" onClick={togglePalette}>
             <Search size={14} />
             <span className="header-search-text">Search views, ventures, commands...</span>
             <kbd className="header-kbd">Ctrl+K</kbd>
@@ -387,14 +390,14 @@ export default function App() {
         </div>
 
         {/* Status Bar inside main column */}
-        <StatusBar />
+        {statusBarVisible && <StatusBar />}
       </div>
 
       {/* Quick Capture FAB */}
       <QuickCapture open={quickCaptureOpen} onToggle={() => setQuickCaptureOpen(o => !o)} />
 
       {/* Overlays */}
-      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <CommandPalette open={paletteOpen} onClose={closePalette} />
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <Toasts />
 

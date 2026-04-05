@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useNavigation } from '../stores/navigation';
 import { getVenture } from '../lib/ventures';
 import { useLocalStore } from '../lib/local';
+import { apiGet } from '../lib/api/client';
 
 export default function StatusBar() {
   const [health, setHealth] = useState<Record<string, boolean>>({});
@@ -16,7 +17,7 @@ export default function StatusBar() {
 
   useEffect(() => {
     function refresh() {
-      fetch('/api/health').then(r => r.json()).then(d => setHealth(d || {})).catch(() => {});
+      apiGet<Record<string, boolean>>('/api/health').then(d => setHealth(d || {})).catch(() => {});
       if (supabase) {
         supabase.from('documents').select('*', { count: 'exact', head: true }).then(({ count }) => setDocCount(count || 0));
         supabase.from('tasks').select('*', { count: 'exact', head: true }).then(({ count }) => setTaskCount(count || 0));

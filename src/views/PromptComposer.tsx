@@ -4,6 +4,7 @@ import {
   Loader2, FileText, Sparkles, Variable, Hash,
 } from 'lucide-react';
 import Markdown from '../components/Markdown';
+import { apiPost } from '../lib/api/client';
 
 /* ───── Types ───── */
 type ProviderId = 'claude' | 'gemini' | 'gpt';
@@ -58,35 +59,17 @@ const PROVIDERS: ProviderDef[] = [
   },
 ];
 
-/* ───── API Helpers ───── */
-async function callDocsApi(body: Record<string, unknown>) {
-  const res = await fetch('/api/docs', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`Docs API error: ${res.status}`);
-  return res.json();
+/* ───── API Helpers (typed wrappers around apiPost) ───── */
+function callDocsApi(body: Record<string, unknown>) {
+  return apiPost<Record<string, unknown>>('/api/docs', body);
 }
 
-async function callChatApi(body: Record<string, unknown>) {
-  const res = await fetch('/api/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`Chat API error: ${res.status}`);
-  return res.json();
+function callChatApi(body: Record<string, unknown>) {
+  return apiPost<Record<string, unknown>>('/api/chat', body);
 }
 
-async function callGoogleApi(body: Record<string, unknown>) {
-  const res = await fetch('/api/google', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`Google API error: ${res.status}`);
-  return res.json();
+function callGoogleApi(body: Record<string, unknown>) {
+  return apiPost<Record<string, unknown>>('/api/google', body);
 }
 
 /* ───── Variable Extraction ───── */
@@ -644,7 +627,7 @@ export default function PromptComposer() {
     async function loadDocs() {
       setDocsLoading(true);
       try {
-        const data = await callDocsApi({ action: 'list' });
+        const data = await callDocsApi({ action: 'list' }) as { documents?: Record<string, unknown>[] };
         if (cancelled) return;
         const docs: ContextDoc[] = (data.documents || []).map((d: Record<string, unknown>) => ({
           id: d.id as string,

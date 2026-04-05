@@ -55,6 +55,44 @@ mcv-one-desktop/
 └── .env.example
 ```
 
+## AGENT-FIRST KIT SYSTEM (v0.6)
+The app is an **Orchestration Shell** — an "npm for agents" architecture.
+
+### Architecture
+- **Kits** = pluggable workflow bundles with tool schemas, handlers, and instructions
+- **AgentOrchestrator** (`src/lib/kits/orchestrator.ts`) = LLM router that assembles tools from loaded kits
+- **ExecutionBridge** (`src/lib/kits/bridge.ts`) = routes kit execution to inline, Web Worker, or serverless
+- **KitSandbox** (`src/lib/kits/sandbox.ts`) = Web Worker isolation with proxied fetch and SSRF protection
+- **Registry** (`api/kit-registry.ts`) = Supabase-backed kit discovery and installation
+
+### Key Files
+```
+src/lib/kits/
+├── types.ts              # KitManifest, KitToolSchema, KitInstance, ToolCallResult
+├── loader.ts             # Builtin kit loading and tool dispatch
+├── orchestrator.ts       # AgentOrchestrator — tool assembly + meta-tools
+├── bridge.ts             # Runtime dispatcher (inline/worker/serverless)
+├── sandbox.ts            # Web Worker sandbox with fetch proxy
+├── registry-client.ts    # Client API for kit registry
+├── permissions.ts        # Capability-based permission system
+├── shared-context.ts     # Inter-kit key-value communication
+└── builtin/
+    ├── github-kit.ts     # list_repos, list_prs, list_commits, check_status
+    ├── tasks-kit.ts      # create_task, list_tasks, update_task
+    └── docs-kit.ts       # list_documents, query_documents, create_note
+```
+
+### Tool-Calling Flow
+1. User sends message → AegisChat checks `useKitStore.getLoadedKits()`
+2. If kits loaded → `AgentOrchestrator.processMessage()` assembles tools + system prompt
+3. `streamMessageWithTools()` sends to Claude with tool schemas
+4. Claude returns `tool_use` → orchestrator routes to kit handler
+5. Result sent back as `tool_result` → Claude responds with final text
+6. Meta-tools: `list_loaded_kits`, `search_kits` (always available)
+
+### Supabase Tables (kit system)
+Run `supabase/migration-kits.sql` to create: `kits`, `user_kits`, `kit_audit_log`, `kit_context`
+
 ## ENVIRONMENT VARIABLES
 ```env
 VITE_ANTHROPIC_API_KEY=          # Claude API

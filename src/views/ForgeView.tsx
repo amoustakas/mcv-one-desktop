@@ -2,17 +2,13 @@ import { useState, useEffect } from 'react';
 import { Hammer, Plus, RefreshCw, Copy, Check, Code, FileCode, Cpu, Palette, Globe } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
 import { useToast } from '../components/Toasts';
+import { apiPost } from '../lib/api/client';
 
 interface Template { id: string; name: string; category: string; language: string; content: string; description: string; tags: string[]; usage_count: number; venture_id: string; }
 
 const CATEGORIES = ['component', 'api-route', 'hook', 'utility', 'prompt', 'config', 'schema', 'script'];
 const CAT_ICONS: Record<string, React.ReactNode> = { component: <Palette size={12} />, 'api-route': <Globe size={12} />, hook: <Code size={12} />, utility: <FileCode size={12} />, prompt: <Cpu size={12} />, config: <FileCode size={12} />, schema: <Code size={12} />, script: <FileCode size={12} /> };
 const LANG_COLORS: Record<string, string> = { typescript: '#3178C6', javascript: '#F7DF1E', python: '#3572A5', sql: '#E38C00', css: '#1572B6', html: '#E34F26', markdown: '#6B7280', prompt: '#8B5CF6' };
-
-async function api(body: Record<string, unknown>) {
-  const r = await fetch('/api/docs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  return r.json();
-}
 
 export default function ForgeView() {
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -28,7 +24,7 @@ export default function ForgeView() {
   async function load() {
     setLoading(true);
     // Use docs API with forge doc_type
-    const d = await api({ action: 'list', doc_type: undefined });
+    const d = await apiPost<{ documents?: Record<string, unknown>[] }>('/api/docs', { action: 'list', doc_type: undefined });
     // Filter for forge-like docs
     const all = (d.documents || []).filter((doc: any) => ['component', 'api-route', 'hook', 'utility', 'prompt', 'config', 'schema', 'script'].includes(doc.doc_type));
     setTemplates(all.map((doc: any) => ({ ...doc, category: doc.doc_type, language: doc.metadata?.language || 'typescript', content: doc.content || '', tags: doc.metadata?.tags || [] })));
@@ -39,7 +35,7 @@ export default function ForgeView() {
 
   async function handleCreate() {
     if (!form.name.trim() || !form.content.trim()) return;
-    await api({
+    await apiPost('/api/docs', {
       action: 'create',
       title: form.name,
       content: form.content,

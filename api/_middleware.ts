@@ -12,8 +12,13 @@ export async function requireAuth(req: VercelRequest, res: VercelResponse): Prom
 
   const secretKey = process.env.CLERK_SECRET_KEY;
 
-  // No Clerk secret configured = dev mode, allow all requests
+  // No Clerk secret configured — fail closed in production, allow in dev
   if (!secretKey) {
+    const env = process.env.VERCEL_ENV || process.env.NODE_ENV;
+    if (env === 'production') {
+      res.status(500).json({ error: 'Server misconfiguration: authentication not configured' });
+      return null;
+    }
     return 'dev-mode';
   }
 

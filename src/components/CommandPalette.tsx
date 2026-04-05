@@ -3,6 +3,7 @@ import { Search, ArrowRight, Globe, MessageSquare, FileText, CheckSquare, Users,
 import { useNavigation } from '../stores/navigation';
 import { useTheme } from '../stores/theme';
 import { ventures } from '../lib/ventures';
+import { apiPost } from '../lib/api/client';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -86,29 +87,13 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
     // If already cached, skip fetch
     if (cacheRef.current.fetched) return;
 
-    const controller = new AbortController();
-    const signal = controller.signal;
+    let cancelled = false;
 
     async function fetchAll() {
       const [docsRes, tasksRes, contactsRes] = await Promise.allSettled([
-        fetch('/api/docs', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'list' }),
-          signal,
-        }).then((r) => r.json()),
-        fetch('/api/tasks', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'list' }),
-          signal,
-        }).then((r) => r.json()),
-        fetch('/api/crm', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'list-contacts' }),
-          signal,
-        }).then((r) => r.json()),
+        apiPost<{ documents?: { id: string; title: string; doc_type: string; venture_id: string }[] }>('/api/docs', { action: 'list' }),
+        apiPost<{ tasks?: { id: string; title: string; status: string; venture_id: string }[] }>('/api/tasks', { action: 'list' }),
+        apiPost<{ contacts?: { id: string; name: string; email: string; company: string; role: string }[] }>('/api/crm', { action: 'list-contacts' }),
       ]);
 
       const docs: PaletteItem[] = [];
@@ -154,14 +139,16 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
         }
       }
 
-      cacheRef.current = { docs, tasks, contacts, fetched: true };
+      if (!cancelled) {
+        cacheRef.current = { docs, tasks, contacts, fetched: true };
+      }
     }
 
     fetchAll().catch(() => {
       // Silently fail — static items still work
     });
 
-    return () => controller.abort();
+    return () => { cancelled = true; };
   }, [open, setView]);
 
   /* ── Build item list ───────────────────────────────────────────── */

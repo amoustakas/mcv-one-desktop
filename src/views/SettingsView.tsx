@@ -7,6 +7,7 @@ import {
 import { APP_VERSION, BUILD_TIME } from '../lib/version';
 import { ventures } from '../lib/ventures';
 import { useToast } from '../components/Toasts';
+import { apiGet, apiPost } from '../lib/api/client';
 
 // ── Settings State ──
 interface AppSettings {
@@ -78,13 +79,13 @@ export default function SettingsView() {
   const { toast } = useToast();
 
   useEffect(() => {
-    fetch('/api/health').then(r => r.json()).then(d => setHealth(d || {})).catch(() => {});
+    apiGet<Record<string, boolean>>('/api/health').then(d => setHealth(d || {})).catch(() => {});
     navigator.mediaDevices?.enumerateDevices().then(devices => {
       setInputDevices(devices.filter(d => d.kind === 'audioinput').map(d => ({ deviceId: d.deviceId, label: d.label || `Mic ${d.deviceId.slice(0, 8)}` })));
       setOutputDevices(devices.filter(d => d.kind === 'audiooutput').map(d => ({ deviceId: d.deviceId, label: d.label || `Speaker ${d.deviceId.slice(0, 8)}` })));
     }).catch(() => {});
-    fetch('/api/storage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'buckets' }) })
-      .then(r => r.ok ? r.json() : null).then(d => { if (d) setStorageInfo(d); }).catch(() => {});
+    apiPost<{ buckets: { id: string; name: string; public: boolean }[] }>('/api/storage', { action: 'buckets' })
+      .then(d => { if (d) setStorageInfo(d); }).catch(() => {});
   }, []);
 
   function update(partial: Partial<AppSettings>) {

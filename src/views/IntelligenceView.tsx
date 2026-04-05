@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Brain, Plus, Search, FileText, Send, Loader2, Trash2 } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
 import Markdown from '../components/Markdown';
+import { apiPost } from '../lib/api/client';
 
 interface Doc {
   id: string;
@@ -48,8 +49,7 @@ export default function IntelligenceView() {
     const v = filterVenture || (mode === 'venture' ? activeVenture : '') || '';
     const body: Record<string, string> = { action: 'list' };
     if (v) body.venture_id = v;
-    const res = await fetch('/api/docs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    const data = await res.json();
+    const data = await apiPost<{ documents?: Doc[] }>('/api/docs', body);
     setDocs(data.documents || []);
     setLoading(false);
   }
@@ -61,12 +61,7 @@ export default function IntelligenceView() {
     setAsking(true);
     setAnswer('');
     try {
-      const res = await fetch('/api/docs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'query', question: query, venture_id: filterVenture || undefined }),
-      });
-      const data = await res.json();
+      const data = await apiPost<{ answer?: string; sources?: { title: string }[] }>('/api/docs', { action: 'query', question: query, venture_id: filterVenture || undefined });
       let md = data.answer || 'No answer generated.';
       if (data.sources?.length) {
         md += `\n\n---\n**Sources:** ${data.sources.map((s: { title: string }) => s.title).join(' · ')}`;
@@ -81,17 +76,13 @@ export default function IntelligenceView() {
 
   async function handleCreate() {
     if (!newTitle.trim()) return;
-    await fetch('/api/docs', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'create', title: newTitle, content: newContent, doc_type: newType, venture_id: newVenture }),
-    });
+    await apiPost('/api/docs', { action: 'create', title: newTitle, content: newContent, doc_type: newType, venture_id: newVenture });
     setNewTitle(''); setNewContent(''); setShowAdd(false);
     loadDocs();
   }
 
   async function handleDelete(id: string) {
-    await fetch('/api/docs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'delete', id }) });
+    await apiPost('/api/docs', { action: 'delete', id });
     setDocs((d) => d.filter((doc) => doc.id !== id));
   }
 

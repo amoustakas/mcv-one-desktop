@@ -727,6 +727,10 @@ export async function handleCommand(input: string): Promise<CommandResult> {
       if (sub === 'disable') {
         const kitId = parts[2];
         if (!kitId) return { handled: true, response: 'Usage: `/kit disable <kit-id>`' };
+        const kits = useKitStore.getState().getLoadedKits();
+        if (!kits.find((k) => k.manifest.id === kitId)) {
+          return { handled: true, response: `Kit "${kitId}" not found. Use \`/kits\` to see loaded kits.` };
+        }
         useKitStore.getState().disableKit(kitId);
         return { handled: true, response: `Kit **${kitId}** disabled.` };
       }
@@ -734,6 +738,10 @@ export async function handleCommand(input: string): Promise<CommandResult> {
       if (sub === 'enable') {
         const kitId = parts[2];
         if (!kitId) return { handled: true, response: 'Usage: `/kit enable <kit-id>`' };
+        const kits = useKitStore.getState().getLoadedKits();
+        if (!kits.find((k) => k.manifest.id === kitId)) {
+          return { handled: true, response: `Kit "${kitId}" not found. Use \`/kits\` to see loaded kits.` };
+        }
         useKitStore.getState().enableKit(kitId);
         return { handled: true, response: `Kit **${kitId}** enabled.` };
       }

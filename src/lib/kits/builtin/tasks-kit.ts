@@ -50,7 +50,7 @@ const createTask: KitToolHandler = async (input, ctx) => {
 };
 
 const listTasks: KitToolHandler = async (input, ctx) => {
-  const status = input.status as string | undefined;
+  const status = (input.status as string) || undefined;
   const venture = (input.venture as string) || undefined;
 
   const data = await postJson('/api/tasks', {
