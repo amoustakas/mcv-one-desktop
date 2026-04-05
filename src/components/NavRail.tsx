@@ -4,6 +4,7 @@ import {
   Wrench, Radio, Settings, ChevronLeft, ChevronRight, ChevronDown,
   CheckSquare, Users, Hammer, BookOpen, Monitor, Sparkles,
   Wand2, Swords, TrendingUp, FileText, Plus, Package,
+  Database, GitBranch,
 } from 'lucide-react';
 import { useNavigation, type ViewId } from '../stores/navigation';
 import { useVentureContextStore } from '../stores/venture-context';
@@ -20,6 +21,8 @@ const VIEW_ICONS: Record<string, React.FC<{ size: number }>> = {
   team: Users,
   'ai-studio': Sparkles, 'prompt-composer': Wand2,
   'kit-store': Package,
+  memory: Database,
+  pipeline: GitBranch,
   settings: Settings,
   'venture-dashboard': LayoutGrid, 'venture-profile': FileText,
   'venture-engineering': Wrench, 'venture-growth': TrendingUp,
@@ -46,6 +49,7 @@ const globalSections: NavSection[] = [
       { id: 'intelligence', label: 'Knowledge Base' },
       { id: 'treasury', label: 'Treasury' },
       { id: 'signals', label: 'Signals Feed' },
+      { id: 'memory', label: 'Memory Hub' },
     ],
   },
   {
@@ -71,6 +75,7 @@ const globalSections: NavSection[] = [
       { id: 'tasks', label: 'Task Board' },
       { id: 'docs', label: 'Docs Hub' },
       { id: 'team', label: 'Team' },
+      { id: 'pipeline', label: 'Pipeline' },
     ],
   },
   {

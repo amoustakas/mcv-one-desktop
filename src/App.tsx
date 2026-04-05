@@ -43,6 +43,8 @@ const TeamView = lazy(() => import('./views/TeamView'));
 const KitStoreView = lazy(() => import('./views/KitStoreView'));
 const SettingsView = lazy(() => import('./views/SettingsView'));
 const VentureOnboarding = lazy(() => import('./views/VentureOnboarding'));
+const MemoryView = lazy(() => import('./views/MemoryView'));
+const PipelineView = lazy(() => import('./views/PipelineView'));
 
 // Placeholder views
 function PlaceholderView({ title, description }: { title: string; description: string }) {
@@ -120,6 +122,10 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <TeamView />;
     case 'kit-store':
       return <KitStoreView />;
+    case 'memory':
+      return <MemoryView />;
+    case 'pipeline':
+      return <PipelineView />;
     case 'settings':
       return <SettingsView />;
     // Venture views

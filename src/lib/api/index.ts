@@ -7,4 +7,5 @@ export * as vercelApi from './vercel';
 export * as teamApi from './team';
 export * as campaignsApi from './campaigns';
 export * as treasuryApi from './treasury';
+export * as memoryApi from './memory';
 export { ApiError } from './client';
