@@ -2723,7 +2723,7 @@ RECONCILIATION_AUTO_RESOLVE_THRESHOLD_USD=50
 RECONCILIATION_SCHEDULE_CRON=0 6 * * *  # Daily at 6 AM UTC
 
 # ── Alerting ─────────────────────────────────────────────────────
-TREASURY_ALERT_WEBHOOK_URL=https://hooks.slack.com/services/xxx
+TREASURY_ALERT_WEBHOOK_URL=https://example.com/webhook/slack-placeholder
 TREASURY_ALERT_EMAIL=treasury-alerts@mcv.dev
 BUDGET_ALERT_ENABLED=true
 

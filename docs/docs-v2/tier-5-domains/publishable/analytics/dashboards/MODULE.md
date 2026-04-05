@@ -2766,7 +2766,7 @@ const schedule = await scheduleService.create(ctx, dashboard.id, {
     { type: 'email', target: 'board@example.com' },
     {
       type: 'webhook',
-      target: 'https://hooks.slack.com/services/T00000/B00000/XXXX',
+      target: 'https://example.com/webhook/slack-placeholder',
     },
   ],
   filterValues: {

@@ -2262,7 +2262,7 @@ import { ScoutAgent } from '@mcv/engagement';
 const scout = new ScoutAgent({
   velocityThreshold: 100,      // Max events per minute per user
   anomalyModel: 'isolation-forest',
-  alertWebhook: 'https://hooks.slack.com/...',
+  alertWebhook: 'https://example.com/webhook/slack-placeholder',
 });
 
 await scout.analyze(event); // Called internally by EngagementProcessor

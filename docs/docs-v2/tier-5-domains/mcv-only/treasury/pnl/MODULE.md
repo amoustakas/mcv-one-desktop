@@ -2762,7 +2762,7 @@ CREATE POLICY "pnl_board_access" ON pnl_report_configs
 | `PNL_SMTP_USER` | ❌ | SMTP username | `apikey` |
 | `PNL_SMTP_PASSWORD` | ❌ | SMTP password | `SG.xxx` |
 | `PNL_FROM_EMAIL` | ❌ | Sender email for report distribution | `treasury@mcv.dev` |
-| `PNL_SLACK_WEBHOOK_URL` | ❌ | Slack webhook for report distribution | `https://hooks.slack.com/...` |
+| `PNL_SLACK_WEBHOOK_URL` | ❌ | Slack webhook for report distribution | `https://example.com/webhook/slack-placeholder |
 | `PNL_VARIANCE_THRESHOLD_DEFAULT` | ❌ | Default material variance threshold (%) | `10` |
 | `PNL_MAX_OPEN_PERIODS` | ❌ | Maximum number of simultaneously open periods | `3` |
 | `PNL_AUDIT_RETENTION_DAYS` | ❌ | Days to retain audit entries (0 = forever) | `2555` (7 years) |
