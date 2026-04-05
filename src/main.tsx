@@ -6,6 +6,7 @@ import { queryClient } from './lib/query';
 import { AuthProvider } from './lib/auth';
 import App from './App';
 import './styles/design-system.css';
+import './styles/components.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

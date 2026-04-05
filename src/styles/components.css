@@ -1,0 +1,261 @@
+/* ═══════════════════════════════════════════ */
+/* MCV ONE — Shared Component Styles           */
+/* ═══════════════════════════════════════════ */
+
+/* ── Glass Card ── */
+.mcv-glass-card {
+  background: rgba(11, 17, 33, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-fast);
+}
+.mcv-glass-neural {
+  background: linear-gradient(135deg, rgba(10, 22, 40, 0.82), rgba(15, 28, 50, 0.72), rgba(10, 22, 40, 0.82));
+  border: 1px solid rgba(0, 240, 255, 0.06);
+  backdrop-filter: blur(24px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+.mcv-glass-elevated {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+}
+.mcv-glass-glow {
+  box-shadow: 0 0 20px var(--cyan-glow), 0 0 60px rgba(0, 245, 255, 0.05);
+}
+.mcv-glass-clickable {
+  cursor: pointer;
+}
+.mcv-glass-clickable:hover {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ── Badge ── */
+.mcv-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+.mcv-badge-sm { font-size: 9px; padding: 1px 6px; border-radius: 3px; }
+.mcv-badge-md { font-size: 10px; padding: 2px 8px; border-radius: var(--radius-sm); }
+.mcv-badge-default { background: var(--bg-elevated); color: var(--text-muted); }
+.mcv-badge-outline { background: transparent; border: 1px solid; }
+.mcv-badge-dot { display: flex; align-items: center; gap: 5px; background: transparent; }
+.mcv-badge-dot .mcv-badge-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── Button ── */
+.mcv-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.mcv-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.mcv-btn-sm { font-size: 11px; padding: 4px 10px; }
+.mcv-btn-md { font-size: 12px; padding: 6px 14px; }
+.mcv-btn-lg { font-size: 13px; padding: 8px 20px; }
+.mcv-btn-primary { background: var(--cyan); color: var(--bg-deep); font-weight: 600; }
+.mcv-btn-primary:hover:not(:disabled) { background: var(--cyan-dim); }
+.mcv-btn-secondary { background: var(--bg-card); border-color: var(--border); color: var(--text-primary); }
+.mcv-btn-secondary:hover:not(:disabled) { border-color: var(--border-active); color: var(--cyan); }
+.mcv-btn-ghost { background: transparent; color: var(--text-muted); }
+.mcv-btn-ghost:hover:not(:disabled) { background: var(--bg-card); color: var(--text-primary); }
+.mcv-btn-danger { background: transparent; color: var(--error); }
+.mcv-btn-danger:hover:not(:disabled) { background: rgba(239, 68, 68, 0.1); }
+.mcv-btn-loading .mcv-btn-spinner {
+  width: 12px; height: 12px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: mcv-spin 0.6s linear infinite;
+}
+
+/* ── Input ── */
+.mcv-input {
+  width: 100%;
+  padding: 6px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 12px;
+  transition: border-color var(--transition-fast);
+}
+.mcv-input:focus { border-color: var(--border-active); outline: none; }
+.mcv-input::placeholder { color: var(--text-muted); }
+.mcv-input-ghost { background: transparent; border-color: transparent; }
+.mcv-input-ghost:focus { border-color: var(--border); }
+.mcv-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.mcv-input-icon {
+  position: absolute;
+  left: 10px;
+  color: var(--text-muted);
+  pointer-events: none;
+  display: flex;
+}
+.mcv-input-with-icon { padding-left: 32px; }
+
+/* ── Stat Card ── */
+.mcv-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.mcv-stat-icon { color: var(--text-muted); flex-shrink: 0; }
+.mcv-stat-body { display: flex; flex-direction: column; min-width: 0; }
+.mcv-stat-value { font-family: var(--font-mono); font-size: 1rem; font-weight: 700; color: var(--text-primary); }
+.mcv-stat-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); }
+.mcv-stat-trend { font-size: 10px; font-family: var(--font-mono); margin-left: auto; }
+.mcv-stat-trend-up { color: var(--success); }
+.mcv-stat-trend-down { color: var(--error); }
+.mcv-stat-trend-label { font-size: 8px; color: var(--text-muted); margin-left: 4px; }
+
+/* ── Empty State ── */
+.mcv-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px 24px;
+  text-align: center;
+}
+.mcv-empty-icon { color: var(--text-muted); opacity: 0.5; }
+.mcv-empty-title { font-family: var(--font-display); font-size: 1rem; font-weight: 600; color: var(--text-primary); }
+.mcv-empty-desc { font-size: 12px; color: var(--text-muted); max-width: 300px; }
+.mcv-empty-action { margin-top: 8px; }
+
+/* ── Skeleton ── */
+.mcv-skeleton {
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+}
+.mcv-skeleton-text { height: 14px; width: 100%; }
+.mcv-skeleton-rect { min-height: 40px; }
+.mcv-skeleton-circle { border-radius: 50%; }
+
+/* ── Tabs ── */
+.mcv-tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--bg-deep);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+}
+.mcv-tab {
+  padding: 5px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mcv-tab:hover { color: var(--text-secondary); }
+.mcv-tab-active { background: var(--bg-card); color: var(--cyan); }
+.mcv-tab-count {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  background: var(--bg-elevated);
+  padding: 0 5px;
+  border-radius: var(--radius-full);
+}
+
+/* ── Page Header ── */
+.mcv-page-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 20px 12px;
+  flex-shrink: 0;
+}
+.mcv-page-header-icon { color: var(--text-muted); }
+.mcv-page-header-title {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+.mcv-page-header-count {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+}
+.mcv-page-header-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.mcv-page-header-refresh {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  transition: color var(--transition-fast);
+}
+.mcv-page-header-refresh:hover { color: var(--text-primary); }
+
+/* ── Page Shell ── */
+.mcv-page-shell {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.mcv-page-shell-scroll {
+  overflow: hidden;
+}
+.mcv-page-shell-scroll > :last-child {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* ── Grid Layout ── */
+.mcv-grid { display: grid; }
+.mcv-grid-1 { grid-template-columns: 1fr; }
+.mcv-grid-2 { grid-template-columns: repeat(2, 1fr); }
+.mcv-grid-3 { grid-template-columns: repeat(3, 1fr); }
+.mcv-grid-4 { grid-template-columns: repeat(4, 1fr); }
+.mcv-grid-6 { grid-template-columns: repeat(6, 1fr); }
+.mcv-grid-gap-sm { gap: 6px; }
+.mcv-grid-gap-md { gap: 12px; }
+.mcv-grid-gap-lg { gap: 20px; }
+
+/* Responsive grid collapse */
+@media (max-width: 1024px) {
+  .mcv-grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .mcv-grid-6 { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 640px) {
+  .mcv-grid-2, .mcv-grid-3, .mcv-grid-4, .mcv-grid-6 { grid-template-columns: 1fr; }
+}
+
+/* ── Shared Animations ── */
+@keyframes mcv-spin { to { transform: rotate(360deg); } }
+.mcv-spin { animation: mcv-spin 1s linear infinite; }
