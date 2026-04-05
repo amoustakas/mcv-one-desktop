@@ -70,6 +70,14 @@ export type ViewId =
   | 'commerce-credits'
   | 'commerce-loans'
   | 'commerce-tax'
+  | 'commerce-customers'
+  | 'commerce-inventory'
+  | 'commerce-fulfillment'
+  | 'commerce-discounts'
+  | 'commerce-reviews'
+  | 'commerce-gift-cards'
+  | 'commerce-analytics'
+  | 'commerce-shop-settings'
   // Commerce views (venture)
   | 'venture-commerce'
   | 'venture-products'
@@ -85,7 +93,9 @@ export type ViewId =
   // Creator views
   | 'creator-hub'
   | 'creator-royalties'
-  | 'creator-escrow';
+  | 'creator-escrow'
+  // Checkout view
+  | 'checkout';
 
 export type ContextMode = 'global' | 'venture';
 
@@ -148,6 +158,10 @@ const VIEW_LABELS: Record<string, string> = {
   'commerce-subscriptions': 'Subscriptions', 'commerce-invoices': 'Invoices',
   'commerce-orders': 'Orders', 'commerce-credits': 'Credits & Wallets',
   'commerce-loans': 'Loans', 'commerce-tax': 'Tax',
+  'commerce-customers': 'Customers', 'commerce-inventory': 'Inventory',
+  'commerce-fulfillment': 'Fulfillment', 'commerce-discounts': 'Discounts',
+  'commerce-reviews': 'Reviews', 'commerce-gift-cards': 'Gift Cards',
+  'commerce-analytics': 'Commerce Analytics', 'commerce-shop-settings': 'Shop Settings',
   'venture-commerce': 'Commerce', 'venture-products': 'Products', 'venture-subscriptions': 'Subscriptions',
   'financials-dashboard': 'Financials', 'financials-statements': 'Statements',
   'financials-cost-intelligence': 'Cost Intelligence', 'financials-ledger': 'Ledger',
