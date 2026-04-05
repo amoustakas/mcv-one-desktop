@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import {
-  Users, RefreshCw, Trash2, Shield, Mail, Edit3, X,
+  Users, Trash2, Shield, Mail, Edit3, X,
   Crown, Wrench, BarChart3, Eye, UserPlus,
 } from 'lucide-react';
 import { ventures } from '../lib/ventures';
 import { useToast } from '../components/Toasts';
 import { useTeamMembers, useCreateTeamMember, useUpdateTeamMember, useDeleteTeamMember, useAssignVentures } from '../hooks/use-team';
+import { PageHeader, PageShell, Button, GlassCard, StatCard, GridLayout } from '../components/ui';
+import { timeAgo } from '../lib/utils';
 
 interface TeamMember {
   id: string; name: string; email: string; avatar_url: string;
@@ -25,8 +27,6 @@ const ROLES: { value: string; label: string; icon: typeof Crown; color: string }
 
 const ROLE_COLORS: Record<string, string> = Object.fromEntries(ROLES.map(r => [r.value, r.color]));
 const DEPARTMENTS = ['Engineering', 'Operations', 'Growth', 'Finance', 'Research', 'Design', 'Executive'];
-
-function timeAgo(d: string) { if (!d) return 'Never'; const mins = Math.floor((Date.now() - new Date(d).getTime()) / 60000); if (mins < 60) return `${mins}m ago`; const h = Math.floor(mins / 60); if (h < 24) return `${h}h ago`; return `${Math.floor(h / 24)}d ago`; }
 
 export default function TeamView() {
   const { data: apiMembers = [], isLoading: loading, refetch } = useTeamMembers();
@@ -86,35 +86,24 @@ export default function TeamView() {
   });
 
   return (
-    <div className="tm">
-      <div className="tm-header">
-        <div>
-          <h1 className="tm-title"><Users size={20} /> Team Management</h1>
-          <p className="tm-sub">EdgeIQ Holdings — {members.length} team members across {ventures.length} ventures</p>
-        </div>
-        <div className="tm-header-right">
-          <button className="tm-add-btn" onClick={() => setShowAdd(!showAdd)}><UserPlus size={13} /> Add Member</button>
-          <button className="tm-refresh" onClick={() => refetch()}><RefreshCw size={14} className={loading ? 'spin' : ''} /></button>
-        </div>
-      </div>
+    <PageShell scroll>
+      <PageHeader icon={<Users size={20} />} title="Team Management" count={members.length} loading={loading} onRefresh={() => refetch()}>
+        <Button variant="secondary" size="sm" icon={<UserPlus size={13} />} onClick={() => setShowAdd(!showAdd)}>Add Member</Button>
+      </PageHeader>
 
       {/* KPIs */}
-      <div className="tm-kpis">
+      <GridLayout cols={6} gap="sm">
         {ROLES.map(r => {
           const count = (byRole[r.value] || []).length;
-          const Icon = r.icon;
           return (
-            <div key={r.value} className="tm-kpi" style={{ borderLeftColor: r.color }}>
-              <Icon size={14} style={{ color: r.color }} />
-              <div><span className="tm-kpi-v">{count}</span><span className="tm-kpi-l">{r.label}s</span></div>
-            </div>
+            <StatCard key={r.value} icon={<r.icon size={14} />} label={`${r.label}s`} value={count} color={r.color} />
           );
         })}
-      </div>
+      </GridLayout>
 
       {/* Add Form */}
       {showAdd && (
-        <div className="tm-form glass-neural">
+        <GlassCard variant="neural" className="tm-form">
           <input placeholder="Full name *" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="tm-input" autoFocus />
           <input placeholder="Email *" value={form.email} onChange={e => setForm({...form, email: e.target.value})} className="tm-input" type="email" />
           <input placeholder="Job title" value={form.title} onChange={e => setForm({...form, title: e.target.value})} className="tm-input" />
@@ -124,8 +113,8 @@ export default function TeamView() {
           <select value={form.department} onChange={e => setForm({...form, department: e.target.value})} className="tm-sel">
             {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
           </select>
-          <button className="tm-save" onClick={handleCreate}>Add Member</button>
-        </div>
+          <Button variant="primary" size="sm" onClick={handleCreate}>Add Member</Button>
+        </GlassCard>
       )}
 
       {/* Team Grid */}
@@ -136,7 +125,7 @@ export default function TeamView() {
           const isEditing = editId === m.id;
 
           return (
-            <div key={m.id} className="tm-card glass-neural holo-hover">
+            <GlassCard key={m.id} variant="neural" className="tm-card holo-hover">
               <div className="tm-card-accent" style={{ background: ROLE_COLORS[m.role] || '#6B7280' }} />
               <div className="tm-card-header">
                 <span className="tm-avatar" style={{ background: ROLE_COLORS[m.role] || '#6B7280' }}>
@@ -148,13 +137,13 @@ export default function TeamView() {
                   ) : (
                     <span className="tm-card-name">{m.name}</span>
                   )}
-                  <span className="tm-card-title">{m.title || m.department || '—'}</span>
+                  <span className="tm-card-title">{m.title || m.department || '\u2014'}</span>
                 </div>
                 <div className="tm-card-actions">
                   {isEditing ? (
-                    <button className="tm-icon-btn" onClick={() => setEditId(null)}><X size={12} /></button>
+                    <Button variant="ghost" size="sm" onClick={() => setEditId(null)}><X size={12} /></Button>
                   ) : (
-                    <button className="tm-icon-btn" onClick={() => setEditId(m.id)}><Edit3 size={12} /></button>
+                    <Button variant="ghost" size="sm" onClick={() => setEditId(m.id)}><Edit3 size={12} /></Button>
                   )}
                 </div>
               </div>
@@ -192,9 +181,9 @@ export default function TeamView() {
 
               <div className="tm-card-footer">
                 <span className="tm-card-meta">Last active: {timeAgo(m.last_active)}</span>
-                <button className="tm-del" onClick={() => handleDelete(m.id)}><Trash2 size={11} /></button>
+                <Button variant="danger" size="sm" onClick={() => handleDelete(m.id)} className="tm-del"><Trash2 size={11} /></Button>
               </div>
-            </div>
+            </GlassCard>
           );
         })}
         {members.length === 0 && !loading && (
@@ -205,7 +194,8 @@ export default function TeamView() {
       {/* Venture Assignment Modal */}
       {ventureModal && (
         <div className="tm-modal-overlay" onClick={() => setVentureModal(null)}>
-          <div className="tm-modal glass-neural" onClick={e => e.stopPropagation()}>
+          <div className="tm-modal-inner" onClick={e => e.stopPropagation()}>
+          <GlassCard variant="neural" className="tm-modal">
             <h3 className="tm-modal-title">Assign Ventures</h3>
             <p className="tm-modal-desc">Select which ventures this team member can access:</p>
             <div className="tm-modal-ventures">
@@ -229,36 +219,22 @@ export default function TeamView() {
                 );
               })}
             </div>
-            <button className="tm-modal-close" onClick={() => setVentureModal(null)}>Done</button>
+            <Button variant="primary" size="sm" onClick={() => setVentureModal(null)} className="tm-modal-close-btn">Done</Button>
+          </GlassCard>
           </div>
         </div>
       )}
 
       <style>{`
-        .tm { height:100%; overflow-y:auto; padding:20px 24px; display:flex; flex-direction:column; gap:16px; }
-        .tm-header { display:flex; justify-content:space-between; align-items:flex-start; }
-        .tm-title { font-family:var(--font-display); font-size:1.5rem; font-weight:700; display:flex; align-items:center; gap:8px; }
-        .tm-sub { font-size:11px; color:var(--text-muted); margin-top:2px; }
-        .tm-header-right { display:flex; gap:6px; }
-        .tm-add-btn { display:flex; align-items:center; gap:5px; padding:6px 14px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--cyan); font-size:11px; font-weight:500; }
-        .tm-refresh { width:30px; height:30px; display:flex; align-items:center; justify-content:center; border-radius:var(--radius-sm); color:var(--text-muted); }
-
-        .tm-kpis { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; }
-        .tm-kpi { display:flex; align-items:center; gap:8px; padding:10px 12px; background:var(--bg-card); border:1px solid var(--border); border-left:3px solid; border-radius:var(--radius-md); }
-        .tm-kpi>div { display:flex; flex-direction:column; }
-        .tm-kpi-v { font-family:var(--font-mono); font-size:1rem; font-weight:700; color:var(--text-primary); }
-        .tm-kpi-l { font-size:9px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; }
-
-        .tm-form { display:flex; gap:6px; padding:12px; border-radius:var(--radius-md); align-items:center; flex-wrap:wrap; }
+        .tm-form { display:flex; gap:6px; padding:12px; align-items:center; flex-wrap:wrap; margin:0 20px; }
         .tm-input { padding:7px 10px; background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-primary); font-size:12px; flex:1; min-width:120px; }
         .tm-input:focus { border-color:var(--border-active); outline:none; }
         .tm-sel { padding:7px 8px; background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-secondary); font-size:11px; }
-        .tm-save { padding:7px 18px; background:var(--cyan); color:var(--bg-deep); font-size:11px; font-weight:600; border-radius:var(--radius-sm); }
 
-        .tm-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:10px; }
+        .tm-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:10px; padding:0 20px 20px; }
 
-        .tm-card { position:relative; overflow:hidden; border-radius:var(--radius-md); padding:14px; display:flex; flex-direction:column; gap:10px; transition:all 0.2s; }
-        .tm-card:hover { border-color:var(--border-active); transform:translateY(-1px); box-shadow:0 4px 20px rgba(0,0,0,0.3); }
+        .tm-card { position:relative; overflow:hidden; padding:14px; display:flex; flex-direction:column; gap:10px; }
+        .tm-card:hover { transform:translateY(-1px); box-shadow:0 4px 20px rgba(0,0,0,0.3); }
         .tm-card-accent { position:absolute; top:0; left:0; width:100%; height:2px; }
 
         .tm-card-header { display:flex; align-items:center; gap:10px; }
@@ -268,8 +244,6 @@ export default function TeamView() {
         .tm-card-title { display:block; font-size:11px; color:var(--text-muted); }
         .tm-edit-name { background:var(--bg-input); border:1px solid var(--border-active); border-radius:3px; color:var(--text-primary); font-size:13px; font-weight:600; padding:2px 6px; width:100%; }
         .tm-card-actions { display:flex; gap:2px; }
-        .tm-icon-btn { width:26px; height:26px; display:flex; align-items:center; justify-content:center; border-radius:var(--radius-sm); color:var(--text-muted); transition:all 0.15s; }
-        .tm-icon-btn:hover { background:var(--bg-elevated); color:var(--text-primary); }
 
         .tm-card-body { display:flex; flex-direction:column; gap:4px; }
         .tm-card-row { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-secondary); }
@@ -287,15 +261,14 @@ export default function TeamView() {
 
         .tm-card-footer { display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border); padding-top:8px; }
         .tm-card-meta { font-size:10px; color:var(--text-muted); }
-        .tm-del { color:var(--text-muted); opacity:0; transition:opacity 0.15s; }
+        .tm-del { opacity:0; transition:opacity 0.15s; }
         .tm-card:hover .tm-del { opacity:1; }
-        .tm-del:hover { color:var(--error); }
 
         .tm-empty { grid-column:1/-1; text-align:center; padding:40px; color:var(--text-muted); font-size:13px; }
 
         /* Venture Assignment Modal */
         .tm-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:500; display:flex; align-items:center; justify-content:center; }
-        .tm-modal { width:400px; max-width:90vw; padding:20px; border-radius:var(--radius-lg); }
+        .tm-modal { width:400px; max-width:90vw; padding:20px; }
         .tm-modal-title { font-family:var(--font-display); font-size:16px; font-weight:600; margin-bottom:4px; }
         .tm-modal-desc { font-size:12px; color:var(--text-muted); margin-bottom:12px; }
         .tm-modal-ventures { display:flex; flex-direction:column; gap:4px; max-height:300px; overflow-y:auto; }
@@ -304,11 +277,8 @@ export default function TeamView() {
         .tm-modal-v.active { background:rgba(0,240,255,0.05); }
         .tm-modal-v input { accent-color:var(--cyan); }
         .tm-modal-v-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
-        .tm-modal-close { margin-top:12px; width:100%; padding:8px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--cyan); font-size:12px; font-weight:500; }
-
-        @keyframes spin { to{transform:rotate(360deg)} }
-        .spin { animation:spin 1s linear infinite; }
+        .tm-modal-close-btn { margin-top:12px; width:100%; }
       `}</style>
-    </div>
+    </PageShell>
   );
 }

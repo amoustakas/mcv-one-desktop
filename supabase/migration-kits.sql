@@ -103,6 +103,12 @@ end;
 $$ language plpgsql;
 
 -- =========================================================================
+-- Add metadata column to messages table (for tool call logs)
+-- =========================================================================
+
+alter table messages add column if not exists metadata jsonb default null;
+
+-- =========================================================================
 -- Notifications for kit events (uses existing notifications table if present)
 -- =========================================================================
 

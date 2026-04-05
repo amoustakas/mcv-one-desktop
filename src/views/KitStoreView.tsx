@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Package, Search, Download, Trash2, RefreshCw, Wrench, ToggleLeft, ToggleRight } from 'lucide-react';
 import { listKits, searchKits, installKit, uninstallKit, getInstalledKits } from '../lib/kits/registry-client';
 import { useKitStore } from '../stores/kits';
+import { useNavigation } from '../stores/navigation';
 import type { KitManifest } from '../lib/kits/types';
 
 interface RegistryKitItem {
@@ -24,7 +25,15 @@ export default function KitStoreView() {
   const [selectedKit, setSelectedKit] = useState<RegistryKitItem | null>(null);
   const [installedIds, setInstalledIds] = useState<Set<string>>(new Set());
   const { getLoadedKits, disableKit, enableKit } = useKitStore();
-  const loadedKits = getLoadedKits();
+  const { activeVenture, mode } = useNavigation();
+  const allLoadedKits = getLoadedKits();
+  // Filter installed kits by active venture scope when in venture mode
+  const loadedKits = mode === 'venture' && activeVenture
+    ? allLoadedKits.filter((k) => {
+        const scope = k.manifest.ventureScope;
+        return scope === '*' || scope.includes(activeVenture);
+      })
+    : allLoadedKits;
 
   useEffect(() => {
     loadBrowse();

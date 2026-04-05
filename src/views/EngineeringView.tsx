@@ -1,14 +1,8 @@
 import { useState } from 'react';
-import { Wrench, GitBranch, GitPullRequest, ExternalLink, RefreshCw, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Wrench, GitBranch, GitPullRequest, ExternalLink, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { useGithubRepos, useGithubCommits, useGithubPRs } from '../hooks/use-github';
-
-function timeAgo(d: string) {
-  const mins = Math.floor((Date.now() - new Date(d).getTime()) / 60000);
-  if (mins < 60) return `${mins}m`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h`;
-  return `${Math.floor(hrs / 24)}d`;
-}
+import { PageHeader, PageShell, GlassCard } from '../components/ui';
+import { timeAgo } from '../lib/utils';
 
 const LANG_COLORS: Record<string, string> = { TypeScript: '#3178C6', Python: '#3572A5', JavaScript: '#F7DF1E', Rust: '#DEA584' };
 
@@ -28,18 +22,12 @@ export default function EngineeringView() {
   }
 
   return (
-    <div className="eng">
-      <div className="eng-header">
-        <Wrench size={20} />
-        <h1 className="eng-title">Engineering</h1>
-        <button className="eng-refresh" onClick={refresh} disabled={loading}>
-          <RefreshCw size={14} className={loading ? 'spin' : ''} />
-        </button>
-      </div>
+    <PageShell scroll={false}>
+      <PageHeader icon={<Wrench size={20} />} title="Engineering" loading={loading} onRefresh={refresh} />
 
       <div className="eng-grid">
         {/* Repos */}
-        <div className="eng-panel">
+        <GlassCard className="eng-panel">
           <h2 className="eng-panel-title"><GitBranch size={14} /> Repositories</h2>
           <div className="eng-repos">
             {repos.map(r => (
@@ -49,16 +37,16 @@ export default function EngineeringView() {
                   {r.language && <span className="eng-repo-lang" style={{ color: LANG_COLORS[r.language] || '#888' }}>{r.language}</span>}
                 </div>
                 <div className="eng-repo-meta">
-                  {r.updated_at && <span>{timeAgo(r.updated_at)} ago</span>}
+                  {r.updated_at && <span>{timeAgo(r.updated_at)}</span>}
                   {r.open_issues_count > 0 && <span>{r.open_issues_count} issues</span>}
                 </div>
               </button>
             ))}
           </div>
-        </div>
+        </GlassCard>
 
         {/* Commits */}
-        <div className="eng-panel">
+        <GlassCard className="eng-panel">
           <h2 className="eng-panel-title">
             <Clock size={14} /> Commits
             <span className="eng-panel-badge">{activeRepo}</span>
@@ -73,10 +61,10 @@ export default function EngineeringView() {
             ))}
             {commits.length === 0 && !loading && <p className="eng-empty">No commits</p>}
           </div>
-        </div>
+        </GlassCard>
 
         {/* PRs */}
-        <div className="eng-panel">
+        <GlassCard className="eng-panel">
           <h2 className="eng-panel-title">
             <GitPullRequest size={14} /> Pull Requests
             <span className="eng-panel-badge">{activeRepo}</span>
@@ -96,18 +84,12 @@ export default function EngineeringView() {
             ))}
             {prs.length === 0 && !loading && <p className="eng-empty">No PRs</p>}
           </div>
-        </div>
+        </GlassCard>
       </div>
 
       <style>{`
-        .eng { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
-        .eng-header { display: flex; align-items: center; gap: 8px; padding: 16px 20px 12px; flex-shrink: 0; }
-        .eng-title { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; flex: 1; }
-        .eng-refresh { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); color: var(--text-muted); transition: all 0.15s; }
-        .eng-refresh:hover { background: var(--bg-card); color: var(--cyan); }
-
         .eng-grid { flex: 1; display: grid; grid-template-columns: 260px 1fr 1fr; gap: 1px; background: var(--border); overflow: hidden; }
-        .eng-panel { background: var(--bg-deep); display: flex; flex-direction: column; overflow: hidden; }
+        .eng-panel { display: flex; flex-direction: column; overflow: hidden; border-radius: 0; }
         .eng-panel-title { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
         .eng-panel-badge { font-family: var(--font-mono); font-size: 9px; color: var(--cyan); background: var(--bg-card); padding: 1px 6px; border-radius: 3px; margin-left: auto; }
 
@@ -139,11 +121,8 @@ export default function EngineeringView() {
 
         .eng-empty { padding: 20px; text-align: center; font-size: 11px; color: var(--text-muted); }
 
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .spin { animation: spin 1s linear infinite; }
-
         @media (max-width: 1200px) { .eng-grid { grid-template-columns: 1fr 1fr; } .eng-grid > :first-child { grid-column: 1 / -1; } }
       `}</style>
-    </div>
+    </PageShell>
   );
 }

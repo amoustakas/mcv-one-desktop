@@ -1,18 +1,13 @@
 import { useState, useMemo } from 'react';
-import { Landmark, Coins, Clock, ArrowUpRight, ArrowDownRight, RefreshCw, Edit3, Save, X } from 'lucide-react';
+import { Landmark, Coins, Clock, ArrowUpRight, ArrowDownRight, Edit3, Save, X } from 'lucide-react';
 import { ventures as ventureRegistry } from '../lib/ventures';
 import { useFinancialsList, useUpsertFinancials } from '../hooks/use-treasury';
+import { PageHeader, PageShell, StatCard, GlassCard, GridLayout } from '../components/ui';
+import { formatMoney } from '../lib/utils';
 
 interface VentureBurn { venture_id: string; name: string; color: string; revenue: number; expenses: number; burn: number; }
 
 const currentMonth = new Date().toISOString().slice(0, 7); // e.g. 2026-04
-
-function formatUSD(n: number) {
-  const abs = Math.abs(n);
-  if (abs >= 1e6) return `$${(abs / 1e6).toFixed(1)}M`;
-  if (abs >= 1000) return `$${(abs / 1000).toFixed(1)}K`;
-  return `$${abs}`;
-}
 
 export default function TreasuryView() {
   const [editId, setEditId] = useState<string | null>(null);
@@ -51,48 +46,49 @@ export default function TreasuryView() {
   const maxBar = Math.max(...burns.map(v => Math.abs(v.burn)), 1);
 
   return (
-    <div className="trsy">
-      <div className="trsy-header">
-        <h1 className="trsy-title"><Landmark size={20} /> Treasury & Token Economy</h1>
-        <div className="trsy-header-right">
-          <input type="month" value={month} onChange={e => setMonth(e.target.value)} className="trsy-month" />
-          <button className="trsy-refresh" onClick={() => refetch()}><RefreshCw size={14} className={isLoading ? 'spin' : ''} /></button>
-        </div>
-      </div>
+    <PageShell scroll>
+      <PageHeader icon={<Landmark size={20} />} title="Treasury & Token Economy" loading={isLoading} onRefresh={() => refetch()}>
+        <input type="month" value={month} onChange={e => setMonth(e.target.value)} className="trsy-month" />
+      </PageHeader>
 
       {/* EDGE Token Dashboard */}
       <div className="trsy-section">
         <h2 className="trsy-section-title">EDGE Token</h2>
-        <div className="trsy-token-grid">
-          <div className="trsy-token-card main">
+        <GridLayout cols={6} gap="sm">
+          <GlassCard className="trsy-token-card main">
             <Coins size={20} />
             <div>
               <span className="trsy-token-price">$0.025</span>
               <span className="trsy-token-label">TGE Price</span>
             </div>
-          </div>
-          <div className="trsy-token-card"><span className="trsy-token-val">$25M</span><span className="trsy-token-label">FDV</span></div>
-          <div className="trsy-token-card"><span className="trsy-token-val">1B</span><span className="trsy-token-label">Total Supply</span></div>
-          <div className="trsy-token-card"><span className="trsy-token-val">Jupiter</span><span className="trsy-token-label">Launch</span></div>
-          <div className="trsy-token-card"><span className="trsy-token-val">Solana</span><span className="trsy-token-label">Network</span></div>
-          <div className="trsy-token-card"><Clock size={14} /><div><span className="trsy-token-val">Pending</span><span className="trsy-token-label">TGE Status</span></div></div>
-        </div>
+          </GlassCard>
+          <StatCard label="FDV" value="$25M" />
+          <StatCard label="Total Supply" value="1B" />
+          <StatCard label="Launch" value="Jupiter" />
+          <StatCard label="Network" value="Solana" />
+          <GlassCard className="trsy-token-card">
+            <Clock size={14} />
+            <div>
+              <span className="trsy-token-val">Pending</span>
+              <span className="trsy-token-label">TGE Status</span>
+            </div>
+          </GlassCard>
+        </GridLayout>
       </div>
 
       {/* P&L Summary */}
       <div className="trsy-section">
         <h2 className="trsy-section-title">Cross-Venture P&L — {month}</h2>
-        <div className="trsy-pnl-kpis">
-          <div className="trsy-pnl-kpi"><span className="trsy-pnl-kpi-v pos">{formatUSD(totalRevenue)}</span><span className="trsy-pnl-kpi-l">Revenue</span></div>
-          <div className="trsy-pnl-kpi"><span className="trsy-pnl-kpi-v neg">{formatUSD(totalExpenses)}</span><span className="trsy-pnl-kpi-l">Expenses</span></div>
-          <div className="trsy-pnl-kpi">
-            <span className={`trsy-pnl-kpi-v ${netBurn >= 0 ? 'pos' : 'neg'}`}>
-              {netBurn >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-              {netBurn >= 0 ? '+' : '-'}{formatUSD(netBurn)}/mo
-            </span>
-            <span className="trsy-pnl-kpi-l">Net Burn</span>
-          </div>
-        </div>
+        <GridLayout cols={3} gap="sm">
+          <StatCard label="Revenue" value={formatMoney(totalRevenue)} color="#10B981" />
+          <StatCard label="Expenses" value={formatMoney(totalExpenses)} color="#EF4444" />
+          <StatCard
+            label="Net Burn"
+            value={`${netBurn >= 0 ? '+' : '-'}${formatMoney(Math.abs(netBurn))}/mo`}
+            color={netBurn >= 0 ? '#10B981' : '#EF4444'}
+            icon={netBurn >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+          />
+        </GridLayout>
 
         <div className="trsy-pnl-list">
           <div className="trsy-pnl-header">
@@ -109,7 +105,7 @@ export default function TreasuryView() {
                   <input type="number" value={editRevenue} onChange={e => setEditRevenue(parseFloat(e.target.value) || 0)} className="trsy-edit-input" />
                   <input type="number" value={editExpenses} onChange={e => setEditExpenses(parseFloat(e.target.value) || 0)} className="trsy-edit-input" />
                   <span className={`trsy-pnl-val ${(editRevenue - editExpenses) >= 0 ? 'pos' : 'neg'}`}>
-                    {(editRevenue - editExpenses) >= 0 ? '+' : '-'}{formatUSD(editRevenue - editExpenses)}
+                    {(editRevenue - editExpenses) >= 0 ? '+' : '-'}{formatMoney(Math.abs(editRevenue - editExpenses))}
                   </span>
                   <div className="trsy-row-actions">
                     <button className="trsy-icon-btn save" onClick={() => handleSave(v.venture_id)}><Save size={11} /></button>
@@ -118,10 +114,10 @@ export default function TreasuryView() {
                 </>
               ) : (
                 <>
-                  <span className="trsy-pnl-val pos">{v.revenue > 0 ? formatUSD(v.revenue) : '—'}</span>
-                  <span className="trsy-pnl-val neg">{v.expenses > 0 ? formatUSD(v.expenses) : '—'}</span>
+                  <span className="trsy-pnl-val pos">{v.revenue > 0 ? formatMoney(v.revenue) : '\u2014'}</span>
+                  <span className="trsy-pnl-val neg">{v.expenses > 0 ? formatMoney(v.expenses) : '\u2014'}</span>
                   <span className={`trsy-pnl-val ${v.burn >= 0 ? 'pos' : 'neg'}`}>
-                    {v.burn !== 0 ? `${v.burn >= 0 ? '+' : '-'}${formatUSD(v.burn)}` : '—'}
+                    {v.burn !== 0 ? `${v.burn >= 0 ? '+' : '-'}${formatMoney(Math.abs(v.burn))}` : '\u2014'}
                   </span>
                   <div className="trsy-row-actions">
                     <button className="trsy-icon-btn" onClick={() => startEdit(v)}><Edit3 size={11} /></button>
@@ -137,43 +133,30 @@ export default function TreasuryView() {
       {/* Token Economy Status */}
       <div className="trsy-section">
         <h2 className="trsy-section-title">Token Economy</h2>
-        <div className="trsy-eco-grid">
+        <GridLayout cols={4} gap="sm">
           {['Staking Pools', 'Governance', 'Treasury Ops', 'Launchpad'].map((item) => (
-            <div key={item} className="trsy-eco-card">
+            <GlassCard key={item} className="trsy-eco-card">
               <span className="trsy-eco-name">{item}</span>
               <span className="trsy-eco-status">Awaiting TGE</span>
-            </div>
+            </GlassCard>
           ))}
-        </div>
+        </GridLayout>
       </div>
 
       <style>{`
-        .trsy { height:100%; overflow-y:auto; padding:20px 24px; display:flex; flex-direction:column; gap:20px; }
-        .trsy-header { display:flex; justify-content:space-between; align-items:center; }
-        .trsy-title { font-family:var(--font-display); font-size:1.5rem; font-weight:700; display:flex; align-items:center; gap:8px; }
-        .trsy-header-right { display:flex; gap:8px; align-items:center; }
         .trsy-month { padding:5px 10px; background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-primary); font-size:12px; font-family:var(--font-mono); }
-        .trsy-refresh { width:30px; height:30px; display:flex; align-items:center; justify-content:center; border-radius:var(--radius-sm); color:var(--text-muted); }
-        .trsy-refresh:hover { background:var(--bg-card); color:var(--cyan); }
 
+        .trsy-section { padding:0 20px 16px; }
         .trsy-section-title { font-family:var(--font-display); font-size:13px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:10px; }
 
-        .trsy-token-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; }
-        .trsy-token-card { padding:14px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); display:flex; flex-direction:column; gap:4px; }
+        .trsy-token-card { padding:14px; display:flex; flex-direction:column; gap:4px; }
         .trsy-token-card.main { flex-direction:row; align-items:center; gap:12px; border-color:rgba(139,92,246,0.2); color:var(--purple); }
         .trsy-token-card.main>div { display:flex; flex-direction:column; }
         .trsy-token-price { font-family:var(--font-mono); font-size:1.5rem; font-weight:700; color:var(--purple); }
         .trsy-token-val { font-family:var(--font-mono); font-size:1rem; font-weight:700; color:var(--text-primary); }
         .trsy-token-label { font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; }
 
-        .trsy-pnl-kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
-        .trsy-pnl-kpi { padding:12px 16px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); }
-        .trsy-pnl-kpi-v { display:flex; align-items:center; gap:4px; font-family:var(--font-mono); font-size:1.1rem; font-weight:700; }
-        .trsy-pnl-kpi-v.pos { color:var(--success); }
-        .trsy-pnl-kpi-v.neg { color:var(--error); }
-        .trsy-pnl-kpi-l { display:block; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-top:2px; }
-
-        .trsy-pnl-list { display:flex; flex-direction:column; gap:2px; }
+        .trsy-pnl-list { display:flex; flex-direction:column; gap:2px; margin-top:12px; }
         .trsy-pnl-header { display:grid; grid-template-columns:140px 1fr 80px 80px 80px 50px; gap:8px; padding:4px 12px; font-size:9px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; }
         .trsy-pnl-row { display:grid; grid-template-columns:140px 1fr 80px 80px 80px 50px; gap:8px; align-items:center; padding:8px 12px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-sm); }
         .trsy-pnl-row:hover { border-color:var(--border-active); }
@@ -194,14 +177,10 @@ export default function TreasuryView() {
         .trsy-edit-input { width:70px; padding:3px 6px; background:var(--bg-input); border:1px solid var(--border-active); border-radius:3px; color:var(--text-primary); font-size:11px; font-family:var(--font-mono); text-align:right; }
         .trsy-hint { font-size:10px; color:var(--text-muted); margin-top:6px; }
 
-        .trsy-eco-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
-        .trsy-eco-card { padding:16px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); display:flex; flex-direction:column; gap:4px; text-align:center; }
+        .trsy-eco-card { padding:16px; display:flex; flex-direction:column; gap:4px; text-align:center; }
         .trsy-eco-name { font-size:13px; font-weight:600; }
         .trsy-eco-status { font-size:10px; color:var(--text-muted); font-style:italic; }
-
-        @keyframes spin { to{transform:rotate(360deg)} }
-        .spin { animation:spin 1s linear infinite; }
       `}</style>
-    </div>
+    </PageShell>
   );
 }

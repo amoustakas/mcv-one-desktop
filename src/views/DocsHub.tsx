@@ -4,6 +4,8 @@ import { useNavigation } from '../stores/navigation';
 import Markdown from '../components/Markdown';
 import { useDocuments, useDocument, useCreateDocument, useUpdateDocument, useDeleteDocument } from '../hooks/use-docs';
 import { apiPost } from '../lib/api/client';
+import { PageHeader, Button, GlassCard, Badge, EmptyState } from '../components/ui';
+import { timeAgo, formatDate } from '../lib/utils';
 
 /* ── Types ── */
 interface DocMetadata {
@@ -94,23 +96,6 @@ const FOLDER_TREE: FolderNode[] = [
 ];
 
 /* ── Helpers ── */
-function timeAgo(d: string) {
-  if (!d) return '--';
-  const mins = Math.floor((Date.now() - new Date(d).getTime()) / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  if (days < 30) return `${days}d ago`;
-  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-function formatDate(d: string) {
-  if (!d) return '--';
-  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
-
 function getSnippet(content?: string, maxLen = 120): string {
   if (!content) return 'No content preview available';
   const cleaned = content.replace(/[#*_`>\[\]()!]/g, '').replace(/\n+/g, ' ').trim();
@@ -326,30 +311,12 @@ export default function DocsHub() {
   return (
     <div className="dh">
       {/* ── TOP BAR ── */}
-      <div className="dh-topbar">
-        <div className="dh-topbar-left">
-          <BookOpen size={18} />
-          <h1 className="dh-topbar-title">Documentation Hub</h1>
-          <span className="dh-topbar-count">{docs.length} docs</span>
-        </div>
-        <div className="dh-topbar-actions">
-          <button className="dh-btn dh-btn-primary" onClick={() => setShowCreate(!showCreate)}>
-            <Plus size={13} /> New Document
-          </button>
-          <button className="dh-btn dh-btn-ghost" title="Import from Notion">
-            <Upload size={12} /> Notion
-          </button>
-          <button className="dh-btn dh-btn-ghost" title="Import from Google Drive">
-            <Upload size={12} /> Drive
-          </button>
-          <button className="dh-btn dh-btn-ghost" title="Import from URL">
-            <Link2 size={12} /> URL
-          </button>
-          <button className="dh-btn dh-btn-icon" onClick={() => loadDocs()} title="Refresh">
-            <RefreshCw size={14} className={loading ? 'dh-spin' : ''} />
-          </button>
-        </div>
-      </div>
+      <PageHeader icon={<BookOpen size={18} />} title="Documentation Hub" count={docs.length} loading={loading} onRefresh={() => loadDocs()}>
+        <Button variant="primary" size="sm" icon={<Plus size={13} />} onClick={() => setShowCreate(!showCreate)}>New Document</Button>
+        <Button variant="ghost" size="sm" icon={<Upload size={12} />} title="Import from Notion">Notion</Button>
+        <Button variant="ghost" size="sm" icon={<Upload size={12} />} title="Import from Google Drive">Drive</Button>
+        <Button variant="ghost" size="sm" icon={<Link2 size={12} />} title="Import from URL">URL</Button>
+      </PageHeader>
 
       {/* ── STATS BAR ── */}
       {docs.length > 0 && !selectedDoc && (
@@ -399,11 +366,11 @@ export default function DocsHub() {
       {/* ── CREATE FORM OVERLAY ── */}
       {showCreate && (
         <div className="dh-create-overlay">
-          <div className="dh-create-form glass">
+          <GlassCard className="dh-create-form">
             <div className="dh-create-header">
               <FileText size={15} />
               <span>New Document</span>
-              <button className="dh-btn dh-btn-icon dh-create-close" onClick={() => setShowCreate(false)}><X size={14} /></button>
+              <Button variant="ghost" size="sm" className="dh-create-close" onClick={() => setShowCreate(false)}><X size={14} /></Button>
             </div>
             <input
               className="dh-input"
@@ -429,12 +396,12 @@ export default function DocsHub() {
               rows={8}
             />
             <div className="dh-create-actions">
-              <button className="dh-btn dh-btn-primary" onClick={handleCreate} disabled={!newTitle.trim() || saving}>
-                <Save size={12} /> {saving ? 'Saving...' : 'Create Document'}
-              </button>
-              <button className="dh-btn dh-btn-ghost" onClick={() => setShowCreate(false)}>Cancel</button>
+              <Button variant="primary" size="sm" icon={<Save size={12} />} onClick={handleCreate} disabled={!newTitle.trim()} loading={saving}>
+                {saving ? 'Saving...' : 'Create Document'}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setShowCreate(false)}>Cancel</Button>
             </div>
-          </div>
+          </GlassCard>
         </div>
       )}
 
@@ -533,13 +500,13 @@ export default function DocsHub() {
                   <span>Loading documents...</span>
                 </div>
               ) : filteredDocs.length === 0 ? (
-                <div className="dh-empty">
-                  <BookOpen size={24} />
-                  <p>{docs.length === 0 ? 'No documents yet.' : 'No documents match your filters.'}</p>
-                  <button className="dh-btn dh-btn-primary" onClick={() => setShowCreate(true)}>
-                    <Plus size={12} /> Create First Document
-                  </button>
-                </div>
+                <EmptyState
+                  icon={<BookOpen size={24} />}
+                  title={docs.length === 0 ? 'No documents yet.' : 'No documents match your filters.'}
+                  action={
+                    <Button variant="primary" size="sm" icon={<Plus size={12} />} onClick={() => setShowCreate(true)}>Create First Document</Button>
+                  }
+                />
               ) : (
                 filteredDocs.map(doc => {
                   const ventureInfo = getVentureInfo(doc.venture_id);
@@ -562,12 +529,12 @@ export default function DocsHub() {
                         </button>
                       </div>
                       <div className="dh-doc-card-badges">
-                        <span className="dh-badge dh-badge-type" style={{ color: DOC_TYPE_COLORS[doc.doc_type] || '#6B7280', borderColor: (DOC_TYPE_COLORS[doc.doc_type] || '#6B7280') + '40' }}>
+                        <Badge color={DOC_TYPE_COLORS[doc.doc_type] || '#6B7280'} variant="outline">
                           {DOC_TYPE_LABELS[doc.doc_type] || doc.doc_type}
-                        </span>
-                        <span className="dh-badge dh-badge-venture" style={{ color: ventureInfo.color, borderColor: ventureInfo.color + '40' }}>
+                        </Badge>
+                        <Badge color={ventureInfo.color} variant="outline">
                           {ventureInfo.name}
-                        </span>
+                        </Badge>
                         <span className="dh-doc-card-time">
                           <Clock size={10} /> {timeAgo(doc.updated_at)}
                         </span>
@@ -597,21 +564,15 @@ export default function DocsHub() {
                   <div className="dh-viewer-actions">
                     {editing ? (
                       <>
-                        <button className="dh-btn dh-btn-primary dh-btn-sm" onClick={handleSaveEdit} disabled={saving}>
-                          <Save size={12} /> {saving ? 'Saving...' : 'Save'}
-                        </button>
-                        <button className="dh-btn dh-btn-ghost dh-btn-sm" onClick={() => setEditing(false)}>
-                          <X size={12} /> Cancel
-                        </button>
+                        <Button variant="primary" size="sm" icon={<Save size={12} />} onClick={handleSaveEdit} loading={saving}>
+                          {saving ? 'Saving...' : 'Save'}
+                        </Button>
+                        <Button variant="ghost" size="sm" icon={<X size={12} />} onClick={() => setEditing(false)}>Cancel</Button>
                       </>
                     ) : (
                       <>
-                        <button className="dh-btn dh-btn-ghost dh-btn-sm" onClick={handleStartEdit}>
-                          <Edit3 size={12} /> Edit
-                        </button>
-                        <button className="dh-btn dh-btn-icon dh-btn-sm" onClick={() => { setSelectedDoc(null); setEditing(false); }} title="Close">
-                          <X size={14} />
-                        </button>
+                        <Button variant="ghost" size="sm" icon={<Edit3 size={12} />} onClick={handleStartEdit}>Edit</Button>
+                        <Button variant="ghost" size="sm" onClick={() => { setSelectedDoc(null); setEditing(false); }} title="Close"><X size={14} /></Button>
                       </>
                     )}
                   </div>
@@ -635,13 +596,11 @@ export default function DocsHub() {
                       <Markdown content={docContent} />
                     </div>
                   ) : (
-                    <div className="dh-empty-content">
-                      <FileText size={20} />
-                      <p>This document has no content yet.</p>
-                      <button className="dh-btn dh-btn-ghost dh-btn-sm" onClick={handleStartEdit}>
-                        <Edit3 size={12} /> Add Content
-                      </button>
-                    </div>
+                    <EmptyState
+                      icon={<FileText size={20} />}
+                      title="This document has no content yet."
+                      action={<Button variant="ghost" size="sm" icon={<Edit3 size={12} />} onClick={handleStartEdit}>Add Content</Button>}
+                    />
                   )}
                 </div>
               </div>
@@ -1180,20 +1139,9 @@ export default function DocsHub() {
           display: flex; align-items: center; justify-content: center; gap: 8px;
           padding: 32px; color: var(--text-muted); font-size: 12px;
         }
-        .dh-empty {
-          display: flex; flex-direction: column; align-items: center; gap: 10px;
-          padding: 40px 20px; color: var(--text-muted); text-align: center;
-        }
-        .dh-empty p { font-size: 12px; margin: 0; }
-
         /* ── Utilities ── */
         @keyframes dh-spin-anim { to { transform: rotate(360deg); } }
         .dh-spin { animation: dh-spin-anim 1s linear infinite; }
-
-        .glass {
-          background: rgba(11,17,33,0.8); backdrop-filter: blur(12px);
-          border: 1px solid rgba(255,255,255,0.06);
-        }
 
         /* ── Scrollbar ── */
         .dh-tree::-webkit-scrollbar,

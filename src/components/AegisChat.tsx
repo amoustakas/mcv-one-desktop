@@ -283,6 +283,7 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
       const loadedKits = getLoadedKits();
 
       let full: string;
+      let toolCallLog: Array<{ id: string; name: string; input: unknown }> = [];
       // Use orchestrator when any kits are loaded (meta-tools are always available)
       if (loadedKits.length > 0) {
         // Use Agent Orchestrator for tool-calling path
@@ -322,6 +323,7 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
           },
         );
         full = result.text;
+        toolCallLog = result.toolCalls.map((tc) => ({ id: tc.id, name: tc.name, input: tc.input }));
       } else {
         // Fallback to plain streaming (no kits loaded)
         full = await streamMessage(
@@ -336,9 +338,10 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
       setStreamingText('');
       setActiveToolCalls([]);
 
-      // Persist assistant message
+      // Persist assistant message (with tool call metadata if any)
       if (useDb) {
-        await saveMessage(convId, 'assistant', full);
+        const metadata = toolCallLog.length > 0 ? { tool_calls: toolCallLog } : undefined;
+        await saveMessage(convId, 'assistant', full, metadata);
       } else {
         saveLocal(venture.id, convId, finalMessages);
       }

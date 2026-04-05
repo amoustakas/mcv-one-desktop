@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { GitBranch, Cloud, Zap, RefreshCw, ExternalLink, CheckSquare, Users, BookOpen, MessageSquare, Activity, Shield, TrendingUp, Cpu } from 'lucide-react';
+import { GitBranch, Cloud, Zap, ExternalLink, CheckSquare, Users, BookOpen, MessageSquare, Activity, Shield, TrendingUp, Cpu } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
 import { useTheme } from '../stores/theme';
 import { ventures } from '../lib/ventures';
@@ -11,8 +11,8 @@ import { useTasks } from '../hooks/use-tasks';
 import { useContacts, useDeals, useActivities } from '../hooks/use-crm';
 import { useTeamMembers } from '../hooks/use-team';
 import { useCampaigns } from '../hooks/use-campaigns';
-
-function timeAgo(d: string | number) { const mins = Math.floor((Date.now() - (typeof d === 'number' ? d : new Date(d).getTime())) / 60000); if (mins < 1) return 'now'; if (mins < 60) return `${mins}m`; const h = Math.floor(mins / 60); if (h < 24) return `${h}h`; return `${Math.floor(h / 24)}d`; }
+import { PageShell, StatCard, GlassCard, GridLayout, PageHeader } from '../components/ui';
+import { timeAgo } from '../lib/utils';
 
 const statusColors: Record<string, string> = { active: '#10B981', development: '#00F0FF', planned: '#8B5CF6', concept: '#6B7280' };
 
@@ -89,40 +89,39 @@ export default function CommandCenter() {
   const activeVentures = ventures.filter(v => v.status === 'active' || v.status === 'development').length;
 
   return (
-    <div className="cc">
+    <PageShell scroll>
       {/* Hero Header */}
       <div className="cc-hero">
         <div className="cc-hero-content">
           <div>
             <p className="cc-greeting">{getGreeting()}, Tony</p>
-            <h1 className="cc-title">Command Center</h1>
+            <PageHeader title="Command Center" loading={loading} onRefresh={refetchAll} />
             <p className="cc-sub">EdgeIQ Holdings &middot; {ventures.length} ventures &middot; {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
           </div>
-          <button className="cc-refresh" onClick={refetchAll} disabled={loading}><RefreshCw size={14} className={loading ? 'spin' : ''} /></button>
         </div>
       </div>
 
       {/* KPI Grid */}
-      <div className="cc-kpis">
-        <div className="cc-kpi glow-border" onClick={() => setView('portfolio')}><Zap size={14} className="kpi-icon cyan"/><div><span className="cc-kpi-v">{ventures.length}</span><span className="cc-kpi-l">Ventures</span></div><span className="cc-kpi-sub">{activeVentures} active</span></div>
-        <div className="cc-kpi" onClick={() => setView('engineering')}><GitBranch size={14} className="kpi-icon"/><div><span className="cc-kpi-v">{repos.length}</span><span className="cc-kpi-l">Repositories</span></div></div>
-        <div className="cc-kpi" onClick={() => setView('ops')}><Cloud size={14} className="kpi-icon"/><div><span className="cc-kpi-v">{deploys.length}</span><span className="cc-kpi-l">Deployments</span></div></div>
-        <div className="cc-kpi" onClick={() => setView('docs')}><BookOpen size={14} className="kpi-icon"/><div><span className="cc-kpi-v">{docCount || '...'}</span><span className="cc-kpi-l">Knowledge Base</span></div></div>
-        <div className="cc-kpi" onClick={() => setView('tasks')}><CheckSquare size={14} className="kpi-icon"/><div><span className="cc-kpi-v">{taskCount || '...'}</span><span className="cc-kpi-l">Active Tasks</span></div></div>
-        <div className="cc-kpi" onClick={() => setView('crm')}><Users size={14} className="kpi-icon"/><div><span className="cc-kpi-v">{contactCount}</span><span className="cc-kpi-l">Contacts</span></div><span className="cc-kpi-sub">{dealCount} deals</span></div>
-        <div className="cc-kpi"><MessageSquare size={14} className="kpi-icon"/><div><span className="cc-kpi-v">{convCount}</span><span className="cc-kpi-l">Conversations</span></div><span className="cc-kpi-sub">{msgCount} msgs</span></div>
-        <div className="cc-kpi" onClick={() => setView('team')}><Shield size={14} className="kpi-icon"/><div><span className="cc-kpi-v">{teamCount}</span><span className="cc-kpi-l">Team</span></div></div>
-        <div className="cc-kpi" onClick={() => setView('growth')}><TrendingUp size={14} className="kpi-icon"/><div><span className="cc-kpi-v">{campaignCount}</span><span className="cc-kpi-l">Campaigns</span></div></div>
-      </div>
+      <GridLayout cols={3} gap="sm">
+        <StatCard icon={<Zap size={14} />} label="Ventures" value={ventures.length} color="#00F0FF" className="cc-kpi-click" />
+        <StatCard icon={<GitBranch size={14} />} label="Repositories" value={repos.length} className="cc-kpi-click" />
+        <StatCard icon={<Cloud size={14} />} label="Deployments" value={deploys.length} className="cc-kpi-click" />
+        <StatCard icon={<BookOpen size={14} />} label="Knowledge Base" value={docCount || '...'} className="cc-kpi-click" />
+        <StatCard icon={<CheckSquare size={14} />} label="Active Tasks" value={taskCount || '...'} className="cc-kpi-click" />
+        <StatCard icon={<Users size={14} />} label="Contacts" value={`${contactCount}`} className="cc-kpi-click" />
+        <StatCard icon={<MessageSquare size={14} />} label="Conversations" value={`${convCount}`} className="cc-kpi-click" />
+        <StatCard icon={<Shield size={14} />} label="Team" value={teamCount} className="cc-kpi-click" />
+        <StatCard icon={<TrendingUp size={14} />} label="Campaigns" value={campaignCount} className="cc-kpi-click" />
+      </GridLayout>
 
       <div className="cc-main">
         {/* Left: Ventures */}
         <div className="cc-col">
           <div className="cc-section">
-            <h2 className="cc-sec-title">Venture Health</h2>
+            <h2 className="cc-sec-title">Venture Health <span className="cc-sec-sub">{activeVentures} active</span></h2>
             <div className="cc-ventures">
               {ventures.map(v => (
-                <button key={v.id} className="cc-vc glass-neural holo-hover" onClick={() => enterVenture(v.id)}>
+                <GlassCard key={v.id} variant="neural" className="cc-vc holo-hover" onClick={() => enterVenture(v.id)}>
                   <div className="cc-vc-accent" style={{ background: `linear-gradient(90deg, transparent, ${v.color}40, transparent)` }} />
                   <div className="cc-vc-head">
                     <span className="cc-vc-icon" style={{ background: v.color }}>{v.icon}</span>
@@ -133,7 +132,7 @@ export default function CommandCenter() {
                   </div>
                   <span className="cc-vc-name">{v.name}</span>
                   <span className="cc-vc-tag">{v.tagline}</span>
-                </button>
+                </GlassCard>
               ))}
             </div>
           </div>
@@ -174,7 +173,7 @@ export default function CommandCenter() {
 
         {/* Right: Feeds */}
         <div className="cc-col">
-          <div className="cc-feed">
+          <GlassCard className="cc-feed">
             <h2 className="cc-sec-title"><GitBranch size={12}/> Commits</h2>
             <div className="cc-feed-list">
               {commits.map(c => (
@@ -185,10 +184,10 @@ export default function CommandCenter() {
                 </div>
               ))}
             </div>
-          </div>
+          </GlassCard>
 
-          <div className="cc-feed">
-            <h2 className="cc-sec-title"><Cloud size={12}/> Deployments</h2>
+          <GlassCard className="cc-feed">
+            <h2 className="cc-sec-title"><Cloud size={12}/> Deployments <span className="cc-sec-sub">{dealCount} deals</span></h2>
             <div className="cc-feed-list">
               {recentDeploys.map(d => (
                 <a key={d.uid} href={d.url} target="_blank" rel="noreferrer" className="cc-feed-item link">
@@ -199,31 +198,23 @@ export default function CommandCenter() {
                 </a>
               ))}
             </div>
-          </div>
+          </GlassCard>
+
+          <GlassCard className="cc-feed">
+            <h2 className="cc-sec-title"><MessageSquare size={12}/> Messages <span className="cc-sec-sub">{msgCount} msgs</span></h2>
+          </GlassCard>
         </div>
       </div>
 
       <style>{`
-        .cc { height:100%; overflow-y:auto; padding:0; display:flex; flex-direction:column; gap:0; }
-
         .cc-hero { padding:20px 24px 16px; position:relative; }
         .cc-hero::after { content:""; position:absolute; bottom:0; left:24px; right:24px; height:1px; background:linear-gradient(90deg, transparent, rgba(0,240,255,0.12), transparent); }
         .cc-hero-content { display:flex; justify-content:space-between; align-items:flex-start; }
         .cc-greeting { font-size:13px; color:var(--cyan); font-weight:500; margin-bottom:2px; text-shadow:0 0 10px rgba(0,240,255,0.3); }
-        .cc-title { font-family:var(--font-display); font-size:1.75rem; font-weight:700; letter-spacing:-0.5px; }
         .cc-sub { font-size:11px; color:var(--text-muted); margin-top:2px; }
-        .cc-refresh { width:30px; height:30px; display:flex; align-items:center; justify-content:center; border-radius:var(--radius-sm); color:var(--text-muted); }
-        .cc-refresh:hover { background:var(--bg-card); color:var(--cyan); }
+        .cc-sec-sub { font-size:9px; color:var(--text-muted); font-family:var(--font-mono); margin-left:auto; font-weight:400; text-transform:none; letter-spacing:0; }
 
-        .cc-kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:6px; padding:16px 24px; }
-        .cc-kpi { display:flex; align-items:center; gap:10px; padding:12px 14px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); cursor:pointer; transition:all 0.2s; position:relative; overflow:hidden; }
-        .cc-kpi:hover { border-color:var(--border-active); transform:translateY(-1px); box-shadow:0 4px 16px rgba(0,240,255,0.05); }
-        .cc-kpi>div { display:flex; flex-direction:column; }
-        .cc-kpi-v { font-family:var(--font-mono); font-size:1rem; font-weight:700; color:var(--text-primary); }
-        .cc-kpi-l { font-size:9px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); }
-        .cc-kpi-sub { font-size:9px; color:var(--text-muted); font-family:var(--font-mono); margin-left:auto; }
-        .kpi-icon { color:var(--text-muted); flex-shrink:0; }
-        .kpi-icon.cyan { color:var(--cyan); }
+        .cc-kpi-click { cursor:pointer; }
 
         .cc-main { display:grid; grid-template-columns:1fr 1fr 380px; gap:16px; padding:0 24px 24px; flex:1; min-height:0; }
         @media (max-width:1600px) { .cc-main { grid-template-columns:1fr 1fr; } }
@@ -233,8 +224,8 @@ export default function CommandCenter() {
         .cc-sec-title { font-family:var(--font-display); font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; display:flex; align-items:center; gap:6px; }
 
         .cc-ventures { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:6px; }
-        .cc-vc { position:relative; overflow:hidden; padding:12px; border-radius:var(--radius-md); text-align:left; display:flex; flex-direction:column; gap:2px; transition:all 0.2s; cursor:pointer; }
-        .cc-vc:hover { border-color:rgba(255,255,255,0.12); transform:translateY(-1px); box-shadow:0 4px 16px rgba(0,240,255,0.05); }
+        .cc-vc { position:relative; overflow:hidden; padding:12px; text-align:left; display:flex; flex-direction:column; gap:2px; }
+        .cc-vc:hover { transform:translateY(-1px); box-shadow:0 4px 16px rgba(0,240,255,0.05); }
         .cc-vc-accent { position:absolute; bottom:0; left:0; right:0; height:2px; }
         .cc-vc-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
         .cc-vc-icon { width:26px; height:26px; border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:11px; color:var(--bg-deep); }
@@ -253,7 +244,7 @@ export default function CommandCenter() {
         .cc-empty-hint { font-size:11px; color:var(--text-muted); text-align:center; padding:16px; }
 
         /* Feeds */
-        .cc-feed { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); overflow:hidden; }
+        .cc-feed { overflow:hidden; }
         .cc-feed .cc-sec-title { padding:8px 12px; margin:0; border-bottom:1px solid var(--border); }
         .cc-feed-list { max-height:200px; overflow-y:auto; }
         .cc-feed-item { display:flex; align-items:center; gap:8px; padding:5px 12px; border-bottom:1px solid var(--border); font-size:11px; }
@@ -270,10 +261,7 @@ export default function CommandCenter() {
         .cc-actions { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
         .cc-action { padding:10px 12px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-secondary); font-size:11px; font-weight:500; transition:all 0.15s; position:relative; overflow:hidden; }
         .cc-action:hover { color:var(--cyan); border-color:var(--border-active); box-shadow:0 0 12px rgba(0,240,255,0.06); }
-
-        @keyframes spin { to{transform:rotate(360deg)} }
-        .spin { animation:spin 1s linear infinite; }
       `}</style>
-    </div>
+    </PageShell>
   );
 }

@@ -3,6 +3,7 @@ import { streamMessageWithTools, type ChatMessage, type ToolCallEvent, type Stre
 import { executeKitTool as executeKitToolFromLoader } from './loader';
 import { executeKitTool as executeKitToolFromBridge } from './bridge';
 import { searchKits } from './registry-client';
+import { notifyToolError } from './kit-notifications';
 
 // ---------------------------------------------------------------------------
 // Agent Orchestrator
@@ -117,10 +118,19 @@ export class AgentOrchestrator {
       }
 
       // Route through bridge for non-inline kits, loader for inline
+      let result: ToolCallResult;
       if (kit.manifest.runtime === 'inline') {
-        return executeKitToolFromLoader(this.kits, toolCall.name, toolCall.input, this.context);
+        result = await executeKitToolFromLoader(this.kits, toolCall.name, toolCall.input, this.context);
+      } else {
+        result = await executeKitToolFromBridge(kit, toolCall.name, toolCall.input, this.context);
       }
-      return executeKitToolFromBridge(kit, toolCall.name, toolCall.input, this.context);
+
+      // Notify on errors so they appear in the notification center
+      if (!result.success) {
+        notifyToolError(kit.manifest.name, toolCall.name, result.error || 'Unknown error', this.ventureId);
+      }
+
+      return result;
     };
 
     const streamCallbacks: StreamWithToolsCallbacks = {

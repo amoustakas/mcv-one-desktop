@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, ArrowRight, Globe, MessageSquare, FileText, CheckSquare, Users, Hash, Slash } from 'lucide-react';
+import { Search, ArrowRight, Globe, MessageSquare, FileText, CheckSquare, Users, Hash, Slash, Wrench, Package } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
 import { useTheme } from '../stores/theme';
 import { ventures } from '../lib/ventures';
 import { apiPost } from '../lib/api/client';
+import { useKitStore } from '../stores/kits';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -17,7 +18,7 @@ interface PaletteItem {
   category: Category;
 }
 
-type Category = 'Views' | 'Ventures' | 'Documents' | 'Tasks' | 'Contacts' | 'Commands';
+type Category = 'Views' | 'Ventures' | 'Documents' | 'Tasks' | 'Contacts' | 'Commands' | 'Kits';
 
 interface CachedData {
   docs: PaletteItem[];
@@ -47,7 +48,7 @@ const SLASH_COMMANDS: { name: string; description: string }[] = [
 
 /* ─── Category order & icons ─────────────────────────────────────── */
 
-const CATEGORY_ORDER: Category[] = ['Views', 'Ventures', 'Documents', 'Tasks', 'Contacts', 'Commands'];
+const CATEGORY_ORDER: Category[] = ['Views', 'Ventures', 'Kits', 'Documents', 'Tasks', 'Contacts', 'Commands'];
 
 const CATEGORY_ICONS: Record<Category, React.ReactNode> = {
   Views: <Globe size={11} />,
@@ -56,6 +57,7 @@ const CATEGORY_ICONS: Record<Category, React.ReactNode> = {
   Tasks: <CheckSquare size={11} />,
   Contacts: <Users size={11} />,
   Commands: <Slash size={11} />,
+  Kits: <Wrench size={11} />,
 };
 
 /* ─── Component ──────────────────────────────────────────────────── */
@@ -73,6 +75,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const cacheRef = useRef<CachedData>({ docs: [], tasks: [], contacts: [], fetched: false });
   const { setView, switchToGlobal, switchToVenture } = useNavigation();
   const { applyGlobalTheme, applyVentureTheme } = useTheme();
+  const { getLoadedKits } = useKitStore();
 
   /* ── Fetch remote data on open ─────────────────────────────────── */
 
@@ -195,8 +198,41 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
     },
   }));
 
+  // Kit tools — dynamically built from loaded kits
+  const kitItems: PaletteItem[] = [
+    {
+      id: 'v-kit-store',
+      label: 'Kit Store',
+      sublabel: 'Browse and manage agent kits',
+      icon: <Package size={14} />,
+      category: 'Views' as Category,
+      action: () => { setView('kit-store'); },
+    },
+    ...getLoadedKits()
+      .filter((k) => k.status === 'loaded')
+      .flatMap((kit) =>
+        kit.manifest.tools.map((tool) => ({
+          id: `kit-${kit.manifest.id}-${tool.name}`,
+          label: tool.name.replace(/_/g, ' '),
+          sublabel: `${kit.manifest.name} · ${tool.description}`,
+          icon: <Wrench size={14} />,
+          category: 'Kits' as Category,
+          action: () => {
+            // Navigate to chat and inject the tool as a prompt
+            setView('chat');
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('aegis-command', {
+                detail: `Use the ${tool.name} tool`,
+              }));
+            }, 100);
+          },
+        })),
+      ),
+  ];
+
   const allItems = [
     ...staticItems,
+    ...kitItems,
     ...cacheRef.current.docs,
     ...cacheRef.current.tasks,
     ...cacheRef.current.contacts,

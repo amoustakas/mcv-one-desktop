@@ -2,7 +2,8 @@
 // Kit Shared Context — Inter-Kit Communication
 // ---------------------------------------------------------------------------
 // Key-value store enabling kits to share data without direct coupling.
-// Uses localStorage for now; can be upgraded to Supabase for cross-device sync.
+// Write-through strategy: localStorage for instant local reads,
+// Supabase for cross-device sync via /api/kit-context.
 
 const STORAGE_PREFIX = 'mcv-kit-ctx:';
 
@@ -14,7 +15,20 @@ interface ContextEntry {
   createdAt: number;
 }
 
-/** Save a value to the shared context */
+// Background sync to Supabase (fire-and-forget)
+async function syncToServer(action: string, body: Record<string, unknown>): Promise<void> {
+  try {
+    await fetch('/api/kit-context', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, ...body }),
+    });
+  } catch {
+    // Silently fail — localStorage is the primary store
+  }
+}
+
+/** Save a value to the shared context (local + server sync) */
 export function setContext(
   key: string,
   value: unknown,
@@ -27,23 +41,24 @@ export function setContext(
     expiresAt: opts.ttlMs ? Date.now() + opts.ttlMs : undefined,
     createdAt: Date.now(),
   };
+  // Local write (instant)
   localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(entry));
+  // Server sync (background)
+  syncToServer('set', { key, value, kitId: opts.kitId, ventureId: opts.ventureId, ttlMs: opts.ttlMs });
 }
 
-/** Get a value from the shared context */
+/** Get a value from the shared context (local-first) */
 export function getContext(key: string): unknown | null {
   const raw = localStorage.getItem(STORAGE_PREFIX + key);
   if (!raw) return null;
 
   try {
     const entry: ContextEntry = JSON.parse(raw);
-
-    // Check expiration
     if (entry.expiresAt && Date.now() > entry.expiresAt) {
       localStorage.removeItem(STORAGE_PREFIX + key);
+      syncToServer('delete', { key });
       return null;
     }
-
     return entry.value;
   } catch {
     return null;
@@ -81,13 +96,10 @@ export function queryContext(prefix: string): Array<{ key: string; entry: Contex
 
     try {
       const entry: ContextEntry = JSON.parse(raw);
-
-      // Skip expired
       if (entry.expiresAt && Date.now() > entry.expiresAt) {
         localStorage.removeItem(storageKey);
         continue;
       }
-
       const key = storageKey.slice(STORAGE_PREFIX.length);
       results.push({ key, entry });
     } catch {
@@ -98,9 +110,10 @@ export function queryContext(prefix: string): Array<{ key: string; entry: Contex
   return results;
 }
 
-/** Delete a context entry */
+/** Delete a context entry (local + server) */
 export function deleteContext(key: string): void {
   localStorage.removeItem(STORAGE_PREFIX + key);
+  syncToServer('delete', { key });
 }
 
 /** Delete all context entries for a specific kit */
@@ -126,5 +139,31 @@ export function clearKitContext(kitId: string): void {
 
   for (const key of toRemove) {
     localStorage.removeItem(key);
+  }
+  syncToServer('clear-kit', { kitId });
+}
+
+/** Pull context from server to local (call on app boot for cross-device sync) */
+export async function syncFromServer(ventureId?: string): Promise<void> {
+  try {
+    const res = await fetch('/api/kit-context', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'query', prefix: '', ventureId }),
+    });
+    if (!res.ok) return;
+    const { entries } = await res.json();
+    for (const entry of entries ?? []) {
+      const local: ContextEntry = {
+        value: entry.value,
+        kitId: entry.kit_id,
+        ventureId: entry.venture_id,
+        expiresAt: entry.expires_at ? new Date(entry.expires_at).getTime() : undefined,
+        createdAt: new Date(entry.created_at).getTime(),
+      };
+      localStorage.setItem(STORAGE_PREFIX + entry.key, JSON.stringify(local));
+    }
+  } catch {
+    // Offline — use whatever's in localStorage
   }
 }

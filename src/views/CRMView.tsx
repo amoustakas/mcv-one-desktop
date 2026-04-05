@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  Users, Plus, RefreshCw, Trash2, Mail, Building, DollarSign, TrendingUp,
+  Users, Plus, Trash2, Mail, Building, DollarSign, TrendingUp,
   ArrowRight, Phone, Globe, X, Edit3, Save, MessageSquare,
   Calendar, Tag, Activity, FileText, ChevronRight, Clock, Search, Filter,
   PhoneCall, Video, StickyNote, Send, Link,
@@ -16,6 +16,8 @@ import {
   usePipelineStats,
 } from '../hooks/use-crm';
 import type { Contact } from '../lib/schemas/crm';
+import { PageHeader, Button, GlassCard, Badge, StatCard, Tabs, EmptyState, GridLayout } from '../components/ui';
+import { timeAgo, formatMoney, formatDate } from '../lib/utils';
 
 // ── Constants ──
 const TYPE_COLORS: Record<string, string> = { lead: '#F59E0B', prospect: '#00F0FF', client: '#10B981', partner: '#8B5CF6', investor: '#3B82F6', vendor: '#6B7280' };
@@ -24,10 +26,13 @@ const ACTIVITY_ICONS: Record<string, typeof Phone> = { call: PhoneCall, email: S
 const ACTIVITY_COLORS: Record<string, string> = { call: '#10B981', email: '#3B82F6', meeting: '#8B5CF6', note: '#F59E0B', task: '#00F0FF' };
 const ACCOUNT_TYPE_COLORS: Record<string, string> = { prospect: '#F59E0B', customer: '#10B981', partner: '#8B5CF6', vendor: '#3B82F6', churned: '#EF4444' };
 
-// ── Helpers ──
-function timeAgo(d: string) { if (!d) return '—'; const mins = Math.floor((Date.now() - new Date(d).getTime()) / 60000); if (mins < 1) return 'now'; if (mins < 60) return `${mins}m`; const h = Math.floor(mins / 60); if (h < 24) return `${h}h`; return `${Math.floor(h / 24)}d`; }
-function formatMoney(n: number) { if (n >= 1e6) return `$${(n/1e6).toFixed(1)}M`; if (n >= 1e3) return `$${(n/1e3).toFixed(0)}K`; return `$${n}`; }
-function formatDate(d: string) { if (!d) return '—'; return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+const CRM_TABS = [
+  { id: 'contacts', label: 'Contacts' },
+  { id: 'accounts', label: 'Accounts' },
+  { id: 'deals', label: 'Deals' },
+  { id: 'pipeline', label: 'Pipeline' },
+  { id: 'activities', label: 'Activity' },
+];
 
 // ═══════════════════════════════════════════
 // Contact Detail Panel (right side drawer)
@@ -95,11 +100,11 @@ function ContactDetail({ contact, onClose, onDelete }: {
         </div>
         <div className="cd-header-actions">
           {editing ? (
-            <button className="cd-btn save" onClick={handleSave}><Save size={12} /> Save</button>
+            <Button variant="primary" size="sm" icon={<Save size={12} />} onClick={handleSave}>Save</Button>
           ) : (
-            <button className="cd-btn" onClick={() => setEditing(true)}><Edit3 size={12} /> Edit</button>
+            <Button variant="ghost" size="sm" icon={<Edit3 size={12} />} onClick={() => setEditing(true)}>Edit</Button>
           )}
-          <button className="cd-btn" onClick={onClose}><X size={14} /></button>
+          <Button variant="ghost" size="sm" onClick={onClose}><X size={14} /></Button>
         </div>
       </div>
 
@@ -134,14 +139,14 @@ function ContactDetail({ contact, onClose, onDelete }: {
           </div>
 
           <div className="cd-meta-row">
-            <span className="cd-type-badge" style={{ color: TYPE_COLORS[contact.type], borderColor: `${TYPE_COLORS[contact.type]}40` }}>
+            <Badge color={TYPE_COLORS[contact.type]} variant="outline">
               {editing ? (
                 <select className="cd-sel" value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}>
                   {Object.keys(TYPE_COLORS).map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               ) : contact.type}
-            </span>
-            {ventureObj && <span className="cd-venture-badge" style={{ color: ventureObj.color, borderColor: `${ventureObj.color}40` }}>{ventureObj.name}</span>}
+            </Badge>
+            {ventureObj && <Badge color={ventureObj.color} variant="outline">{ventureObj.name}</Badge>}
             <span className="cd-time-badge"><Clock size={10} /> Added {timeAgo(contact.created_at)}</span>
             {contact.last_contacted && <span className="cd-time-badge"><MessageSquare size={10} /> Last contact {timeAgo(contact.last_contacted)}</span>}
           </div>
@@ -198,7 +203,7 @@ function ContactDetail({ contact, onClose, onDelete }: {
               <option value="task">Task</option>
             </select>
             <input className="cd-input flex" value={actForm.title} onChange={e => setActForm({ ...actForm, title: e.target.value })} onKeyDown={e => e.key === 'Enter' && handleLogActivity()} placeholder={`Log a ${actForm.type}...`} />
-            <button className="cd-btn save" onClick={handleLogActivity}><Plus size={12} /></button>
+            <Button variant="primary" size="sm" icon={<Plus size={12} />} onClick={handleLogActivity}>Log</Button>
           </div>
         </div>
 
@@ -228,9 +233,7 @@ function ContactDetail({ contact, onClose, onDelete }: {
 
         {/* Danger Zone */}
         <div className="cd-section cd-danger">
-          <button className="cd-delete-btn" onClick={() => { onDelete(contact.id); onClose(); }}>
-            <Trash2 size={12} /> Delete Contact
-          </button>
+          <Button variant="danger" size="sm" icon={<Trash2 size={12} />} onClick={() => { onDelete(contact.id); onClose(); }}>Delete Contact</Button>
         </div>
       </div>
     </div>
@@ -321,52 +324,54 @@ export default function CRMView() {
 
   return (
     <div className="crm">
-      <div className="crm-header">
-        <Users size={20} />
-        <h1 className="crm-title">CRM</h1>
-        <div className="crm-tabs">
-          <button className={`crm-tab ${tab === 'contacts' ? 'active' : ''}`} onClick={() => { setTab('contacts'); setShowAdd(false); }}>Contacts ({contacts.length})</button>
-          <button className={`crm-tab ${tab === 'accounts' ? 'active' : ''}`} onClick={() => { setTab('accounts'); setShowAdd(false); }}>Accounts ({accounts.length})</button>
-          <button className={`crm-tab ${tab === 'deals' ? 'active' : ''}`} onClick={() => { setTab('deals'); setShowAdd(false); }}>Deals ({deals.length})</button>
-          <button className={`crm-tab ${tab === 'pipeline' ? 'active' : ''}`} onClick={() => { setTab('pipeline'); setShowAdd(false); }}>Pipeline</button>
-          <button className={`crm-tab ${tab === 'activities' ? 'active' : ''}`} onClick={() => { setTab('activities'); setShowAdd(false); }}>Activity ({activities.length})</button>
-        </div>
-        <div className="crm-header-right">
-          {tab === 'contacts' && (
-            <div className="crm-search-bar">
-              <Search size={12} />
-              <input className="crm-search-input" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search contacts..." />
-            </div>
-          )}
-          {tab === 'contacts' && (
-            <div className="crm-filter">
-              <Filter size={11} />
-              <select className="crm-filter-sel" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
-                <option value="all">All Types</option>
-                {Object.keys(TYPE_COLORS).map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-          )}
-          {tab !== 'activities' && tab !== 'pipeline' && (
-            <button className="crm-add-btn" onClick={() => setShowAdd(!showAdd)}><Plus size={13} /> {tab === 'contacts' ? 'Contact' : tab === 'accounts' ? 'Account' : 'Deal'}</button>
-          )}
-          <button className="crm-refresh" onClick={() => refetch()}><RefreshCw size={14} className={loading ? 'spin' : ''} /></button>
-        </div>
-      </div>
+      <PageHeader icon={<Users size={20} />} title="CRM" loading={loading} onRefresh={() => refetch()}>
+        {tab === 'contacts' && (
+          <div className="crm-search-bar">
+            <Search size={12} />
+            <input className="crm-search-input" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search contacts..." />
+          </div>
+        )}
+        {tab === 'contacts' && (
+          <div className="crm-filter">
+            <Filter size={11} />
+            <select className="crm-filter-sel" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
+              <option value="all">All Types</option>
+              {Object.keys(TYPE_COLORS).map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+        )}
+        {tab !== 'activities' && tab !== 'pipeline' && (
+          <Button variant="secondary" size="sm" icon={<Plus size={13} />} onClick={() => setShowAdd(!showAdd)}>
+            {tab === 'contacts' ? 'Contact' : tab === 'accounts' ? 'Account' : 'Deal'}
+          </Button>
+        )}
+      </PageHeader>
+
+      <Tabs
+        tabs={CRM_TABS.map(t => ({
+          ...t,
+          count: t.id === 'contacts' ? contacts.length :
+                 t.id === 'accounts' ? accounts.length :
+                 t.id === 'deals' ? deals.length :
+                 t.id === 'activities' ? activities.length : undefined,
+        }))}
+        active={tab}
+        onChange={(id) => { setTab(id as typeof tab); setShowAdd(false); }}
+      />
 
       {/* KPI Strip */}
-      <div className="crm-kpis">
-        <div className="crm-kpi"><Users size={13} /><div><span className="crm-kpi-v">{contacts.length}</span><span className="crm-kpi-l">Contacts</span></div></div>
-        <div className="crm-kpi"><DollarSign size={13} /><div><span className="crm-kpi-v">{formatMoney(pipeline)}</span><span className="crm-kpi-l">Pipeline</span></div></div>
-        <div className="crm-kpi"><TrendingUp size={13} /><div><span className="crm-kpi-v">{formatMoney(wonValue)}</span><span className="crm-kpi-l">Won</span></div></div>
-        <div className="crm-kpi"><ArrowRight size={13} /><div><span className="crm-kpi-v">{activeDeals}</span><span className="crm-kpi-l">Active Deals</span></div></div>
-        <div className="crm-kpi"><Building size={13} /><div><span className="crm-kpi-v">{accounts.length}</span><span className="crm-kpi-l">Accounts</span></div></div>
-        <div className="crm-kpi"><Activity size={13} /><div><span className="crm-kpi-v">{activities.length}</span><span className="crm-kpi-l">Activities</span></div></div>
-      </div>
+      <GridLayout cols={6} gap="sm" className="crm-kpis-grid">
+        <StatCard icon={<Users size={13} />} label="Contacts" value={contacts.length} />
+        <StatCard icon={<DollarSign size={13} />} label="Pipeline" value={formatMoney(pipeline)} />
+        <StatCard icon={<TrendingUp size={13} />} label="Won" value={formatMoney(wonValue)} />
+        <StatCard icon={<ArrowRight size={13} />} label="Active Deals" value={activeDeals} />
+        <StatCard icon={<Building size={13} />} label="Accounts" value={accounts.length} />
+        <StatCard icon={<Activity size={13} />} label="Activities" value={activities.length} />
+      </GridLayout>
 
       {/* Add Forms */}
       {showAdd && tab === 'contacts' && (
-        <div className="crm-form glass">
+        <GlassCard className="crm-form">
           <input placeholder="Name *" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="crm-input" onKeyDown={e => e.key === 'Enter' && handleCreateContact()} autoFocus />
           <input placeholder="Email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} className="crm-input" />
           <input placeholder="Phone" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} className="crm-input" />
@@ -379,11 +384,11 @@ export default function CRMView() {
             <option value="">All ventures</option>
             {ventures.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
           </select>
-          <button className="crm-save" onClick={handleCreateContact}>Add Contact</button>
-        </div>
+          <Button variant="primary" size="sm" onClick={handleCreateContact}>Add Contact</Button>
+        </GlassCard>
       )}
       {showAdd && tab === 'deals' && (
-        <div className="crm-form glass">
+        <GlassCard className="crm-form">
           <input placeholder="Deal title *" value={dealForm.title} onChange={e => setDealForm({...dealForm, title: e.target.value})} className="crm-input" onKeyDown={e => e.key === 'Enter' && handleCreateDeal()} autoFocus />
           <input placeholder="Value" type="number" value={dealForm.value || ''} onChange={e => setDealForm({...dealForm, value: parseFloat(e.target.value) || 0})} className="crm-input" style={{ maxWidth: 120 }} />
           <select value={dealForm.stage} onChange={e => setDealForm({...dealForm, stage: e.target.value})} className="crm-sel">
@@ -395,12 +400,12 @@ export default function CRMView() {
           </select>
           <input placeholder="Probability %" type="number" value={dealForm.probability} onChange={e => setDealForm({...dealForm, probability: parseInt(e.target.value) || 0})} className="crm-input" style={{ maxWidth: 100 }} />
           <input type="date" value={dealForm.expected_close} onChange={e => setDealForm({...dealForm, expected_close: e.target.value})} className="crm-input" style={{ maxWidth: 150 }} />
-          <button className="crm-save" onClick={handleCreateDeal}>Add Deal</button>
-        </div>
+          <Button variant="primary" size="sm" onClick={handleCreateDeal}>Add Deal</Button>
+        </GlassCard>
       )}
 
       {showAdd && tab === 'accounts' && (
-        <div className="crm-form glass">
+        <GlassCard className="crm-form">
           <input placeholder="Company name *" value={accountForm.name} onChange={e => setAccountForm({...accountForm, name: e.target.value})} className="crm-input" onKeyDown={e => e.key === 'Enter' && handleCreateAccount()} autoFocus />
           <input placeholder="Domain" value={accountForm.domain} onChange={e => setAccountForm({...accountForm, domain: e.target.value})} className="crm-input" />
           <input placeholder="Industry" value={accountForm.industry} onChange={e => setAccountForm({...accountForm, industry: e.target.value})} className="crm-input" />
@@ -412,8 +417,8 @@ export default function CRMView() {
           <select value={accountForm.type} onChange={e => setAccountForm({...accountForm, type: e.target.value})} className="crm-sel">
             {Object.keys(ACCOUNT_TYPE_COLORS).map(t => <option key={t} value={t}>{t}</option>)}
           </select>
-          <button className="crm-save" onClick={handleCreateAccount}>Add Account</button>
-        </div>
+          <Button variant="primary" size="sm" onClick={handleCreateAccount}>Add Account</Button>
+        </GlassCard>
       )}
 
       {/* Content Area + Optional Detail Panel */}
@@ -436,7 +441,7 @@ export default function CRMView() {
                     {c.name}{c.role && <span className="crm-role">{c.role}</span>}
                   </span>
                   <span className="crm-company"><Building size={10} /> {c.company || '—'}</span>
-                  <span className="crm-type-badge" style={{ color: TYPE_COLORS[c.type], borderColor: `${TYPE_COLORS[c.type]}40` }}>{c.type}</span>
+                  <Badge color={TYPE_COLORS[c.type]} variant="outline">{c.type}</Badge>
                   <span className="crm-email">{c.email ? <><Mail size={10} /> {c.email}</> : '—'}</span>
                   <span className="crm-tags-cell">
                     {(c.tags || []).slice(0, 2).map(t => <span key={t} className="crm-tag-mini">{t}</span>)}
@@ -446,7 +451,7 @@ export default function CRMView() {
                   <button className="crm-row-action" onClick={e => { e.stopPropagation(); setSelectedContact(c); }}><ChevronRight size={13} /></button>
                 </div>
               ))}
-              {filteredContacts.length === 0 && !loading && <div className="crm-empty">No contacts match your search.</div>}
+              {filteredContacts.length === 0 && !loading && <EmptyState icon={<Users size={20} />} title="No contacts match your search." />}
             </div>
           )}
 
@@ -465,7 +470,7 @@ export default function CRMView() {
                     </div>
                     <div className="crm-deal-col-cards">
                       {stageDeals.map(d => (
-                        <div key={d.id} className="crm-deal-card glass">
+                        <GlassCard key={d.id} className="crm-deal-card">
                           <div className="crm-deal-card-top">
                             <span className="crm-deal-title">{d.title}</span>
                             <button className="crm-deal-del" onClick={() => handleDeleteDeal(d.id)}><Trash2 size={10} /></button>
@@ -484,7 +489,7 @@ export default function CRMView() {
                               <button className="crm-deal-move" onClick={() => handleUpdateDealStage(d.id, stages[stages.indexOf(stage) + 1])}>{stages[stages.indexOf(stage) + 1].replace(/_/g, ' ')} →</button>
                             )}
                           </div>
-                        </div>
+                        </GlassCard>
                       ))}
                     </div>
                   </div>
@@ -496,7 +501,7 @@ export default function CRMView() {
           {/* ── Activities Tab ── */}
           {tab === 'activities' && (
             <div className="crm-activities">
-              {activities.length === 0 && !loading && <div className="crm-empty">No activities yet. Open a contact to log your first interaction.</div>}
+              {activities.length === 0 && !loading && <EmptyState icon={<Activity size={20} />} title="No activities yet" description="Open a contact to log your first interaction." />}
               {activities.map(a => {
                 const Icon = ACTIVITY_ICONS[a.type] || StickyNote;
                 const color = ACTIVITY_COLORS[a.type] || '#6B7280';
@@ -534,14 +539,14 @@ export default function CRMView() {
                     {ac.name}{ac.domain && <span className="crm-role">{ac.domain}</span>}
                   </span>
                   <span className="crm-company">{ac.industry || '—'}</span>
-                  <span className="crm-type-badge" style={{ color: ACCOUNT_TYPE_COLORS[ac.type], borderColor: `${ACCOUNT_TYPE_COLORS[ac.type]}40` }}>{ac.type}</span>
+                  <Badge color={ACCOUNT_TYPE_COLORS[ac.type]} variant="outline">{ac.type}</Badge>
                   <span className="crm-time">{ac.size || '—'}</span>
                   <span className="crm-health-bar"><div className="crm-health-fill" style={{ width: `${ac.health_score || 50}%`, background: (ac.health_score || 50) > 70 ? '#10B981' : (ac.health_score || 50) > 40 ? '#F59E0B' : '#EF4444' }} /><span>{ac.health_score || 50}</span></span>
                   <span className="crm-time">{timeAgo(ac.created_at)}</span>
                   <button className="crm-row-action" onClick={() => handleDeleteAccount(ac.id)}><Trash2 size={11} /></button>
                 </div>
               ))}
-              {accounts.length === 0 && !loading && <div className="crm-empty">No accounts yet. Add your first company/organization above.</div>}
+              {accounts.length === 0 && !loading && <EmptyState icon={<Building size={20} />} title="No accounts yet" description="Add your first company/organization above." />}
             </div>
           )}
 
@@ -606,32 +611,17 @@ export default function CRMView() {
 
       <style>{`
         .crm { height:100%; display:flex; flex-direction:column; overflow:hidden; }
-        .crm-header { display:flex; align-items:center; gap:8px; padding:16px 20px 0; flex-shrink:0; flex-wrap:wrap; }
-        .crm-title { font-family:var(--font-display); font-size:1.25rem; font-weight:700; }
-        .crm-tabs { display:flex; gap:2px; background:var(--bg-deep); border-radius:var(--radius-sm); padding:2px; margin-left:12px; }
-        .crm-tab { padding:5px 14px; border-radius:var(--radius-sm); font-size:11px; font-weight:500; color:var(--text-muted); transition:all 0.15s; }
-        .crm-tab.active { background:var(--bg-card); color:var(--cyan); }
-        .crm-header-right { margin-left:auto; display:flex; gap:6px; align-items:center; }
-        .crm-add-btn { display:flex; align-items:center; gap:4px; padding:5px 12px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--cyan); font-size:11px; }
-        .crm-refresh { width:30px; height:30px; display:flex; align-items:center; justify-content:center; border-radius:var(--radius-sm); color:var(--text-muted); }
+        .crm-kpis-grid { padding:10px 20px; }
 
         .crm-search-bar { display:flex; align-items:center; gap:6px; padding:4px 10px; background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-muted); }
         .crm-search-input { background:none; border:none; color:var(--text-primary); font-size:11px; width:140px; outline:none; }
         .crm-filter { display:flex; align-items:center; gap:4px; color:var(--text-muted); }
         .crm-filter-sel { background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-secondary); font-size:10px; padding:4px 6px; }
 
-        .crm-kpis { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; padding:10px 20px; }
-        .crm-kpi { display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); color:var(--text-muted); }
-        .crm-kpi>div { display:flex; flex-direction:column; }
-        .crm-kpi-v { font-family:var(--font-mono); font-size:1rem; font-weight:700; color:var(--text-primary); }
-        .crm-kpi-l { font-size:9px; text-transform:uppercase; letter-spacing:0.5px; }
-
         .crm-form { display:flex; gap:6px; padding:10px; margin:0 20px; border-radius:var(--radius-md); align-items:center; flex-wrap:wrap; }
         .crm-input { padding:6px 10px; background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-primary); font-size:12px; flex:1; min-width:100px; }
         .crm-input:focus { border-color:var(--border-active); outline:none; }
         .crm-sel { padding:6px 8px; background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-secondary); font-size:11px; }
-        .crm-save { padding:6px 16px; background:var(--cyan); color:var(--bg-deep); font-size:11px; font-weight:600; border-radius:var(--radius-sm); white-space:nowrap; }
-
         .crm-layout { flex:1; display:flex; overflow:hidden; padding:8px 20px 0; gap:0; }
         .crm-body { flex:1; overflow:hidden; min-width:0; }
 
@@ -645,7 +635,6 @@ export default function CRMView() {
         .crm-avatar-sm { width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:var(--bg-deep); flex-shrink:0; }
         .crm-role { font-size:10px; color:var(--text-muted); margin-left:4px; }
         .crm-company { font-size:11px; color:var(--text-secondary); display:flex; align-items:center; gap:4px; }
-        .crm-type-badge { font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:0.3px; padding:1px 6px; border:1px solid; border-radius:3px; width:fit-content; }
         .crm-email { font-size:11px; color:var(--text-muted); display:flex; align-items:center; gap:4px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
         .crm-tags-cell { display:flex; gap:3px; align-items:center; }
         .crm-tag-mini { font-size:9px; padding:1px 5px; background:var(--bg-elevated); border-radius:3px; color:var(--text-muted); }
@@ -653,8 +642,6 @@ export default function CRMView() {
         .crm-time { font-size:10px; color:var(--text-muted); font-family:var(--font-mono); }
         .crm-row-action { color:var(--text-muted); opacity:0; transition:opacity 0.1s; }
         .crm-table-row:hover .crm-row-action { opacity:1; }
-        .crm-empty { padding:32px; text-align:center; font-size:12px; color:var(--text-muted); }
-
         /* Deal Board */
         .crm-deals-board { display:grid; grid-template-columns:repeat(6,1fr); gap:1px; background:var(--border); height:100%; overflow:hidden; }
         .crm-deal-col { background:var(--bg-deep); display:flex; flex-direction:column; }
@@ -700,10 +687,6 @@ export default function CRMView() {
         .cd-name-edit { background:var(--bg-input); border:1px solid var(--border-active); border-radius:var(--radius-sm); color:var(--text-primary); font-size:13px; font-weight:600; padding:2px 6px; width:160px; }
         .cd-company { display:block; font-size:10px; color:var(--text-muted); }
         .cd-header-actions { display:flex; gap:4px; }
-        .cd-btn { display:flex; align-items:center; gap:4px; padding:4px 8px; border-radius:var(--radius-sm); color:var(--text-muted); font-size:11px; transition:all 0.15s; }
-        .cd-btn:hover { background:var(--bg-card); color:var(--text-primary); }
-        .cd-btn.save { background:var(--cyan); color:var(--bg-deep); font-weight:600; }
-
         .cd-body { flex:1; overflow-y:auto; padding:12px 14px; display:flex; flex-direction:column; gap:16px; }
         .cd-section { display:flex; flex-direction:column; gap:6px; }
         .cd-section-label { font-size:10px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:5px; }
@@ -719,8 +702,6 @@ export default function CRMView() {
         .cd-sel { padding:3px 6px; background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-secondary); font-size:11px; }
 
         .cd-meta-row { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
-        .cd-type-badge { font-size:9px; font-weight:600; text-transform:uppercase; padding:2px 8px; border:1px solid; border-radius:var(--radius-full); }
-        .cd-venture-badge { font-size:9px; font-weight:600; padding:2px 8px; border:1px solid; border-radius:var(--radius-full); }
         .cd-time-badge { font-size:9px; color:var(--text-muted); display:flex; align-items:center; gap:3px; }
 
         .cd-tags { display:flex; flex-wrap:wrap; gap:4px; }
@@ -753,8 +734,6 @@ export default function CRMView() {
         .cd-tl-time { font-size:9px; color:var(--text-muted); font-family:var(--font-mono); flex-shrink:0; }
 
         .cd-danger { border-top:1px solid var(--border); padding-top:12px; margin-top:8px; }
-        .cd-delete-btn { display:flex; align-items:center; gap:6px; padding:6px 12px; color:var(--error); font-size:11px; border-radius:var(--radius-sm); transition:all 0.15s; }
-        .cd-delete-btn:hover { background:rgba(239,68,68,0.1); }
 
         /* Account Health Bar */
         .crm-health-bar { display:flex; align-items:center; gap:6px; }
@@ -780,9 +759,6 @@ export default function CRMView() {
         .crm-pipe-sum-val { display:block; font-family:var(--font-mono); font-size:1.1rem; font-weight:700; color:var(--text-primary); }
         .crm-pipe-sum-label { display:block; font-size:9px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-top:4px; }
 
-        .glass { background:rgba(11,17,33,0.8); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,0.06); }
-        @keyframes spin { to{transform:rotate(360deg)} }
-        .spin { animation:spin 1s linear infinite; }
       `}</style>
     </div>
   );

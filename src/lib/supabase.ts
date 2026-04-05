@@ -57,11 +57,14 @@ export async function saveMessage(
   conversationId: string,
   role: 'user' | 'assistant',
   content: string,
+  metadata?: Record<string, unknown>,
 ): Promise<DbMessage | null> {
   if (!supabase) return null;
+  const row: Record<string, unknown> = { conversation_id: conversationId, role, content };
+  if (metadata) row.metadata = metadata;
   const { data } = await supabase
     .from('messages')
-    .insert({ conversation_id: conversationId, role, content })
+    .insert(row)
     .select()
     .single();
   // bump conversation updated_at

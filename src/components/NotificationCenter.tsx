@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bell, Check, Trash2, Zap, GitBranch, Cloud, Users, FileText, MessageSquare } from 'lucide-react';
+import { Bell, Check, Trash2, Zap, GitBranch, Cloud, Users, FileText, MessageSquare, Wrench } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useNotificationStore } from '../stores/notifications';
 import type { AppNotification } from '../stores/notifications';
@@ -10,7 +10,7 @@ interface SupabaseNotification {
 }
 
 const SOURCE_ICONS: Record<string, typeof Bell> = {
-  system: Zap, github: GitBranch, vercel: Cloud, crm: Users, docs: FileText, chat: MessageSquare,
+  system: Zap, github: GitBranch, vercel: Cloud, crm: Users, docs: FileText, chat: MessageSquare, kit: Wrench,
 };
 const TYPE_COLORS: Record<string, string> = {
   info: '#00F0FF', success: '#10B981', warning: '#F59E0B', error: '#EF4444',

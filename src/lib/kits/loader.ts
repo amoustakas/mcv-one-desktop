@@ -10,15 +10,31 @@ import type {
 import { manifest as githubManifest, handlers as githubHandlers } from './builtin/github-kit';
 import { manifest as tasksManifest, handlers as tasksHandlers } from './builtin/tasks-kit';
 import { manifest as docsManifest, handlers as docsHandlers } from './builtin/docs-kit';
+import { manifest as crmManifest, handlers as crmHandlers } from './builtin/crm-kit';
+import { manifest as vercelManifest, handlers as vercelHandlers } from './builtin/vercel-kit';
+import { manifest as geminiManifest, handlers as geminiHandlers } from './builtin/gemini-kit';
+import { manifest as notionManifest, handlers as notionHandlers } from './builtin/notion-kit';
+import { manifest as driveManifest, handlers as driveHandlers } from './builtin/drive-kit';
+import { manifest as localManifest, handlers as localHandlers } from './builtin/local-server-kit';
 
 // ---------------------------------------------------------------------------
 // Local Kit Registry
 // ---------------------------------------------------------------------------
 
+function kit(manifest: KitInstance['manifest'], handlers: KitInstance['handlers']): KitInstance {
+  return { manifest, handlers, status: 'loaded', source: 'builtin', loadedAt: Date.now() };
+}
+
 const builtinKits: KitInstance[] = [
-  { manifest: githubManifest, handlers: githubHandlers, status: 'loaded', source: 'builtin', loadedAt: Date.now() },
-  { manifest: tasksManifest, handlers: tasksHandlers, status: 'loaded', source: 'builtin', loadedAt: Date.now() },
-  { manifest: docsManifest, handlers: docsHandlers, status: 'loaded', source: 'builtin', loadedAt: Date.now() },
+  kit(githubManifest, githubHandlers),
+  kit(tasksManifest, tasksHandlers),
+  kit(docsManifest, docsHandlers),
+  kit(crmManifest, crmHandlers),
+  kit(vercelManifest, vercelHandlers),
+  kit(geminiManifest, geminiHandlers),
+  kit(notionManifest, notionHandlers),
+  kit(driveManifest, driveHandlers),
+  kit(localManifest, localHandlers),
 ];
 
 /** Returns all built-in kit instances */
