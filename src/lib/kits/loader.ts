@@ -17,6 +17,7 @@ import { manifest as notionManifest, handlers as notionHandlers } from './builti
 import { manifest as driveManifest, handlers as driveHandlers } from './builtin/drive-kit';
 import { manifest as localManifest, handlers as localHandlers } from './builtin/local-server-kit';
 import { manifest as n8nManifest, handlers as n8nHandlers } from './builtin/n8n-kit';
+import { manifest as cloudflareManifest, handlers as cloudflareHandlers } from './builtin/cloudflare-kit';
 
 // ---------------------------------------------------------------------------
 // Local Kit Registry
@@ -37,6 +38,7 @@ const builtinKits: KitInstance[] = [
   kit(driveManifest, driveHandlers),
   kit(localManifest, localHandlers),
   kit(n8nManifest, n8nHandlers),
+  kit(cloudflareManifest, cloudflareHandlers),
 ];
 
 /** Returns all built-in kit instances */

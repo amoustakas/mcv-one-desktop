@@ -45,6 +45,13 @@ const serviceConfigs: Record<string, {
     }),
     envKey: 'N8N_API_KEY',
   },
+  cloudflare: {
+    baseUrl: 'https://api.cloudflare.com/client/v4',
+    authHeader: (token) => ({
+      Authorization: `Bearer ${token}`,
+    }),
+    envKey: 'CLOUDFLARE_API_TOKEN',
+  },
 };
 
 // Allowed API paths per service (prevent arbitrary URL access)
@@ -69,6 +76,10 @@ const allowedPaths: Record<string, RegExp[]> = {
     /^\/api\/v1\/workflows/,
     /^\/api\/v1\/executions/,
     /^\/webhook\//,
+  ],
+  cloudflare: [
+    /^\/accounts\//,
+    /^\/zones/,
   ],
 };
 

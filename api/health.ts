@@ -12,11 +12,17 @@ export default function handler(_req: VercelRequest, res: VercelResponse) {
     SUPABASE_URL: !!(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL),
     CLERK_PUBLISHABLE_KEY: !!(process.env.VITE_CLERK_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY),
     CLERK_SECRET_KEY: !!process.env.CLERK_SECRET_KEY,
+    NOTION_API_KEY: !!(process.env.NOTION_API_KEY || process.env.NOTION_TOKEN),
+    GOOGLE_DRIVE_KEY: !!(process.env.GOOGLE_DRIVE_KEY || process.env.GOOGLE_API_KEY),
+    CLOUDFLARE_API_TOKEN: !!process.env.CLOUDFLARE_API_TOKEN,
+    CLOUDFLARE_ACCOUNT_ID: !!process.env.CLOUDFLARE_ACCOUNT_ID,
+    N8N_API_KEY: !!process.env.N8N_API_KEY,
+    N8N_BASE_URL: !!process.env.N8N_BASE_URL,
   };
 
   // Also check env var names that exist (just names, not values)
   const allEnvNames = Object.keys(process.env).filter(
-    (k) => k.includes('KEY') || k.includes('TOKEN') || k.includes('SECRET') || k.includes('URL') || k.includes('SUPABASE') || k.includes('CLERK') || k.includes('GOOGLE') || k.includes('ANTHROPIC') || k.includes('DEEPGRAM') || k.includes('ELEVEN')
+    (k) => k.includes('KEY') || k.includes('TOKEN') || k.includes('SECRET') || k.includes('URL') || k.includes('SUPABASE') || k.includes('CLERK') || k.includes('GOOGLE') || k.includes('ANTHROPIC') || k.includes('DEEPGRAM') || k.includes('ELEVEN') || k.includes('CLOUDFLARE') || k.includes('N8N') || k.includes('NOTION')
   ).sort();
 
   return res.json({

@@ -102,6 +102,8 @@ VITE_ELEVENLABS_API_KEY=         # Voice TTS
 VITE_APP_ENV=development
 N8N_BASE_URL=                    # n8n instance URL (e.g. https://n8n.mcv.one)
 N8N_API_KEY=                     # n8n API key for workflow automation
+CLOUDFLARE_API_TOKEN=            # Cloudflare API token (Workers, KV, R2, D1)
+CLOUDFLARE_ACCOUNT_ID=           # Cloudflare account ID
 ```
 
 ## BUILD RULES

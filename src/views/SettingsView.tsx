@@ -57,6 +57,8 @@ const SERVICES: ServiceInfo[] = [
   { name: 'Notion', key: 'NOTION_TOKEN', icon: Globe, description: 'Workspace sync, databases, and pages' },
   { name: 'Google Drive', key: 'GOOGLE_SERVICE_KEY', icon: Server, description: 'File access, search, and import' },
   { name: 'Vercel', key: 'VERCEL_TOKEN', icon: Radio, description: 'Deployment status and project management' },
+  { name: 'Cloudflare', key: 'CLOUDFLARE_API_TOKEN', icon: Globe, description: 'Workers, KV, R2, D1, and DNS management' },
+  { name: 'n8n', key: 'N8N_API_KEY', icon: Zap, description: 'Workflow automation — 400+ integrations' },
 ];
 
 const SHORTCUTS = [
