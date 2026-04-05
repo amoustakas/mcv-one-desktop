@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import {
   GitBranch, Activity, Cloud, Workflow, Database,
   Pause, Play, ExternalLink,
@@ -12,6 +13,7 @@ import { PageHeader, PageShell, GlassCard, Badge, Skeleton, Tabs } from '../comp
 import ActivityFeed from '../components/ActivityFeed';
 import type { ActivityItem } from '../components/ActivityFeed';
 import { cn, timeAgo, formatDuration } from '../lib/utils';
+import { staggerContainer, fadeInUp } from '../lib/animations';
 import { ventures } from '../lib/ventures';
 import type { PipelineEntry, PipelineSource } from '../lib/types/pipeline';
 import type { DockerContainer, DockerStats } from '../lib/docker';
@@ -48,7 +50,7 @@ function PipelineCard({ entry }: { entry: PipelineEntry }) {
   const url = (entry.metadata?.url as string) || null;
 
   return (
-    <div className="mcv-pipeline-card">
+    <motion.div className="mcv-pipeline-card" variants={fadeInUp}>
       <div className={cn('mcv-pipeline-dot', STATUS_DOT[entry.status] || 'mcv-pipeline-dot-idle')} />
       <div className="mcv-pipeline-card-body">
         <div className="mcv-pipeline-card-name" title={entry.name}>{entry.name}</div>
@@ -68,7 +70,7 @@ function PipelineCard({ entry }: { entry: PipelineEntry }) {
           </a>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -79,6 +81,10 @@ function SourceColumn({ source, entries }: { source: PipelineSource; entries: Pi
   return (
     <div className="mcv-pipeline-col">
       <div className="mcv-pipeline-col-header">
+        <div
+          className="mcv-pipeline-col-gradient"
+          style={{ background: `linear-gradient(90deg, ${meta.color}, transparent)` }}
+        />
         <span style={{ color: meta.color, display: 'flex', alignItems: 'center', gap: 6 }}>
           {meta.icon} {meta.label}
         </span>
@@ -91,7 +97,9 @@ function SourceColumn({ source, entries }: { source: PipelineSource; entries: Pi
           No activity
         </div>
       ) : (
-        entries.map((entry) => <PipelineCard key={entry.id} entry={entry} />)
+        <motion.div variants={staggerContainer} initial="hidden" animate="show" className="mcv-pipeline-col-list">
+          {entries.map((entry) => <PipelineCard key={entry.id} entry={entry} />)}
+        </motion.div>
       )}
     </div>
   );

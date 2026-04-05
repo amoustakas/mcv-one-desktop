@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { staggerContainer, fadeInUp } from '../lib/animations';
 import {
   Users, Plus, Trash2, Mail, Building, DollarSign, TrendingUp,
   ArrowRight, Phone, Globe, X, Edit3, Save, MessageSquare,
@@ -83,7 +85,13 @@ function ContactDetail({ contact, onClose, onDelete }: {
   const ventureObj = ventures.find(v => v.id === contact.venture_id);
 
   return (
-    <div className="cd-panel">
+    <motion.div
+      className="cd-panel"
+      initial={{ x: '100%', opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: '100%', opacity: 0 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+    >
       <div className="cd-header">
         <div className="cd-header-left">
           <span className="cd-avatar" style={{ background: TYPE_COLORS[contact.type] || '#6B7280' }}>
@@ -236,7 +244,7 @@ function ContactDetail({ contact, onClose, onDelete }: {
           <Button variant="danger" size="sm" icon={<Trash2 size={12} />} onClick={() => { onDelete(contact.id); onClose(); }}>Delete Contact</Button>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -360,14 +368,18 @@ export default function CRMView() {
       />
 
       {/* KPI Strip */}
-      <GridLayout cols={6} gap="sm" className="crm-kpis-grid">
-        <StatCard icon={<Users size={13} />} label="Contacts" value={contacts.length} />
-        <StatCard icon={<DollarSign size={13} />} label="Pipeline" value={formatMoney(pipeline)} />
-        <StatCard icon={<TrendingUp size={13} />} label="Won" value={formatMoney(wonValue)} />
-        <StatCard icon={<ArrowRight size={13} />} label="Active Deals" value={activeDeals} />
-        <StatCard icon={<Building size={13} />} label="Accounts" value={accounts.length} />
-        <StatCard icon={<Activity size={13} />} label="Activities" value={activities.length} />
-      </GridLayout>
+      <div className="crm-kpis-gradient-border">
+        <motion.div variants={staggerContainer} initial="hidden" animate="show">
+          <GridLayout cols={6} gap="sm" className="crm-kpis-grid">
+            <motion.div variants={fadeInUp}><StatCard icon={<Users size={13} />} label="Contacts" value={contacts.length} /></motion.div>
+            <motion.div variants={fadeInUp}><StatCard icon={<DollarSign size={13} />} label="Pipeline" value={formatMoney(pipeline)} /></motion.div>
+            <motion.div variants={fadeInUp}><StatCard icon={<TrendingUp size={13} />} label="Won" value={formatMoney(wonValue)} /></motion.div>
+            <motion.div variants={fadeInUp}><StatCard icon={<ArrowRight size={13} />} label="Active Deals" value={activeDeals} /></motion.div>
+            <motion.div variants={fadeInUp}><StatCard icon={<Building size={13} />} label="Accounts" value={accounts.length} /></motion.div>
+            <motion.div variants={fadeInUp}><StatCard icon={<Activity size={13} />} label="Activities" value={activities.length} /></motion.div>
+          </GridLayout>
+        </motion.div>
+      </div>
 
       {/* Add Forms */}
       {showAdd && tab === 'contacts' && (
@@ -430,27 +442,32 @@ export default function CRMView() {
               <div className="crm-table-header">
                 <span>Name</span><span>Company</span><span>Type</span><span>Email</span><span>Tags</span><span>Last Contact</span><span></span>
               </div>
-              {filteredContacts.map(c => (
-                <div
-                  key={c.id}
-                  className={`crm-table-row ${selectedContact?.id === c.id ? 'selected' : ''}`}
-                  onClick={() => setSelectedContact(c)}
-                >
-                  <span className="crm-name">
-                    <span className="crm-avatar-sm" style={{ background: TYPE_COLORS[c.type] || '#6B7280' }}>{c.name.charAt(0).toUpperCase()}</span>
-                    {c.name}{c.role && <span className="crm-role">{c.role}</span>}
-                  </span>
-                  <span className="crm-company"><Building size={10} /> {c.company || '—'}</span>
-                  <Badge color={TYPE_COLORS[c.type]} variant="outline">{c.type}</Badge>
-                  <span className="crm-email">{c.email ? <><Mail size={10} /> {c.email}</> : '—'}</span>
-                  <span className="crm-tags-cell">
-                    {(c.tags || []).slice(0, 2).map(t => <span key={t} className="crm-tag-mini">{t}</span>)}
-                    {(c.tags || []).length > 2 && <span className="crm-tag-more">+{c.tags.length - 2}</span>}
-                  </span>
-                  <span className="crm-time">{c.last_contacted ? timeAgo(c.last_contacted) : '—'}</span>
-                  <button className="crm-row-action" onClick={e => { e.stopPropagation(); setSelectedContact(c); }}><ChevronRight size={13} /></button>
-                </div>
-              ))}
+              <motion.div variants={staggerContainer} initial="hidden" animate="show">
+                {filteredContacts.map(c => (
+                  <motion.div
+                    key={c.id}
+                    variants={fadeInUp}
+                    className={`crm-table-row crm-row-hoverlift ${selectedContact?.id === c.id ? 'selected' : ''}`}
+                    onClick={() => setSelectedContact(c)}
+                    whileHover={{ y: -2, boxShadow: '0 4px 20px rgba(0,245,255,0.08)' }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    <span className="crm-name">
+                      <span className="crm-avatar-sm" style={{ background: TYPE_COLORS[c.type] || '#6B7280' }}>{c.name.charAt(0).toUpperCase()}</span>
+                      {c.name}{c.role && <span className="crm-role">{c.role}</span>}
+                    </span>
+                    <span className="crm-company"><Building size={10} /> {c.company || '—'}</span>
+                    <Badge color={TYPE_COLORS[c.type]} variant="outline">{c.type}</Badge>
+                    <span className="crm-email">{c.email ? <><Mail size={10} /> {c.email}</> : '—'}</span>
+                    <span className="crm-tags-cell">
+                      {(c.tags || []).slice(0, 2).map(t => <span key={t} className="crm-tag-mini">{t}</span>)}
+                      {(c.tags || []).length > 2 && <span className="crm-tag-more">+{c.tags.length - 2}</span>}
+                    </span>
+                    <span className="crm-time">{c.last_contacted ? timeAgo(c.last_contacted) : '—'}</span>
+                    <button className="crm-row-action" onClick={e => { e.stopPropagation(); setSelectedContact(c); }}><ChevronRight size={13} /></button>
+                  </motion.div>
+                ))}
+              </motion.div>
               {filteredContacts.length === 0 && !loading && <EmptyState icon={<Users size={20} />} title="No contacts match your search." />}
             </div>
           )}
@@ -468,30 +485,38 @@ export default function CRMView() {
                       <span>{stage.replace(/_/g, ' ')}</span>
                       <span className="crm-deal-col-count">{stageDeals.length} &middot; {formatMoney(stageVal)}</span>
                     </div>
-                    <div className="crm-deal-col-cards">
+                    <motion.div className="crm-deal-col-cards" variants={staggerContainer} initial="hidden" animate="show">
                       {stageDeals.map(d => (
-                        <GlassCard key={d.id} className="crm-deal-card">
-                          <div className="crm-deal-card-top">
-                            <span className="crm-deal-title">{d.title}</span>
-                            <button className="crm-deal-del" onClick={() => handleDeleteDeal(d.id)}><Trash2 size={10} /></button>
-                          </div>
-                          <span className="crm-deal-val">{formatMoney(d.value)}</span>
-                          {d.probability > 0 && <div className="crm-deal-prob"><div className="crm-deal-prob-bar" style={{ width: `${d.probability}%`, background: color }} /><span>{d.probability}%</span></div>}
-                          {d.contacts && <span className="crm-deal-contact"><Users size={9} /> {d.contacts.name}</span>}
-                          {d.expected_close && <span className="crm-deal-date"><Calendar size={9} /> {formatDate(d.expected_close)}</span>}
-                          {d.venture_id && <span className="crm-deal-venture">{d.venture_id}</span>}
-                          {/* Stage movers */}
-                          <div className="crm-deal-movers">
-                            {stages.indexOf(stage) > 0 && (
-                              <button className="crm-deal-move" onClick={() => handleUpdateDealStage(d.id, stages[stages.indexOf(stage) - 1])}>← {stages[stages.indexOf(stage) - 1].replace(/_/g, ' ')}</button>
-                            )}
-                            {stages.indexOf(stage) < stages.length - 1 && (
-                              <button className="crm-deal-move" onClick={() => handleUpdateDealStage(d.id, stages[stages.indexOf(stage) + 1])}>{stages[stages.indexOf(stage) + 1].replace(/_/g, ' ')} →</button>
-                            )}
-                          </div>
-                        </GlassCard>
+                        <motion.div
+                          key={d.id}
+                          variants={fadeInUp}
+                          whileHover={{ y: -2, boxShadow: '0 4px 20px rgba(0,245,255,0.08)' }}
+                          transition={{ duration: 0.15 }}
+                        >
+                          <GlassCard className="crm-deal-card">
+                            <div className="crm-deal-card-top">
+                              <span className="crm-deal-title">{d.title}</span>
+                              <button className="crm-deal-del" onClick={() => handleDeleteDeal(d.id)}><Trash2 size={10} /></button>
+                            </div>
+                            <span className="crm-deal-val">{formatMoney(d.value)}</span>
+                            <span className="crm-deal-stage-badge" style={{ background: `${color}20`, color, borderColor: `${color}40` }}>{stage.replace(/_/g, ' ')}</span>
+                            {d.probability > 0 && <div className="crm-deal-prob"><div className="crm-deal-prob-bar" style={{ width: `${d.probability}%`, background: color }} /><span>{d.probability}%</span></div>}
+                            {d.contacts && <span className="crm-deal-contact"><Users size={9} /> {d.contacts.name}</span>}
+                            {d.expected_close && <span className="crm-deal-date"><Calendar size={9} /> {formatDate(d.expected_close)}</span>}
+                            {d.venture_id && <span className="crm-deal-venture">{d.venture_id}</span>}
+                            {/* Stage movers */}
+                            <div className="crm-deal-movers">
+                              {stages.indexOf(stage) > 0 && (
+                                <button className="crm-deal-move" onClick={() => handleUpdateDealStage(d.id, stages[stages.indexOf(stage) - 1])}>← {stages[stages.indexOf(stage) - 1].replace(/_/g, ' ')}</button>
+                              )}
+                              {stages.indexOf(stage) < stages.length - 1 && (
+                                <button className="crm-deal-move" onClick={() => handleUpdateDealStage(d.id, stages[stages.indexOf(stage) + 1])}>{stages[stages.indexOf(stage) + 1].replace(/_/g, ' ')} →</button>
+                              )}
+                            </div>
+                          </GlassCard>
+                        </motion.div>
                       ))}
-                    </div>
+                    </motion.div>
                   </div>
                 );
               })}
@@ -600,18 +625,48 @@ export default function CRMView() {
         </div>
 
         {/* Contact Detail Panel */}
-        {selectedContact && tab === 'contacts' && (
-          <ContactDetail
-            contact={selectedContact}
-            onClose={() => setSelectedContact(null)}
-            onDelete={handleDeleteContact}
-          />
-        )}
+        <AnimatePresence>
+          {selectedContact && tab === 'contacts' && (
+            <ContactDetail
+              key={selectedContact.id}
+              contact={selectedContact}
+              onClose={() => setSelectedContact(null)}
+              onDelete={handleDeleteContact}
+            />
+          )}
+        </AnimatePresence>
       </div>
 
       <style>{`
         .crm { height:100%; display:flex; flex-direction:column; overflow:hidden; }
+        .crm-kpis-gradient-border {
+          margin: 0 20px;
+          padding-top: 3px;
+          border-radius: var(--radius-md);
+          background: linear-gradient(90deg, var(--cyan), var(--purple), var(--cyan));
+          background-size: 200% 100%;
+          animation: crm-gradient-shift 6s ease infinite;
+        }
+        .crm-kpis-gradient-border > div {
+          background: var(--bg-deep);
+          border-radius: var(--radius-md);
+        }
+        @keyframes crm-gradient-shift {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
         .crm-kpis-grid { padding:10px 20px; }
+        .crm-row-hoverlift { will-change: transform; }
+        .crm-deal-stage-badge {
+          font-size: 9px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          padding: 2px 8px;
+          border-radius: var(--radius-full);
+          border: 1px solid;
+          width: fit-content;
+        }
 
         .crm-search-bar { display:flex; align-items:center; gap:6px; padding:4px 10px; background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-muted); }
         .crm-search-input { background:none; border:none; color:var(--text-primary); font-size:11px; width:140px; outline:none; }

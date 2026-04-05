@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, Plus, Search, RefreshCw, FileText, Folder, Edit3, Save, X, ExternalLink, Trash2, Upload, Brain, ChevronRight, ChevronDown, Clock, Tag, Hash, Link2, History, FolderOpen, SortAsc, SortDesc, AlertCircle, Database, Star } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
 import Markdown from '../components/Markdown';
@@ -6,6 +7,7 @@ import { useDocuments, useDocument, useCreateDocument, useUpdateDocument, useDel
 import { apiPost } from '../lib/api/client';
 import { PageHeader, Button, GlassCard, Badge, EmptyState } from '../components/ui';
 import { timeAgo, formatDate } from '../lib/utils';
+import { staggerContainer, fadeInUp } from '../lib/animations';
 
 /* ── Types ── */
 interface DocMetadata {
@@ -432,8 +434,16 @@ export default function DocsHub() {
                   <span className="dh-tree-label">{node.label}</span>
                   <span className="dh-tree-count">{getFolderCount(node)}</span>
                 </button>
+                <AnimatePresence initial={false}>
                 {node.children && expandedFolders.has(node.id) && (
-                  <div className="dh-tree-children">
+                  <motion.div
+                    className="dh-tree-children"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                    style={{ overflow: 'hidden' }}
+                  >
                     {node.children.map(child => (
                       <button
                         key={child.id}
@@ -445,8 +455,9 @@ export default function DocsHub() {
                         <span className="dh-tree-count">{getFolderCount(child)}</span>
                       </button>
                     ))}
-                  </div>
+                  </motion.div>
                 )}
+                </AnimatePresence>
               </div>
             ))}
           </div>
@@ -508,12 +519,14 @@ export default function DocsHub() {
                   }
                 />
               ) : (
-                filteredDocs.map(doc => {
+                <motion.div variants={staggerContainer} initial="hidden" animate="show">
+                {filteredDocs.map(doc => {
                   const ventureInfo = getVentureInfo(doc.venture_id);
                   const isActive = selectedDoc?.id === doc.id;
                   return (
-                    <div
+                    <motion.div
                       key={doc.id}
+                      variants={fadeInUp}
                       className={`dh-doc-card ${isActive ? 'active' : ''}`}
                       onClick={() => handleSelectDoc(doc)}
                     >
@@ -542,9 +555,10 @@ export default function DocsHub() {
                       {!selectedDoc && (
                         <p className="dh-doc-card-snippet">{getSnippet(doc.content)}</p>
                       )}
-                    </div>
+                    </motion.div>
                   );
-                })
+                })}
+                </motion.div>
               )}
             </div>
 
@@ -771,7 +785,7 @@ export default function DocsHub() {
           border-radius: var(--radius-sm); color: var(--text-primary); font-size: 13px;
           font-family: var(--font-sans); outline: none; transition: border-color 0.15s;
         }
-        .dh-input:focus { border-color: var(--border-active); }
+        .dh-input:focus { border-color: var(--border-active); box-shadow: 0 0 0 2px rgba(0,240,255,0.1); }
         .dh-input::placeholder { color: var(--text-muted); }
 
         .dh-select {
@@ -779,7 +793,7 @@ export default function DocsHub() {
           border-radius: var(--radius-sm); color: var(--text-secondary); font-size: 11px;
           font-family: var(--font-sans); appearance: auto; outline: none; cursor: pointer;
         }
-        .dh-select:focus { border-color: var(--border-active); }
+        .dh-select:focus { border-color: var(--border-active); box-shadow: 0 0 0 2px rgba(0,240,255,0.1); }
         .dh-select-sm { padding: 4px 8px; font-size: 10px; }
 
         .dh-textarea {
@@ -787,7 +801,7 @@ export default function DocsHub() {
           border-radius: var(--radius-sm); color: var(--text-primary); font-size: 12px;
           font-family: var(--font-mono); line-height: 1.6; resize: vertical; outline: none; transition: border-color 0.15s;
         }
-        .dh-textarea:focus { border-color: var(--border-active); }
+        .dh-textarea:focus { border-color: var(--border-active); box-shadow: 0 0 0 2px rgba(0,240,255,0.1); }
         .dh-textarea::placeholder { color: var(--text-muted); }
 
         /* ── Create Form Overlay ── */
@@ -855,14 +869,19 @@ export default function DocsHub() {
         .dh-filterbar {
           display: flex; align-items: center; gap: 8px; padding: 8px 16px;
           border-bottom: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap;
-          background: rgba(11,17,33,0.4);
+          background: rgba(11,17,33,0.4); position: relative;
+        }
+        .dh-filterbar::before {
+          content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+          background: linear-gradient(to right, transparent, var(--cyan), transparent);
+          opacity: 0.4;
         }
         .dh-search-wrap {
           display: flex; align-items: center; gap: 6px; flex: 1; min-width: 160px; max-width: 280px;
           padding: 4px 10px; background: var(--bg-input); border: 1px solid var(--border);
           border-radius: var(--radius-sm); transition: border-color 0.15s;
         }
-        .dh-search-wrap:focus-within { border-color: var(--border-active); }
+        .dh-search-wrap:focus-within { border-color: var(--border-active); box-shadow: 0 0 0 2px rgba(0,240,255,0.1); }
         .dh-search-wrap svg { color: var(--text-muted); flex-shrink: 0; }
         .dh-search-input {
           flex: 1; background: transparent; border: none; color: var(--text-primary);
@@ -893,7 +912,7 @@ export default function DocsHub() {
           border-radius: var(--radius-sm); cursor: pointer; transition: all 0.12s;
           display: flex; flex-direction: column; gap: 5px;
         }
-        .dh-doc-card:hover { border-color: var(--border-active); background: var(--bg-elevated); }
+        .dh-doc-card:hover { border-color: var(--border-active); background: var(--bg-elevated); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
         .dh-doc-card.active {
           border-color: rgba(0,240,255,0.3); background: rgba(0,240,255,0.04);
           box-shadow: inset 2px 0 0 var(--cyan);
@@ -913,6 +932,7 @@ export default function DocsHub() {
         .dh-doc-card-del:hover { color: var(--error); background: rgba(239,68,68,0.1); }
 
         .dh-doc-card-badges { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .dh-doc-card-badges .mcv-badge-outline { background: color-mix(in srgb, currentColor 10%, transparent); }
         .dh-doc-card-time {
           display: flex; align-items: center; gap: 3px; font-size: 9px; font-family: var(--font-mono);
           color: var(--text-muted); margin-left: auto; flex-shrink: 0;
@@ -995,7 +1015,7 @@ export default function DocsHub() {
           background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm);
           transition: border-color 0.15s;
         }
-        .dh-ai-input-wrap:focus-within { border-color: var(--border-active); }
+        .dh-ai-input-wrap:focus-within { border-color: var(--border-active); box-shadow: 0 0 0 2px rgba(0,240,255,0.1); }
         .dh-ai-input {
           flex: 1; background: transparent; border: none; color: var(--text-primary);
           font-size: 11px; outline: none; min-width: 0;

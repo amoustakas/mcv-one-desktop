@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Brain, Search, Trash2, Clock, Database, Zap, MessageSquare,
   GitCommit, AlertTriangle, Rocket, FolderOpen, ChevronDown, ChevronRight,
@@ -8,6 +9,7 @@ import { useProjectMemory, useSessionEvents, useAllEvents, useMemoryDelete } fro
 import { useLocalPipeline, useLocalFile } from '../hooks/use-pipeline';
 import { PageHeader, PageShell, Button, GlassCard, Badge, EmptyState, Skeleton, Tabs, Input } from '../components/ui';
 import { cn, timeAgo, formatDate } from '../lib/utils';
+import { staggerContainer, fadeInUp } from '../lib/animations';
 import Markdown from '../components/Markdown';
 import type { MemoryEntry, SessionEvent, MemoryType, SessionEventType } from '../lib/types/memory';
 
@@ -131,39 +133,77 @@ export default function MemoryView() {
           <Tabs tabs={tabsWithCounts} active={activeTab} onChange={setActiveTab} />
         </div>
 
-        {activeTab === 'memory' && (
-          <ProjectMemoryTab
-            memories={memories}
-            isLoading={memoriesLoading}
-            typeFilter={typeFilter}
-            onTypeChange={setTypeFilter}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-          />
-        )}
+        <AnimatePresence mode="wait">
+          {activeTab === 'memory' && (
+            <motion.div
+              key="memory"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+              style={{ display: 'contents' }}
+            >
+              <ProjectMemoryTab
+                memories={memories}
+                isLoading={memoriesLoading}
+                typeFilter={typeFilter}
+                onTypeChange={setTypeFilter}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+              />
+            </motion.div>
+          )}
 
-        {activeTab === 'local-files' && (
-          <LocalFilesTab />
-        )}
+          {activeTab === 'local-files' && (
+            <motion.div
+              key="local-files"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+              style={{ display: 'contents' }}
+            >
+              <LocalFilesTab />
+            </motion.div>
+          )}
 
-        {activeTab === 'events' && (
-          <SessionEventsTab
-            events={sessionEvents}
-            isLoading={eventsLoading}
-            sessionId={eventSessionId}
-            onSessionChange={setEventSessionId}
-            eventTypeFilter={eventTypeFilter}
-            onEventTypeChange={setEventTypeFilter}
-            knownSessionIds={knownSessionIds}
-          />
-        )}
+          {activeTab === 'events' && (
+            <motion.div
+              key="events"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+              style={{ display: 'contents' }}
+            >
+              <SessionEventsTab
+                events={sessionEvents}
+                isLoading={eventsLoading}
+                sessionId={eventSessionId}
+                onSessionChange={setEventSessionId}
+                eventTypeFilter={eventTypeFilter}
+                onEventTypeChange={setEventTypeFilter}
+                knownSessionIds={knownSessionIds}
+              />
+            </motion.div>
+          )}
 
-        {activeTab === 'timeline' && (
-          <TimelineTab
-            events={allEvents}
-            isLoading={timelineLoading}
-          />
-        )}
+          {activeTab === 'timeline' && (
+            <motion.div
+              key="timeline"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+              style={{ display: 'contents' }}
+            >
+              <TimelineTab
+                events={allEvents}
+                isLoading={timelineLoading}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <style>{mvStyles}</style>
@@ -245,17 +285,24 @@ function ProjectMemoryTab({ memories, isLoading, typeFilter, onTypeChange, searc
           description="Memory entries will appear here as the system records project state, decisions, and context."
         />
       ) : (
-        <div className="mv-memory-list">
+        <motion.div
+          className="mv-memory-list"
+          variants={staggerContainer}
+          initial="hidden"
+          animate="show"
+        >
           {memories.map((entry) => {
             const isExpanded = expandedId === entry.id;
             const isConfirming = confirmDeleteId === entry.id;
             const color = MEMORY_TYPE_COLORS[entry.type];
 
             return (
-              <div
+              <motion.div
                 key={entry.id}
+                variants={fadeInUp}
                 className={cn('mv-memory-item mcv-glass-card', isExpanded && 'mv-memory-item-expanded')}
               >
+                <div className="mv-memory-item-gradient" style={{ background: `linear-gradient(90deg, ${color}, transparent)` }} />
                 <div
                   className="mv-memory-row"
                   onClick={() => setExpandedId(isExpanded ? null : entry.id)}
@@ -264,7 +311,9 @@ function ProjectMemoryTab({ memories, isLoading, typeFilter, onTypeChange, searc
                     {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                   </span>
 
-                  <Badge color={color} size="sm">{MEMORY_TYPE_LABELS[entry.type]}</Badge>
+                  <span className="mv-memory-type-badge" style={{ background: `${color}18`, color, borderColor: `${color}30` }}>
+                    {MEMORY_TYPE_LABELS[entry.type]}
+                  </span>
 
                   <span className="mv-memory-key">{entry.key}</span>
 
@@ -328,10 +377,10 @@ function ProjectMemoryTab({ memories, isLoading, typeFilter, onTypeChange, searc
                     </div>
                   </div>
                 )}
-              </div>
+              </motion.div>
             );
           })}
-        </div>
+        </motion.div>
       )}
     </>
   );
@@ -415,11 +464,16 @@ function SessionEventsTab({
           description="No events found for this session and filter combination."
         />
       ) : (
-        <div className="mv-event-timeline">
+        <motion.div
+          className="mv-event-timeline"
+          variants={staggerContainer}
+          initial="hidden"
+          animate="show"
+        >
           {filteredEvents.map((event) => (
             <EventItem key={event.id} event={event} showSession={false} />
           ))}
-        </div>
+        </motion.div>
       )}
     </>
   );
@@ -473,11 +527,16 @@ function TimelineTab({ events, isLoading }: TimelineTabProps) {
       {Object.entries(grouped).map(([date, dateEvents]) => (
         <div key={date} className="mv-timeline-group">
           <div className="mv-timeline-date">{date}</div>
-          <div className="mv-event-timeline">
+          <motion.div
+            className="mv-event-timeline mv-event-timeline--connected"
+            variants={staggerContainer}
+            initial="hidden"
+            animate="show"
+          >
             {dateEvents.map((event) => (
               <EventItem key={event.id} event={event} showSession />
             ))}
-          </div>
+          </motion.div>
         </div>
       ))}
     </div>
@@ -495,17 +554,21 @@ function EventItem({ event, showSession }: { event: SessionEvent; showSession: b
   const payloadSummary = summarizePayload(event.payload);
 
   return (
-    <div
+    <motion.div
+      variants={fadeInUp}
       className={cn('mv-event-item', expanded && 'mv-event-item-expanded')}
       onClick={() => setExpanded(!expanded)}
     >
+      <div className="mv-event-dot" style={{ background: color, boxShadow: `0 0 6px ${color}40` }} />
       <div className="mv-event-icon" style={{ color, background: `${color}15` }}>
         {icon}
       </div>
 
       <div className="mv-event-body">
         <div className="mv-event-header">
-          <Badge color={color} size="sm">{event.eventType.replace(/_/g, ' ')}</Badge>
+          <span className="mv-event-type-badge" style={{ background: `${color}18`, color, borderColor: `${color}30` }}>
+            {event.eventType.replace(/_/g, ' ')}
+          </span>
           {showSession && (
             <span className="mv-event-session-badge">{event.sessionId.slice(0, 8)}</span>
           )}
@@ -525,7 +588,7 @@ function EventItem({ event, showSession }: { event: SessionEvent; showSession: b
       </div>
 
       <span className="mv-event-time">{timeAgo(event.createdAt)}</span>
-    </div>
+    </motion.div>
   );
 }
 
@@ -694,15 +757,44 @@ const mvStyles = `
     padding: 4px 20px 20px;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
   }
   .mv-memory-item {
     border-radius: var(--radius-sm);
     overflow: hidden;
-    transition: border-color 0.15s;
+    transition: border-color 0.15s, transform 0.15s ease, box-shadow 0.15s ease;
+    position: relative;
+  }
+  .mv-memory-item:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.03);
   }
   .mv-memory-item-expanded {
     border-color: rgba(0, 240, 255, 0.12);
+  }
+  .mv-memory-item-gradient {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    opacity: 0.6;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    pointer-events: none;
+  }
+  .mv-memory-item:hover .mv-memory-item-gradient {
+    opacity: 1;
+  }
+  .mv-memory-type-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    border: 1px solid;
+    white-space: nowrap;
+    flex-shrink: 0;
+    text-transform: capitalize;
+    letter-spacing: 0.3px;
   }
   .mv-memory-row {
     display: flex;
@@ -802,6 +894,46 @@ const mvStyles = `
     padding: 4px 20px 20px;
     display: flex;
     flex-direction: column;
+    position: relative;
+  }
+  .mv-event-timeline--connected {
+    padding-left: 32px;
+  }
+  .mv-event-timeline--connected::before {
+    content: '';
+    position: absolute;
+    left: 26px;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+    background: linear-gradient(180deg, var(--cyan), var(--purple), rgba(255,255,255,0.04));
+    border-radius: 1px;
+    opacity: 0.3;
+  }
+  .mv-event-dot {
+    display: none;
+  }
+  .mv-event-timeline--connected .mv-event-dot {
+    display: block;
+    position: absolute;
+    left: -10px;
+    top: 14px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    z-index: 1;
+  }
+  .mv-event-type-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    border: 1px solid;
+    white-space: nowrap;
+    flex-shrink: 0;
+    text-transform: capitalize;
+    letter-spacing: 0.3px;
   }
   .mv-event-item {
     display: flex;
@@ -809,12 +941,17 @@ const mvStyles = `
     padding: 8px 12px;
     cursor: pointer;
     border-left: 2px solid rgba(255, 255, 255, 0.04);
-    transition: background 0.1s, border-color 0.1s;
-    animation: mv-expand 0.15s ease-out;
+    transition: background 0.15s, border-color 0.15s, transform 0.15s ease, box-shadow 0.15s ease;
+    position: relative;
+  }
+  .mv-event-timeline--connected .mv-event-item {
+    border-left: none;
   }
   .mv-event-item:hover {
     background: var(--bg-card);
     border-left-color: rgba(255, 255, 255, 0.08);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   }
   .mv-event-item-expanded {
     border-left-color: var(--cyan);
@@ -877,7 +1014,7 @@ const mvStyles = `
     padding: 4px 20px 20px;
   }
   .mv-timeline-group {
-    margin-bottom: 4px;
+    margin-bottom: 8px;
   }
   .mv-timeline-date {
     font-size: 9px;
@@ -890,6 +1027,15 @@ const mvStyles = `
     top: 0;
     background: var(--bg-surface);
     z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .mv-timeline-date::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--border), transparent);
   }
 
   /* Animation */

@@ -1,8 +1,10 @@
 import { useState, useMemo, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import {
   Wrench, GitBranch, GitPullRequest, GitCommit, ExternalLink,
   Rocket, Globe, AlertCircle, Clock, Box,
 } from 'lucide-react';
+import { staggerContainer } from '../lib/animations';
 import { useGithubRepos, useGithubCommits, useGithubPRs } from '../hooks/use-github';
 import { useDeployments } from '../hooks/use-deployments';
 import {
@@ -284,7 +286,7 @@ export default function EngineeringView() {
       {engTab === 'overview' && (<>
 
       {/* ── KPI STRIP ─────────────────────────────────────────── */}
-      <div className="eng2-kpi-strip">
+      <motion.div className="eng2-kpi-strip" variants={staggerContainer} initial="hidden" animate="show">
         <KpiCard
           title="Total Repos"
           value={repos.length}
@@ -321,7 +323,7 @@ export default function EngineeringView() {
           isLoading={reposLoading}
           size="sm"
         />
-      </div>
+      </motion.div>
 
       {/* ── MAIN 3-COLUMN GRID ────────────────────────────────── */}
       <div className="eng2-main">
@@ -547,6 +549,16 @@ export default function EngineeringView() {
           gap: 8px;
           padding: 0 0 8px 0;
           flex-shrink: 0;
+          position: relative;
+        }
+        .eng2-kpi-strip::before {
+          content: "";
+          position: absolute;
+          top: -1px;
+          left: 15%;
+          right: 15%;
+          height: 1px;
+          background: linear-gradient(to right, transparent, var(--cyan), transparent);
         }
         .eng2-kpi-strip .mcv-kpi {
           padding: 10px 14px;
@@ -599,6 +611,8 @@ export default function EngineeringView() {
         .eng2-repo-card:hover {
           background: var(--bg-card);
           border-left-color: var(--border);
+          transform: translateX(2px);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.15);
         }
         .eng2-repo-card-active {
           background: var(--bg-elevated, var(--bg-card));

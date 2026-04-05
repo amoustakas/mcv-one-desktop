@@ -1,4 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
+import { motion } from 'framer-motion';
+import { staggerContainer, fadeInUp } from '../lib/animations';
 import {
   TrendingUp, DollarSign, Megaphone, Users, Target,
   Plus, Trash2, Archive, Download, Edit3, X,
@@ -18,10 +20,10 @@ import type { Campaign } from '../lib/api/campaigns';
 import type { SortState } from '../components/ui/DataTable';
 
 /* ── colour maps ── */
-const STATUS_BADGE: Record<string, { color: string; label: string }> = {
-  active:    { color: 'var(--cyan)',    label: 'Active' },
-  paused:    { color: 'var(--warning)', label: 'Paused' },
-  completed: { color: 'var(--success)', label: 'Done' },
+const STATUS_BADGE: Record<string, { color: string; label: string; className?: string }> = {
+  active:    { color: 'var(--cyan)',    label: 'Active',  className: 'gv-badge-active' },
+  paused:    { color: 'var(--warning)', label: 'Paused',  className: 'gv-badge-paused' },
+  completed: { color: 'var(--success)', label: 'Done',    className: 'gv-badge-completed' },
   draft:     { color: 'var(--text-muted)', label: 'Draft' },
   planned:   { color: 'var(--purple)',  label: 'Planned' },
 };
@@ -265,7 +267,7 @@ export default function GrowthView() {
       width: 90,
       render: (_: unknown, row: Campaign) => {
         const s = STATUS_BADGE[row.status] || { color: 'var(--text-muted)', label: row.status };
-        return <Badge color={s.color} size="sm">{s.label}</Badge>;
+        return <span className={s.className || ''}><Badge color={s.color} size="sm">{s.label}</Badge></span>;
       },
     },
     {
@@ -408,89 +410,110 @@ export default function GrowthView() {
       )}
 
       {/* ══════════ TOP SECTION: KPIs + Charts ══════════ */}
-      <GridLayout cols={4} gap="sm">
-        <KpiCard
-          title="Total Budget"
-          value={formatMoney(totalBudget)}
-          icon={<DollarSign size={14} />}
-          change={12.4}
-          trend="up"
-          sparklineData={budgetSparkline}
-          isLoading={isLoading}
-          variant="neural"
-        />
-        <KpiCard
-          title="Active Campaigns"
-          value={activeCampaigns}
-          icon={<Megaphone size={14} />}
-          change={activeCampaigns > 0 ? 8.2 : 0}
-          trend={activeCampaigns > 0 ? 'up' : 'flat'}
-          isLoading={isLoading}
-          variant="neural"
-        />
-        <KpiCard
-          title="Total Reach"
-          value={formatCompact(totalReach)}
-          icon={<Users size={14} />}
-          change={23.7}
-          trend="up"
-          sparklineData={reachSparkline}
-          isLoading={isLoading}
-          variant="neural"
-        />
-        <KpiCard
-          title="Avg. Conversion"
-          value={formatPercentage(avgConversion, 2)}
-          icon={<Target size={14} />}
-          change={avgConversion > 2 ? 5.1 : -1.2}
-          isLoading={isLoading}
-          variant="neural"
-        />
-      </GridLayout>
+      <div className="gv-kpis-gradient-border">
+        <motion.div variants={staggerContainer} initial="hidden" animate="show">
+          <GridLayout cols={4} gap="sm">
+            <motion.div variants={fadeInUp}>
+              <KpiCard
+                title="Total Budget"
+                value={formatMoney(totalBudget)}
+                icon={<DollarSign size={14} />}
+                change={12.4}
+                trend="up"
+                sparklineData={budgetSparkline}
+                isLoading={isLoading}
+                variant="neural"
+              />
+            </motion.div>
+            <motion.div variants={fadeInUp}>
+              <KpiCard
+                title="Active Campaigns"
+                value={activeCampaigns}
+                icon={<Megaphone size={14} />}
+                change={activeCampaigns > 0 ? 8.2 : 0}
+                trend={activeCampaigns > 0 ? 'up' : 'flat'}
+                isLoading={isLoading}
+                variant="neural"
+              />
+            </motion.div>
+            <motion.div variants={fadeInUp}>
+              <KpiCard
+                title="Total Reach"
+                value={formatCompact(totalReach)}
+                icon={<Users size={14} />}
+                change={23.7}
+                trend="up"
+                sparklineData={reachSparkline}
+                isLoading={isLoading}
+                variant="neural"
+              />
+            </motion.div>
+            <motion.div variants={fadeInUp}>
+              <KpiCard
+                title="Avg. Conversion"
+                value={formatPercentage(avgConversion, 2)}
+                icon={<Target size={14} />}
+                change={avgConversion > 2 ? 5.1 : -1.2}
+                isLoading={isLoading}
+                variant="neural"
+              />
+            </motion.div>
+          </GridLayout>
+        </motion.div>
+      </div>
 
       {/* ── Chart Row ── */}
-      <div className="gv-chart-row">
-        <WidgetContainer
-          title="Budget Allocation Trend"
-          subtitle="7-day by venture"
-          icon={<DollarSign size={14} />}
-          variant="glass"
-          className="gv-chart-widget"
-        >
-          {areaKeys.length > 0 ? (
-            <McvAreaChart
-              data={areaData}
-              dataKeys={areaKeys}
-              xAxisKey="day"
-              height={220}
-              showLegend
-              showGrid
-            />
-          ) : (
-            <div className="gv-chart-empty">No campaign data to chart</div>
-          )}
-        </WidgetContainer>
+      <motion.div
+        className="gv-chart-row"
+        variants={staggerContainer}
+        initial="hidden"
+        animate="show"
+      >
+        <motion.div variants={fadeInUp}>
+          <WidgetContainer
+            title="Budget Allocation Trend"
+            subtitle="7-day by venture"
+            icon={<DollarSign size={14} />}
+            variant="glass"
+            className="gv-chart-widget"
+          >
+            {areaKeys.length > 0 ? (
+              <McvAreaChart
+                data={areaData}
+                dataKeys={areaKeys}
+                xAxisKey="day"
+                height={220}
+                showLegend
+                showGrid
+              />
+            ) : (
+              <div className="gv-chart-empty">No campaign data to chart</div>
+            )}
+          </WidgetContainer>
+        </motion.div>
 
-        <WidgetContainer
-          title="Channel Breakdown"
-          subtitle={`${donutData.length} channels`}
-          icon={<Megaphone size={14} />}
-          variant="glass"
-          className="gv-chart-widget"
-        >
-          {donutData.length > 0 ? (
-            <McvDonutChart
-              data={donutData}
-              size={220}
-              centerValue={String(campaigns.length)}
-              centerLabel="Campaigns"
-              showLegend
-            />
-          ) : (
-            <div className="gv-chart-empty">No campaign data to chart</div>
-          )}
-        </WidgetContainer>
-      </div>
+        <motion.div variants={fadeInUp}>
+          <WidgetContainer
+            title="Channel Breakdown"
+            subtitle={`${donutData.length} channels`}
+            icon={<Megaphone size={14} />}
+            variant="glass"
+            className="gv-chart-widget"
+          >
+            {donutData.length > 0 ? (
+              <McvDonutChart
+                data={donutData}
+                size={220}
+                centerValue={String(campaigns.length)}
+                centerLabel="Campaigns"
+                showLegend
+              />
+            ) : (
+              <div className="gv-chart-empty">No campaign data to chart</div>
+            )}
+          </WidgetContainer>
+        </motion.div>
+      </motion.div>
 
       {/* ══════════ BOTTOM SECTION: Campaign DataTable ══════════ */}
       <div className="gv-table-section">
@@ -575,6 +598,47 @@ export default function GrowthView() {
 
       {/* ═══════════════ view-scoped styles ═══════════════ */}
       <style>{`
+        /* ── KPI Gradient Border ── */
+        .gv-kpis-gradient-border {
+          margin: 0 20px;
+          padding-top: 3px;
+          border-radius: var(--radius-md);
+          background: linear-gradient(90deg, var(--cyan), var(--purple), var(--cyan));
+          background-size: 200% 100%;
+          animation: gv-gradient-shift 6s ease infinite;
+        }
+        .gv-kpis-gradient-border > div {
+          background: var(--bg-deep);
+          border-radius: var(--radius-md);
+        }
+        @keyframes gv-gradient-shift {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+
+        /* ── Status Badge Glows ── */
+        .gv-badge-active .mcv-badge,
+        .gv-badge-active [class*="badge"] {
+          box-shadow: 0 0 8px rgba(0, 245, 255, 0.35), 0 0 2px rgba(0, 245, 255, 0.2);
+        }
+        .gv-badge-paused .mcv-badge,
+        .gv-badge-paused [class*="badge"] {
+          box-shadow: 0 0 8px rgba(245, 158, 11, 0.35), 0 0 2px rgba(245, 158, 11, 0.2);
+        }
+        .gv-badge-completed .mcv-badge,
+        .gv-badge-completed [class*="badge"] {
+          opacity: 0.65;
+        }
+
+        /* ── Campaign Row Hover Lift ── */
+        .gv-datatable .mcv-table-row {
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .gv-datatable .mcv-table-row:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 20px rgba(0, 245, 255, 0.08);
+        }
+
         /* ── Add Form ── */
         .gv-add-form {
           display: flex;
