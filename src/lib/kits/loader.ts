@@ -92,6 +92,7 @@ import { manifest as metaAdsManifest, handlers as metaAdsHandlers } from './buil
 import { manifest as tiktokManifest, handlers as tiktokHandlers } from './builtin/tiktok-kit';
 import { manifest as gtmManifest, handlers as gtmHandlers } from './builtin/google-tag-manager-kit';
 import { manifest as paymentsManifest, handlers as paymentsHandlers } from './builtin/payments-kit';
+import { manifest as commerceManifest, handlers as commerceHandlers } from './builtin/commerce-kit';
 
 // ---------------------------------------------------------------------------
 // Local Kit Registry
@@ -182,6 +183,7 @@ const builtinKits: KitInstance[] = [
   kit(tiktokManifest, tiktokHandlers),
   kit(gtmManifest, gtmHandlers),
   kit(paymentsManifest, paymentsHandlers),
+  kit(commerceManifest, commerceHandlers),
 ];
 
 /** Returns all built-in kit instances */
