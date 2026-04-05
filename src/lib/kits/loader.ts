@@ -93,6 +93,7 @@ import { manifest as tiktokManifest, handlers as tiktokHandlers } from './builti
 import { manifest as gtmManifest, handlers as gtmHandlers } from './builtin/google-tag-manager-kit';
 import { manifest as paymentsManifest, handlers as paymentsHandlers } from './builtin/payments-kit';
 import { manifest as commerceManifest, handlers as commerceHandlers } from './builtin/commerce-kit';
+import { manifest as commerceSurfaceManifest, handlers as commerceSurfaceHandlers } from './builtin/commerce-surface-kit';
 import { manifest as financeManifest, handlers as financeHandlers } from './builtin/finance-kit';
 import { manifest as creatorManifest, handlers as creatorHandlers } from './builtin/creator-kit';
 import { manifest as complianceManifest, handlers as complianceHandlers } from './builtin/compliance-kit';
@@ -188,6 +189,7 @@ const builtinKits: KitInstance[] = [
   kit(gtmManifest, gtmHandlers),
   kit(paymentsManifest, paymentsHandlers),
   kit(commerceManifest, commerceHandlers),
+  kit(commerceSurfaceManifest, commerceSurfaceHandlers),
   kit(financeManifest, financeHandlers),
   kit(creatorManifest, creatorHandlers),
   kit(complianceManifest, complianceHandlers),
