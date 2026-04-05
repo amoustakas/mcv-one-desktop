@@ -5,6 +5,7 @@ import {
   RefreshCw, HardDrive,
 } from 'lucide-react';
 import { PageShell, Button } from '../components/ui';
+import IntegrationsHub from '../components/IntegrationsHub';
 import { APP_VERSION, BUILD_TIME } from '../lib/version';
 import { ventures } from '../lib/ventures';
 import { useToast } from '../components/Toasts';
@@ -192,33 +193,10 @@ export default function SettingsView() {
           </div>
         )}
 
-        {/* Integrations */}
+        {/* Integrations — OAuth Hub */}
         {tab === 'integrations' && (
           <div className="sv-panel">
-            <h3 className="sv-panel-title"><Zap size={16} /> Integrations & APIs</h3>
-            <p className="sv-panel-desc">Status of all connected services. API keys are managed in Vercel environment variables.</p>
-            <div className="sv-services">
-              {SERVICES.map(s => {
-                const Icon = s.icon;
-                const configured = health[s.key];
-                return (
-                  <div key={s.key} className={`sv-service ${configured ? 'online' : 'offline'}`}>
-                    <div className="sv-svc-icon"><Icon size={16} /></div>
-                    <div className="sv-svc-info">
-                      <span className="sv-svc-name">{s.name}</span>
-                      <span className="sv-svc-desc">{s.description}</span>
-                    </div>
-                    <div className="sv-svc-status">
-                      {configured ? <CheckCircle2 size={14} className="sv-svc-ok" /> : <XCircle size={14} className="sv-svc-off" />}
-                      <span>{configured ? 'Connected' : 'Not configured'}</span>
-                    </div>
-                    <button className="sv-svc-test" onClick={() => testService(s.key)} disabled={testing === s.key}>
-                      {testing === s.key ? <RefreshCw size={11} className="mcv-spin" /> : 'Test'}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
+            <IntegrationsHub />
           </div>
         )}
 
