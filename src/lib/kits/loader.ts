@@ -95,6 +95,7 @@ import { manifest as paymentsManifest, handlers as paymentsHandlers } from './bu
 import { manifest as commerceManifest, handlers as commerceHandlers } from './builtin/commerce-kit';
 import { manifest as financeManifest, handlers as financeHandlers } from './builtin/finance-kit';
 import { manifest as creatorManifest, handlers as creatorHandlers } from './builtin/creator-kit';
+import { manifest as complianceManifest, handlers as complianceHandlers } from './builtin/compliance-kit';
 
 // ---------------------------------------------------------------------------
 // Local Kit Registry
@@ -188,6 +189,7 @@ const builtinKits: KitInstance[] = [
   kit(commerceManifest, commerceHandlers),
   kit(financeManifest, financeHandlers),
   kit(creatorManifest, creatorHandlers),
+  kit(complianceManifest, complianceHandlers),
 ];
 
 /** Returns all built-in kit instances */
