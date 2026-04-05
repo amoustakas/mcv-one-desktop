@@ -1,4 +1,4 @@
-import { requireAuth } from "./auth-middleware";
+import { requireAuth } from "./_auth";
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const GOOGLE_DRIVE_KEY = process.env.GOOGLE_DRIVE_KEY || process.env.GOOGLE_API_KEY || '';

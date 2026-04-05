@@ -19,6 +19,13 @@ import { manifest as localManifest, handlers as localHandlers } from './builtin/
 import { manifest as n8nManifest, handlers as n8nHandlers } from './builtin/n8n-kit';
 import { manifest as cloudflareManifest, handlers as cloudflareHandlers } from './builtin/cloudflare-kit';
 import { manifest as dockerManifest, handlers as dockerHandlers } from './builtin/docker-kit';
+import { manifest as workflowManifest, handlers as workflowHandlers } from './builtin/workflow-kit';
+import { manifest as stripeManifest, handlers as stripeHandlers } from './builtin/stripe-kit';
+import { manifest as slackManifest, handlers as slackHandlers } from './builtin/slack-kit';
+import { manifest as twilioManifest, handlers as twilioHandlers } from './builtin/twilio-kit';
+import { manifest as plaidManifest, handlers as plaidHandlers } from './builtin/plaid-kit';
+import { manifest as linearManifest, handlers as linearHandlers } from './builtin/linear-kit';
+import { manifest as discordManifest, handlers as discordHandlers } from './builtin/discord-kit';
 
 // ---------------------------------------------------------------------------
 // Local Kit Registry
@@ -41,6 +48,13 @@ const builtinKits: KitInstance[] = [
   kit(n8nManifest, n8nHandlers),
   kit(cloudflareManifest, cloudflareHandlers),
   kit(dockerManifest, dockerHandlers),
+  kit(workflowManifest, workflowHandlers),
+  kit(stripeManifest, stripeHandlers),
+  kit(slackManifest, slackHandlers),
+  kit(twilioManifest, twilioHandlers),
+  kit(plaidManifest, plaidHandlers),
+  kit(linearManifest, linearHandlers),
+  kit(discordManifest, discordHandlers),
 ];
 
 /** Returns all built-in kit instances */

@@ -1,4 +1,4 @@
-import { requireAuth } from './auth-middleware';
+import { requireAuth } from './_auth';
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 

@@ -1,4 +1,4 @@
-import { requireAuth } from "./auth-middleware";
+import { requireAuth } from "./_auth";
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const FS_API_URL = process.env.FUTURESTATE_API_URL || '';

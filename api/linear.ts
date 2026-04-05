@@ -1,0 +1,152 @@
+import { requireAuth } from './_auth';
+import { getProviderToken } from './_oauth-helper';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+
+// ---------------------------------------------------------------------------
+// Linear API — issues, projects, teams, cycles, labels, comments (GraphQL)
+// ---------------------------------------------------------------------------
+
+const LINEAR_API = 'https://api.linear.app/graphql';
+
+async function linearQuery(query: string, variables: Record<string, unknown>, token: string) {
+  const res = await fetch(LINEAR_API, {
+    method: 'POST',
+    headers: {
+      Authorization: token,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+  const data = await res.json();
+  if (data.errors?.length) throw new Error(data.errors[0].message);
+  return data.data;
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const userId = await requireAuth(req, res);
+  if (!userId) return;
+
+  let token: string;
+  try {
+    const result = await getProviderToken(userId, 'linear');
+    token = result.token;
+  } catch {
+    return res.status(500).json({ error: 'Linear not connected. Add in Settings > Integrations or set LINEAR_API_KEY.' });
+  }
+
+  const action = (req.method === 'GET' ? req.query.action : req.body?.action) as string;
+
+  try {
+    switch (action) {
+      // ── Teams ──
+      case 'list-teams':
+        return res.json(await linearQuery(`query { teams { nodes { id name key description } } }`, {}, token));
+
+      // ── Issues ──
+      case 'list-issues': {
+        const { teamId, limit = 25, status } = { ...(req.query as Record<string, string>), ...(req.body || {}) };
+        const filter = teamId ? `filter: { team: { id: { eq: "${teamId}" } }${status ? `, state: { name: { eq: "${status}" } }` : ''} }` : '';
+        return res.json(await linearQuery(`query { issues(first: ${limit} ${filter} orderBy: updatedAt) {
+          nodes { id identifier title description priority priorityLabel state { id name color } assignee { id name } labels { nodes { id name color } } createdAt updatedAt }
+        } }`, {}, token));
+      }
+
+      case 'get-issue': {
+        const { id } = { ...(req.query as Record<string, string>), ...(req.body || {}) };
+        if (!id) return res.status(400).json({ error: 'id required (UUID or shorthand like PROJ-123)' });
+        return res.json(await linearQuery(`query($id: String!) { issue(id: $id) {
+          id identifier title description priority priorityLabel state { id name color } assignee { id name email } labels { nodes { id name color } } project { id name } cycle { id name number } comments { nodes { id body user { name } createdAt } } createdAt updatedAt completedAt
+        } }`, { id }, token));
+      }
+
+      case 'create-issue': {
+        const { title, description, teamId, stateId, assigneeId, priority, labelIds } = req.body;
+        if (!title || !teamId) return res.status(400).json({ error: 'title and teamId required' });
+        const input: Record<string, unknown> = { title, teamId };
+        if (description) input.description = description;
+        if (stateId) input.stateId = stateId;
+        if (assigneeId) input.assigneeId = assigneeId;
+        if (priority !== undefined) input.priority = priority;
+        if (labelIds) input.labelIds = labelIds;
+        return res.json(await linearQuery(`mutation($input: IssueCreateInput!) { issueCreate(input: $input) {
+          success issue { id identifier title state { name } }
+        } }`, { input }, token));
+      }
+
+      case 'update-issue': {
+        const { id, title, description, stateId, assigneeId, priority } = req.body;
+        if (!id) return res.status(400).json({ error: 'id required' });
+        const input: Record<string, unknown> = {};
+        if (title) input.title = title;
+        if (description) input.description = description;
+        if (stateId) input.stateId = stateId;
+        if (assigneeId) input.assigneeId = assigneeId;
+        if (priority !== undefined) input.priority = priority;
+        return res.json(await linearQuery(`mutation($id: String!, $input: IssueUpdateInput!) { issueUpdate(id: $id, input: $input) {
+          success issue { id identifier title state { name } }
+        } }`, { id, input }, token));
+      }
+
+      // ── Projects ──
+      case 'list-projects': {
+        const { limit = 25 } = req.query;
+        return res.json(await linearQuery(`query { projects(first: ${limit} orderBy: updatedAt) {
+          nodes { id name description state startDate targetDate progress teams { nodes { id name } } lead { id name } }
+        } }`, {}, token));
+      }
+
+      // ── Cycles (Sprints) ──
+      case 'list-cycles': {
+        const { teamId } = req.query;
+        const filter = teamId ? `filter: { team: { id: { eq: "${teamId}" } } }` : '';
+        return res.json(await linearQuery(`query { cycles(first: 10 ${filter} orderBy: createdAt) {
+          nodes { id name number startsAt endsAt progress completedScopeHistory scopeHistory team { id name } }
+        } }`, {}, token));
+      }
+
+      // ── Labels ──
+      case 'list-labels':
+        return res.json(await linearQuery(`query { issueLabels(first: 100) { nodes { id name color description } } }`, {}, token));
+
+      // ── Workflow States ──
+      case 'list-states': {
+        const { teamId } = req.query;
+        const filter = teamId ? `(filter: { team: { id: { eq: "${teamId}" } } })` : '';
+        return res.json(await linearQuery(`query { workflowStates${filter} { nodes { id name color type position team { id name } } } }`, {}, token));
+      }
+
+      // ── Comments ──
+      case 'create-comment': {
+        const { issueId, body: commentBody } = req.body;
+        if (!issueId || !commentBody) return res.status(400).json({ error: 'issueId and body required' });
+        return res.json(await linearQuery(`mutation($input: CommentCreateInput!) { commentCreate(input: $input) {
+          success comment { id body user { name } createdAt }
+        } }`, { input: { issueId, body: commentBody } }, token));
+      }
+
+      // ── Users (Members) ──
+      case 'list-users':
+        return res.json(await linearQuery(`query { users(first: 100) { nodes { id name email displayName active admin } } }`, {}, token));
+
+      case 'me':
+        return res.json(await linearQuery(`query { viewer { id name email displayName active admin organization { id name } } }`, {}, token));
+
+      // ── Overview ──
+      case 'overview': {
+        const data = await linearQuery(`query {
+          viewer { name email organization { name } }
+          teams { nodes { id name key } }
+          issues(first: 5 orderBy: updatedAt) { nodes { identifier title state { name } assignee { name } updatedAt } }
+          projects(first: 5 orderBy: updatedAt) { nodes { name state progress } }
+        }`, {}, token);
+        return res.json(data);
+      }
+
+      default:
+        return res.status(400).json({ error: `Unknown action: ${action}` });
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    return res.status(500).json({ error: message });
+  }
+}

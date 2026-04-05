@@ -1,4 +1,4 @@
-import { requireAuth } from "../auth-middleware";
+import { requireAuth } from "../_auth";
 import { deleteOAuthConnection, getProviderToken, getProviderConfig } from "../_oauth-helper";
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 

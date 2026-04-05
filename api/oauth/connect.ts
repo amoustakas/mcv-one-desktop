@@ -1,4 +1,4 @@
-import { requireAuth } from "../auth-middleware";
+import { requireAuth } from "../_auth";
 import { getProviderConfig } from "../_oauth-helper";
 import { randomBytes } from 'crypto';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
