@@ -2,9 +2,12 @@ import { defineConfig } from 'vitest/config';
 import path from 'path';
 
 export default defineConfig({
+  configFile: false,  // prevent merging with vite.config.ts
+  plugins: [],
   test: {
     globals: true,
     environment: 'node',
+    pool: 'forks',
     include: ['src/**/__tests__/**/*.test.ts'],
     coverage: {
       provider: 'v8',

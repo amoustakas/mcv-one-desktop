@@ -12,6 +12,7 @@ import { SparkLine, McvAreaChart, McvBarChart, McvDonutChart } from '../componen
 import { useNavigation } from '../stores/navigation';
 import { useTheme } from '../stores/theme';
 import { useVentureContextStore } from '../stores/venture-context';
+import { useDeviceStore } from '../stores/devices';
 import type { VentureHealth } from '../stores/venture-context';
 import { ventures, type Venture } from '../lib/ventures';
 import { useGithubOverview, useGithubRepos, useGithubPRs } from '../hooks/use-github';
@@ -184,6 +185,10 @@ export default function PortfolioView() {
 
   const recentActivity = useMemo(() => buildRecentActivity(), []);
 
+  // Device Hub data for venture cards
+  const allDevices = useDeviceStore(s => s.devices);
+  const allProfiles = useDeviceStore(s => s.profiles);
+
   // Health store
   const updateHealth = useVentureContextStore((s) => s.updateHealth);
 
@@ -241,6 +246,8 @@ export default function PortfolioView() {
           ventures={sortedVentures}
           metrics={ventureMetrics}
           onEnter={enter}
+          devices={allDevices}
+          profiles={allProfiles}
         />
       )}
 

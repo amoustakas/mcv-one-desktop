@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   Settings, Monitor, Volume2, Mic, Shield, Keyboard, Info, Database,
   Cloud, GitBranch, Zap, Radio, Globe, Server, CheckCircle2,
-  HardDrive,
+  HardDrive, Cpu, MonitorSmartphone,
 } from 'lucide-react';
 import { PageShell, Button } from '../components/ui';
 import IntegrationsHub from '../components/IntegrationsHub';
@@ -11,6 +11,8 @@ import { ventures } from '../lib/ventures';
 import { useToast } from '../components/Toasts';
 import { apiGet, apiPost } from '../lib/api/client';
 import { useUserStore } from '../stores/user';
+import { useDeviceStore } from '../stores/devices';
+import { useNavigation } from '../stores/navigation';
 
 // ── Settings State ──
 interface AppSettings {
@@ -34,7 +36,7 @@ function loadSettings(): AppSettings {
 }
 function saveSettings(s: AppSettings) { localStorage.setItem('mcv-settings', JSON.stringify(s)); }
 
-type Tab = 'general' | 'integrations' | 'audio' | 'storage' | 'security' | 'shortcuts' | 'about';
+type Tab = 'general' | 'integrations' | 'audio' | 'storage' | 'security' | 'devices' | 'shortcuts' | 'about';
 
 const TABS: { id: Tab; label: string; icon: typeof Settings }[] = [
   { id: 'general', label: 'General', icon: Monitor },
@@ -42,6 +44,7 @@ const TABS: { id: Tab; label: string; icon: typeof Settings }[] = [
   { id: 'audio', label: 'Audio', icon: Volume2 },
   { id: 'storage', label: 'Storage', icon: HardDrive },
   { id: 'security', label: 'Security', icon: Shield },
+  { id: 'devices', label: 'Devices', icon: Cpu },
   { id: 'shortcuts', label: 'Shortcuts', icon: Keyboard },
   { id: 'about', label: 'About', icon: Info },
 ];
@@ -84,8 +87,17 @@ export default function SettingsView() {
   const [_testing, _setTesting] = useState<string | null>(null);
   const { toast } = useToast();
 
+  const [autoDiscovery, setAutoDiscovery] = useState(true);
+
   const userPrefs = useUserStore((s) => s.preferences);
   const updatePreferences = useUserStore((s) => s.updatePreferences);
+
+  const deviceProfiles = useDeviceStore((s) => s.profiles);
+  const devices = useDeviceStore((s) => s.devices);
+  const activeProfileId = useDeviceStore((s) => s.activeProfileId);
+  const setActiveProfile = useDeviceStore((s) => s.setActiveProfile);
+  const clearEventLog = useDeviceStore((s) => s.clearEventLog);
+  const setView = useNavigation((s) => s.setView);
 
   useEffect(() => {
     setSettings((prev) => {
@@ -310,6 +322,70 @@ export default function SettingsView() {
                   <span className="sv-sec-desc">All traffic encrypted via Vercel TLS.</span>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Devices */}
+        {tab === 'devices' && (
+          <div className="sv-panel">
+            <h3 className="sv-panel-title"><Cpu size={16} /> Device Settings</h3>
+
+            <div className="sv-group">
+              <label className="sv-label">Auto-Discovery</label>
+              <label className="sv-toggle"><input type="checkbox" checked={autoDiscovery} onChange={e => setAutoDiscovery(e.target.checked)} /><span>Auto-scan for devices on the local network</span></label>
+              <p className="sv-muted" style={{ marginTop: 4 }}>Scan interval: 30s</p>
+            </div>
+
+            <div className="sv-group">
+              <label className="sv-label">Default Profile</label>
+              <select className="sv-select" value={activeProfileId || ''} onChange={e => setActiveProfile(e.target.value || null)}>
+                <option value="">None</option>
+                {Object.values(deviceProfiles).map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="sv-group">
+              <label className="sv-label"><MonitorSmartphone size={12} /> Connected Devices ({Object.keys(devices).length})</label>
+              <div className="sv-devices-list">
+                {Object.values(devices).length === 0 ? (
+                  <p className="sv-muted">No devices detected. Start a scan from Device Hub.</p>
+                ) : (
+                  Object.values(devices).map(d => (
+                    <div key={d.id} className="sv-device-row">
+                      <span className="sv-device-dot" style={{ background: d.status === 'connected' ? 'var(--success)' : d.status === 'paused' ? '#F59E0B' : 'var(--text-muted)' }} />
+                      <span className="sv-device-name">{d.name}</span>
+                      <span className="sv-device-class">{d.class}</span>
+                      <span className="sv-device-transport">{d.transport}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="sv-group">
+              <label className="sv-label">GoXLR Utility</label>
+              <div className="sv-sec-card">
+                <CheckCircle2 size={16} className="sv-sec-ok" />
+                <div>
+                  <span className="sv-sec-title">Connection</span>
+                  <span className="sv-sec-desc">localhost:14564</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="sv-group">
+              <label className="sv-label">Quick Links</label>
+              <div className="sv-btn-group">
+                <button onClick={() => setView('device-hub' as any)}>Open Device Hub</button>
+                <button onClick={() => setView('audio-router' as any)}>Open Audio Router</button>
+              </div>
+            </div>
+
+            <div className="sv-group" style={{ marginTop: 8 }}>
+              <Button variant="danger" size="sm" onClick={() => { clearEventLog(); toast('info', 'Device event log cleared'); }}>Clear Event Log</Button>
             </div>
           </div>
         )}

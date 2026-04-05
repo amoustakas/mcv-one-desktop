@@ -78,6 +78,17 @@ import { manifest as msOutlookManifest, handlers as msOutlookHandlers } from './
 import { manifest as msOnedriveManifest, handlers as msOnedriveHandlers } from './builtin/microsoft-onedrive-kit';
 import { manifest as msSharepointManifest, handlers as msSharepointHandlers } from './builtin/microsoft-sharepoint-kit';
 import { manifest as msEntraManifest, handlers as msEntraHandlers } from './builtin/microsoft-entra-kit';
+// Google AI Studio kits
+import { manifest as veoStudioManifest, handlers as veoStudioHandlers } from './builtin/veo-studio-kit';
+import { manifest as voiceAiManifest, handlers as voiceAiHandlers } from './builtin/voice-ai-kit';
+import { manifest as imagenStudioManifest, handlers as imagenStudioHandlers } from './builtin/imagen-studio-kit';
+import { manifest as creativeToolsManifest, handlers as creativeToolsHandlers } from './builtin/creative-tools-kit';
+// Ads, Search & Social kits
+import { manifest as bingManifest, handlers as bingHandlers } from './builtin/bing-kit';
+import { manifest as googleAdsManifest, handlers as googleAdsHandlers } from './builtin/google-ads-kit';
+import { manifest as msAdsManifest, handlers as msAdsHandlers } from './builtin/microsoft-ads-kit';
+import { manifest as metaAdsManifest, handlers as metaAdsHandlers } from './builtin/meta-ads-kit';
+import { manifest as tiktokManifest, handlers as tiktokHandlers } from './builtin/tiktok-kit';
 
 // ---------------------------------------------------------------------------
 // Local Kit Registry
@@ -154,6 +165,17 @@ const builtinKits: KitInstance[] = [
   kit(msOnedriveManifest, msOnedriveHandlers),
   kit(msSharepointManifest, msSharepointHandlers),
   kit(msEntraManifest, msEntraHandlers),
+  // Google AI Studio kits
+  kit(veoStudioManifest, veoStudioHandlers),
+  kit(voiceAiManifest, voiceAiHandlers),
+  kit(imagenStudioManifest, imagenStudioHandlers),
+  kit(creativeToolsManifest, creativeToolsHandlers),
+  // Ads, Search & Social
+  kit(bingManifest, bingHandlers),
+  kit(googleAdsManifest, googleAdsHandlers),
+  kit(msAdsManifest, msAdsHandlers),
+  kit(metaAdsManifest, metaAdsHandlers),
+  kit(tiktokManifest, tiktokHandlers),
 ];
 
 /** Returns all built-in kit instances */

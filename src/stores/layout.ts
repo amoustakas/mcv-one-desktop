@@ -63,6 +63,36 @@ const DEFAULT_PRESETS: WorkspacePreset[] = [
     chatDocked: true,
     sidebarCollapsed: false,
   },
+  {
+    id: 'operator-desk',
+    name: 'Operator Desk',
+    description: 'Device Hub + Command Center',
+    activeView: 'device-hub',
+    splitView: 'command-center',
+    splitRatio: 0.5,
+    chatDocked: false,
+    sidebarCollapsed: false,
+  },
+  {
+    id: 'stream-setup',
+    name: 'Stream Setup',
+    description: 'Audio Router + Aegis Chat',
+    activeView: 'audio-router',
+    splitView: 'chat',
+    splitRatio: 0.4,
+    chatDocked: false,
+    sidebarCollapsed: false,
+  },
+  {
+    id: 'dev-station',
+    name: 'Dev Station',
+    description: 'Engineering + Connected Sessions',
+    activeView: 'engineering',
+    splitView: 'connected-sessions',
+    splitRatio: 0.6,
+    chatDocked: false,
+    sidebarCollapsed: false,
+  },
 ];
 
 export const useLayoutStore = create<LayoutState>()(

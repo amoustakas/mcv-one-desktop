@@ -1,6 +1,7 @@
-import { GitBranch, Cloud, Zap, ExternalLink, CheckSquare, Users, BookOpen, MessageSquare, Activity, Shield, TrendingUp, Cpu, AlertTriangle, Brain, DollarSign, Bell } from 'lucide-react';
+import { GitBranch, Cloud, Zap, ExternalLink, CheckSquare, Users, BookOpen, MessageSquare, Activity, Shield, TrendingUp, Cpu, AlertTriangle, Brain, DollarSign, Bell, Monitor } from 'lucide-react';
 import { InfraOverviewBar } from '../components/docker';
 import { useNavigation } from '../stores/navigation';
+import { useDeviceStore } from '../stores/devices';
 import { useTheme } from '../stores/theme';
 import { ventures } from '../lib/ventures';
 import { useGithubCommits } from '../hooks/use-github';
@@ -37,6 +38,15 @@ export default function CommandCenter() {
   const { data: commits = [], refetch: refetchCommits } = useGithubCommits();
   const { data: deploys = [], refetch: refetchDeploys } = useDeployments();
   const { data: activities = [], refetch: refetchActivities } = useActivities();
+
+  // Device Hub
+  const deviceDevices = useDeviceStore(s => s.devices);
+  const deviceProfiles = useDeviceStore(s => s.profiles);
+  const activeProfileId = useDeviceStore(s => s.activeProfileId);
+  const deviceEventLog = useDeviceStore(s => s.eventLog);
+  const deviceList = Object.values(deviceDevices);
+  const deviceConnectedCount = deviceList.filter(d => d.status === 'connected').length;
+  const activeProfile = activeProfileId ? deviceProfiles[activeProfileId] : null;
 
   // Orchestration: roadmap + sessions
   const { data: roadmapData } = useRoadmap();
@@ -109,6 +119,7 @@ export default function CommandCenter() {
         <StatCard icon={<MessageSquare size={14} />} label="Conversations" value={stats?.conversations.total ?? '...'} onClick={() => setView('chat')} />
         <StatCard icon={<Shield size={14} />} label="Won Revenue" value={stats ? formatMoney(stats.deals.wonValue) : '...'} color="#10B981" />
         <StatCard icon={<Bell size={14} />} label="Unread" value={stats?.unreadNotifications ?? 0} color={stats?.unreadNotifications ? '#EF4444' : undefined} />
+        <StatCard icon={<Monitor size={14} />} label="Devices" value={deviceConnectedCount} color="#00F0FF" onClick={() => setView('device-hub')} />
       </GridLayout>
 
       <div className="cc-main">
@@ -250,6 +261,33 @@ export default function CommandCenter() {
               </div>
             </GlassCard>
           )}
+
+          {/* Workstation */}
+          <GlassCard className="cc-feed">
+            <h2 className="cc-sec-title"><Monitor size={12} /> Workstation <span className="cc-sec-sub">{deviceConnectedCount} connected</span></h2>
+            <div className="cc-workstation">
+              <div className="cc-ws-row">
+                <span className="cc-ws-label">Connected</span>
+                <span className="cc-ws-value">{deviceConnectedCount} device{deviceConnectedCount !== 1 ? 's' : ''}</span>
+              </div>
+              <div className="cc-ws-row">
+                <span className="cc-ws-label">Active profile</span>
+                <span className="cc-ws-value">{activeProfile?.name || 'None'}</span>
+              </div>
+              {deviceEventLog.length > 0 && (
+                <div className="cc-ws-events">
+                  <span className="cc-ws-events-title">Recent events</span>
+                  {deviceEventLog.slice(0, 3).map(ev => (
+                    <div key={ev.id} className="cc-ws-event-row">
+                      <span className="cc-ws-ev-type">{ev.type}</span>
+                      <span className="cc-ws-ev-device">{deviceDevices[ev.deviceId]?.name || ev.deviceId}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button className="cc-ws-link holo-hover" onClick={() => setView('device-hub')}>Device Hub &rarr;</button>
+            </div>
+          </GlassCard>
         </div>
       </div>
 
@@ -341,6 +379,18 @@ export default function CommandCenter() {
         .cc-session-summary { display:block; font-size:10px; color:var(--text-muted); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
         .cc-session-time { font-size:9px; font-family:var(--font-mono); color:var(--text-muted); flex-shrink:0; }
         @keyframes mcv-pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+        .cc-workstation { padding:8px 12px; display:flex; flex-direction:column; gap:6px; }
+        .cc-ws-row { display:flex; justify-content:space-between; align-items:center; font-size:11px; }
+        .cc-ws-label { color:var(--text-muted); }
+        .cc-ws-value { font-family:var(--font-mono); font-weight:600; color:var(--text-primary); }
+        .cc-ws-events { margin-top:4px; display:flex; flex-direction:column; gap:3px; }
+        .cc-ws-events-title { font-size:9px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; font-family:var(--font-display); font-weight:600; }
+        .cc-ws-event-row { display:flex; align-items:center; gap:8px; font-size:10px; }
+        .cc-ws-ev-type { font-family:var(--font-mono); color:var(--cyan); font-size:9px; width:90px; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .cc-ws-ev-device { color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .cc-ws-link { margin-top:6px; padding:6px 10px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--cyan); font-size:11px; font-weight:500; transition:all 0.15s; text-align:left; }
+        .cc-ws-link:hover { border-color:var(--border-active); box-shadow:0 0 12px rgba(0,240,255,0.06); }
       `}</style>
     </PageShell>
   );

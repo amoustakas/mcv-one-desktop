@@ -7,6 +7,8 @@ import {
 import { PageShell, PageHeader, GlassCard, Badge, EmptyState, Button, StatCard, GridLayout } from '../components/ui';
 import { staggerContainer, fadeInUp } from '../lib/animations';
 import { useDeviceStore } from '../stores/devices';
+import { usePresenceStore, STATUS_COLORS, STATUS_LABELS } from '../stores/presence';
+import { getTimezoneAbbr } from '../lib/device';
 import { cn } from '../lib/utils';
 import type { DeviceDescriptor } from '../lib/devices/types';
 
@@ -113,6 +115,65 @@ function SessionCard({ session }: { session: DeviceDescriptor }) {
   );
 }
 
+function MyPresenceCard() {
+  const { ownPresence, getDeviceCount } = usePresenceStore();
+
+  if (!ownPresence) return null;
+
+  const statusColor = STATUS_COLORS[ownPresence.status];
+  const statusLabel = STATUS_LABELS[ownPresence.status];
+  const deviceCount = getDeviceCount();
+  const tzAbbr = getTimezoneAbbr();
+
+  return (
+    <GlassCard className="p-4 mb-6">
+      <div className="flex items-center gap-2 mb-3">
+        <MonitorSmartphone size={16} className="text-white/40" />
+        <h3 className="text-xs font-semibold text-white/50 uppercase tracking-wider">
+          My Presence
+        </h3>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Status */}
+        <div className="flex items-center gap-2">
+          <div
+            className="w-3 h-3 rounded-full shrink-0"
+            style={{ backgroundColor: statusColor, boxShadow: `0 0 8px ${statusColor}60` }}
+          />
+          <div>
+            <p className="text-sm font-medium text-white">{statusLabel}</p>
+            {ownPresence.statusText && (
+              <p className="text-xs text-white/40 truncate max-w-[140px]">{ownPresence.statusText}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Location */}
+        <div>
+          <p className="text-xs text-white/40 mb-0.5">Location</p>
+          <p className="text-sm text-white">
+            {ownPresence.city || 'Unknown'}
+            {tzAbbr && <span className="text-white/30 ml-1">({tzAbbr})</span>}
+          </p>
+        </div>
+
+        {/* Devices */}
+        <div>
+          <p className="text-xs text-white/40 mb-0.5">Devices</p>
+          <p className="text-sm text-white">{deviceCount}</p>
+        </div>
+
+        {/* Screen Class */}
+        <div>
+          <p className="text-xs text-white/40 mb-0.5">Screen</p>
+          <p className="text-sm text-white capitalize">{ownPresence.screenClass}</p>
+        </div>
+      </div>
+    </GlassCard>
+  );
+}
+
 export default function ConnectedSessionsView() {
   const { devices, scanDevices } = useDeviceStore();
   const [scanning, setScanning] = useState(false);
@@ -147,6 +208,8 @@ export default function ConnectedSessionsView() {
           Discover
         </Button>
       </PageHeader>
+
+      <MyPresenceCard />
 
       <GridLayout cols={3}>
         <StatCard label="Connected" value={connected} icon={<Wifi size={18} />} color="#10B981" />

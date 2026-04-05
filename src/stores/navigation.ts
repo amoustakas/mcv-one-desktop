@@ -55,7 +55,11 @@ export type ViewId =
   | 'control-room'
   // Files & Storage
   | 'files'
-  | 'venture-workspace';
+  | 'venture-workspace'
+  // AI Media Studios
+  | 'voice-studio'
+  | 'video-studio'
+  | 'creative-canvas';
 
 export type ContextMode = 'global' | 'venture';
 
@@ -111,6 +115,7 @@ const VIEW_LABELS: Record<string, string> = {
   'venture-forge': 'Forge', 'venture-tasks': 'Tasks',
   'venture-settings': 'Settings', 'venture-onboarding': 'Onboarding',
   files: 'Files', 'venture-workspace': 'Workspace',
+  'voice-studio': 'Voice Studio', 'video-studio': 'Video Studio', 'creative-canvas': 'Creative Canvas',
 };
 
 export const useNavigation = create<NavigationState>()(

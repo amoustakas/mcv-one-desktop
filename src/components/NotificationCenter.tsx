@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Bell, Check, Trash2, Zap, GitBranch, Cloud, Users, FileText, MessageSquare, Wrench } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { useNotificationStore } from '../stores/notifications';
+import { useNotificationStore, routeNotification } from '../stores/notifications';
 import type { AppNotification } from '../stores/notifications';
 import { GlassCard, Button, Badge } from './ui';
 import { cn, timeAgo } from '../lib/utils';
@@ -99,7 +99,7 @@ export default function NotificationCenter() {
 
           <div className="nc-list">
             {notifications.length === 0 && <div className="nc-empty">No notifications</div>}
-            {notifications.map(n => {
+            {notifications.filter(n => routeNotification(n) !== 'queue').map(n => {
               const Icon = SOURCE_ICONS[n.source] || Bell;
               const color = TYPE_COLORS[n.type] || '#6B7280';
               return (

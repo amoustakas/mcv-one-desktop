@@ -2,9 +2,11 @@ import { useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   Wrench, GitBranch, GitPullRequest, GitCommit, ExternalLink,
-  Rocket, Globe, AlertCircle, Clock, Box,
+  Rocket, Globe, AlertCircle, Clock, Box, Terminal,
 } from 'lucide-react';
 import { staggerContainer } from '../lib/animations';
+import { useDeviceStore } from '../stores/devices';
+import { useNavigation } from '../stores/navigation';
 import { useGithubRepos, useGithubCommits, useGithubPRs } from '../hooks/use-github';
 import { useDeployments } from '../hooks/use-deployments';
 import {
@@ -174,6 +176,13 @@ export default function EngineeringView() {
   const { data: prs = [], isLoading: prsLoading, refetch: refetchPRs } = useGithubPRs(activeRepo);
   const { data: deployments = [], isLoading: deploysLoading, refetch: refetchDeploys } = useDeployments();
 
+  const devices = useDeviceStore((s) => s.devices);
+  const { setView } = useNavigation();
+  const sessions = useMemo(
+    () => Object.values(devices).filter((d) => d.class === 'agent-session' && d.status === 'connected'),
+    [devices],
+  );
+
   const loading = reposLoading || commitsLoading || prsLoading || deploysLoading;
 
   const refresh = useCallback(() => {
@@ -323,6 +332,13 @@ export default function EngineeringView() {
           isLoading={reposLoading}
           size="sm"
         />
+        <KpiCard
+          title="Sessions"
+          value={sessions.length}
+          icon={<Terminal size={14} />}
+          color="#10B981"
+          size="sm"
+        />
       </motion.div>
 
       {/* ── MAIN 3-COLUMN GRID ────────────────────────────────── */}
@@ -460,6 +476,45 @@ export default function EngineeringView() {
         </WidgetContainer>
       </div>
 
+      {/* ── Connected Sessions ────────────────────────────────── */}
+      {sessions.length > 0 && (
+        <WidgetContainer
+          title="Connected Sessions"
+          subtitle={`${sessions.length} active`}
+          icon={<Terminal size={14} />}
+          className="eng2-sessions-section"
+        >
+          <div className="eng2-session-list">
+            {sessions.slice(0, 5).map((s) => {
+              const projectDir = (s.metadata?.projectDir as string) || '';
+              const projectName = projectDir.split(/[/\\]/).filter(Boolean).pop() || s.name;
+              const branch = (s.metadata?.branch as string) || 'main';
+              return (
+                <div key={s.id} className="eng2-session-item">
+                  <span className="eng2-session-dot" />
+                  <span className="eng2-session-project">{projectName}</span>
+                  <span className="eng2-session-branch">
+                    <GitBranch size={9} />
+                    {branch}
+                  </span>
+                  <Badge color="var(--success)" variant="dot" size="sm">connected</Badge>
+                </div>
+              );
+            })}
+            {sessions.length > 5 && (
+              <button className="eng2-session-viewall" onClick={() => setView('connected-sessions')}>
+                View All ({sessions.length}) &rarr;
+              </button>
+            )}
+          </div>
+          <div className="eng2-session-footer">
+            <button className="eng2-session-viewall" onClick={() => setView('connected-sessions')}>
+              View All &rarr;
+            </button>
+          </div>
+        </WidgetContainer>
+      )}
+
       {/* ── BOTTOM: Deploy Timeline ───────────────────────────── */}
       <WidgetContainer
         title="Deployments"
@@ -545,7 +600,7 @@ export default function EngineeringView() {
         /* ── KPI Strip ────────────────────────────────────────── */
         .eng2-kpi-strip {
           display: grid;
-          grid-template-columns: repeat(5, 1fr);
+          grid-template-columns: repeat(6, 1fr);
           gap: 8px;
           padding: 0 0 8px 0;
           flex-shrink: 0;
@@ -841,6 +896,73 @@ export default function EngineeringView() {
         .eng2-deploy-link:hover {
           opacity: 1;
           color: var(--cyan);
+        }
+
+        /* ── Connected Sessions ───────────────────────────────── */
+        .eng2-sessions-section {
+          margin-top: 8px;
+          flex-shrink: 0;
+        }
+        .eng2-session-list {
+          display: flex;
+          flex-direction: column;
+        }
+        .eng2-session-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 10px;
+          border-bottom: 1px solid var(--border);
+          font-size: 11px;
+          transition: background 0.1s;
+        }
+        .eng2-session-item:hover {
+          background: var(--bg-card);
+        }
+        .eng2-session-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: var(--success);
+          box-shadow: 0 0 4px rgba(16,185,129,0.4);
+          flex-shrink: 0;
+        }
+        .eng2-session-project {
+          font-weight: 600;
+          color: var(--text-primary);
+          flex: 1;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .eng2-session-branch {
+          display: inline-flex;
+          align-items: center;
+          gap: 3px;
+          font-size: 10px;
+          font-family: var(--font-mono);
+          color: var(--text-muted);
+          flex-shrink: 0;
+        }
+        .eng2-session-footer {
+          padding: 6px 10px;
+          border-top: 1px solid var(--border);
+          display: flex;
+          justify-content: flex-end;
+        }
+        .eng2-session-viewall {
+          font-size: 10px;
+          font-weight: 600;
+          color: var(--cyan);
+          background: none;
+          border: none;
+          cursor: pointer;
+          padding: 2px 6px;
+          border-radius: 3px;
+          transition: background 0.1s;
+        }
+        .eng2-session-viewall:hover {
+          background: rgba(0,245,255,0.08);
         }
 
         /* ── Empty state ──────────────────────────────────────── */

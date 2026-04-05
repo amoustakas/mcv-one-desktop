@@ -8,6 +8,7 @@ import {
   ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { usePipeline, useLocalPipeline } from '../hooks/use-pipeline';
+import { useDeviceStore } from '../stores/devices';
 import { useDockerContainers, useDockerStats, useContainerAction } from '../hooks/use-docker';
 import { PageHeader, PageShell, GlassCard, Badge, Skeleton, Tabs } from '../components/ui';
 import ActivityFeed from '../components/ActivityFeed';
@@ -30,6 +31,7 @@ const SOURCE_META: Record<PipelineSource, { label: string; icon: React.ReactNode
   vercel: { label: 'Vercel', icon: <Cloud size={14} />, color: 'var(--purple)' },
   n8n: { label: 'n8n Workflows', icon: <Workflow size={14} />, color: 'var(--warning)' },
   supabase: { label: 'Supabase', icon: <Database size={14} />, color: 'var(--success)' },
+  devices: { label: 'Devices', icon: <Cpu size={14} />, color: '#00F0FF' },
 };
 
 const STATUS_DOT: Record<string, string> = {
@@ -606,8 +608,33 @@ export default function PipelineView() {
   const { data: localData, isLoading: localLoading } = useLocalPipeline();
   const { data: containersData } = useDockerContainers();
   const { data: statsData } = useDockerStats();
+  const deviceEventLog = useDeviceStore((s) => s.eventLog);
+  const deviceDevices = useDeviceStore((s) => s.devices);
 
-  const allEntries = data?.entries || [];
+  // Derive device pipeline entries from device event log
+  const deviceEntries = useMemo<PipelineEntry[]>(() => {
+    const seen = new Map<string, PipelineEntry>();
+    for (const evt of deviceEventLog.slice(0, 50)) {
+      const device = deviceDevices[evt.deviceId];
+      const deviceName = device?.name ?? evt.deviceId;
+      const key = `device-${evt.deviceId}`;
+      if (!seen.has(key)) {
+        seen.set(key, {
+          id: key,
+          source: 'devices' as PipelineSource,
+          name: deviceName,
+          description: `${evt.type} — ${JSON.stringify(evt.payload).slice(0, 80)}`,
+          status: device?.status === 'connected' ? 'active' : 'completed',
+          startedAt: new Date(evt.timestamp).toISOString(),
+          lastActivity: new Date(evt.timestamp).toISOString(),
+          metadata: { deviceClass: device?.class, transport: device?.transport },
+        });
+      }
+    }
+    return Array.from(seen.values());
+  }, [deviceEventLog, deviceDevices]);
+
+  const allEntries = [...(data?.entries || []), ...deviceEntries];
 
   // Apply venture filter to entries
   const entries = useMemo(() => {
@@ -636,7 +663,7 @@ export default function PipelineView() {
 
   // Source columns (filtered)
   const columns = useMemo(() => {
-    const sourceOrder: PipelineSource[] = ['github', 'vercel', 'n8n', 'claude-session', 'docker', 'terminal', 'supabase'];
+    const sourceOrder: PipelineSource[] = ['github', 'vercel', 'n8n', 'claude-session', 'docker', 'terminal', 'supabase', 'devices'];
     const grouped = new Map<PipelineSource, PipelineEntry[]>();
     for (const e of entries) {
       const list = grouped.get(e.source as PipelineSource) || [];

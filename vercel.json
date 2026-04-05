@@ -1,6 +1,10 @@
 {
   "functions": {
-    "api/comms-sync.ts": { "maxDuration": 60 }
+    "api/comms-sync.ts": { "maxDuration": 60 },
+    "api/veo.ts": { "maxDuration": 60 },
+    "api/live-proxy.ts": { "maxDuration": 60 },
+    "api/creative.ts": { "maxDuration": 30 },
+    "api/imagen-edit.ts": { "maxDuration": 30 }
   },
   "buildCommand": "npm run build",
   "outputDirectory": "dist",

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Activity, Eye, ShieldCheck, Trash2 } from 'lucide-react';
+import { Activity, Eye, ShieldCheck, Trash2, Cpu } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useTelemetry } from '../stores/telemetry';
 import PageShell from '../components/ui/PageShell';
@@ -11,18 +11,20 @@ import StateInspector from '../components/control-room/StateInspector';
 import TuningExport from '../components/control-room/TuningExport';
 import CacheIndicator from '../components/CacheIndicator';
 import { useHITL } from '../stores/hitl';
+import { useDeviceStore } from '../stores/devices';
 
 // ---------------------------------------------------------------------------
 // OperatorControlRoom — split-pane dev console for agent observability
 // ---------------------------------------------------------------------------
 
-type TabId = 'telemetry' | 'reasoning' | 'hitl';
+type TabId = 'telemetry' | 'reasoning' | 'hitl' | 'device-telemetry';
 
 function buildTabs(pendingCount: number) {
   return [
     { id: 'telemetry' as TabId, label: 'Telemetry Stream' },
     { id: 'reasoning' as TabId, label: 'Reasoning Trace' },
     { id: 'hitl' as TabId, label: 'HITL Queue', count: pendingCount > 0 ? pendingCount : undefined },
+    { id: 'device-telemetry' as TabId, label: 'Device Telemetry' },
   ];
 }
 
@@ -31,6 +33,11 @@ export default function OperatorControlRoom() {
   const { isRecording, toggleRecording, clearSession, reasoningSteps } = useTelemetry();
   const pendingHITL = useHITL((s) => s.pendingRequests);
   const hitlHistory = useHITL((s) => s.history);
+  const deviceEventLog = useDeviceStore((s) => s.eventLog);
+  const deviceDevices = useDeviceStore((s) => s.devices);
+  const deviceMappings = useDeviceStore((s) => s.mappings);
+  const deviceProfiles = useDeviceStore((s) => s.profiles);
+  const activeProfileId = useDeviceStore((s) => s.activeProfileId);
 
   return (
     <PageShell>

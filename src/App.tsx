@@ -25,6 +25,9 @@ import { useLocalServer } from './lib/local';
 import { usePipelineSync } from './hooks/use-pipeline-sync';
 import { useCommsSync } from './hooks/use-comms-sync';
 import { useRealtimeSync } from './hooks/use-realtime';
+import { useDeviceNotifications } from './hooks/use-device-notifications';
+import { useDeviceProfileSync } from './hooks/use-device-profile-sync';
+import { useDeviceEvents } from './hooks/use-device-events';
 
 // Lazy-loaded views (code splitting)
 const AegisChat = lazy(() => import('./components/AegisChat'));
@@ -56,6 +59,10 @@ const OperatorControlRoom = lazy(() => import('./views/OperatorControlRoom'));
 const CommsHub = lazy(() => import('./views/CommsHub'));
 const FilesView = lazy(() => import('./views/FilesView'));
 const VentureWorkspaceView = lazy(() => import('./views/VentureWorkspaceView'));
+// Google AI Studio views
+const VideoStudioView = lazy(() => import('./views/VideoStudioView'));
+const VoiceStudioView = lazy(() => import('./views/VoiceStudioView'));
+const CreativeCanvasView = lazy(() => import('./views/CreativeCanvasView'));
 const DeviceHubView = lazy(() => import('./views/DeviceHubView'));
 const StreamDeckView = lazy(() => import('./views/StreamDeckView'));
 const AudioRouterView = lazy(() => import('./views/AudioRouterView'));
@@ -157,6 +164,13 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <SettingsView />;
     case 'files':
       return <FilesView />;
+    // AI Media Studios
+    case 'video-studio':
+      return <VideoStudioView />;
+    case 'voice-studio':
+      return <VoiceStudioView />;
+    case 'creative-canvas':
+      return <CreativeCanvasView />;
     // Venture views
     case 'venture-dashboard':
       return <VentureDashboard venture={venture} />;
@@ -312,6 +326,9 @@ export default function App() {
   useRealtimeSync(); // Supabase Realtime — live push updates across devices
   useCommsSync();    // Auto-ingest comms data → Knowledge Base, CRM, Tasks every 5min
   usePresence();     // Device detection + AI status inference + Supabase presence broadcast
+  useDeviceEvents();        // SSE connection to local server for real-time device events
+  useDeviceNotifications(); // Toast notifications for device connect/disconnect/error
+  useDeviceProfileSync();   // Auto-activate device profiles on venture switch
   const [presenceCardOpen, setPresenceCardOpen] = useState(false);
 
   // Keyboard shortcuts

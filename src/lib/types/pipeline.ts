@@ -9,7 +9,8 @@ export type PipelineSource =
   | 'github'
   | 'vercel'
   | 'n8n'
-  | 'supabase';
+  | 'supabase'
+  | 'devices';
 
 export type PipelineStatus = 'active' | 'idle' | 'error' | 'completed';
 

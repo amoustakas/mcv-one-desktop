@@ -7,6 +7,8 @@ import {
 import { PageShell, PageHeader, GlassCard, Badge, EmptyState, Button, StatCard, GridLayout } from '../components/ui';
 import { staggerContainer, fadeInUp } from '../lib/animations';
 import { useDeviceStore } from '../stores/devices';
+import DeviceMesh from '../components/DeviceMesh';
+import { usePresenceStore } from '../stores/presence';
 import type { DeviceDescriptor, DeviceInputEvent } from '../lib/devices/types';
 
 const STATUS_COLORS: Record<DeviceDescriptor['status'], string> = {
@@ -75,6 +77,7 @@ function EventLogEntry({ event }: { event: DeviceInputEvent }) {
 
 export default function DeviceHubView() {
   const { devices, eventLog, scanDevices } = useDeviceStore();
+  const presenceDeviceCount = usePresenceStore((s) => s.getDeviceCount());
   const [scanning, setScanning] = useState(false);
   const deviceList = Object.values(devices);
   const connected = deviceList.filter((d) => d.status === 'connected').length;
@@ -103,6 +106,20 @@ export default function DeviceHubView() {
           Scan
         </Button>
       </PageHeader>
+
+      <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider">
+            Connected MCV Sessions
+          </h2>
+          <Badge variant="outline" size="sm">
+            {presenceDeviceCount} device{presenceDeviceCount !== 1 ? 's' : ''}
+          </Badge>
+        </div>
+        <GlassCard className="p-4">
+          <DeviceMesh />
+        </GlassCard>
+      </motion.div>
 
       <GridLayout cols={4}>
         <StatCard label="Connected" value={connected} icon={<Wifi size={18} />} color="#10B981" />

@@ -10,6 +10,7 @@ import { useTasks } from '../hooks/use-tasks';
 import { useDocuments } from '../hooks/use-docs';
 import { apiGet } from '../lib/api/client';
 import { useAgentsStore } from '../stores/agents';
+import { useDeviceStore } from '../stores/devices';
 
 /* ──────────────────────── Types ──────────────────────── */
 
@@ -232,6 +233,44 @@ export default function WarRoom() {
     }).catch(() => {});
     return () => { mounted = false; };
   }, []);
+
+  const deviceEventLog = useDeviceStore((s) => s.eventLog);
+
+  // Merge device events into logs
+  useEffect(() => {
+    if (deviceEventLog.length === 0) return;
+    const deviceEntries: LogEntry[] = deviceEventLog.slice(0, 10).map((event) => {
+      let message: string;
+      switch (event.type) {
+        case 'button-press':
+          message = `[StreamDeck] Button ${event.payload.buttonIndex} pressed`;
+          break;
+        case 'fader-change':
+          message = `[GoXLR] Fader ${event.payload.faderName} → ${Math.round((event.payload.value as number) * 100)}%`;
+          break;
+        case 'agent-message':
+          message = `[Session] ${(event.payload.content?.toString() || '').slice(0, 80)}`;
+          break;
+        default:
+          message = `[Device] ${event.type}`;
+      }
+      return {
+        id: ++_logId,
+        timestamp: new Date(event.timestamp),
+        severity: 'INFO' as Severity,
+        agent: 'Devices',
+        message,
+      };
+    });
+
+    if (deviceEntries.length > 0) {
+      setLogs((prev) => {
+        const merged = [...prev, ...deviceEntries];
+        merged.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+        return merged.slice(-500);
+      });
+    }
+  }, [deviceEventLog]);
 
   const [paused, setPaused] = useState(false);
   const [filterAgent, setFilterAgent] = useState<string | null>(null);
@@ -531,7 +570,7 @@ export default function WarRoom() {
               value={cmdInput}
               onChange={e => setCmdInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="/clear  /pause  /resume  /filter <agent>"
+              placeholder="/clear  /pause  /resume  /filter <agent|devices>"
               spellCheck={false}
               autoComplete="off"
             />

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Wifi, WifiOff, Database, GitBranch, Cloud, FileText, CheckSquare, Columns2, Cpu, HardDrive, Monitor } from 'lucide-react';
+import { Wifi, WifiOff, Database, GitBranch, Cloud, FileText, CheckSquare, Columns2, Cpu, HardDrive, Monitor, Grid3x3, AudioLines, MonitorSmartphone } from 'lucide-react';
 import { APP_VERSION } from '../lib/version';
 import { supabase } from '../lib/supabase';
 import { useNavigation } from '../stores/navigation';
@@ -9,14 +9,16 @@ import { apiGet } from '../lib/api/client';
 import { cn } from '../lib/utils';
 import { usePresenceStore, STATUS_COLORS, STATUS_LABELS } from '../stores/presence';
 import { getTimezoneAbbr } from '../lib/device';
+import { useDeviceStore } from '../stores/devices';
 
 export default function StatusBar() {
   const [health, setHealth] = useState<Record<string, boolean>>({});
   const [docCount, setDocCount] = useState(0);
   const [taskCount, setTaskCount] = useState(0);
   const [online, setOnline] = useState(navigator.onLine);
-  const { mode, activeVenture, splitView } = useNavigation();
+  const { mode, activeVenture, splitView, setView } = useNavigation();
   const localConnected = useLocalStore(s => s.connected);
+  const devices = useDeviceStore(s => s.devices);
 
   useEffect(() => {
     function refresh() {
@@ -39,6 +41,13 @@ export default function StatusBar() {
   const onlineServices = Object.values(health).filter(Boolean).length;
   const presence = usePresenceStore((s) => s.ownPresence);
   const deviceCount = usePresenceStore((s) => s.getDeviceCount());
+
+  // Device Hub indicators
+  const deviceList = Object.values(devices);
+  const connectedCount = deviceList.filter(d => d.status === 'connected').length;
+  const hasStreamDeck = deviceList.some(d => d.class === 'stream-deck' && d.status === 'connected');
+  const hasGoXLR = deviceList.some(d => d.class === 'goxlr' && d.status === 'connected');
+  const sessionCount = deviceList.filter(d => d.class === 'agent-session' && d.status === 'connected').length;
 
   return (
     <div className="status-bar">
@@ -77,6 +86,21 @@ export default function StatusBar() {
       </div>
 
       <div className="status-right">
+        <span className={cn('status-dot', connectedCount > 0 ? 'ok' : 'off', 'status-clickable')} title={`${connectedCount} device${connectedCount !== 1 ? 's' : ''} connected`} onClick={() => setView('device-hub')}>
+          <Cpu size={10} /> <span className="status-device-count">{connectedCount}</span>
+        </span>
+        {hasStreamDeck && (
+          <span className="status-dot ok status-clickable" title="Stream Deck" onClick={() => setView('stream-deck')}><Grid3x3 size={10} /></span>
+        )}
+        {hasGoXLR && (
+          <span className="status-dot ok status-clickable" title="GoXLR" onClick={() => setView('audio-router')}><AudioLines size={10} /></span>
+        )}
+        {sessionCount > 0 && (
+          <span className="status-dot ok status-clickable" title={`${sessionCount} agent session${sessionCount !== 1 ? 's' : ''}`} onClick={() => setView('connected-sessions')}>
+            <MonitorSmartphone size={10} /> <span className="status-device-count">{sessionCount}</span>
+          </span>
+        )}
+        <span className="status-sep" />
         <span className={cn('status-dot', localConnected ? 'ok' : 'off')} title={localConnected ? 'Local Server Connected' : 'Local Server Offline'}><HardDrive size={10} /></span>
         <span className="status-services"><Cpu size={9} /> {onlineServices} services</span>
         <span className="status-sep" />
@@ -135,6 +159,10 @@ export default function StatusBar() {
         .status-dot.err { color: var(--error); }
 
         .status-version { font-family: var(--font-mono); }
+
+        .status-clickable { cursor: pointer; transition: opacity 0.15s; }
+        .status-clickable:hover { opacity: 0.8; }
+        .status-device-count { font-family: var(--font-mono); font-size: 9px; }
       `}</style>
     </div>
   );

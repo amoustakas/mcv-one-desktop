@@ -9,6 +9,7 @@ import { contextCacheManager } from '../google/context-cache-manager';
 import { hybridComputeRouter } from '../google/hybrid-compute';
 import { hitlGate } from '../hitl/intercept-gate';
 import { usePresenceStore } from '../../stores/presence';
+import { useDeviceStore } from '../../stores/devices';
 
 // ---------------------------------------------------------------------------
 // Agent Orchestrator
@@ -110,6 +111,30 @@ export class AgentOrchestrator {
       prompt += 'When a user request can be fulfilled by a tool, use the tool rather than giving a generic response. ';
       prompt += 'You can chain multiple tool calls to complete complex requests.\n';
     }
+
+    // Inject connected device context
+    try {
+      const deviceState = useDeviceStore.getState();
+      const deviceList = Object.values(deviceState.devices);
+      const connected = deviceList.filter((d) => d.status === 'connected');
+      if (connected.length > 0) {
+        prompt += '\n\n## Connected Devices\n\n';
+        prompt += 'The user has the following physical devices and agent sessions connected:\n\n';
+        for (const d of connected) {
+          prompt += `- **${d.name}** (${d.class}) — capabilities: ${d.capabilities.join(', ')}\n`;
+        }
+        const activeProfile = deviceState.activeProfileId
+          ? deviceState.profiles[deviceState.activeProfileId]
+          : null;
+        if (activeProfile) {
+          prompt += `\nActive device profile: **${activeProfile.name}**`;
+          if (activeProfile.ventureId) prompt += ` (venture: ${activeProfile.ventureId})`;
+          prompt += '\n';
+        }
+        prompt += '\nYou can control these devices using the device-hub kit tools (list_devices, send_device_command, etc.). ';
+        prompt += 'Proactively suggest device configurations when relevant to the user\'s workflow.\n';
+      }
+    } catch { /* device store not available */ }
 
     // Inject user presence context (if available)
     try {
