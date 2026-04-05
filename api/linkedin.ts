@@ -145,6 +145,79 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.json(await liFetch('/socialActions/' + encodeURIComponent(shareId as string), token));
       }
 
+      // ── Delete Post ──
+      case 'delete-post': {
+        const { postUrn } = req.body;
+        if (!postUrn) return res.status(400).json({ error: 'postUrn required' });
+        const r = await fetch(`${LI_API}/ugcPosts/${encodeURIComponent(postUrn)}`, {
+          method: 'DELETE', headers: { Authorization: `Bearer ${token}`, 'X-Restli-Protocol-Version': '2.0.0' },
+        });
+        return res.json({ deleted: r.ok });
+      }
+
+      // ── Ads: Ad Accounts ──
+      case 'list-ad-accounts': {
+        const me = await liFetch('/userinfo', token);
+        return res.json(await liFetch('/adAccountsV2', token, { q: 'search', 'search.status.values[0]': 'ACTIVE', count: '25' }));
+      }
+
+      // ── Ads: Campaigns ──
+      case 'list-ad-campaigns': {
+        const { accountId: adAcct } = req.query;
+        if (!adAcct) return res.status(400).json({ error: 'accountId required' });
+        return res.json(await liFetch('/adCampaignsV2', token, { q: 'search', 'search.account.values[0]': `urn:li:sponsoredAccount:${adAcct}`, count: '25' }));
+      }
+
+      case 'create-ad-campaign': {
+        const { accountId: adAcct, name: campName, objective = 'BRAND_AWARENESS', status: campStatus = 'DRAFT', dailyBudget } = req.body;
+        if (!adAcct || !campName) return res.status(400).json({ error: 'accountId and name required' });
+        return res.json(await liPost('/adCampaignsV2', token, {
+          account: `urn:li:sponsoredAccount:${adAcct}`, name: campName,
+          objectiveType: objective, status: campStatus, type: 'SPONSORED_UPDATES',
+          dailyBudget: dailyBudget ? { amount: String(dailyBudget), currencyCode: 'USD' } : undefined,
+        }));
+      }
+
+      // ── Ads: Creatives ──
+      case 'list-ad-creatives': {
+        const { campaignId } = req.query;
+        if (!campaignId) return res.status(400).json({ error: 'campaignId required' });
+        return res.json(await liFetch('/adCreativesV2', token, { q: 'search', 'search.campaign.values[0]': `urn:li:sponsoredCampaign:${campaignId}`, count: '25' }));
+      }
+
+      // ── Ads: Analytics ──
+      case 'ad-analytics': {
+        const { accountId: adAcct, campaignId, dateRange = 'last_30_days', granularity = 'DAILY' } = req.query;
+        const pivot = campaignId ? `&campaigns[0]=urn:li:sponsoredCampaign:${campaignId}` : '';
+        const end = new Date().toISOString().split('T')[0];
+        const start = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+        return res.json(await liFetch(`/adAnalyticsV2?q=analytics&pivot=CAMPAIGN&dateRange.start.day=${start.split('-')[2]}&dateRange.start.month=${start.split('-')[1]}&dateRange.start.year=${start.split('-')[0]}&dateRange.end.day=${end.split('-')[2]}&dateRange.end.month=${end.split('-')[1]}&dateRange.end.year=${end.split('-')[0]}&timeGranularity=${granularity}${pivot}&accounts[0]=urn:li:sponsoredAccount:${adAcct}`, token));
+      }
+
+      // ── Profile Analytics ──
+      case 'profile-views': {
+        const me = await liFetch('/userinfo', token);
+        return res.json(await liFetch('/networkSizes/' + encodeURIComponent(`urn:li:person:${me.sub}`) + '?edgeType=CompanyFollowedByMember', token));
+      }
+
+      // ── Organization Admin ──
+      case 'list-admin-orgs': {
+        const me = await liFetch('/userinfo', token);
+        return res.json(await liFetch('/organizationalEntityAcls', token, {
+          q: 'roleAssignee', role: 'ADMINISTRATOR', state: 'APPROVED',
+          projection: '(elements*(organizationalTarget~(id,name,vanityName)))',
+        }));
+      }
+
+      // ── Organization Posts ──
+      case 'org-posts': {
+        const { orgId } = req.query;
+        if (!orgId) return res.status(400).json({ error: 'orgId required' });
+        return res.json(await liFetch('/ugcPosts', token, {
+          q: 'authors', authors: `List(${encodeURIComponent(`urn:li:organization:${orgId}`)})`, count: '10',
+        }));
+      }
+
       // ── Overview ──
       case 'overview': {
         const profile = await liFetch('/userinfo', token);

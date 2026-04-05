@@ -115,18 +115,101 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.json(await ttBizFetch('/advertiser/info/', { advertiser_ids: `["${advId}"]` }));
       }
 
+      // ── CRUD: Campaigns ──
+      case 'create-campaign': {
+        const advId = req.body.advertiserId || ADVERTISER_ID;
+        const { campaignName, objectiveType = 'TRAFFIC', budget, budgetMode = 'BUDGET_MODE_DAY' } = req.body;
+        if (!campaignName) return res.status(400).json({ error: 'campaignName required' });
+        return res.json(await ttBizPost('/campaign/create/', { advertiser_id: advId, campaign_name: campaignName, objective_type: objectiveType, budget, budget_mode: budgetMode }));
+      }
+
+      case 'update-campaign': {
+        const advId = req.body.advertiserId || ADVERTISER_ID;
+        const { campaignId, campaignName, budget, status: campStatus } = req.body;
+        if (!campaignId) return res.status(400).json({ error: 'campaignId required' });
+        const body: Record<string, unknown> = { advertiser_id: advId, campaign_id: campaignId };
+        if (campaignName) body.campaign_name = campaignName;
+        if (budget) body.budget = budget;
+        if (campStatus) body.operation_status = campStatus;
+        return res.json(await ttBizPost('/campaign/update/', body));
+      }
+
+      // ── CRUD: Ad Groups ──
+      case 'create-ad-group': {
+        const advId = req.body.advertiserId || ADVERTISER_ID;
+        const { campaignId, adgroupName, budget, optimizationGoal, placements = ['PLACEMENT_TIKTOK'] } = req.body;
+        if (!campaignId || !adgroupName) return res.status(400).json({ error: 'campaignId and adgroupName required' });
+        return res.json(await ttBizPost('/adgroup/create/', { advertiser_id: advId, campaign_id: campaignId, adgroup_name: adgroupName, budget, optimization_goal: optimizationGoal, placements }));
+      }
+
+      case 'update-ad-group': {
+        const advId = req.body.advertiserId || ADVERTISER_ID;
+        const { adgroupId, adgroupName, budget, status: agStatus } = req.body;
+        if (!adgroupId) return res.status(400).json({ error: 'adgroupId required' });
+        const body: Record<string, unknown> = { advertiser_id: advId, adgroup_id: adgroupId };
+        if (adgroupName) body.adgroup_name = adgroupName;
+        if (budget) body.budget = budget;
+        if (agStatus) body.operation_status = agStatus;
+        return res.json(await ttBizPost('/adgroup/update/', body));
+      }
+
+      // ── CRUD: Ads ──
+      case 'create-ad': {
+        const advId = req.body.advertiserId || ADVERTISER_ID;
+        const { adgroupId, adName, creatives } = req.body;
+        if (!adgroupId || !adName || !creatives) return res.status(400).json({ error: 'adgroupId, adName, creatives required' });
+        return res.json(await ttBizPost('/ad/create/', { advertiser_id: advId, adgroup_id: adgroupId, ad_name: adName, creatives }));
+      }
+
+      case 'update-ad-status': {
+        const advId = req.body.advertiserId || ADVERTISER_ID;
+        const { adIds, status: adStatus } = req.body;
+        if (!adIds || !adStatus) return res.status(400).json({ error: 'adIds and status required' });
+        return res.json(await ttBizPost('/ad/status/update/', { advertiser_id: advId, ad_ids: adIds, operation_status: adStatus }));
+      }
+
+      // ── Targeting ──
+      case 'list-interest-categories': {
+        const advId = (req.query.advertiserId || ADVERTISER_ID) as string;
+        return res.json(await ttBizFetch('/tool/interest_category/', { advertiser_id: advId }));
+      }
+
+      case 'list-action-categories': {
+        const advId = (req.query.advertiserId || ADVERTISER_ID) as string;
+        return res.json(await ttBizFetch('/tool/action_category/', { advertiser_id: advId }));
+      }
+
       // ── Pixel / Events ──
       case 'list-pixels': {
         const advId = (req.query.advertiserId || ADVERTISER_ID) as string;
         return res.json(await ttBizFetch('/pixel/list/', { advertiser_id: advId }));
       }
 
+      case 'create-pixel': {
+        const advId = req.body.advertiserId || ADVERTISER_ID;
+        const { pixelName } = req.body;
+        if (!pixelName) return res.status(400).json({ error: 'pixelName required' });
+        return res.json(await ttBizPost('/pixel/create/', { advertiser_id: advId, pixel_name: pixelName }));
+      }
+
+      // ── Ad-Level Report ──
+      case 'ad-report': {
+        const advId = req.body.advertiserId || ADVERTISER_ID;
+        const end = new Date().toISOString().split('T')[0];
+        const start = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+        return res.json(await ttBizPost('/report/integrated/get/', {
+          advertiser_id: advId, report_type: 'BASIC', data_level: 'AUCTION_AD',
+          dimensions: ['ad_id', 'stat_time_day'],
+          metrics: ['spend', 'impressions', 'clicks', 'ctr', 'cpc', 'conversions'],
+          start_date: start, end_date: end, page_size: 50,
+        }));
+      }
+
       // ── Overview ──
       case 'overview':
         return res.json({
-          configured: !!ACCESS_TOKEN,
-          advertiser_id: ADVERTISER_ID || 'not set',
-          endpoints: ['user-info', 'list-videos', 'list-campaigns', 'campaign-metrics', 'list-ad-groups', 'list-ads', 'list-audiences', 'account-report', 'advertiser-info', 'list-pixels'],
+          configured: !!ACCESS_TOKEN, advertiser_id: ADVERTISER_ID || 'not set',
+          capabilities: ['CRUD campaigns', 'CRUD ad groups', 'CRUD ads', 'targeting', 'pixels', 'reports', 'audiences'],
         });
 
       default:

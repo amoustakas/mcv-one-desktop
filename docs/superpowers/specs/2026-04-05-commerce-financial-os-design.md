@@ -3080,7 +3080,78 @@ NAOS: [calls list_devices] → finds Stream Deck XL
          Button 0: BetEdge dashboard, Button 1: Live odds, Button 2: Place bet..."
 ```
 
-### 19.12 Architecture Position
+### 19.12 App Instance Detection & Multi-Screen Awareness
+
+Each running MCV Desktop instance (browser, PWA, Capacitor) self-registers as a device with `class: 'app-instance'`. The instance registry bridges the existing Presence system (Supabase Realtime) into the Device Hub, creating a unified view of all hardware peripherals AND all running app instances.
+
+**Detection Capabilities:**
+
+| Signal | Source | Data |
+| --- | --- | --- |
+| Screen resolution | `window.screen` | Width x height, pixel ratio |
+| Screen class | `classifyScreen()` | ultrawide, cinema, desktop, tablet, phone |
+| Multi-monitor | Window Management API | Screen count, labels, positions, which screen this window is on |
+| Device type | User agent + touch detection | desktop, tablet, phone |
+| Platform | Navigator | win32, macos, ios, android, linux |
+| PWA mode | `display-mode: standalone` | Boolean |
+| Capacitor | `window.Capacitor` | Boolean |
+| Battery | Battery API | Level (0-100%), charging state |
+| Network | Network Information API | WiFi, 4G, 3G, offline |
+| GPS | Geolocation API | Lat/lng coordinates |
+| City | IP geolocation | City name, timezone |
+| System health | Local server `/local/health` | CPU count, memory, hostname, uptime |
+
+**Instance Registration Flow:**
+
+```text
+App Boot
+  → captureDeviceSnapshot() — screen, platform, battery, GPS, network
+  → buildSelfDescriptor() — create DeviceDescriptor with class 'app-instance'
+  → useDeviceStore.registerDevice() — add to local device registry
+  → usePresence() → Supabase Realtime broadcast — visible to all users
+  → useInstanceRegistration() — 15s periodic refresh (screen resize, battery changes)
+```
+
+**Multi-Screen Detection:**
+
+Uses the Window Management API (`getScreenDetails()`) when available:
+
+- Enumerates all connected monitors with labels, resolution, position, pixel ratio
+- Identifies which physical screen this browser window is currently on
+- Falls back to `window.screen` for single-monitor or when permission is denied
+
+**Supabase Tables:**
+
+- `active_instances` — live registry of all running instances (heartbeat-based, 5min TTL)
+- `screen_registry` — persistent catalog of all screens ever connected (for layout memory)
+
+### 19.13 Mobile Device Integration
+
+Mobile instances (iOS/Android via Capacitor or PWA) register with enhanced capabilities:
+
+**Mobile-specific capabilities:**
+
+- `touch-input` — multi-touch gesture support
+- `camera-input` — photo/video capture for document scanning, visual input
+- `gps-input` — real-time location for geo-aware workflows
+- `audio-input` / `audio-output` — voice commands, dictation, audio capture
+
+**Mobile-specific metadata:**
+
+- Battery level and charging state (critical for long-running tasks)
+- Network type (WiFi vs cellular, signal quality)
+- GPS coordinates (for location-aware venture context)
+- Device orientation (portrait vs landscape)
+
+**Use cases:**
+
+- Phone as a remote control for desktop Stream Deck layouts
+- Tablet as a secondary dashboard screen showing real-time metrics
+- Mobile camera feed for document/receipt scanning into the commerce system
+- Voice-first interaction on mobile feeding into NAOS agent conversations
+- GPS-based auto-venture switching (at the office → work ventures, at home → personal)
+
+### 19.14 Architecture Position
 
 ```text
 Tier 7: MCV One Desktop (Device Hub UI)

@@ -355,7 +355,7 @@ export default function SettingsView() {
                 ) : (
                   Object.values(devices).map(d => (
                     <div key={d.id} className="sv-device-row">
-                      <span className="sv-device-dot" style={{ background: d.status === 'connected' ? 'var(--success)' : d.status === 'paused' ? '#F59E0B' : 'var(--text-muted)' }} />
+                      <span className="sv-device-dot" style={{ background: d.status === 'connected' ? 'var(--success)' : (d.status as string) === 'paused' ? '#F59E0B' : 'var(--text-muted)' }} />
                       <span className="sv-device-name">{d.name}</span>
                       <span className="sv-device-class">{d.class}</span>
                       <span className="sv-device-transport">{d.transport}</span>
@@ -511,6 +511,14 @@ export default function SettingsView() {
         .sv-about-grid>div { padding:10px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-sm); }
         .sv-about-k { display:block; font-size:9px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.3px; }
         .sv-about-v { display:block; font-size:13px; font-weight:600; margin-top:2px; }
+
+        /* Devices */
+        .sv-devices-list { display:flex; flex-direction:column; gap:4px; }
+        .sv-device-row { display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-sm); font-size:12px; }
+        .sv-device-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+        .sv-device-name { flex:1; font-weight:500; color:var(--text-primary); }
+        .sv-device-class { font-size:10px; color:var(--text-muted); text-transform:capitalize; }
+        .sv-device-transport { font-size:9px; font-family:var(--font-mono); color:var(--text-muted); background:var(--bg-elevated); padding:1px 6px; border-radius:var(--radius-full); }
       `}</style>
     </PageShell>
   );

@@ -117,6 +117,85 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }));
       }
 
+      // ── Batch Report ──
+      case 'batch-report': {
+        if (!propertyId) return res.status(400).json({ error: 'propertyId required' });
+        const { requests } = req.body;
+        if (!requests) return res.status(400).json({ error: 'requests array required' });
+        return res.json(await gaPost(`${GA_API}/properties/${propertyId}:batchRunReports`, token, { requests }));
+      }
+
+      // ── Funnel Report ──
+      case 'funnel-report': {
+        if (!propertyId) return res.status(400).json({ error: 'propertyId required' });
+        const { steps } = req.body;
+        if (!steps) return res.status(400).json({ error: 'steps array required (funnel steps)' });
+        return res.json(await gaPost(`${GA_API}/properties/${propertyId}:runFunnelReport`, token, {
+          dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
+          funnel: { steps },
+        }));
+      }
+
+      // ── Cohort Analysis ──
+      case 'cohort-report': {
+        if (!propertyId) return res.status(400).json({ error: 'propertyId required' });
+        const { cohortSpec, metrics: cohortMetrics = 'activeUsers' } = req.body;
+        return res.json(await gaPost(`${GA_API}/properties/${propertyId}:runReport`, token, {
+          dateRanges: [{ startDate: '90daysAgo', endDate: 'today' }],
+          dimensions: [{ name: 'cohort' }, { name: 'cohortNthDay' }],
+          metrics: (cohortMetrics as string).split(',').map((m: string) => ({ name: m.trim() })),
+          cohortSpec: cohortSpec || { cohorts: [{ dimension: 'firstSessionDate', dateRange: { startDate: '30daysAgo', endDate: 'today' } }] },
+        }));
+      }
+
+      // ── Metadata (available dimensions/metrics) ──
+      case 'list-metadata': {
+        if (!propertyId) return res.status(400).json({ error: 'propertyId required' });
+        return res.json(await gaFetch(`${GA_API}/properties/${propertyId}/metadata`, token));
+      }
+
+      // ── Data Streams ──
+      case 'list-data-streams': {
+        if (!propertyId) return res.status(400).json({ error: 'propertyId required' });
+        return res.json(await gaFetch(`${GA_ADMIN}/properties/${propertyId}/dataStreams`, token));
+      }
+
+      // ── Custom Dimensions ──
+      case 'list-custom-dimensions': {
+        if (!propertyId) return res.status(400).json({ error: 'propertyId required' });
+        return res.json(await gaFetch(`${GA_ADMIN}/properties/${propertyId}/customDimensions`, token));
+      }
+
+      // ── Audiences ──
+      case 'list-audiences': {
+        if (!propertyId) return res.status(400).json({ error: 'propertyId required' });
+        return res.json(await gaFetch(`${GA_ADMIN}/properties/${propertyId}/audiences`, token));
+      }
+
+      // ── Conversion Events ──
+      case 'list-conversion-events': {
+        if (!propertyId) return res.status(400).json({ error: 'propertyId required' });
+        return res.json(await gaFetch(`${GA_ADMIN}/properties/${propertyId}/conversionEvents`, token));
+      }
+
+      // ── User Properties ──
+      case 'list-user-properties': {
+        if (!propertyId) return res.status(400).json({ error: 'propertyId required' });
+        return res.json(await gaFetch(`${GA_ADMIN}/properties/${propertyId}/customMetrics`, token));
+      }
+
+      // ── Landing Pages ──
+      case 'landing-pages': {
+        if (!propertyId) return res.status(400).json({ error: 'propertyId required' });
+        return res.json(await gaPost(`${GA_API}/properties/${propertyId}:runReport`, token, {
+          dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
+          dimensions: [{ name: 'landingPagePlusQueryString' }],
+          metrics: [{ name: 'sessions' }, { name: 'activeUsers' }, { name: 'bounceRate' }, { name: 'averageSessionDuration' }],
+          orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+          limit: 20,
+        }));
+      }
+
       case 'overview': {
         if (!propertyId) return res.status(400).json({ error: 'propertyId required' });
         const [summary, realtime] = await Promise.all([

@@ -46,9 +46,34 @@ const gscOverview: KitToolHandler = async (_i, ctx) => {
   return { success: true, data: d, displayMarkdown: `## Search Console Overview\n\n- **Sites:** ${d.site_count}\n${d.sites?.map((s: { url: string; permission: string }) => `- ${s.url} (${s.permission})`).join('\n') || 'No sites'}` };
 };
 
+const submitSitemap: KitToolHandler = async (input, ctx) => {
+  const d = await gscApi('submit-sitemap', { siteUrl: input.siteUrl, feedpath: input.feedpath }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `Sitemap submitted: ${JSON.stringify(d).slice(0, 500)}` };
+};
+
+const deleteSitemap: KitToolHandler = async (input, ctx) => {
+  const d = await gscApi('delete-sitemap', { siteUrl: input.siteUrl, feedpath: input.feedpath }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `Sitemap deleted: ${JSON.stringify(d).slice(0, 500)}` };
+};
+
+const countryPerformance: KitToolHandler = async (input, ctx) => {
+  const d = await gscApi('country-performance', { siteUrl: input.siteUrl }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `Country performance: ${JSON.stringify(d).slice(0, 500)}` };
+};
+
+const devicePerformance: KitToolHandler = async (input, ctx) => {
+  const d = await gscApi('device-performance', { siteUrl: input.siteUrl }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `Device performance: ${JSON.stringify(d).slice(0, 500)}` };
+};
+
+const dailyPerformance: KitToolHandler = async (input, ctx) => {
+  const d = await gscApi('daily-performance', { siteUrl: input.siteUrl }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `Daily performance: ${JSON.stringify(d).slice(0, 500)}` };
+};
+
 export const manifest: KitManifest = {
-  id: 'google-search-console', name: 'Google Search Console', version: '1.0.0',
-  description: 'Google Search Console — search performance, top queries, top pages, URL inspection, sitemaps.',
+  id: 'google-search-console', name: 'Google Search Console', version: '2.0.0',
+  description: 'Google Search Console — search performance, top queries, top pages, URL inspection, sitemaps CRUD, country/device/daily breakdowns.',
   author: 'MCV', capabilities: ['network', 'credentials'], runtime: 'inline', ventureScope: '*',
   instructions: 'Use search console tools for SEO analysis, keyword performance, page ranking, and URL indexing status.',
   tools: [
@@ -57,9 +82,16 @@ export const manifest: KitManifest = {
     { name: 'gsc_list_sites', description: 'List verified sites.', input_schema: { type: 'object', properties: {} } },
     { name: 'gsc_inspect_url', description: 'Inspect a URL for indexing status and mobile usability.', input_schema: { type: 'object', properties: { siteUrl: { type: 'string' }, url: { type: 'string', description: 'URL to inspect' } }, required: ['siteUrl', 'url'] } },
     { name: 'gsc_overview', description: 'Search Console overview: sites, permissions.', input_schema: { type: 'object', properties: {} } },
+    { name: 'gsc_submit_sitemap', description: 'Submit a sitemap.', input_schema: { type: 'object', properties: { siteUrl: { type: 'string' }, feedpath: { type: 'string', description: 'Sitemap URL path' } }, required: ['siteUrl', 'feedpath'] } },
+    { name: 'gsc_delete_sitemap', description: 'Delete a sitemap.', input_schema: { type: 'object', properties: { siteUrl: { type: 'string' }, feedpath: { type: 'string' } }, required: ['siteUrl', 'feedpath'] } },
+    { name: 'gsc_country_performance', description: 'Get search performance by country.', input_schema: { type: 'object', properties: { siteUrl: { type: 'string' } }, required: ['siteUrl'] } },
+    { name: 'gsc_device_performance', description: 'Get search performance by device type.', input_schema: { type: 'object', properties: { siteUrl: { type: 'string' } }, required: ['siteUrl'] } },
+    { name: 'gsc_daily_performance', description: 'Get daily search performance.', input_schema: { type: 'object', properties: { siteUrl: { type: 'string' } }, required: ['siteUrl'] } },
   ],
 };
 
 export const handlers: Record<string, KitToolHandler> = {
   gsc_top_queries: topQueries, gsc_top_pages: topPages, gsc_list_sites: listSites, gsc_inspect_url: inspectUrl, gsc_overview: gscOverview,
+  gsc_submit_sitemap: submitSitemap, gsc_delete_sitemap: deleteSitemap,
+  gsc_country_performance: countryPerformance, gsc_device_performance: devicePerformance, gsc_daily_performance: dailyPerformance,
 };

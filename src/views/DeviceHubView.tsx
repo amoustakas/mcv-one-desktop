@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import {
   Cpu, Wifi, WifiOff, RefreshCw, Activity,
   MonitorSmartphone, Grid3x3, AudioLines, Zap, Search,
+  Monitor, Smartphone, Tablet,
 } from 'lucide-react';
 import { PageShell, PageHeader, GlassCard, Badge, EmptyState, Button, StatCard, GridLayout } from '../components/ui';
 import { staggerContainer, fadeInUp } from '../lib/animations';
@@ -27,10 +28,25 @@ const CLASS_ICONS: Record<string, React.ReactNode> = {
   'hid-generic': <Cpu size={20} />,
   'serial-generic': <Zap size={20} />,
   'agent-session': <MonitorSmartphone size={20} />,
+  'app-instance': <Monitor size={20} />,
 };
+
+function getInstanceIcon(metadata: Record<string, unknown>): React.ReactNode {
+  const deviceType = metadata.deviceType as string;
+  if (deviceType === 'phone') return <Smartphone size={20} />;
+  if (deviceType === 'tablet') return <Tablet size={20} />;
+  return <Monitor size={20} />;
+}
 
 function DeviceCard({ device }: { device: DeviceDescriptor }) {
   const color = STATUS_COLORS[device.status];
+  const isInstance = device.class === 'app-instance';
+  const meta = device.metadata as Record<string, unknown>;
+
+  const icon = isInstance
+    ? getInstanceIcon(meta)
+    : (CLASS_ICONS[device.class] ?? <Cpu size={20} />);
+
   return (
     <GlassCard className="p-4 space-y-3">
       <div className="flex items-center justify-between">
@@ -39,13 +55,15 @@ function DeviceCard({ device }: { device: DeviceDescriptor }) {
             className="w-10 h-10 rounded-lg flex items-center justify-center"
             style={{ backgroundColor: `${color}20`, color }}
           >
-            {CLASS_ICONS[device.class] ?? <Cpu size={20} />}
+            {icon}
           </div>
           <div>
             <h3 className="text-sm font-semibold text-white">{device.name}</h3>
             <p className="text-xs text-white/40">
-              {device.manufacturer ? `${device.manufacturer} · ` : ''}
-              {device.class} · {device.transport}
+              {isInstance
+                ? `${meta.screenClass} · ${meta.screenResolution} · ${meta.platform}`
+                : `${device.manufacturer ? `${device.manufacturer} · ` : ''}${device.class} · ${device.transport}`
+              }
             </p>
           </div>
         </div>
@@ -54,6 +72,21 @@ function DeviceCard({ device }: { device: DeviceDescriptor }) {
           <span className="text-xs text-white/50 capitalize">{device.status}</span>
         </div>
       </div>
+
+      {/* Instance-specific details */}
+      {isInstance && (
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-white/30">
+          {meta.activeView ? <span>View: <span className="text-white/50">{String(meta.activeView)}</span></span> : null}
+          {meta.activeVenture ? <span>Venture: <span className="text-cyan-400/70">{String(meta.activeVenture)}</span></span> : null}
+          {meta.status ? <span>Status: <span className="text-white/50">{String(meta.status)}</span></span> : null}
+          {meta.batteryLevel != null ? (
+            <span>Battery: <span className="text-white/50">{Number(meta.batteryLevel)}%{meta.batteryCharging ? ' ⚡' : ''}</span></span>
+          ) : null}
+          {meta.screenLabel ? <span>Screen: <span className="text-white/50">{String(meta.screenLabel)}</span></span> : null}
+          {meta.city ? <span>{String(meta.city)}</span> : null}
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-1">
         {device.capabilities.map((cap) => (
           <Badge key={cap} variant="outline" size="sm">{cap}</Badge>
@@ -82,6 +115,8 @@ export default function DeviceHubView() {
   const deviceList = Object.values(devices);
   const connected = deviceList.filter((d) => d.status === 'connected').length;
   const total = deviceList.length;
+  const instanceCount = deviceList.filter((d) => d.class === 'app-instance' && d.status === 'connected').length;
+  const hardwareCount = deviceList.filter((d) => d.class !== 'app-instance' && d.class !== 'agent-session' && d.status === 'connected').length;
 
   useEffect(() => {
     scanDevices();
@@ -121,9 +156,11 @@ export default function DeviceHubView() {
         </GlassCard>
       </motion.div>
 
-      <GridLayout cols={4}>
+      <GridLayout cols={6}>
         <StatCard label="Connected" value={connected} icon={<Wifi size={18} />} color="#10B981" />
-        <StatCard label="Total Devices" value={total} icon={<Cpu size={18} />} color="#00F0FF" />
+        <StatCard label="Screens" value={instanceCount} icon={<Monitor size={18} />} color="#3B82F6" />
+        <StatCard label="Hardware" value={hardwareCount} icon={<Cpu size={18} />} color="#00F0FF" />
+        <StatCard label="Total" value={total} icon={<Cpu size={18} />} color="#6B7280" />
         <StatCard label="Events/min" value={eventLog.filter((e) => Date.now() - e.timestamp < 60000).length} icon={<Activity size={18} />} color="#8B5CF6" />
         <StatCard label="Mappings" value={useDeviceStore.getState().mappings.length} icon={<Zap size={18} />} color="#F59E0B" />
       </GridLayout>

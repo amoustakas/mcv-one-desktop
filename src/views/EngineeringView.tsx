@@ -336,7 +336,6 @@ export default function EngineeringView() {
           title="Sessions"
           value={sessions.length}
           icon={<Terminal size={14} />}
-          color="#10B981"
           size="sm"
         />
       </motion.div>

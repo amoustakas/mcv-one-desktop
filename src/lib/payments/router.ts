@@ -352,7 +352,6 @@ export class PaymentRouter {
   }
 
   private _buildReasoning(primary: ScoredCandidate, all: ScoredCandidate[]): string {
-    const pct = (primary.fee.totalFee / 1 * 100).toFixed(4); // fee as % will vary by amount
     const competitors = all
       .slice(1)
       .map(c => `${c.processor.name} (score ${c.score.toFixed(3)})`)

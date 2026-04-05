@@ -153,6 +153,116 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }));
       }
 
+      // ── Comments CRUD ──
+      case 'add-comment': {
+        const { videoId, text: commentText } = req.body;
+        if (!videoId || !commentText) return res.status(400).json({ error: 'videoId and text required' });
+        const commentRes = await fetch(`${YT_API}/commentThreads?part=snippet`, {
+          method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ snippet: { videoId, topLevelComment: { snippet: { textOriginal: commentText } } } }),
+        });
+        return res.json(await commentRes.json());
+      }
+
+      case 'reply-comment': {
+        const { parentId, text: replyText } = req.body;
+        if (!parentId || !replyText) return res.status(400).json({ error: 'parentId and text required' });
+        const replyRes = await fetch(`${YT_API}/comments?part=snippet`, {
+          method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ snippet: { parentId, textOriginal: replyText } }),
+        });
+        return res.json(await replyRes.json());
+      }
+
+      case 'delete-comment': {
+        const { commentId } = req.body;
+        if (!commentId) return res.status(400).json({ error: 'commentId required' });
+        const delRes = await fetch(`${YT_API}/comments?id=${commentId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+        return res.json({ deleted: delRes.ok });
+      }
+
+      // ── Playlist CRUD ──
+      case 'create-playlist': {
+        const { title, description: plDesc, privacyStatus = 'private' } = req.body;
+        if (!title) return res.status(400).json({ error: 'title required' });
+        const plRes = await fetch(`${YT_API}/playlists?part=snippet,status`, {
+          method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ snippet: { title, description: plDesc }, status: { privacyStatus } }),
+        });
+        return res.json(await plRes.json());
+      }
+
+      case 'add-to-playlist': {
+        const { playlistId, videoId } = req.body;
+        if (!playlistId || !videoId) return res.status(400).json({ error: 'playlistId and videoId required' });
+        const addRes = await fetch(`${YT_API}/playlistItems?part=snippet`, {
+          method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ snippet: { playlistId, resourceId: { kind: 'youtube#video', videoId } } }),
+        });
+        return res.json(await addRes.json());
+      }
+
+      case 'delete-playlist': {
+        const { playlistId } = req.body;
+        if (!playlistId) return res.status(400).json({ error: 'playlistId required' });
+        const delRes = await fetch(`${YT_API}/playlists?id=${playlistId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+        return res.json({ deleted: delRes.ok });
+      }
+
+      // ── Video Update (metadata) ──
+      case 'update-video': {
+        const { videoId, title: vidTitle, description: vidDesc, tags, categoryId, privacyStatus = 'private' } = req.body;
+        if (!videoId) return res.status(400).json({ error: 'videoId required' });
+        const snippet: Record<string, unknown> = {};
+        if (vidTitle) snippet.title = vidTitle;
+        if (vidDesc) snippet.description = vidDesc;
+        if (tags) snippet.tags = tags;
+        if (categoryId) snippet.categoryId = categoryId;
+        const upRes = await fetch(`${YT_API}/videos?part=snippet,status`, {
+          method: 'PUT', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: videoId, snippet, status: { privacyStatus } }),
+        });
+        return res.json(await upRes.json());
+      }
+
+      // ── Rate Video (like/dislike) ──
+      case 'rate-video': {
+        const { videoId, rating = 'like' } = req.body;
+        if (!videoId) return res.status(400).json({ error: 'videoId required' });
+        const rateRes = await fetch(`${YT_API}/videos/rate?id=${videoId}&rating=${rating}`, {
+          method: 'POST', headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.json({ rated: rateRes.ok, rating });
+      }
+
+      // ── Captions ──
+      case 'list-captions': {
+        const { videoId } = req.query;
+        if (!videoId) return res.status(400).json({ error: 'videoId required' });
+        return res.json(await ytFetch(`${YT_API}/captions`, token, { part: 'snippet', videoId: videoId as string }));
+      }
+
+      // ── Demographics Analytics ──
+      case 'audience-demographics': {
+        const today = new Date().toISOString().split('T')[0];
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+        return res.json(await ytFetch(`${YT_ANALYTICS}/reports`, token, {
+          ids: 'channel==MINE', startDate: thirtyDaysAgo, endDate: today,
+          metrics: 'viewerPercentage', dimensions: 'ageGroup,gender',
+        }));
+      }
+
+      // ── Traffic Sources ──
+      case 'traffic-sources': {
+        const today = new Date().toISOString().split('T')[0];
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+        return res.json(await ytFetch(`${YT_ANALYTICS}/reports`, token, {
+          ids: 'channel==MINE', startDate: thirtyDaysAgo, endDate: today,
+          metrics: 'views,estimatedMinutesWatched', dimensions: 'insightTrafficSourceType',
+          sort: '-views',
+        }));
+      }
+
       // ── Overview ──
       case 'overview': {
         const channel = await ytFetch(`${YT_API}/channels`, token, {

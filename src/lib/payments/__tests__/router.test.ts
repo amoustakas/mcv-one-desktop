@@ -10,9 +10,9 @@ import type {
   RoutingRequest,
   FeeEstimate,
   PaymentResult,
-  ProcessorHealth,
-  RefundResult,
-  PaymentStatus,
+  ProcessorHealth as _ProcessorHealth,
+  RefundResult as _RefundResult,
+  PaymentStatus as _PaymentStatus,
 } from '../types';
 
 // ── HELPERS ──────────────────────────────────────────────────────────────────

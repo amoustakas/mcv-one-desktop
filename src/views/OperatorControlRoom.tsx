@@ -136,6 +136,62 @@ export default function OperatorControlRoom() {
                   )}
                 </div>
               )}
+
+              {activeTab === 'device-telemetry' && (
+                <div className="mcv-telemetry-stream">
+                  {deviceEventLog.length === 0 && Object.keys(deviceDevices).length === 0 ? (
+                    <div style={{ padding: 'var(--space-lg)', textAlign: 'center', color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
+                      <Cpu size={24} style={{ margin: '0 auto var(--space-sm)', display: 'block', opacity: 0.5 }} />
+                      No devices connected. Connect a device to see telemetry.
+                    </div>
+                  ) : (
+                    <>
+                      {/* Device State Summary */}
+                      <div style={{ padding: 'var(--space-sm) var(--space-md)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px', marginBottom: 'var(--space-xs)' }}>
+                          <Cpu size={10} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                          Devices ({Object.keys(deviceDevices).length}) &middot; Mappings ({deviceMappings.length})
+                          {activeProfileId && deviceProfiles[activeProfileId] && (
+                            <span style={{ color: '#00F0FF', marginLeft: 8 }}>Profile: {deviceProfiles[activeProfileId].name}</span>
+                          )}
+                        </div>
+                        {Object.values(deviceDevices).map((device) => (
+                          <div key={device.id} className="mcv-telemetry-row" style={{ borderLeft: `3px solid ${device.status === 'connected' ? 'var(--success)' : device.status === 'error' ? 'var(--error)' : 'var(--text-muted)'}` }}>
+                            <span style={{ color: '#00F0FF', fontSize: 'var(--text-xs)', fontWeight: 600, minWidth: 80 }}>
+                              {device.status.toUpperCase()}
+                            </span>
+                            <span className="mcv-telemetry-detail">
+                              {device.name} &middot; {device.class} &middot; {device.transport}
+                              {device.capabilities.length > 0 && ` &middot; ${device.capabilities.join(', ')}`}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Real-time Event Stream */}
+                      <div style={{ padding: 'var(--space-xs) var(--space-md) 0', fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                        Event Stream (last 50)
+                      </div>
+                      {deviceEventLog.slice(0, 50).map((evt) => {
+                        const device = deviceDevices[evt.deviceId];
+                        return (
+                          <div key={evt.id} className="mcv-telemetry-row">
+                            <span className="mcv-telemetry-time">
+                              {new Date(evt.timestamp).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            </span>
+                            <span className="mcv-telemetry-type" style={{ color: '#00F0FF' }}>
+                              {evt.type}
+                            </span>
+                            <span className="mcv-telemetry-detail" style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)' }}>
+                              {device?.name ?? evt.deviceId} &middot; {JSON.stringify(evt.payload).slice(0, 100)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
             <TokenCostWidget />

@@ -9,6 +9,7 @@ import {
   CheckSquare,
   Megaphone,
   Activity,
+  Cpu,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useGithubCommits, useGithubPRs } from '../hooks/use-github';
@@ -31,10 +32,11 @@ import SparkLine from '../components/charts/SparkLine';
 import McvDonutChart from '../components/charts/DonutChart';
 import McvBarChart from '../components/charts/BarChart';
 import { ventures } from '../lib/ventures';
+import { useDeviceStore } from '../stores/devices';
 
 /* ─── Types ────────────────────────────────────────────────── */
 
-type SignalTab = 'all' | 'code' | 'deploys' | 'tasks';
+type SignalTab = 'all' | 'code' | 'deploys' | 'tasks' | 'devices';
 
 /* ─── Venture color map ─────────────────────────────────────── */
 
@@ -222,6 +224,40 @@ export default function SignalsView() {
     [rawTasks],
   );
 
+  /* ── Device events as signals ──────────────────────────── */
+
+  const deviceEventLog = useDeviceStore((s) => s.eventLog);
+  const deviceDevices = useDeviceStore((s) => s.devices);
+
+  const deviceItems = useMemo<ActivityItem[]>(
+    () =>
+      deviceEventLog.slice(0, 30).map((evt) => {
+        const device = deviceDevices[evt.deviceId];
+        const deviceName = device?.name ?? evt.deviceId;
+        const isConnect = evt.type === 'button-press' || device?.status === 'connected';
+        const statusBadge: ActivityItem['status'] = isConnect ? 'success' : 'warning';
+        let title = `${deviceName}: ${evt.type}`;
+        let description = JSON.stringify(evt.payload).slice(0, 100);
+
+        // Enrich description based on event type
+        if (evt.type === 'agent-message') {
+          title = `${deviceName}: agent session activity`;
+          description = String(evt.payload?.message ?? evt.payload?.prompt ?? description);
+        }
+
+        return {
+          id: `device-${evt.id}`,
+          icon: <Cpu size={14} style={{ color: '#00F0FF' }} />,
+          title,
+          description,
+          timestamp: new Date(evt.timestamp).toISOString(),
+          source: 'Devices',
+          status: statusBadge,
+        };
+      }),
+    [deviceEventLog, deviceDevices],
+  );
+
   /* ── Combined + sorted feed ────────────────────────────── */
 
   const codeItems = useMemo(
@@ -234,10 +270,10 @@ export default function SignalsView() {
 
   const allItems = useMemo(
     () =>
-      [...commitItems, ...prItems, ...deployItems, ...taskItems].sort(
+      [...commitItems, ...prItems, ...deployItems, ...taskItems, ...deviceItems].sort(
         (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
       ),
-    [commitItems, prItems, deployItems, taskItems],
+    [commitItems, prItems, deployItems, taskItems, deviceItems],
   );
 
   const feedItems = useMemo(() => {
@@ -248,10 +284,12 @@ export default function SignalsView() {
         return deployItems;
       case 'tasks':
         return taskItems;
+      case 'devices':
+        return deviceItems;
       default:
         return allItems;
     }
-  }, [activeTab, allItems, codeItems, deployItems, taskItems]);
+  }, [activeTab, allItems, codeItems, deployItems, taskItems, deviceItems]);
 
   /* ── KPI numbers ───────────────────────────────────────── */
 
@@ -309,8 +347,9 @@ export default function SignalsView() {
       { id: 'code' as const, label: 'Code', count: codeItems.length },
       { id: 'deploys' as const, label: 'Deploys', count: deployItems.length },
       { id: 'tasks' as const, label: 'Tasks', count: taskItems.length },
+      { id: 'devices' as const, label: 'Devices', count: deviceItems.length },
     ],
-    [allItems.length, codeItems.length, deployItems.length, taskItems.length],
+    [allItems.length, codeItems.length, deployItems.length, taskItems.length, deviceItems.length],
   );
 
   /* ── Refresh ───────────────────────────────────────────── */

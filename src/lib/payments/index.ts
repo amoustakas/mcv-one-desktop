@@ -21,9 +21,6 @@ export type {
 } from './types';
 
 export {
-  ProcessorCapability,
-  PaymentMethod,
-  PaymentStatus,
   PaymentRequestSchema,
   SplitPaymentRequestSchema,
   VenturePaymentConfigSchema,

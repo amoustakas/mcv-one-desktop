@@ -53,11 +53,76 @@ const xOverview: KitToolHandler = async (input, ctx) => {
   return { success: true, data, displayMarkdown: `## @${data.username} Overview\n\n- **Name:** ${data.name}\n- **Followers:** ${Number(data.followers).toLocaleString()}\n- **Following:** ${Number(data.following).toLocaleString()}\n- **Tweets:** ${Number(data.tweets).toLocaleString()}\n- **Verified:** ${data.verified ? 'Yes' : 'No'}` };
 };
 
+const createTweet: KitToolHandler = async (input, ctx) => {
+  const d = await xApi('create-tweet', { text: input.text, reply_to: input.reply_to, quote_tweet_id: input.quote_tweet_id }, ctx);
+  return { success: true, data: d, displayMarkdown: `Tweet created: ${JSON.stringify(d).slice(0, 500)}` };
+};
+
+const deleteTweet: KitToolHandler = async (input, ctx) => {
+  const d = await xApi('delete-tweet', { id: input.id }, ctx);
+  return { success: true, data: d, displayMarkdown: `Tweet deleted: ${JSON.stringify(d).slice(0, 500)}` };
+};
+
+const retweet: KitToolHandler = async (input, ctx) => {
+  const d = await xApi('retweet', { userId: input.userId, tweetId: input.tweetId }, ctx);
+  return { success: true, data: d, displayMarkdown: `Retweeted: ${JSON.stringify(d).slice(0, 500)}` };
+};
+
+const likeTweet: KitToolHandler = async (input, ctx) => {
+  const d = await xApi('like-tweet', { userId: input.userId, tweetId: input.tweetId }, ctx);
+  return { success: true, data: d, displayMarkdown: `Liked tweet: ${JSON.stringify(d).slice(0, 500)}` };
+};
+
+const sendDm: KitToolHandler = async (input, ctx) => {
+  const d = await xApi('send-dm', { participant_id: input.participant_id, text: input.text }, ctx);
+  return { success: true, data: d, displayMarkdown: `DM sent: ${JSON.stringify(d).slice(0, 500)}` };
+};
+
+const listDms: KitToolHandler = async (_input, ctx) => {
+  const d = await xApi('list-dm-events', {}, ctx);
+  return { success: true, data: d, displayMarkdown: `DM events: ${JSON.stringify(d).slice(0, 500)}` };
+};
+
+const follow: KitToolHandler = async (input, ctx) => {
+  const d = await xApi('follow', { sourceUserId: input.sourceUserId, targetUserId: input.targetUserId }, ctx);
+  return { success: true, data: d, displayMarkdown: `Followed user: ${JSON.stringify(d).slice(0, 500)}` };
+};
+
+const unfollow: KitToolHandler = async (input, ctx) => {
+  const d = await xApi('unfollow', { sourceUserId: input.sourceUserId, targetUserId: input.targetUserId }, ctx);
+  return { success: true, data: d, displayMarkdown: `Unfollowed user: ${JSON.stringify(d).slice(0, 500)}` };
+};
+
+const block: KitToolHandler = async (input, ctx) => {
+  const d = await xApi('block', { sourceUserId: input.sourceUserId, targetUserId: input.targetUserId }, ctx);
+  return { success: true, data: d, displayMarkdown: `Blocked user: ${JSON.stringify(d).slice(0, 500)}` };
+};
+
+const getList: KitToolHandler = async (input, ctx) => {
+  const d = await xApi('get-list', { listId: input.listId }, ctx);
+  return { success: true, data: d, displayMarkdown: `List details: ${JSON.stringify(d).slice(0, 500)}` };
+};
+
+const createList: KitToolHandler = async (input, ctx) => {
+  const d = await xApi('create-list', { name: input.name, description: input.description }, ctx);
+  return { success: true, data: d, displayMarkdown: `List created: ${JSON.stringify(d).slice(0, 500)}` };
+};
+
+const listBookmarks: KitToolHandler = async (input, ctx) => {
+  const d = await xApi('list-bookmarks', { userId: input.userId }, ctx);
+  return { success: true, data: d, displayMarkdown: `Bookmarks: ${JSON.stringify(d).slice(0, 500)}` };
+};
+
+const searchSpaces: KitToolHandler = async (input, ctx) => {
+  const d = await xApi('search-spaces', { query: input.query }, ctx);
+  return { success: true, data: d, displayMarkdown: `Spaces: ${JSON.stringify(d).slice(0, 500)}` };
+};
+
 export const manifest: KitManifest = {
   id: 'twitter-social',
   name: 'X (Twitter)',
-  version: '1.0.0',
-  description: 'X/Twitter — user profiles, tweets, search, followers, trending topics, and social intelligence.',
+  version: '2.0.0',
+  description: 'X/Twitter — full CRUD: user profiles, tweets, search, followers, trending, DMs, lists, bookmarks, spaces, and social intelligence.',
   author: 'MCV',
   capabilities: ['network', 'credentials'],
   runtime: 'inline',
@@ -70,6 +135,19 @@ export const manifest: KitManifest = {
     { name: 'x_get_followers', description: "Get a user's followers.", input_schema: { type: 'object', properties: { userId: { type: 'string' }, limit: { type: 'number' } }, required: ['userId'] } },
     { name: 'x_trending', description: 'Get trending tweets on a topic.', input_schema: { type: 'object', properties: { topic: { type: 'string', description: 'Topic (default: crypto/AI)' }, limit: { type: 'number' } } } },
     { name: 'x_overview', description: 'Get X profile overview by username.', input_schema: { type: 'object', properties: { username: { type: 'string' } }, required: ['username'] } },
+    { name: 'x_create_tweet', description: 'Create a tweet.', input_schema: { type: 'object', properties: { text: { type: 'string' }, reply_to: { type: 'string', description: 'Tweet ID to reply to' }, quote_tweet_id: { type: 'string', description: 'Tweet ID to quote' } }, required: ['text'] } },
+    { name: 'x_delete_tweet', description: 'Delete a tweet by ID.', input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } },
+    { name: 'x_retweet', description: 'Retweet a tweet.', input_schema: { type: 'object', properties: { userId: { type: 'string' }, tweetId: { type: 'string' } }, required: ['userId', 'tweetId'] } },
+    { name: 'x_like', description: 'Like a tweet.', input_schema: { type: 'object', properties: { userId: { type: 'string' }, tweetId: { type: 'string' } }, required: ['userId', 'tweetId'] } },
+    { name: 'x_send_dm', description: 'Send a direct message.', input_schema: { type: 'object', properties: { participant_id: { type: 'string' }, text: { type: 'string' } }, required: ['participant_id', 'text'] } },
+    { name: 'x_list_dms', description: 'List DM events.', input_schema: { type: 'object', properties: {} } },
+    { name: 'x_follow', description: 'Follow a user.', input_schema: { type: 'object', properties: { sourceUserId: { type: 'string' }, targetUserId: { type: 'string' } }, required: ['sourceUserId', 'targetUserId'] } },
+    { name: 'x_unfollow', description: 'Unfollow a user.', input_schema: { type: 'object', properties: { sourceUserId: { type: 'string' }, targetUserId: { type: 'string' } }, required: ['sourceUserId', 'targetUserId'] } },
+    { name: 'x_block', description: 'Block a user.', input_schema: { type: 'object', properties: { sourceUserId: { type: 'string' }, targetUserId: { type: 'string' } }, required: ['sourceUserId', 'targetUserId'] } },
+    { name: 'x_list', description: 'Get list details.', input_schema: { type: 'object', properties: { listId: { type: 'string' } }, required: ['listId'] } },
+    { name: 'x_create_list', description: 'Create a new list.', input_schema: { type: 'object', properties: { name: { type: 'string' }, description: { type: 'string' } }, required: ['name'] } },
+    { name: 'x_bookmarks', description: 'List bookmarks for a user.', input_schema: { type: 'object', properties: { userId: { type: 'string' } }, required: ['userId'] } },
+    { name: 'x_spaces', description: 'Search Twitter Spaces.', input_schema: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] } },
   ],
 };
 
@@ -80,4 +158,17 @@ export const handlers: Record<string, KitToolHandler> = {
   x_get_followers: getFollowers,
   x_trending: trending,
   x_overview: xOverview,
+  x_create_tweet: createTweet,
+  x_delete_tweet: deleteTweet,
+  x_retweet: retweet,
+  x_like: likeTweet,
+  x_send_dm: sendDm,
+  x_list_dms: listDms,
+  x_follow: follow,
+  x_unfollow: unfollow,
+  x_block: block,
+  x_list: getList,
+  x_create_list: createList,
+  x_bookmarks: listBookmarks,
+  x_spaces: searchSpaces,
 };

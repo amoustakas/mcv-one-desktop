@@ -49,11 +49,66 @@ const ytOverview: KitToolHandler = async (_input, ctx) => {
   return { success: true, data, displayMarkdown: `## YouTube Overview\n\n- **Channel:** ${data.name}\n- **Subscribers:** ${Number(data.subscribers).toLocaleString()}\n- **Total Views:** ${Number(data.totalViews).toLocaleString()}\n- **Videos:** ${data.videoCount}` };
 };
 
+const addComment: KitToolHandler = async (input, ctx) => {
+  const d = await ytApi('add-comment', { videoId: input.videoId, text: input.text }, ctx);
+  return { success: true, data: d, displayMarkdown: `Comment added: ${JSON.stringify(d).slice(0, 500)}` };
+};
+
+const replyComment: KitToolHandler = async (input, ctx) => {
+  const d = await ytApi('reply-comment', { parentId: input.parentId, text: input.text }, ctx);
+  return { success: true, data: d, displayMarkdown: `Reply added: ${JSON.stringify(d).slice(0, 500)}` };
+};
+
+const deleteComment: KitToolHandler = async (input, ctx) => {
+  const d = await ytApi('delete-comment', { commentId: input.commentId }, ctx);
+  return { success: true, data: d, displayMarkdown: `Comment deleted: ${JSON.stringify(d).slice(0, 500)}` };
+};
+
+const createPlaylist: KitToolHandler = async (input, ctx) => {
+  const d = await ytApi('create-playlist', { title: input.title, description: input.description, privacyStatus: input.privacyStatus }, ctx);
+  return { success: true, data: d, displayMarkdown: `Playlist created: ${JSON.stringify(d).slice(0, 500)}` };
+};
+
+const addToPlaylist: KitToolHandler = async (input, ctx) => {
+  const d = await ytApi('add-to-playlist', { playlistId: input.playlistId, videoId: input.videoId }, ctx);
+  return { success: true, data: d, displayMarkdown: `Added to playlist: ${JSON.stringify(d).slice(0, 500)}` };
+};
+
+const deletePlaylist: KitToolHandler = async (input, ctx) => {
+  const d = await ytApi('delete-playlist', { playlistId: input.playlistId }, ctx);
+  return { success: true, data: d, displayMarkdown: `Playlist deleted: ${JSON.stringify(d).slice(0, 500)}` };
+};
+
+const updateVideo: KitToolHandler = async (input, ctx) => {
+  const d = await ytApi('update-video', { videoId: input.videoId, title: input.title, description: input.description, tags: input.tags }, ctx);
+  return { success: true, data: d, displayMarkdown: `Video updated: ${JSON.stringify(d).slice(0, 500)}` };
+};
+
+const rateVideo: KitToolHandler = async (input, ctx) => {
+  const d = await ytApi('rate-video', { videoId: input.videoId, rating: input.rating }, ctx);
+  return { success: true, data: d, displayMarkdown: `Video rated: ${JSON.stringify(d).slice(0, 500)}` };
+};
+
+const listCaptions: KitToolHandler = async (input, ctx) => {
+  const d = await ytApi('list-captions', { videoId: input.videoId }, ctx);
+  return { success: true, data: d, displayMarkdown: `Captions: ${JSON.stringify(d).slice(0, 500)}` };
+};
+
+const audienceDemographics: KitToolHandler = async (_input, ctx) => {
+  const d = await ytApi('audience-demographics', {}, ctx);
+  return { success: true, data: d, displayMarkdown: `Audience demographics: ${JSON.stringify(d).slice(0, 500)}` };
+};
+
+const trafficSources: KitToolHandler = async (_input, ctx) => {
+  const d = await ytApi('traffic-sources', {}, ctx);
+  return { success: true, data: d, displayMarkdown: `Traffic sources: ${JSON.stringify(d).slice(0, 500)}` };
+};
+
 export const manifest: KitManifest = {
   id: 'youtube-media',
   name: 'YouTube',
-  version: '1.0.0',
-  description: 'YouTube channels, videos, playlists, search, comments, and analytics.',
+  version: '2.0.0',
+  description: 'YouTube — channels, videos, playlists CRUD, comments CRUD, ratings, captions, demographics, traffic sources, and analytics.',
   author: 'MCV',
   capabilities: ['network', 'credentials'],
   runtime: 'inline',
@@ -66,6 +121,17 @@ export const manifest: KitManifest = {
     { name: 'youtube_my_playlists', description: 'List your playlists.', input_schema: { type: 'object', properties: {} } },
     { name: 'youtube_analytics', description: 'Get channel analytics (views, watch time, subscribers).', input_schema: { type: 'object', properties: { startDate: { type: 'string', description: 'YYYY-MM-DD' }, endDate: { type: 'string' } } } },
     { name: 'youtube_overview', description: 'YouTube channel summary.', input_schema: { type: 'object', properties: {} } },
+    { name: 'youtube_add_comment', description: 'Add a comment to a video.', input_schema: { type: 'object', properties: { videoId: { type: 'string' }, text: { type: 'string' } }, required: ['videoId', 'text'] } },
+    { name: 'youtube_reply_comment', description: 'Reply to a comment.', input_schema: { type: 'object', properties: { parentId: { type: 'string' }, text: { type: 'string' } }, required: ['parentId', 'text'] } },
+    { name: 'youtube_delete_comment', description: 'Delete a comment.', input_schema: { type: 'object', properties: { commentId: { type: 'string' } }, required: ['commentId'] } },
+    { name: 'youtube_create_playlist', description: 'Create a playlist.', input_schema: { type: 'object', properties: { title: { type: 'string' }, description: { type: 'string' }, privacyStatus: { type: 'string', description: 'public, unlisted, or private' } }, required: ['title'] } },
+    { name: 'youtube_add_to_playlist', description: 'Add a video to a playlist.', input_schema: { type: 'object', properties: { playlistId: { type: 'string' }, videoId: { type: 'string' } }, required: ['playlistId', 'videoId'] } },
+    { name: 'youtube_delete_playlist', description: 'Delete a playlist.', input_schema: { type: 'object', properties: { playlistId: { type: 'string' } }, required: ['playlistId'] } },
+    { name: 'youtube_update_video', description: 'Update video metadata.', input_schema: { type: 'object', properties: { videoId: { type: 'string' }, title: { type: 'string' }, description: { type: 'string' }, tags: { type: 'string', description: 'Comma-separated tags' } }, required: ['videoId'] } },
+    { name: 'youtube_rate_video', description: 'Rate a video (like/dislike/none).', input_schema: { type: 'object', properties: { videoId: { type: 'string' }, rating: { type: 'string', description: 'like, dislike, or none' } }, required: ['videoId', 'rating'] } },
+    { name: 'youtube_captions', description: 'List captions for a video.', input_schema: { type: 'object', properties: { videoId: { type: 'string' } }, required: ['videoId'] } },
+    { name: 'youtube_demographics', description: 'Get audience demographics.', input_schema: { type: 'object', properties: {} } },
+    { name: 'youtube_traffic_sources', description: 'Get traffic source breakdown.', input_schema: { type: 'object', properties: {} } },
   ],
 };
 
@@ -76,4 +142,15 @@ export const handlers: Record<string, KitToolHandler> = {
   youtube_my_playlists: myPlaylists,
   youtube_analytics: channelAnalytics,
   youtube_overview: ytOverview,
+  youtube_add_comment: addComment,
+  youtube_reply_comment: replyComment,
+  youtube_delete_comment: deleteComment,
+  youtube_create_playlist: createPlaylist,
+  youtube_add_to_playlist: addToPlaylist,
+  youtube_delete_playlist: deletePlaylist,
+  youtube_update_video: updateVideo,
+  youtube_rate_video: rateVideo,
+  youtube_captions: listCaptions,
+  youtube_demographics: audienceDemographics,
+  youtube_traffic_sources: trafficSources,
 };

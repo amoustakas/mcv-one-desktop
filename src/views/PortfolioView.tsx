@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   PieChart, GitBranch, GitPullRequest, Cloud, Users, CheckSquare,
-  Activity, ExternalLink, Zap, Clock,
+  Activity, ExternalLink, Zap, Clock, Cpu, MonitorSmartphone,
 } from 'lucide-react';
 import {
   PageShell, PageHeader, GlassCard, KpiCard, Tabs, Badge,
@@ -277,13 +277,26 @@ interface VenturesGridProps {
   ventures: Venture[];
   metrics: Record<string, VentureMetrics>;
   onEnter: (slug: string) => void;
+  devices: Record<string, import('../lib/devices/types').DeviceDescriptor>;
+  profiles: Record<string, import('../lib/devices/types').DeviceProfile>;
 }
 
-function VenturesGrid({ ventures, metrics, onEnter }: VenturesGridProps) {
+function VenturesGrid({ ventures, metrics, onEnter, devices, profiles }: VenturesGridProps) {
+  const deviceList = Object.values(devices);
+  const profileList = Object.values(profiles);
+
   return (
     <div className="pv-ventures-grid">
       {ventures.map((v) => {
         const m = metrics[v.id];
+        // Count agent sessions whose projectDir metadata matches this venture
+        const ventureSessionCount = deviceList.filter(
+          d => d.class === 'agent-session' && d.status === 'connected' &&
+            (d.metadata?.projectDir as string)?.toLowerCase().includes(v.id),
+        ).length;
+        // Check if any device profile is linked to this venture
+        const hasProfile = profileList.some(p => p.ventureId === v.id);
+
         return (
           <GlassCard
             key={v.id}
@@ -307,6 +320,21 @@ function VenturesGrid({ ventures, metrics, onEnter }: VenturesGridProps) {
                 <span className="pv-card-name">{v.name}</span>
                 <span className="pv-card-tagline">{v.tagline}</span>
               </div>
+              {/* Device indicators */}
+              {(ventureSessionCount > 0 || hasProfile) && (
+                <div className="pv-card-devices">
+                  {ventureSessionCount > 0 && (
+                    <span className="pv-device-badge" title={`${ventureSessionCount} active session${ventureSessionCount !== 1 ? 's' : ''}`}>
+                      <MonitorSmartphone size={10} /> {ventureSessionCount}
+                    </span>
+                  )}
+                  {hasProfile && (
+                    <span className="pv-device-badge profile" title="Device profile configured">
+                      <Cpu size={10} />
+                    </span>
+                  )}
+                </div>
+              )}
               <Badge
                 variant="dot"
                 color={STATUS_COLOR[v.status]}
@@ -634,6 +662,32 @@ const portfolioStyles = `
     font-size: 10px;
     color: var(--text-muted);
     line-height: 1.3;
+  }
+
+  /* Device indicators on venture cards */
+  .pv-card-devices {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .pv-device-badge {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 9px;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    color: var(--success);
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    border-radius: var(--radius-sm);
+    padding: 1px 5px;
+    line-height: 1;
+  }
+  .pv-device-badge.profile {
+    color: var(--cyan);
+    background: rgba(0, 240, 255, 0.08);
+    border-color: rgba(0, 240, 255, 0.2);
   }
 
   /* Stats row */

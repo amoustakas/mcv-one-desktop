@@ -103,6 +103,65 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.json(await gscPost(`${GSC_V1}/urlInspection/index:inspect`, token, { siteUrl, inspectionUrl }));
       }
 
+      // ── Sitemap Management ──
+      case 'submit-sitemap': {
+        const { siteUrl, feedpath } = req.body;
+        if (!siteUrl || !feedpath) return res.status(400).json({ error: 'siteUrl and feedpath required' });
+        const r = await fetch(`${GSC_API}/sites/${encodeURIComponent(siteUrl)}/sitemaps/${encodeURIComponent(feedpath)}`, {
+          method: 'PUT', headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.json({ submitted: r.ok });
+      }
+
+      case 'delete-sitemap': {
+        const { siteUrl, feedpath } = req.body;
+        if (!siteUrl || !feedpath) return res.status(400).json({ error: 'siteUrl and feedpath required' });
+        const r = await fetch(`${GSC_API}/sites/${encodeURIComponent(siteUrl)}/sitemaps/${encodeURIComponent(feedpath)}`, {
+          method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.json({ deleted: r.ok });
+      }
+
+      // ── Country Performance ──
+      case 'country-performance': {
+        const { siteUrl } = req.body;
+        if (!siteUrl) return res.status(400).json({ error: 'siteUrl required' });
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+        const today = new Date().toISOString().split('T')[0];
+        return res.json(await gscPost(`${GSC_API}/sites/${encodeURIComponent(siteUrl)}/searchAnalytics/query`, token, {
+          startDate: thirtyDaysAgo, endDate: today, dimensions: ['country'], rowLimit: 25,
+        }));
+      }
+
+      // ── Device Performance ──
+      case 'device-performance': {
+        const { siteUrl } = req.body;
+        if (!siteUrl) return res.status(400).json({ error: 'siteUrl required' });
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+        const today = new Date().toISOString().split('T')[0];
+        return res.json(await gscPost(`${GSC_API}/sites/${encodeURIComponent(siteUrl)}/searchAnalytics/query`, token, {
+          startDate: thirtyDaysAgo, endDate: today, dimensions: ['device'], rowLimit: 5,
+        }));
+      }
+
+      // ── Date Performance (daily trend) ──
+      case 'daily-performance': {
+        const { siteUrl } = req.body;
+        if (!siteUrl) return res.status(400).json({ error: 'siteUrl required' });
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+        const today = new Date().toISOString().split('T')[0];
+        return res.json(await gscPost(`${GSC_API}/sites/${encodeURIComponent(siteUrl)}/searchAnalytics/query`, token, {
+          startDate: thirtyDaysAgo, endDate: today, dimensions: ['date'], rowLimit: 31,
+        }));
+      }
+
+      // ── Links (External + Internal) ──
+      case 'external-links': {
+        const { siteUrl } = req.query;
+        if (!siteUrl) return res.status(400).json({ error: 'siteUrl required' });
+        return res.json(await gscFetch(`${GSC_API}/sites/${encodeURIComponent(siteUrl as string)}/searchAnalytics/query`, token));
+      }
+
       case 'overview': {
         const sites = await gscFetch(`${GSC_API}/sites`, token);
         return res.json({

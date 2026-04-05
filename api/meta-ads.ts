@@ -115,6 +115,112 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       case 'account-info':
         return res.json(await metaFetch(`/act_${accountId}`, { fields: 'id,name,account_status,currency,timezone_name,balance,amount_spent,business_name' }));
 
+      // ── CRUD: Campaigns ──
+      case 'create-campaign': {
+        const { name, objective = 'OUTCOME_AWARENESS', status = 'PAUSED', daily_budget, lifetime_budget, special_ad_categories = [] } = req.body;
+        if (!name) return res.status(400).json({ error: 'name required' });
+        const body: Record<string, unknown> = { name, objective, status, special_ad_categories };
+        if (daily_budget) body.daily_budget = daily_budget;
+        if (lifetime_budget) body.lifetime_budget = lifetime_budget;
+        return res.json(await metaPost(`/act_${accountId}/campaigns`, body));
+      }
+
+      case 'update-campaign': {
+        const { campaignId, name: cName, status: cStatus, daily_budget: cBudget } = req.body;
+        if (!campaignId) return res.status(400).json({ error: 'campaignId required' });
+        const body: Record<string, unknown> = {};
+        if (cName) body.name = cName;
+        if (cStatus) body.status = cStatus;
+        if (cBudget) body.daily_budget = cBudget;
+        return res.json(await metaPost(`/${campaignId}`, body));
+      }
+
+      // ── CRUD: Ad Sets ──
+      case 'create-ad-set': {
+        const { campaignId, name: asName, daily_budget: asBudget, optimization_goal = 'REACH', billing_event = 'IMPRESSIONS', targeting, status: asStatus = 'PAUSED', start_time, end_time } = req.body;
+        if (!campaignId || !asName) return res.status(400).json({ error: 'campaignId and name required' });
+        const body: Record<string, unknown> = { campaign_id: campaignId, name: asName, optimization_goal, billing_event, status: asStatus };
+        if (asBudget) body.daily_budget = asBudget;
+        if (targeting) body.targeting = targeting;
+        if (start_time) body.start_time = start_time;
+        if (end_time) body.end_time = end_time;
+        return res.json(await metaPost(`/act_${accountId}/adsets`, body));
+      }
+
+      case 'update-ad-set': {
+        const { adSetId, name: usName, status: usStatus, daily_budget: usBudget, targeting: usTargeting } = req.body;
+        if (!adSetId) return res.status(400).json({ error: 'adSetId required' });
+        const body: Record<string, unknown> = {};
+        if (usName) body.name = usName;
+        if (usStatus) body.status = usStatus;
+        if (usBudget) body.daily_budget = usBudget;
+        if (usTargeting) body.targeting = usTargeting;
+        return res.json(await metaPost(`/${adSetId}`, body));
+      }
+
+      // ── CRUD: Ads ──
+      case 'create-ad': {
+        const { adSetId, name: adName, creative, status: adStatus = 'PAUSED' } = req.body;
+        if (!adSetId || !adName || !creative) return res.status(400).json({ error: 'adSetId, name, creative required' });
+        return res.json(await metaPost(`/act_${accountId}/ads`, { adset_id: adSetId, name: adName, creative, status: adStatus }));
+      }
+
+      case 'update-ad': {
+        const { adId, name: uaName, status: uaStatus } = req.body;
+        if (!adId) return res.status(400).json({ error: 'adId required' });
+        const body: Record<string, unknown> = {};
+        if (uaName) body.name = uaName;
+        if (uaStatus) body.status = uaStatus;
+        return res.json(await metaPost(`/${adId}`, body));
+      }
+
+      // ── Creatives ──
+      case 'list-creatives':
+        return res.json(await metaFetch(`/act_${accountId}/adcreatives`, { fields: 'id,name,title,body,image_url,thumbnail_url,object_story_spec', limit: '25' }));
+
+      // ── Pixels ──
+      case 'list-pixels':
+        return res.json(await metaFetch(`/act_${accountId}/adspixels`, { fields: 'id,name,code,creation_time,last_fired_time,is_created_by_business' }));
+
+      case 'get-pixel-stats': {
+        const { pixelId } = req.query;
+        if (!pixelId) return res.status(400).json({ error: 'pixelId required' });
+        return res.json(await metaFetch(`/${pixelId}/stats`, {}));
+      }
+
+      // ── Lookalike Audiences ──
+      case 'create-lookalike': {
+        const { sourceAudienceId, country, ratio = '0.01' } = req.body;
+        if (!sourceAudienceId || !country) return res.status(400).json({ error: 'sourceAudienceId and country required' });
+        return res.json(await metaPost(`/act_${accountId}/customaudiences`, {
+          subtype: 'LOOKALIKE', origin_audience_id: sourceAudienceId,
+          lookalike_spec: JSON.stringify({ country, ratio: Number(ratio), type: 'similarity' }),
+        }));
+      }
+
+      // ── Lead Forms ──
+      case 'list-lead-forms': {
+        const { pageId } = req.query;
+        if (!pageId) return res.status(400).json({ error: 'pageId required' });
+        return res.json(await metaFetch(`/${pageId}/leadgen_forms`, { fields: 'id,name,status,leads_count,created_time' }));
+      }
+
+      case 'get-leads': {
+        const { formId, limit: leadLimit = '25' } = req.query;
+        if (!formId) return res.status(400).json({ error: 'formId required' });
+        return res.json(await metaFetch(`/${formId}/leads`, { limit: leadLimit as string }));
+      }
+
+      // ── Catalog / Product Sets ──
+      case 'list-catalogs':
+        return res.json(await metaFetch(`/act_${accountId}/owned_product_catalogs`, { fields: 'id,name,product_count' }));
+
+      case 'catalog-products': {
+        const { catalogId, limit: prodLimit = '25' } = req.query;
+        if (!catalogId) return res.status(400).json({ error: 'catalogId required' });
+        return res.json(await metaFetch(`/${catalogId}/products`, { fields: 'id,name,price,image_url,url,availability', limit: prodLimit as string }));
+      }
+
       case 'overview': {
         const [account, insights] = await Promise.all([
           metaFetch(`/act_${accountId}`, { fields: 'name,currency,amount_spent,balance' }),

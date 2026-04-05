@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Brain, Search, Trash2, Clock, Database, Zap, MessageSquare,
   GitCommit, AlertTriangle, Rocket, FolderOpen, ChevronDown, ChevronRight,
-  Copy, Filter, Activity, Layers,
+  Copy, Filter, Activity, Layers, Cpu,
 } from 'lucide-react';
+import { useDeviceStore } from '../stores/devices';
 import { useProjectMemory, useSessionEvents, useAllEvents, useMemoryDelete } from '../hooks/use-memory';
 import { useLocalPipeline, useLocalFile } from '../hooks/use-pipeline';
 import { PageHeader, PageShell, Button, GlassCard, Badge, EmptyState, Skeleton, Tabs, Input } from '../components/ui';
@@ -622,6 +623,8 @@ function LocalFilesTab() {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [expandedProject, setExpandedProject] = useState<string | null>(null);
   const { data: fileData } = useLocalFile(selectedFile || '');
+  const deviceProfiles = useDeviceStore((s) => s.profiles);
+  const activeProfileId = useDeviceStore((s) => s.activeProfileId);
 
   if (isLoading) {
     return <div className="mv-loading">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} variant="rect" height={52} />)}</div>;
@@ -672,6 +675,40 @@ function LocalFilesTab() {
                     <span>{p.name}</span>
                     <span className="mv-local-file-time">{timeAgo(p.modified)}</span>
                   </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {Object.keys(deviceProfiles).length > 0 && (
+          <div className="mv-local-project">
+            <button className="mv-local-project-header" onClick={() => setExpandedProject(expandedProject === '__devices__' ? null : '__devices__')}>
+              {expandedProject === '__devices__' ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+              <Cpu size={12} />
+              <span className="mv-local-project-name">Device Profiles</span>
+              <Badge size="sm">{Object.keys(deviceProfiles).length}</Badge>
+            </button>
+            {expandedProject === '__devices__' && (
+              <div className="mv-local-file-list mv-device-profiles">
+                {Object.values(deviceProfiles).map(profile => (
+                  <div key={profile.id} className="mv-device-profile-item">
+                    <div className="mv-device-profile-header">
+                      <Cpu size={10} />
+                      <span className="mv-device-profile-name">{profile.name}</span>
+                      {profile.id === activeProfileId && (
+                        <Badge color="var(--cyan)" variant="outline" size="sm">Active</Badge>
+                      )}
+                    </div>
+                    {profile.description && (
+                      <span className="mv-device-profile-desc">{profile.description}</span>
+                    )}
+                    <div className="mv-device-profile-meta">
+                      {profile.ventureId && <span>Venture: {profile.ventureId}</span>}
+                      <span>Mappings: {profile.mappings.length}</span>
+                      {profile.streamDeckPages && <span>SD Pages: {profile.streamDeckPages.length}</span>}
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
@@ -1062,4 +1099,13 @@ const mvStyles = `
   .mv-local-viewer-path { font-family: var(--font-mono); font-size: 11px; color: var(--cyan); }
   .mv-local-viewer-meta { font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); }
   .mv-local-viewer-body { flex: 1; overflow-y: auto; padding: 16px; font-size: 13px; line-height: 1.6; }
+
+  /* Device Profiles in Local Files */
+  .mv-device-profiles { padding-left: 12px; }
+  .mv-device-profile-item { padding: 6px 12px; border-left: 2px solid rgba(255,255,255,0.04); margin-bottom: 2px; }
+  .mv-device-profile-item:hover { background: var(--bg-card); border-left-color: rgba(0,240,255,0.2); }
+  .mv-device-profile-header { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--text-secondary); }
+  .mv-device-profile-name { flex: 1; }
+  .mv-device-profile-desc { display: block; font-size: 10px; color: var(--text-muted); margin-top: 2px; padding-left: 16px; }
+  .mv-device-profile-meta { display: flex; gap: 10px; font-size: 9px; font-family: var(--font-mono); color: var(--text-muted); margin-top: 3px; padding-left: 16px; }
 `;

@@ -210,7 +210,7 @@ export class SplitPaymentEngine {
             .from('split_payment_items')
             .update({ status: 'failed', error: errorMsg, updated_at: now })
             .eq('id', itemId)
-            .catch(() => {}); // ignore secondary errors
+            .then((r: { error: unknown }) => { if (r.error) { /* ignore secondary errors */ } });
         }
 
         itemResults.push({
@@ -232,7 +232,7 @@ export class SplitPaymentEngine {
         .from('split_payments')
         .update({ status: finalStatus, updated_at: new Date().toISOString() })
         .eq('id', splitPaymentId)
-        .catch(() => {}); // ignore secondary errors
+        .then((r: { error: unknown }) => { if (r.error) { /* ignore secondary errors */ } });
     }
 
     // ── 7. Return result ─────────────────────────────────────────────────────

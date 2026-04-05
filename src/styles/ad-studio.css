@@ -1,0 +1,141 @@
+/* MCV One — Ad Studio Styles */
+
+/* ── KPI Strip ── */
+.adstudio-kpi-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 0 var(--space-lg); margin-bottom: var(--space-sm); position: relative; }
+.adstudio-kpi-strip::before { content: ""; position: absolute; top: -1px; left: 15%; right: 15%; height: 1px; background: linear-gradient(to right, transparent, var(--cyan), transparent); }
+
+/* ── Platform Strip ── */
+.adstudio-platform-strip { display: flex; gap: 6px; padding: 0 var(--space-lg) var(--space-sm); overflow-x: auto; scrollbar-width: none; }
+.adstudio-platform-strip::-webkit-scrollbar { display: none; }
+.adstudio-platform-chip { display: flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: var(--radius-full); background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary); font-size: 11px; font-weight: 500; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.adstudio-platform-chip:hover { border-color: var(--chip-color, var(--border-active)); box-shadow: 0 0 12px color-mix(in srgb, var(--chip-color, var(--cyan)) 15%, transparent); }
+.adstudio-platform-count { font-family: var(--font-mono); font-size: 9px; padding: 1px 5px; border-radius: var(--radius-full); background: var(--bg-elevated); color: var(--text-muted); }
+
+/* ── Tabs ── */
+.adstudio-tabs { margin: 0 var(--space-lg) var(--space-sm); }
+
+/* ── Body ── */
+.adstudio-body { flex: 1; overflow-y: auto; padding: 0 var(--space-lg) var(--space-lg); }
+
+/* ── Section Titles ── */
+.adstudio-section-title { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-md); }
+.adstudio-empty { font-size: 12px; color: var(--text-muted); text-align: center; padding: var(--space-lg); }
+
+/* ── Format Browser ── */
+.format-browser { display: flex; flex-direction: column; gap: var(--space-sm); }
+.format-browser-tabs { margin-bottom: var(--space-xs); }
+.format-browser-toolbar { display: flex; gap: var(--space-sm); align-items: center; }
+.format-browser-search { display: flex; align-items: center; gap: 8px; flex: 1; padding: 7px 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-md); transition: all 0.15s; }
+.format-browser-search:focus-within { border-color: var(--cyan); box-shadow: 0 0 0 2px rgba(0,240,255,0.08); }
+.format-browser-search input { flex: 1; background: transparent; border: none; color: var(--text-primary); font-size: 12px; outline: none; }
+.format-browser-search input::placeholder { color: var(--text-muted); }
+.format-browser-media-filter { display: flex; gap: 2px; }
+.format-media-btn { display: flex; align-items: center; gap: 4px; padding: 5px 10px; border-radius: var(--radius-sm); font-size: 10px; color: var(--text-muted); background: none; border: 1px solid transparent; cursor: pointer; transition: all 0.15s; }
+.format-media-btn:hover { color: var(--text-secondary); background: var(--bg-card); }
+.format-media-btn.active { color: var(--cyan); background: var(--cyan-glow); border-color: rgba(0,240,255,0.15); }
+.format-browser-count { font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); padding: 2px 0; }
+.format-browser-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-sm); }
+
+/* ── Ad Spec Card ── */
+.adspec-card { padding: 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; }
+.adspec-card:hover { border-color: var(--border-active); box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
+.adspec-card-selected { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan), 0 0 16px var(--cyan-glow); }
+.adspec-card-gradient { position: absolute; top: 0; left: 15%; right: 15%; height: 1px; background: linear-gradient(to right, transparent, var(--adspec-color, var(--cyan)), transparent); opacity: 0; transition: opacity 0.2s; }
+.adspec-card:hover .adspec-card-gradient { opacity: 1; }
+.adspec-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.adspec-card-name { flex: 1; font-size: 12px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.adspec-card-type { display: flex; align-items: center; gap: 3px; font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); padding: 1px 6px; background: var(--bg-elevated); border-radius: var(--radius-full); }
+.adspec-card-desc { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; line-height: 1.4; }
+.adspec-card-dims { display: flex; align-items: baseline; gap: 6px; margin-bottom: 4px; }
+.adspec-card-dim-value { font-size: 14px; font-weight: 700; font-family: var(--font-mono); color: var(--cyan); }
+.adspec-card-dim-label { font-size: 9px; color: var(--text-muted); }
+.adspec-card-ratios { display: flex; gap: 4px; margin-bottom: 4px; flex-wrap: wrap; }
+.adspec-card-ratio { font-size: 9px; padding: 1px 6px; background: var(--bg-elevated); border-radius: var(--radius-full); color: var(--text-secondary); font-family: var(--font-mono); border: 1px solid var(--border); }
+.adspec-card-texts { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+.adspec-card-text-limit { font-size: 9px; color: var(--text-muted); font-family: var(--font-mono); }
+.adspec-card-video { font-size: 10px; color: var(--purple); font-family: var(--font-mono); margin-bottom: 4px; }
+.adspec-card-docs { display: flex; align-items: center; gap: 3px; font-size: 9px; color: var(--cyan-dim); text-decoration: none; margin-top: 4px; }
+.adspec-card-docs:hover { color: var(--cyan); text-decoration: underline; }
+.adspec-card-compact { padding: 8px 12px; }
+.adspec-card-compact .adspec-card-header { margin-bottom: 0; }
+
+/* ── Platform Icon ── */
+.platform-icon { display: inline-flex; align-items: center; gap: 4px; color: var(--platform-color); }
+.platform-icon-label { font-size: 10px; font-weight: 600; }
+
+/* ── Ad Preview ── */
+.ad-preview-container { display: flex; flex-direction: column; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border); background: var(--bg-card); }
+.ad-preview-frame-header { display: flex; align-items: center; gap: 6px; padding: 4px 8px; font-size: 9px; height: 32px; border-bottom: 1px solid var(--border); }
+.ad-preview-placement { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.ad-preview-canvas { position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.ad-preview-placeholder { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.ad-preview-dim-text { font-size: 12px; font-family: var(--font-mono); color: var(--text-muted); font-weight: 600; }
+.ad-preview-format-text { font-size: 8px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+.ad-preview-overlay { position: absolute; bottom: 4px; right: 4px; font-size: 8px; font-family: var(--font-mono); color: var(--text-muted); background: rgba(0,0,0,0.5); padding: 1px 4px; border-radius: 2px; }
+.ad-preview-badge { position: absolute; top: 4px; right: 4px; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; }
+.ad-preview-badge.pass { background: var(--success); color: white; }
+.ad-preview-badge.fail { background: var(--error); color: white; }
+
+/* ── Ad Grid ── */
+.ad-grid { display: grid; gap: var(--space-md); }
+.ad-grid-2 { grid-template-columns: repeat(2, 1fr); }
+.ad-grid-3 { grid-template-columns: repeat(3, 1fr); }
+.ad-grid-4 { grid-template-columns: repeat(4, 1fr); }
+.ad-grid-cell { cursor: pointer; transition: all 0.15s; }
+.ad-grid-cell:hover { transform: translateY(-2px); }
+.ad-grid-cell-label { font-size: 10px; color: var(--text-muted); text-align: center; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── Compliance Checker ── */
+.compliance-checker { display: flex; flex-direction: column; gap: var(--space-md); }
+.compliance-summary { display: flex; gap: var(--space-md); padding: var(--space-md); background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.compliance-stat { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; }
+.compliance-stat.pass { color: var(--success); }
+.compliance-stat.fail { color: var(--error); }
+.compliance-stat.total { color: var(--text-muted); margin-left: auto; font-weight: 400; }
+.compliance-list { display: flex; flex-direction: column; gap: 6px; }
+.compliance-item { padding: 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer; transition: all 0.15s; }
+.compliance-item:hover { border-color: var(--border-active); }
+.compliance-pass { border-left: 3px solid var(--success); }
+.compliance-fail { border-left: 3px solid var(--error); }
+.compliance-item-header { display: flex; align-items: center; gap: 8px; }
+.compliance-item-name { flex: 1; font-size: 12px; font-weight: 500; color: var(--text-primary); }
+.compliance-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; padding: 2px 8px; border-radius: var(--radius-full); }
+.compliance-badge.pass { background: rgba(16,185,129,0.1); color: var(--success); }
+.compliance-badge.fail { background: rgba(239,68,68,0.1); color: var(--error); }
+.compliance-rules { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; padding-left: 22px; }
+.compliance-rule { display: flex; align-items: center; gap: 4px; font-size: 10px; }
+.compliance-rule-name { font-weight: 600; }
+.compliance-rule-actual { font-family: var(--font-mono); }
+.compliance-rule-arrow { color: var(--text-muted); }
+.compliance-rule-expected { font-family: var(--font-mono); color: var(--text-muted); }
+
+/* ── Builder Layout ── */
+.adstudio-builder { display: grid; grid-template-columns: 1fr 360px; gap: var(--space-md); }
+.adstudio-builder-left { min-width: 0; }
+.adstudio-builder-right { min-width: 0; }
+
+/* ── Detail Panel ── */
+.adstudio-detail { display: flex; flex-direction: column; gap: 8px; }
+.adstudio-detail-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding: 4px 0; }
+.adstudio-detail-label { color: var(--text-muted); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.adstudio-detail-value { color: var(--text-primary); }
+.adstudio-detail-value.mono { font-family: var(--font-mono); color: var(--cyan); }
+.adstudio-detail-section { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.adstudio-text-limit { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); padding: 2px 0; }
+.adstudio-text-limit .mono { font-family: var(--font-mono); color: var(--cyan-dim); }
+.adstudio-tip { font-size: 11px; color: var(--text-muted); line-height: 1.4; padding-left: 8px; border-left: 2px solid var(--border); }
+
+/* ── Compliance Form ── */
+.adstudio-compliance { display: flex; flex-direction: column; gap: var(--space-md); }
+.adstudio-compliance-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: var(--space-sm); }
+.adstudio-form-row { display: flex; flex-direction: column; gap: 4px; }
+.adstudio-form-row label { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); }
+.adstudio-form-row input, .adstudio-form-row select { padding: 6px 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 12px; font-family: var(--font-mono); transition: all 0.15s; }
+.adstudio-form-row input:focus, .adstudio-form-row select:focus { border-color: var(--cyan); box-shadow: 0 0 0 2px rgba(0,240,255,0.1); outline: none; }
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+  .adstudio-kpi-strip { grid-template-columns: repeat(2, 1fr); }
+  .adstudio-builder { grid-template-columns: 1fr; }
+  .format-browser-list { grid-template-columns: 1fr; }
+}

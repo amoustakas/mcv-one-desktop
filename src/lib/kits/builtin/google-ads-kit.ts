@@ -9,18 +9,48 @@ const keywords: KitToolHandler = async (input, ctx) => { const d = await gadsApi
 const searchTerms: KitToolHandler = async (input, ctx) => { const d = await gadsApi('search-terms', { customerId: input.customerId }, ctx); return { success: true, data: d, displayMarkdown: `## Search Terms\n\n\`\`\`json\n${JSON.stringify(d?.[0]?.results?.slice(0, 15), null, 2).slice(0, 3000)}\n\`\`\`` }; };
 const customQuery: KitToolHandler = async (input, ctx) => { const d = await gadsApi('custom-query', { customerId: input.customerId, query: input.query }, ctx, 'POST'); return { success: true, data: d, displayMarkdown: `## GAQL Query Result\n\n\`\`\`json\n${JSON.stringify(d?.[0]?.results?.slice(0, 10), null, 2).slice(0, 3000)}\n\`\`\`` }; };
 const gadsOverview: KitToolHandler = async (input, ctx) => { const d = await gadsApi('overview', { customerId: input.customerId }, ctx); return { success: true, data: d, displayMarkdown: `## Google Ads (7d)\n\n- **Impressions:** ${d.impressions_7d}\n- **Clicks:** ${d.clicks_7d}\n- **Cost:** $${d.cost_7d}\n- **Conversions:** ${d.conversions_7d}` }; };
+// CRUD operations
+const createCampaign: KitToolHandler = async (input, ctx) => { const d = await gadsApi('create-campaign', { customerId: input.customerId, name: input.name, budget_micros: input.budgetMicros, channel_type: input.channelType, status: input.status }, ctx, 'POST'); return { success: true, data: d, displayMarkdown: `Campaign created: **${input.name}**` }; };
+const pauseCampaign: KitToolHandler = async (input, ctx) => { const d = await gadsApi('pause-campaign', { customerId: input.customerId, resourceName: input.resourceName }, ctx, 'POST'); return { success: true, data: d, displayMarkdown: `Campaign paused: ${input.resourceName}` }; };
+const enableCampaign: KitToolHandler = async (input, ctx) => { const d = await gadsApi('enable-campaign', { customerId: input.customerId, resourceName: input.resourceName }, ctx, 'POST'); return { success: true, data: d, displayMarkdown: `Campaign enabled: ${input.resourceName}` }; };
+const createAdGroup: KitToolHandler = async (input, ctx) => { const d = await gadsApi('create-ad-group', { customerId: input.customerId, campaignResourceName: input.campaignResourceName, name: input.name, cpc_bid_micros: input.cpcBidMicros }, ctx, 'POST'); return { success: true, data: d, displayMarkdown: `Ad group created: **${input.name}**` }; };
+const addKeyword: KitToolHandler = async (input, ctx) => { const d = await gadsApi('add-keyword', { customerId: input.customerId, adGroupResourceName: input.adGroupResourceName, keyword: input.keyword, matchType: input.matchType }, ctx, 'POST'); return { success: true, data: d, displayMarkdown: `Keyword added: **${input.keyword}** (${input.matchType || 'BROAD'})` }; };
+const listAudiences: KitToolHandler = async (input, ctx) => { const d = await gadsApi('list-audiences', { customerId: input.customerId }, ctx); return { success: true, data: d, displayMarkdown: `## Audiences\n\n\`\`\`json\n${JSON.stringify(d?.[0]?.results?.slice(0, 10), null, 2).slice(0, 2000)}\n\`\`\`` }; };
+const listConversions: KitToolHandler = async (input, ctx) => { const d = await gadsApi('list-conversions', { customerId: input.customerId }, ctx); return { success: true, data: d, displayMarkdown: `## Conversions\n\n\`\`\`json\n${JSON.stringify(d?.[0]?.results?.slice(0, 10), null, 2).slice(0, 2000)}\n\`\`\`` }; };
+const listRecommendations: KitToolHandler = async (input, ctx) => { const d = await gadsApi('list-recommendations', { customerId: input.customerId }, ctx); return { success: true, data: d, displayMarkdown: `## Recommendations\n\n\`\`\`json\n${JSON.stringify(d?.[0]?.results?.slice(0, 10), null, 2).slice(0, 2000)}\n\`\`\`` }; };
+const changeHistory: KitToolHandler = async (input, ctx) => { const d = await gadsApi('change-history', { customerId: input.customerId, dateRange: input.dateRange }, ctx); return { success: true, data: d, displayMarkdown: `## Change History\n\n\`\`\`json\n${JSON.stringify(d?.[0]?.results?.slice(0, 10), null, 2).slice(0, 2000)}\n\`\`\`` }; };
+const geoPerformance: KitToolHandler = async (input, ctx) => { const d = await gadsApi('geo-performance', { customerId: input.customerId, dateRange: input.dateRange }, ctx); return { success: true, data: d, displayMarkdown: `## Geo Performance\n\n\`\`\`json\n${JSON.stringify(d?.[0]?.results?.slice(0, 10), null, 2).slice(0, 2000)}\n\`\`\`` }; };
+const devicePerformance: KitToolHandler = async (input, ctx) => { const d = await gadsApi('device-performance', { customerId: input.customerId }, ctx); return { success: true, data: d, displayMarkdown: `## Device Performance\n\n\`\`\`json\n${JSON.stringify(d?.[0]?.results?.slice(0, 5), null, 2).slice(0, 2000)}\n\`\`\`` }; };
 export const manifest: KitManifest = {
-  id: 'google-ads', name: 'Google Ads', version: '1.0.0',
-  description: 'Google Ads — campaigns, ad groups, ads, keywords, search terms, budgets, performance reports, and GAQL queries.',
+  id: 'google-ads', name: 'Google Ads', version: '2.0.0',
+  description: 'Google Ads — FULL API: campaigns CRUD, ad groups CRUD, keywords CRUD, audiences, conversions, recommendations, change history, geo/device performance, GAQL queries.',
   author: 'MCV', capabilities: ['network', 'credentials'], runtime: 'inline', ventureScope: '*',
-  instructions: 'Use google ads tools for campaign management, keyword analysis, search term reports, and custom GAQL queries.',
+  instructions: 'Use google ads tools for full campaign management: create/pause/enable campaigns, manage ad groups and keywords, view audiences, conversions, recommendations, and run custom GAQL queries.',
   tools: [
-    { name: 'gads_campaigns', description: 'List Google Ads campaigns with metrics.', input_schema: { type: 'object', properties: { customerId: { type: 'string' } } } },
-    { name: 'gads_performance', description: 'Campaign performance report.', input_schema: { type: 'object', properties: { customerId: { type: 'string' }, dateRange: { type: 'string', description: 'LAST_7_DAYS, LAST_30_DAYS, THIS_MONTH' } } } },
+    { name: 'gads_campaigns', description: 'List campaigns with metrics.', input_schema: { type: 'object', properties: { customerId: { type: 'string' } } } },
+    { name: 'gads_performance', description: 'Campaign performance report.', input_schema: { type: 'object', properties: { customerId: { type: 'string' }, dateRange: { type: 'string' } } } },
+    { name: 'gads_create_campaign', description: 'Create a new campaign with budget.', input_schema: { type: 'object', properties: { customerId: { type: 'string' }, name: { type: 'string' }, budgetMicros: { type: 'string', description: 'Budget in micros (1000000 = $1)' }, channelType: { type: 'string', description: 'SEARCH, DISPLAY, VIDEO, SHOPPING, PERFORMANCE_MAX' } }, required: ['name', 'budgetMicros'] } },
+    { name: 'gads_pause_campaign', description: 'Pause a campaign.', input_schema: { type: 'object', properties: { customerId: { type: 'string' }, resourceName: { type: 'string' } }, required: ['resourceName'] } },
+    { name: 'gads_enable_campaign', description: 'Enable a paused campaign.', input_schema: { type: 'object', properties: { customerId: { type: 'string' }, resourceName: { type: 'string' } }, required: ['resourceName'] } },
+    { name: 'gads_create_ad_group', description: 'Create an ad group in a campaign.', input_schema: { type: 'object', properties: { customerId: { type: 'string' }, campaignResourceName: { type: 'string' }, name: { type: 'string' }, cpcBidMicros: { type: 'string' } }, required: ['campaignResourceName', 'name'] } },
+    { name: 'gads_add_keyword', description: 'Add a keyword to an ad group.', input_schema: { type: 'object', properties: { customerId: { type: 'string' }, adGroupResourceName: { type: 'string' }, keyword: { type: 'string' }, matchType: { type: 'string', description: 'EXACT, PHRASE, BROAD' } }, required: ['adGroupResourceName', 'keyword'] } },
     { name: 'gads_keywords', description: 'List keywords with metrics.', input_schema: { type: 'object', properties: { customerId: { type: 'string' } } } },
-    { name: 'gads_search_terms', description: 'Search term report (30d).', input_schema: { type: 'object', properties: { customerId: { type: 'string' } } } },
-    { name: 'gads_query', description: 'Run a custom GAQL query.', input_schema: { type: 'object', properties: { customerId: { type: 'string' }, query: { type: 'string', description: 'Google Ads Query Language' } }, required: ['query'] } },
-    { name: 'gads_overview', description: 'Google Ads account overview (7d).', input_schema: { type: 'object', properties: { customerId: { type: 'string' } } } },
+    { name: 'gads_search_terms', description: 'Search term report.', input_schema: { type: 'object', properties: { customerId: { type: 'string' } } } },
+    { name: 'gads_audiences', description: 'List user audiences.', input_schema: { type: 'object', properties: { customerId: { type: 'string' } } } },
+    { name: 'gads_conversions', description: 'List conversion actions.', input_schema: { type: 'object', properties: { customerId: { type: 'string' } } } },
+    { name: 'gads_recommendations', description: 'List Google Ads recommendations.', input_schema: { type: 'object', properties: { customerId: { type: 'string' } } } },
+    { name: 'gads_change_history', description: 'View change history (audit log).', input_schema: { type: 'object', properties: { customerId: { type: 'string' }, dateRange: { type: 'string' } } } },
+    { name: 'gads_geo_performance', description: 'Geographic performance report.', input_schema: { type: 'object', properties: { customerId: { type: 'string' } } } },
+    { name: 'gads_device_performance', description: 'Performance by device (mobile/desktop/tablet).', input_schema: { type: 'object', properties: { customerId: { type: 'string' } } } },
+    { name: 'gads_query', description: 'Run a custom GAQL query.', input_schema: { type: 'object', properties: { customerId: { type: 'string' }, query: { type: 'string' } }, required: ['query'] } },
+    { name: 'gads_overview', description: 'Account overview (7d).', input_schema: { type: 'object', properties: { customerId: { type: 'string' } } } },
   ],
 };
-export const handlers: Record<string, KitToolHandler> = { gads_campaigns: listCampaigns, gads_performance: performance, gads_keywords: keywords, gads_search_terms: searchTerms, gads_query: customQuery, gads_overview: gadsOverview };
+export const handlers: Record<string, KitToolHandler> = {
+  gads_campaigns: listCampaigns, gads_performance: performance, gads_create_campaign: createCampaign,
+  gads_pause_campaign: pauseCampaign, gads_enable_campaign: enableCampaign, gads_create_ad_group: createAdGroup,
+  gads_add_keyword: addKeyword, gads_keywords: keywords, gads_search_terms: searchTerms,
+  gads_audiences: listAudiences, gads_conversions: listConversions, gads_recommendations: listRecommendations,
+  gads_change_history: changeHistory, gads_geo_performance: geoPerformance, gads_device_performance: devicePerformance,
+  gads_query: customQuery, gads_overview: gadsOverview,
+};

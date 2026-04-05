@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Monitor, MessageSquare, FileText, Cloud, GitBranch, Clock, Database, Terminal } from 'lucide-react';
+import { Monitor, MessageSquare, FileText, Cloud, GitBranch, Clock, Database, Terminal, MonitorSmartphone } from 'lucide-react';
 import { PageShell, PageHeader, Badge, GridLayout, StatCard } from '../components/ui';
+import { useDeviceStore } from '../stores/devices';
+import { useNavigation } from '../stores/navigation';
 import { staggerContainer, fadeInUp, hoverLift, tapScale } from '../lib/animations';
 import { timeAgo } from '../lib/utils';
 import { supabase } from '../lib/supabase';
@@ -11,6 +13,10 @@ interface ConvData { id: string; venture_id: string; title: string; updated_at: 
 interface HealthData { configured: Record<string, boolean>; }
 
 export default function SessionsView() {
+  const devices = useDeviceStore((s) => s.devices);
+  const { setView } = useNavigation();
+  const agentSessions = Object.values(devices).filter((d) => d.class === 'agent-session');
+
   const [convs, setConvs] = useState<ConvData[]>([]);
   const [msgCount, setMsgCount] = useState(0);
   const [docCount, setDocCount] = useState(0);
@@ -54,13 +60,14 @@ export default function SessionsView() {
       </PageHeader>
 
       <motion.div variants={staggerContainer} initial="hidden" animate="show">
-        <GridLayout cols={6} gap="sm" className="sess-kpis">
+        <GridLayout cols={4} gap="sm" className="sess-kpis">
           <motion.div variants={fadeInUp}><StatCard icon={<MessageSquare size={14} />} label="Conversations" value={convs.length} /></motion.div>
           <motion.div variants={fadeInUp}><StatCard icon={<Terminal size={14} />} label="Messages" value={msgCount} /></motion.div>
           <motion.div variants={fadeInUp}><StatCard icon={<FileText size={14} />} label="Documents" value={docCount} /></motion.div>
           <motion.div variants={fadeInUp}><StatCard icon={<Database size={14} />} label="Tasks" value={taskCount} /></motion.div>
           <motion.div variants={fadeInUp}><StatCard icon={<Cloud size={14} />} label="APIs Online" value={`${connectedCount}/${totalApis}`} /></motion.div>
           <motion.div variants={fadeInUp}><StatCard icon={<GitBranch size={14} />} label="Contacts" value={contactCount} /></motion.div>
+          <motion.div variants={fadeInUp}><StatCard icon={<MonitorSmartphone size={14} />} label="Agent Sessions" value={agentSessions.length} /></motion.div>
         </GridLayout>
       </motion.div>
 
@@ -107,12 +114,39 @@ export default function SessionsView() {
             ))}
           </div>
         </motion.div>
+
+        <motion.div className="sess-panel" variants={fadeInUp}>
+          <div className="sess-gradient-border" />
+          <h2 className="sess-panel-title"><Terminal size={13} /> Connected Agent Sessions</h2>
+          <div className="sess-list">
+            {agentSessions.map((s) => {
+              const projectDir = (s.metadata?.projectDir as string) || '';
+              const projectName = projectDir.split(/[/\\]/).filter(Boolean).pop() || s.name;
+              const branch = (s.metadata?.branch as string) || 'main';
+              const model = (s.metadata?.model as string) || '';
+              return (
+                <motion.div key={s.id} className="sess-item sess-item-hover" {...hoverLift} {...tapScale}>
+                  <span className={`sess-dot ${s.status === 'connected' ? 'ok' : 'off'}`} />
+                  <span className="sess-item-title">{projectName}</span>
+                  <span className="sess-item-time"><GitBranch size={10} /> {branch}</span>
+                  {model && <span className="sess-item-time">{model}</span>}
+                </motion.div>
+              );
+            })}
+            {agentSessions.length === 0 && !loading && <div className="sess-empty">No agent sessions connected</div>}
+          </div>
+          <div className="sess-panel-footer">
+            <button className="sess-viewall-btn" onClick={() => setView('connected-sessions')}>
+              View All Sessions &rarr;
+            </button>
+          </div>
+        </motion.div>
       </motion.div>
 
       <style>{`
         .sess-kpis { padding:0 20px 12px; }
 
-        .sess-grid { flex:1; display:grid; grid-template-columns:1fr 1fr 1fr; gap:1px; background:var(--border); overflow:hidden; }
+        .sess-grid { flex:1; display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:1px; background:var(--border); overflow:hidden; }
         .sess-panel { background:var(--bg-deep); display:flex; flex-direction:column; position:relative; border-radius:var(--radius-lg); }
         .sess-gradient-border { position:absolute; top:0; left:20%; right:20%; height:1px; background:linear-gradient(to right, transparent, var(--cyan), transparent); z-index:1; pointer-events:none; }
         .sess-panel-title { font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; padding:10px 14px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:6px; flex-shrink:0; }
@@ -133,6 +167,9 @@ export default function SessionsView() {
         .sess-badge-sm.live { background:rgba(16,185,129,0.15); color:var(--success); }
         .sess-badge-sm.other { background:rgba(245,158,11,0.15); color:var(--warning); }
         .sess-empty { padding:20px; text-align:center; font-size:11px; color:var(--text-muted); }
+        .sess-panel-footer { padding:6px 14px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; flex-shrink:0; }
+        .sess-viewall-btn { font-size:10px; font-weight:600; color:var(--cyan); background:none; border:none; cursor:pointer; padding:2px 6px; border-radius:3px; transition:background 0.1s; }
+        .sess-viewall-btn:hover { background:rgba(0,245,255,0.08); }
       `}</style>
     </PageShell>
   );

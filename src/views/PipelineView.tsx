@@ -627,6 +627,7 @@ export default function PipelineView() {
           status: device?.status === 'connected' ? 'active' : 'completed',
           startedAt: new Date(evt.timestamp).toISOString(),
           lastActivity: new Date(evt.timestamp).toISOString(),
+          ventureId: null,
           metadata: { deviceClass: device?.class, transport: device?.transport },
         });
       }

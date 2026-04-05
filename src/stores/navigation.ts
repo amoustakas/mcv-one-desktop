@@ -59,7 +59,8 @@ export type ViewId =
   // AI Media Studios
   | 'voice-studio'
   | 'video-studio'
-  | 'creative-canvas';
+  | 'creative-canvas'
+  | 'ad-studio';
 
 export type ContextMode = 'global' | 'venture';
 
@@ -114,7 +115,7 @@ const VIEW_LABELS: Record<string, string> = {
   'venture-operations': 'Operations', 'venture-docs': 'Documents',
   'venture-forge': 'Forge', 'venture-tasks': 'Tasks',
   'venture-settings': 'Settings', 'venture-onboarding': 'Onboarding',
-  files: 'Files', 'venture-workspace': 'Workspace',
+  files: 'Files', 'venture-workspace': 'Workspace', 'ad-studio': 'Ad Studio',
   'voice-studio': 'Voice Studio', 'video-studio': 'Video Studio', 'creative-canvas': 'Creative Canvas',
 };
 

@@ -28,6 +28,7 @@ import { useRealtimeSync } from './hooks/use-realtime';
 import { useDeviceNotifications } from './hooks/use-device-notifications';
 import { useDeviceProfileSync } from './hooks/use-device-profile-sync';
 import { useDeviceEvents } from './hooks/use-device-events';
+import { useInstanceRegistration } from './hooks/use-instance-registration';
 
 // Lazy-loaded views (code splitting)
 const AegisChat = lazy(() => import('./components/AegisChat'));
@@ -66,6 +67,7 @@ const CreativeCanvasView = lazy(() => import('./views/CreativeCanvasView'));
 const DeviceHubView = lazy(() => import('./views/DeviceHubView'));
 const StreamDeckView = lazy(() => import('./views/StreamDeckView'));
 const AudioRouterView = lazy(() => import('./views/AudioRouterView'));
+const AdStudioView = lazy(() => import('./views/AdStudioView'));
 const ConnectedSessionsView = lazy(() => import('./views/ConnectedSessionsView'));
 
 // Placeholder views
@@ -171,6 +173,8 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <VoiceStudioView />;
     case 'creative-canvas':
       return <CreativeCanvasView />;
+    case 'ad-studio':
+      return <AdStudioView />;
     // Venture views
     case 'venture-dashboard':
       return <VentureDashboard venture={venture} />;
@@ -326,6 +330,7 @@ export default function App() {
   useRealtimeSync(); // Supabase Realtime — live push updates across devices
   useCommsSync();    // Auto-ingest comms data → Knowledge Base, CRM, Tasks every 5min
   usePresence();     // Device detection + AI status inference + Supabase presence broadcast
+  useInstanceRegistration(); // Register this window as a device + sync remote instances
   useDeviceEvents();        // SSE connection to local server for real-time device events
   useDeviceNotifications(); // Toast notifications for device connect/disconnect/error
   useDeviceProfileSync();   // Auto-activate device profiles on venture switch

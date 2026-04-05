@@ -4,7 +4,7 @@ import {
   Wrench, Radio, Settings, ChevronLeft, ChevronRight, ChevronDown,
   CheckSquare, Users, Hammer, BookOpen, Monitor, Sparkles,
   Wand2, Swords, TrendingUp, FileText, Plus, Package,
-  Database, GitBranch, Radar, MessageSquare, FolderOpen, Archive,
+  Database, GitBranch, Radar, MessageSquare, FolderOpen, Archive, Megaphone,
   Cpu, Grid3x3, AudioLines, MonitorSmartphone,
 } from 'lucide-react';
 import { useNavigation, type ViewId } from '../stores/navigation';
@@ -35,7 +35,7 @@ const VIEW_ICONS: Record<string, React.FC<{ size: number }>> = {
   'venture-operations': Activity, 'venture-docs': BookOpen,
   'venture-forge': Hammer, 'venture-tasks': CheckSquare,
   'venture-settings': Settings, 'venture-onboarding': Plus,
-  files: FolderOpen, 'venture-workspace': Archive,
+  files: FolderOpen, 'venture-workspace': Archive, 'ad-studio': Megaphone,
 };
 
 // ── Section definitions ──
@@ -84,6 +84,7 @@ const globalSections: NavSection[] = [
       { id: 'crm', label: 'CRM Pipeline' },
       { id: 'growth', label: 'Growth Studio' },
       { id: 'comms-hub', label: 'Comms Hub' },
+      { id: 'ad-studio', label: 'Ad Studio' },
     ],
   },
   {

@@ -168,6 +168,113 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }));
       }
 
+      // ── Tweet CRUD ──
+      case 'create-tweet': {
+        const { text, reply_to, quote_tweet_id, poll_options, poll_duration_minutes } = req.body;
+        if (!text) return res.status(400).json({ error: 'text required' });
+        const body: Record<string, unknown> = { text };
+        if (reply_to) body.reply = { in_reply_to_tweet_id: reply_to };
+        if (quote_tweet_id) body.quote_tweet_id = quote_tweet_id;
+        if (poll_options) body.poll = { options: poll_options, duration_minutes: poll_duration_minutes || 60 };
+        return res.json(await xPost('/tweets', BEARER_TOKEN, body));
+      }
+
+      case 'delete-tweet': {
+        const { id } = req.body;
+        if (!id) return res.status(400).json({ error: 'id required' });
+        const r = await fetch(`${X_API}/tweets/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${BEARER_TOKEN}` } });
+        return res.json(await r.json());
+      }
+
+      case 'retweet': {
+        const { userId: rtUid, tweetId } = req.body;
+        if (!rtUid || !tweetId) return res.status(400).json({ error: 'userId and tweetId required' });
+        return res.json(await xPost(`/users/${rtUid}/retweets`, BEARER_TOKEN, { tweet_id: tweetId }));
+      }
+
+      case 'like-tweet': {
+        const { userId: likeUid, tweetId } = req.body;
+        if (!likeUid || !tweetId) return res.status(400).json({ error: 'userId and tweetId required' });
+        return res.json(await xPost(`/users/${likeUid}/likes`, BEARER_TOKEN, { tweet_id: tweetId }));
+      }
+
+      // ── Direct Messages ──
+      case 'send-dm': {
+        const { participant_id, text: dmText } = req.body;
+        if (!participant_id || !dmText) return res.status(400).json({ error: 'participant_id and text required' });
+        return res.json(await xPost('/dm_conversations/with/' + participant_id + '/messages', BEARER_TOKEN, { text: dmText }));
+      }
+
+      case 'list-dm-events': {
+        const { max_results = '20' } = req.query;
+        return res.json(await xFetch('/dm_events', BEARER_TOKEN, { max_results: max_results as string, 'dm_event.fields': 'created_at,dm_conversation_id,text,sender_id' }));
+      }
+
+      // ── Follows / Blocks / Mutes ──
+      case 'follow': {
+        const { sourceUserId, targetUserId } = req.body;
+        if (!sourceUserId || !targetUserId) return res.status(400).json({ error: 'sourceUserId and targetUserId required' });
+        return res.json(await xPost(`/users/${sourceUserId}/following`, BEARER_TOKEN, { target_user_id: targetUserId }));
+      }
+
+      case 'unfollow': {
+        const { sourceUserId, targetUserId } = req.body;
+        if (!sourceUserId || !targetUserId) return res.status(400).json({ error: 'sourceUserId and targetUserId required' });
+        const r = await fetch(`${X_API}/users/${sourceUserId}/following/${targetUserId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${BEARER_TOKEN}` } });
+        return res.json(await r.json());
+      }
+
+      case 'block': {
+        const { sourceUserId, targetUserId } = req.body;
+        if (!sourceUserId || !targetUserId) return res.status(400).json({ error: 'sourceUserId and targetUserId required' });
+        return res.json(await xPost(`/users/${sourceUserId}/blocking`, BEARER_TOKEN, { target_user_id: targetUserId }));
+      }
+
+      case 'mute': {
+        const { sourceUserId, targetUserId } = req.body;
+        if (!sourceUserId || !targetUserId) return res.status(400).json({ error: 'sourceUserId and targetUserId required' });
+        return res.json(await xPost(`/users/${sourceUserId}/muting`, BEARER_TOKEN, { target_user_id: targetUserId }));
+      }
+
+      // ── Lists ──
+      case 'get-list': {
+        const { listId } = req.query;
+        if (!listId) return res.status(400).json({ error: 'listId required' });
+        return res.json(await xFetch(`/lists/${listId}`, BEARER_TOKEN, { 'list.fields': 'follower_count,member_count,description,created_at,owner_id' }));
+      }
+
+      case 'list-members': {
+        const { listId, max_results = '50' } = req.query;
+        if (!listId) return res.status(400).json({ error: 'listId required' });
+        return res.json(await xFetch(`/lists/${listId}/members`, BEARER_TOKEN, { max_results: max_results as string, 'user.fields': 'name,username,public_metrics' }));
+      }
+
+      case 'create-list': {
+        const { name: listName, description: listDesc, private: isPrivate } = req.body;
+        if (!listName) return res.status(400).json({ error: 'name required' });
+        return res.json(await xPost('/lists', BEARER_TOKEN, { name: listName, description: listDesc, private: isPrivate ?? false }));
+      }
+
+      // ── Bookmarks ──
+      case 'list-bookmarks': {
+        const { userId: bmUid, max_results = '20' } = req.query;
+        if (!bmUid) return res.status(400).json({ error: 'userId required' });
+        return res.json(await xFetch(`/users/${bmUid}/bookmarks`, BEARER_TOKEN, { max_results: max_results as string, 'tweet.fields': 'created_at,public_metrics' }));
+      }
+
+      case 'bookmark-tweet': {
+        const { userId: bmUid, tweetId } = req.body;
+        if (!bmUid || !tweetId) return res.status(400).json({ error: 'userId and tweetId required' });
+        return res.json(await xPost(`/users/${bmUid}/bookmarks`, BEARER_TOKEN, { tweet_id: tweetId }));
+      }
+
+      // ── Spaces ──
+      case 'search-spaces': {
+        const { query: spQuery } = req.query;
+        if (!spQuery) return res.status(400).json({ error: 'query required' });
+        return res.json(await xFetch('/spaces/search', BEARER_TOKEN, { query: spQuery as string, 'space.fields': 'title,host_ids,participant_count,state,started_at' }));
+      }
+
       // ── Overview ──
       case 'overview': {
         const { username } = req.query;
@@ -177,14 +284,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
         const u = user.data;
         return res.json({
-          name: u?.name,
-          username: u?.username,
-          followers: u?.public_metrics?.followers_count,
-          following: u?.public_metrics?.following_count,
-          tweets: u?.public_metrics?.tweet_count,
-          verified: u?.verified,
-          description: u?.description,
-          avatar: u?.profile_image_url,
+          name: u?.name, username: u?.username,
+          followers: u?.public_metrics?.followers_count, following: u?.public_metrics?.following_count,
+          tweets: u?.public_metrics?.tweet_count, verified: u?.verified,
+          description: u?.description, avatar: u?.profile_image_url,
         });
       }
 

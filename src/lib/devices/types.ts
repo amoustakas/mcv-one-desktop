@@ -21,7 +21,8 @@ export type DeviceClass =
   | 'barcode-scanner'
   | 'hid-generic'
   | 'serial-generic'
-  | 'agent-session';
+  | 'agent-session'
+  | 'app-instance';       // MCV Desktop running on a screen/device
 
 /** What a device can do */
 export type DeviceCapability =
@@ -36,7 +37,11 @@ export type DeviceCapability =
   | 'sampler'
   | 'effects'
   | 'text-input'
-  | 'agent-io';
+  | 'agent-io'
+  | 'screen-output'      // Can display views (app instances)
+  | 'touch-input'        // Touch-capable (mobile/tablet instances)
+  | 'camera-input'       // Camera access (mobile instances)
+  | 'gps-input';         // GPS/location (mobile instances)
 
 /** Connection status of a device */
 export type DeviceStatus = 'connected' | 'disconnected' | 'error' | 'initializing';
@@ -57,6 +62,54 @@ export interface DeviceDescriptor {
   status: DeviceStatus;
   lastSeen: number;
   metadata: Record<string, unknown>;
+}
+
+// ---------------------------------------------------------------------------
+// App Instance Metadata — rich context for running MCV Desktop instances
+// ---------------------------------------------------------------------------
+
+export interface AppInstanceMetadata {
+  // Screen
+  screenClass: string;           // 'ultrawide' | 'cinema' | 'desktop' | 'phone' etc.
+  screenResolution: string;      // '3840x2160'
+  screenIndex?: number;          // Multi-monitor: which screen (0, 1, 2...)
+  screenLabel?: string;          // Multi-monitor: screen label from getScreenDetails()
+  screenPosition?: { x: number; y: number; width: number; height: number };
+  pixelRatio: number;            // window.devicePixelRatio
+
+  // Device
+  deviceType: string;            // 'desktop' | 'tablet' | 'phone'
+  platform: string;              // 'win32' | 'macos' | 'ios' | 'android' | 'linux'
+  isPWA: boolean;
+  isCapacitor: boolean;
+  userAgent: string;
+
+  // App State
+  activeView: string;
+  activeVenture: string;
+  lastActivity: string;
+
+  // Presence
+  userId: string;
+  userName: string;
+  status: string;                // 'active' | 'away' | 'focus' | etc.
+  statusText: string;
+
+  // Location & Network
+  timezone: string;
+  city?: string;
+  networkType: string;
+  online: boolean;
+
+  // Battery (mobile)
+  batteryLevel?: number;
+  batteryCharging?: boolean;
+
+  // System Health (desktop with local server)
+  cpuCount?: number;
+  memoryTotal?: number;
+  memoryUsed?: number;
+  hostname?: string;
 }
 
 // ---------------------------------------------------------------------------
