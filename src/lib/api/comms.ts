@@ -268,6 +268,139 @@ export async function fetchYouTubeVideos(maxResults = 10): Promise<SocialPost[]>
   }));
 }
 
+// ── Google Calendar ──
+
+export interface CalendarEvent {
+  id: string;
+  summary: string;
+  description?: string;
+  start: string; // ISO datetime
+  end: string;
+  location?: string;
+  hangoutLink?: string;
+  htmlLink?: string;
+  attendees?: Array<{ email: string; displayName?: string; responseStatus?: string }>;
+  status?: string;
+  organizer?: { email: string; displayName?: string };
+}
+
+export async function fetchUpcomingEvents(maxResults = 15): Promise<CalendarEvent[]> {
+  const now = new Date().toISOString();
+  const data = await apiGet<any>('/api/google-calendar', {
+    action: 'list-events',
+    calendarId: 'primary',
+    maxResults: String(maxResults),
+    timeMin: now,
+    orderBy: 'startTime',
+    singleEvents: 'true',
+  });
+  return (data.items ?? []).map((ev: any) => ({
+    id: ev.id,
+    summary: ev.summary || '(No title)',
+    description: ev.description,
+    start: ev.start?.dateTime || ev.start?.date || '',
+    end: ev.end?.dateTime || ev.end?.date || '',
+    location: ev.location,
+    hangoutLink: ev.hangoutLink || ev.conferenceData?.entryPoints?.[0]?.uri,
+    htmlLink: ev.htmlLink,
+    attendees: ev.attendees,
+    status: ev.status,
+    organizer: ev.organizer,
+  }));
+}
+
+export async function fetchCalendarOverview() {
+  return apiGet<{ calendar_count: number; upcoming_events: number; next_event: string; next_event_time: string }>('/api/google-calendar', { action: 'overview' });
+}
+
+export async function quickAddEvent(text: string) {
+  return apiPost('/api/google-calendar', { action: 'quick-add', calendarId: 'primary', text });
+}
+
+export async function createCalendarEvent(params: {
+  summary: string; start: string; end: string;
+  description?: string; location?: string; attendees?: string[];
+}) {
+  return apiPost('/api/google-calendar', {
+    action: 'create-event', calendarId: 'primary', ...params,
+  });
+}
+
+// ── Twilio Calls ──
+
+export interface TwilioCall {
+  sid: string;
+  from: string;
+  to: string;
+  status: string; // queued, ringing, in-progress, completed, busy, failed, no-answer, canceled
+  direction: string; // inbound, outbound-api, outbound-dial
+  duration: string;
+  startTime: string;
+  endTime: string;
+  dateCreated: string;
+  price?: string;
+}
+
+export async function fetchRecentCalls(limit = 20): Promise<TwilioCall[]> {
+  const data = await apiGet<any>('/api/twilio', { action: 'list-calls', limit: String(limit) });
+  return (data.calls ?? []).map((c: any) => ({
+    sid: c.sid,
+    from: c.from,
+    to: c.to,
+    status: c.status,
+    direction: c.direction,
+    duration: c.duration || '0',
+    startTime: c.start_time || '',
+    endTime: c.end_time || '',
+    dateCreated: c.date_created || '',
+    price: c.price,
+  }));
+}
+
+export async function makeCall(to: string, twiml?: string) {
+  return apiPost('/api/twilio', {
+    action: 'make-call', to,
+    twiml: twiml || '<Response><Say>Hello from MCV One.</Say></Response>',
+  });
+}
+
+export async function fetchTwilioOverview() {
+  return apiGet<any>('/api/twilio', { action: 'overview' });
+}
+
+// ── Gmail Triage ──
+
+export async function fetchGmailOverview() {
+  return apiGet<{ email: string; threadsTotal: number; messagesTotal: number; inboxMessages: number; unreadMessages: number }>('/api/gmail', { action: 'overview' });
+}
+
+export async function getGmailMessage(id: string) {
+  return apiGet<any>('/api/gmail', { action: 'get-message', id });
+}
+
+export async function modifyGmailMessage(id: string, addLabelIds?: string[], removeLabelIds?: string[]) {
+  return apiPost('/api/gmail', { action: 'modify', id, addLabelIds, removeLabelIds });
+}
+
+export async function trashGmailMessage(id: string) {
+  return apiPost('/api/gmail', { action: 'trash', id });
+}
+
+/** Archive = remove INBOX label */
+export async function archiveGmailMessage(id: string) {
+  return modifyGmailMessage(id, undefined, ['INBOX']);
+}
+
+/** Star = add STARRED label */
+export async function starGmailMessage(id: string) {
+  return modifyGmailMessage(id, ['STARRED']);
+}
+
+/** Unstar = remove STARRED label */
+export async function unstarGmailMessage(id: string) {
+  return modifyGmailMessage(id, undefined, ['STARRED']);
+}
+
 // ── Venture Scoping ──
 
 import { ventures } from '../ventures';

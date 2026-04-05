@@ -141,6 +141,94 @@ export function useDiscordMembers(guildId: string) {
   });
 }
 
+// ── Calendar ──
+
+export function useUpcomingEvents(maxResults = 15) {
+  return useQuery({
+    queryKey: ['comms', 'calendar', 'events', maxResults],
+    queryFn: () => api.fetchUpcomingEvents(maxResults),
+    staleTime: 30_000, // 30s — meetings change frequently
+    refetchInterval: 60_000, // auto-refresh every minute
+  });
+}
+
+export function useCalendarOverview() {
+  return useQuery({
+    queryKey: ['comms', 'calendar', 'overview'],
+    queryFn: () => api.fetchCalendarOverview(),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useQuickAddEvent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (text: string) => api.quickAddEvent(text),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['comms', 'calendar'] }); },
+  });
+}
+
+// ── Calls ──
+
+export function useRecentCalls(limit = 20) {
+  return useQuery({
+    queryKey: ['comms', 'calls', limit],
+    queryFn: () => api.fetchRecentCalls(limit),
+    staleTime: 15_000, // 15s for live call awareness
+    refetchInterval: 15_000,
+  });
+}
+
+export function useMakeCall() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { to: string; twiml?: string }) => api.makeCall(params.to, params.twiml),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['comms', 'calls'] }); },
+  });
+}
+
+// ── Gmail Triage ──
+
+export function useGmailOverview() {
+  return useQuery({
+    queryKey: ['comms', 'gmail', 'overview'],
+    queryFn: () => api.fetchGmailOverview(),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useArchiveEmail() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.archiveGmailMessage(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['comms', 'inbox'] });
+      qc.invalidateQueries({ queryKey: ['comms', 'gmail'] });
+    },
+  });
+}
+
+export function useStarEmail() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.starGmailMessage(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['comms', 'inbox'] }); },
+  });
+}
+
+export function useTrashEmail() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.trashGmailMessage(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['comms', 'inbox'] });
+      qc.invalidateQueries({ queryKey: ['comms', 'gmail'] });
+    },
+  });
+}
+
 // ── Mutations ──
 
 export function useSendMessage() {

@@ -163,6 +163,8 @@ export interface SocialPost {
 
 export type CommsTab =
   | 'inbox'
+  | 'calendar'
+  | 'calls'
   | 'channels'
   | 'compose'
   | 'analytics'

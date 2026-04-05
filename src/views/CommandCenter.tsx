@@ -7,6 +7,7 @@ import { useGithubCommits } from '../hooks/use-github';
 import { useDeployments } from '../hooks/use-deployments';
 import { useActivities } from '../hooks/use-crm';
 import { useDashboardStats, useAttentionItems, useMorningBrief } from '../hooks/use-dashboard';
+import { useRoadmap } from '../hooks/use-orchestration';
 import { PageShell, PageHeader, StatCard, GlassCard, GridLayout, Badge, Button } from '../components/ui';
 import { timeAgo, formatMoney } from '../lib/utils';
 import Markdown from '../components/Markdown';
@@ -36,6 +37,11 @@ export default function CommandCenter() {
   const { data: commits = [], refetch: refetchCommits } = useGithubCommits();
   const { data: deploys = [], refetch: refetchDeploys } = useDeployments();
   const { data: activities = [], refetch: refetchActivities } = useActivities();
+
+  // Orchestration: roadmap + sessions
+  const { data: roadmapData } = useRoadmap();
+  const epics = roadmapData?.epics || [];
+  const activeSessions = roadmapData?.sessions || [];
 
   const stats = dashboard?.stats;
   const recentActivities = activities.slice(0, 6);
@@ -210,27 +216,40 @@ export default function CommandCenter() {
             </div>
           </GlassCard>
 
+          {/* Roadmap Progress */}
           <GlassCard className="cc-feed">
-            <h2 className="cc-sec-title"><TrendingUp size={12} /> Pipeline Snapshot</h2>
-            <div className="cc-pipeline-snap">
-              <div className="cc-pipe-row">
-                <span className="cc-pipe-label">Total Pipeline</span>
-                <span className="cc-pipe-value">{stats ? formatMoney(stats.deals.pipelineValue) : '...'}</span>
-              </div>
-              <div className="cc-pipe-row">
-                <span className="cc-pipe-label">Won Revenue</span>
-                <span className="cc-pipe-value" style={{ color: 'var(--success)' }}>{stats ? formatMoney(stats.deals.wonValue) : '...'}</span>
-              </div>
-              <div className="cc-pipe-row">
-                <span className="cc-pipe-label">Active Deals</span>
-                <span className="cc-pipe-value">{stats?.deals.total ?? '...'}</span>
-              </div>
-              <div className="cc-pipe-row">
-                <span className="cc-pipe-label">Overdue Tasks</span>
-                <span className="cc-pipe-value" style={{ color: stats?.tasks.overdue ? 'var(--error)' : undefined }}>{stats?.tasks.overdue ?? 0}</span>
-              </div>
+            <h2 className="cc-sec-title"><TrendingUp size={12} /> Roadmap <span className="cc-sec-sub">{epics.filter(e => e.status === 'done').length}/{epics.length} epics</span></h2>
+            <div className="cc-roadmap">
+              {epics.map(e => (
+                <div key={e.id} className="cc-epic-row">
+                  <span className="cc-epic-status" style={{ color: e.status === 'done' ? 'var(--success)' : e.status === 'in_progress' ? 'var(--cyan)' : 'var(--text-muted)' }}>
+                    {e.status === 'done' ? '●' : e.status === 'in_progress' ? '◐' : '○'}
+                  </span>
+                  <span className="cc-epic-title">{e.title.replace(/^Epic \d+: /, '')}</span>
+                  <div className="cc-epic-bar"><div className="cc-epic-fill" style={{ width: `${e.completion || 0}%`, background: e.status === 'done' ? 'var(--success)' : 'var(--cyan)' }} /></div>
+                </div>
+              ))}
             </div>
           </GlassCard>
+
+          {/* Active Sessions */}
+          {activeSessions.length > 0 && (
+            <GlassCard className="cc-feed">
+              <h2 className="cc-sec-title"><Cpu size={12} /> Active Sessions <span className="cc-sec-sub">{activeSessions.length} live</span></h2>
+              <div className="cc-sessions">
+                {activeSessions.map(s => (
+                  <div key={s.id} className="cc-session-row">
+                    <span className="cc-session-dot" />
+                    <div className="cc-session-info">
+                      <span className="cc-session-project">{s.project}</span>
+                      <span className="cc-session-summary">{s.summary || 'Active session'}</span>
+                    </div>
+                    <span className="cc-session-time">{timeAgo(s.last_active)}</span>
+                  </div>
+                ))}
+              </div>
+            </GlassCard>
+          )}
         </div>
       </div>
 
@@ -306,6 +325,22 @@ export default function CommandCenter() {
         .cc-actions { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
         .cc-action { padding:10px 12px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-secondary); font-size:11px; font-weight:500; transition:all 0.15s; position:relative; overflow:hidden; }
         .cc-action:hover { color:var(--cyan); border-color:var(--border-active); box-shadow:0 0 12px rgba(0,240,255,0.06); }
+
+        .cc-roadmap { padding:4px 12px; display:flex; flex-direction:column; gap:4px; }
+        .cc-epic-row { display:flex; align-items:center; gap:8px; font-size:11px; padding:3px 0; }
+        .cc-epic-status { font-size:10px; flex-shrink:0; width:14px; text-align:center; }
+        .cc-epic-title { flex:1; color:var(--text-secondary); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+        .cc-epic-bar { width:50px; height:4px; background:var(--bg-elevated); border-radius:2px; overflow:hidden; flex-shrink:0; }
+        .cc-epic-fill { height:100%; border-radius:2px; transition:width 0.3s; }
+
+        .cc-sessions { padding:4px 12px; display:flex; flex-direction:column; gap:6px; }
+        .cc-session-row { display:flex; align-items:center; gap:8px; font-size:11px; }
+        .cc-session-dot { width:6px; height:6px; border-radius:50%; background:var(--success); flex-shrink:0; box-shadow:0 0 6px rgba(16,185,129,0.5); animation:mcv-pulse 2s ease-in-out infinite; }
+        .cc-session-info { flex:1; min-width:0; }
+        .cc-session-project { display:block; font-weight:600; color:var(--text-primary); }
+        .cc-session-summary { display:block; font-size:10px; color:var(--text-muted); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+        .cc-session-time { font-size:9px; font-family:var(--font-mono); color:var(--text-muted); flex-shrink:0; }
+        @keyframes mcv-pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
       `}</style>
     </PageShell>
   );

@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   MessageSquare, Hash, Gamepad2, Mail, Phone, Send,
   Inbox, Radio, BarChart3,
   Users, Megaphone, Activity, Search, RefreshCw,
   ExternalLink, CheckCircle, XCircle, AlertTriangle, Wifi,
   Heart, Share2, Eye, MessageCircle, ChevronRight,
+  Calendar, PhoneCall, PhoneOff, PhoneIncoming, PhoneOutgoing,
+  Clock, Video, MapPin, Plus, Archive, Star, Trash2,
 } from 'lucide-react';
 import { useCommsStore } from '../stores/comms';
 import { useNavigation } from '../stores/navigation';
@@ -14,6 +16,9 @@ import {
   useUnifiedInbox, useCommsChannels, useSocialFeed,
   usePlatformStatuses, useSendMessage, useBroadcast,
   useSlackUsers, useDiscordGuilds, useDiscordMembers,
+  useUpcomingEvents, useCalendarOverview, useQuickAddEvent,
+  useRecentCalls, useMakeCall, useGmailOverview,
+  useArchiveEmail, useStarEmail, useTrashEmail,
 } from '../hooks/use-comms';
 import {
   PageHeader, Button, GlassCard, Badge, StatCard, Tabs,
@@ -30,6 +35,8 @@ import { PLATFORM_META } from '../lib/types/comms';
 
 const COMMS_TABS: Array<{ id: CommsTab; label: string }> = [
   { id: 'inbox', label: 'Inbox' },
+  { id: 'calendar', label: 'Calendar' },
+  { id: 'calls', label: 'Calls' },
   { id: 'channels', label: 'Channels' },
   { id: 'compose', label: 'Compose' },
   { id: 'analytics', label: 'Analytics' },
@@ -146,6 +153,11 @@ function InboxTab() {
 
 function MessageRow({ message, onClick }: { message: UnifiedMessage; onClick: () => void }) {
   const venture = message.ventureId ? ventures.find((v) => v.id === message.ventureId) : null;
+  const archiveEmail = useArchiveEmail();
+  const starEmail = useStarEmail();
+  const trashEmail = useTrashEmail();
+  const isGmail = message.platform === 'gmail';
+
   return (
     <div className="comms-msg-row" onClick={onClick} role="button" tabIndex={0}>
       <div className="comms-msg-platform">
@@ -166,7 +178,307 @@ function MessageRow({ message, onClick }: { message: UnifiedMessage; onClick: ()
         </div>
         <div className="comms-msg-preview">{message.content.slice(0, 200)}</div>
       </div>
+      {/* Triage actions (Gmail) */}
+      {isGmail && (
+        <div className="comms-msg-actions" onClick={(e) => e.stopPropagation()}>
+          <button className="comms-triage-btn" title="Archive" onClick={() => archiveEmail.mutate(message.id)}><Archive size={12} /></button>
+          <button className="comms-triage-btn" title="Star" onClick={() => starEmail.mutate(message.id)}><Star size={12} /></button>
+          <button className="comms-triage-btn comms-triage-danger" title="Trash" onClick={() => trashEmail.mutate(message.id)}><Trash2 size={12} /></button>
+        </div>
+      )}
       {!message.isRead && <div className="comms-msg-unread-dot" />}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
+// Live Command Strip (always visible above tabs)
+// ═══════════════════════════════════════════
+
+function LiveCommandStrip() {
+  const { data: calOverview } = useCalendarOverview();
+  const { data: events = [] } = useUpcomingEvents(3);
+  const { data: calls = [] } = useRecentCalls(5);
+  const { data: gmailOv } = useGmailOverview();
+  const { data: messages = [] } = useUnifiedInbox();
+  const [now, setNow] = useState(Date.now());
+
+  // Tick every 30s for countdown
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const nextEvent = events[0];
+  const activeCalls = calls.filter((c) => c.status === 'in-progress' || c.status === 'ringing' || c.status === 'queued');
+  const unreadEmails = gmailOv?.unreadMessages ?? 0;
+  const totalUnread = messages.filter((m) => !m.isRead).length;
+
+  // Time until next event
+  let nextIn = '';
+  if (nextEvent) {
+    const diff = new Date(nextEvent.start).getTime() - now;
+    if (diff < 0) nextIn = 'Now';
+    else if (diff < 60_000) nextIn = '<1m';
+    else if (diff < 3_600_000) nextIn = `${Math.floor(diff / 60_000)}m`;
+    else nextIn = `${Math.floor(diff / 3_600_000)}h ${Math.floor((diff % 3_600_000) / 60_000)}m`;
+  }
+
+  return (
+    <div className="lcs">
+      {/* Next Meeting */}
+      <div className="lcs-widget">
+        <Calendar size={13} className="lcs-icon" style={{ color: 'var(--cyan)' }} />
+        {nextEvent ? (
+          <div className="lcs-widget-body">
+            <span className="lcs-widget-label">{nextIn}</span>
+            <span className="lcs-widget-value">{nextEvent.summary}</span>
+            {nextEvent.hangoutLink && (
+              <a href={nextEvent.hangoutLink} target="_blank" rel="noopener noreferrer" className="lcs-join-btn">
+                <Video size={10} /> Join
+              </a>
+            )}
+          </div>
+        ) : (
+          <span className="lcs-widget-value lcs-muted">No meetings</span>
+        )}
+      </div>
+
+      {/* Active Calls */}
+      <div className={`lcs-widget ${activeCalls.length > 0 ? 'lcs-widget-live' : ''}`}>
+        <PhoneCall size={13} className="lcs-icon" style={{ color: activeCalls.length > 0 ? 'var(--success)' : 'var(--text-muted)' }} />
+        <div className="lcs-widget-body">
+          <span className="lcs-widget-label">Calls</span>
+          <span className="lcs-widget-value">{activeCalls.length > 0 ? `${activeCalls.length} active` : 'None'}</span>
+        </div>
+      </div>
+
+      {/* Unread Messages */}
+      <div className="lcs-widget">
+        <MessageSquare size={13} className="lcs-icon" style={{ color: totalUnread > 0 ? 'var(--warning)' : 'var(--text-muted)' }} />
+        <div className="lcs-widget-body">
+          <span className="lcs-widget-label">Messages</span>
+          <span className="lcs-widget-value">{totalUnread > 0 ? totalUnread : 'Clear'}</span>
+        </div>
+      </div>
+
+      {/* Gmail Unread */}
+      <div className="lcs-widget">
+        <Mail size={13} className="lcs-icon" style={{ color: unreadEmails > 0 ? '#EA4335' : 'var(--text-muted)' }} />
+        <div className="lcs-widget-body">
+          <span className="lcs-widget-label">Email</span>
+          <span className="lcs-widget-value">{unreadEmails > 0 ? `${unreadEmails} unread` : 'Clear'}</span>
+        </div>
+      </div>
+
+      {/* Upcoming Count */}
+      <div className="lcs-widget">
+        <Clock size={13} className="lcs-icon" style={{ color: 'var(--purple)' }} />
+        <div className="lcs-widget-body">
+          <span className="lcs-widget-label">Today</span>
+          <span className="lcs-widget-value">{calOverview?.upcoming_events ?? 0} events</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
+// Tab: Calendar
+// ═══════════════════════════════════════════
+
+function CalendarTab() {
+  const { data: events = [], isLoading, refetch } = useUpcomingEvents(20);
+  const quickAdd = useQuickAddEvent();
+  const [quickText, setQuickText] = useState('');
+  const { toast } = useToast();
+
+  async function handleQuickAdd() {
+    if (!quickText.trim()) return;
+    try {
+      await quickAdd.mutateAsync(quickText);
+      toast('success', 'Event created');
+      setQuickText('');
+    } catch (err) {
+      toast('error', `Failed: ${err instanceof Error ? err.message : 'Unknown'}`);
+    }
+  }
+
+  // Group events by day
+  const grouped = events.reduce<Record<string, typeof events>>((acc, ev) => {
+    const day = new Date(ev.start).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    (acc[day] ??= []).push(ev);
+    return acc;
+  }, {});
+
+  return (
+    <div className="comms-calendar">
+      {/* Quick add */}
+      <div className="cal-quick-add">
+        <input
+          className="comms-input cal-quick-input"
+          value={quickText}
+          onChange={(e) => setQuickText(e.target.value)}
+          placeholder='Quick add: "Meeting with Devon at 3pm tomorrow"'
+          onKeyDown={(e) => e.key === 'Enter' && handleQuickAdd()}
+        />
+        <Button variant="primary" size="sm" icon={<Plus size={12} />} onClick={handleQuickAdd} disabled={quickAdd.isPending}>
+          {quickAdd.isPending ? 'Adding...' : 'Add'}
+        </Button>
+        <button className="comms-refresh-btn" onClick={() => refetch()}>
+          <RefreshCw size={12} className={isLoading ? 'mcv-spin' : ''} />
+        </button>
+      </div>
+
+      {events.length === 0 && !isLoading && (
+        <EmptyState icon={<Calendar size={28} />} title="No upcoming events" description="Connect Google Calendar to see your schedule." />
+      )}
+
+      {Object.entries(grouped).map(([day, dayEvents]) => (
+        <div key={day} className="cal-day-group">
+          <div className="cal-day-header">{day}</div>
+          {dayEvents.map((ev) => {
+            const startTime = new Date(ev.start).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+            const endTime = new Date(ev.end).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+            const isNow = new Date(ev.start) <= new Date() && new Date(ev.end) >= new Date();
+
+            return (
+              <GlassCard key={ev.id} className={`cal-event ${isNow ? 'cal-event-now' : ''}`}>
+                <div className="cal-event-time">
+                  <span className="cal-time-start">{startTime}</span>
+                  <span className="cal-time-end">{endTime}</span>
+                </div>
+                <div className="cal-event-body">
+                  <div className="cal-event-title">
+                    {isNow && <span className="cal-live-dot" />}
+                    {ev.summary}
+                  </div>
+                  {ev.location && (
+                    <div className="cal-event-meta"><MapPin size={10} /> {ev.location}</div>
+                  )}
+                  {ev.attendees && ev.attendees.length > 0 && (
+                    <div className="cal-event-meta"><Users size={10} /> {ev.attendees.length} attendee{ev.attendees.length !== 1 ? 's' : ''}</div>
+                  )}
+                </div>
+                <div className="cal-event-actions">
+                  {ev.hangoutLink && (
+                    <a href={ev.hangoutLink} target="_blank" rel="noopener noreferrer" className="cal-join-btn">
+                      <Video size={12} /> Join
+                    </a>
+                  )}
+                  {ev.htmlLink && (
+                    <a href={ev.htmlLink} target="_blank" rel="noopener noreferrer" className="cal-link-btn">
+                      <ExternalLink size={11} />
+                    </a>
+                  )}
+                </div>
+              </GlassCard>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
+// Tab: Calls
+// ═══════════════════════════════════════════
+
+function CallsTab() {
+  const { data: calls = [], isLoading, refetch } = useRecentCalls(30);
+  const makeCallMut = useMakeCall();
+  const [dialNumber, setDialNumber] = useState('');
+  const { toast } = useToast();
+
+  const activeCalls = calls.filter((c) => c.status === 'in-progress' || c.status === 'ringing' || c.status === 'queued');
+  const recentCalls = calls.filter((c) => c.status !== 'in-progress' && c.status !== 'ringing' && c.status !== 'queued');
+
+  async function handleDial() {
+    if (!dialNumber.trim()) return;
+    try {
+      await makeCallMut.mutateAsync({ to: dialNumber });
+      toast('success', `Calling ${dialNumber}...`);
+      setDialNumber('');
+    } catch (err) {
+      toast('error', `Call failed: ${err instanceof Error ? err.message : 'Unknown'}`);
+    }
+  }
+
+  const statusIcon = (status: string) => {
+    switch (status) {
+      case 'in-progress': return <PhoneCall size={12} style={{ color: 'var(--success)' }} />;
+      case 'ringing': case 'queued': return <PhoneIncoming size={12} style={{ color: 'var(--warning)' }} />;
+      case 'completed': return <PhoneOff size={12} style={{ color: 'var(--text-muted)' }} />;
+      case 'busy': case 'no-answer': return <PhoneOff size={12} style={{ color: 'var(--warning)' }} />;
+      case 'failed': case 'canceled': return <PhoneOff size={12} style={{ color: 'var(--error)' }} />;
+      default: return <Phone size={12} />;
+    }
+  };
+
+  const directionIcon = (dir: string) =>
+    dir === 'inbound' ? <PhoneIncoming size={10} /> : <PhoneOutgoing size={10} />;
+
+  return (
+    <div className="comms-calls">
+      {/* Dialer */}
+      <GlassCard className="calls-dialer">
+        <div className="calls-dialer-row">
+          <Phone size={14} style={{ color: 'var(--cyan)' }} />
+          <input
+            className="comms-input calls-dial-input"
+            value={dialNumber}
+            onChange={(e) => setDialNumber(e.target.value)}
+            placeholder="+1 (555) 123-4567"
+            onKeyDown={(e) => e.key === 'Enter' && handleDial()}
+          />
+          <Button variant="primary" size="sm" icon={<PhoneCall size={12} />} onClick={handleDial} disabled={makeCallMut.isPending || !dialNumber.trim()}>
+            {makeCallMut.isPending ? 'Dialing...' : 'Call'}
+          </Button>
+          <button className="comms-refresh-btn" onClick={() => refetch()}>
+            <RefreshCw size={12} className={isLoading ? 'mcv-spin' : ''} />
+          </button>
+        </div>
+      </GlassCard>
+
+      {/* Active Calls */}
+      {activeCalls.length > 0 && (
+        <div className="calls-section">
+          <h3 className="comms-section-title">
+            <span className="cal-live-dot" /> Active Calls
+          </h3>
+          {activeCalls.map((call) => (
+            <GlassCard key={call.sid} className="calls-card calls-card-active">
+              <div className="calls-card-icon">{statusIcon(call.status)}</div>
+              <div className="calls-card-body">
+                <span className="calls-card-number">{call.direction === 'inbound' ? call.from : call.to}</span>
+                <span className="calls-card-status">{call.status} {directionIcon(call.direction)}</span>
+              </div>
+              <span className="calls-card-duration">{call.duration}s</span>
+            </GlassCard>
+          ))}
+        </div>
+      )}
+
+      {/* Recent Calls */}
+      <div className="calls-section">
+        <h3 className="comms-section-title">Recent Calls</h3>
+        {recentCalls.length === 0 && !isLoading && (
+          <EmptyState icon={<Phone size={24} />} title="No recent calls" description="Connect Twilio to see call history." />
+        )}
+        {recentCalls.map((call) => (
+          <div key={call.sid} className="calls-row">
+            <div className="calls-row-icon">{statusIcon(call.status)}</div>
+            <div className="calls-row-body">
+              <span className="calls-row-number">{call.direction === 'inbound' ? call.from : call.to}</span>
+              <span className="calls-row-meta">
+                {directionIcon(call.direction)} {call.direction} &middot; {call.duration}s
+              </span>
+            </div>
+            <span className="comms-msg-time">{timeAgo(call.dateCreated)}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -788,6 +1100,8 @@ export default function CommsHub() {
         </select>
       </PageHeader>
 
+      <LiveCommandStrip />
+
       <Tabs
         tabs={COMMS_TABS.map((t) => ({
           ...t,
@@ -801,6 +1115,8 @@ export default function CommsHub() {
       <div className={`comms-body ${threadOpen ? 'comms-body-split' : ''}`}>
         <div className="comms-main">
           {activeTab === 'inbox' && <InboxTab />}
+          {activeTab === 'calendar' && <CalendarTab />}
+          {activeTab === 'calls' && <CallsTab />}
           {activeTab === 'channels' && <ChannelsTab />}
           {activeTab === 'compose' && <ComposeTab />}
           {activeTab === 'analytics' && <AnalyticsTab />}
@@ -921,7 +1237,69 @@ export default function CommsHub() {
         .comms-msg-venture{font-size:9px;padding:1px 6px;background:var(--bg-elevated);border-radius:3px;font-weight:500}
         .comms-broadcast-channels{display:flex;flex-direction:column;gap:4px}
         .comms-broadcast-channel-list{display:flex;flex-wrap:wrap;gap:6px;max-height:120px;overflow-y:auto;padding:6px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm)}
-        @media(max-width:768px){.comms-platform-chips{display:none}.comms-detail-panel{width:100%;position:absolute;inset:0;z-index:10}.comms-bar-label{width:60px}}
+
+        /* ── Live Command Strip ── */
+        .lcs{display:flex;gap:6px;padding:6px 20px;border-bottom:1px solid var(--border);overflow-x:auto;flex-shrink:0}
+        .lcs-widget{display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);min-width:0;flex-shrink:0}
+        .lcs-widget-live{border-color:var(--success);background:rgba(16,185,129,0.05);animation:lcs-pulse 2s infinite}
+        @keyframes lcs-pulse{0%,100%{opacity:1}50%{opacity:0.7}}
+        .lcs-icon{flex-shrink:0}
+        .lcs-widget-body{display:flex;flex-direction:column;min-width:0}
+        .lcs-widget-label{font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px}
+        .lcs-widget-value{font-size:11px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px}
+        .lcs-muted{color:var(--text-muted);font-weight:400}
+        .lcs-join-btn{display:inline-flex;align-items:center;gap:3px;font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(0,240,255,0.1);color:var(--cyan);text-decoration:none;border:1px solid rgba(0,240,255,0.2);margin-top:2px;white-space:nowrap}
+        .lcs-join-btn:hover{background:rgba(0,240,255,0.2)}
+
+        /* ── Calendar Tab ── */
+        .comms-calendar{display:flex;flex-direction:column;gap:12px}
+        .cal-quick-add{display:flex;gap:6px;align-items:center;margin-bottom:8px}
+        .cal-quick-input{flex:1}
+        .cal-day-group{margin-bottom:8px}
+        .cal-day-header{font-family:var(--font-display);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;padding:4px 0;margin-bottom:6px;border-bottom:1px solid var(--border)}
+        .cal-event{display:flex;gap:12px;align-items:flex-start;padding:10px 12px;margin-bottom:4px}
+        .cal-event-now{border-left:2px solid var(--success);background:rgba(16,185,129,0.03)}
+        .cal-event-time{display:flex;flex-direction:column;align-items:flex-end;min-width:65px;flex-shrink:0}
+        .cal-time-start{font-size:12px;font-weight:600;font-family:var(--font-mono)}
+        .cal-time-end{font-size:10px;color:var(--text-muted);font-family:var(--font-mono)}
+        .cal-event-body{flex:1;min-width:0}
+        .cal-event-title{font-size:13px;font-weight:500;display:flex;align-items:center;gap:6px}
+        .cal-live-dot{width:6px;height:6px;border-radius:50%;background:var(--success);animation:lcs-pulse 2s infinite;flex-shrink:0}
+        .cal-event-meta{font-size:10px;color:var(--text-muted);display:flex;align-items:center;gap:4px;margin-top:3px}
+        .cal-event-actions{display:flex;gap:4px;flex-shrink:0;align-items:center}
+        .cal-join-btn{display:flex;align-items:center;gap:4px;padding:4px 10px;font-size:11px;font-weight:500;border-radius:var(--radius-sm);background:rgba(0,240,255,0.08);color:var(--cyan);border:1px solid rgba(0,240,255,0.2);text-decoration:none;white-space:nowrap}
+        .cal-join-btn:hover{background:rgba(0,240,255,0.15)}
+        .cal-link-btn{padding:4px;color:var(--text-muted);text-decoration:none}
+        .cal-link-btn:hover{color:var(--text-primary)}
+
+        /* ── Calls Tab ── */
+        .comms-calls{display:flex;flex-direction:column;gap:12px}
+        .calls-dialer{padding:12px}
+        .calls-dialer-row{display:flex;align-items:center;gap:8px}
+        .calls-dial-input{flex:1;font-size:14px;font-family:var(--font-mono)}
+        .calls-section{margin-bottom:8px}
+        .calls-card{display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:4px}
+        .calls-card-active{border-left:2px solid var(--success);animation:lcs-pulse 2s infinite}
+        .calls-card-icon{width:28px;height:28px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;background:var(--bg-elevated);flex-shrink:0}
+        .calls-card-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+        .calls-card-number{font-size:13px;font-weight:500;font-family:var(--font-mono)}
+        .calls-card-status{font-size:10px;color:var(--text-muted);display:flex;align-items:center;gap:4px;text-transform:capitalize}
+        .calls-card-duration{font-size:11px;font-family:var(--font-mono);color:var(--text-muted)}
+        .calls-row{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);transition:background var(--transition-fast)}
+        .calls-row:hover{background:var(--bg-card)}
+        .calls-row-icon{width:24px;display:flex;justify-content:center;flex-shrink:0}
+        .calls-row-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+        .calls-row-number{font-size:12px;font-weight:500;font-family:var(--font-mono)}
+        .calls-row-meta{font-size:10px;color:var(--text-muted);display:flex;align-items:center;gap:4px}
+
+        /* ── Inbox Triage Actions ── */
+        .comms-msg-actions{display:flex;gap:2px;opacity:0;transition:opacity var(--transition-fast);flex-shrink:0}
+        .comms-msg-row:hover .comms-msg-actions{opacity:1}
+        .comms-triage-btn{padding:4px;border:none;background:none;color:var(--text-muted);cursor:pointer;border-radius:var(--radius-sm);transition:all var(--transition-fast)}
+        .comms-triage-btn:hover{color:var(--cyan);background:rgba(0,240,255,0.08)}
+        .comms-triage-danger:hover{color:var(--error);background:rgba(239,68,68,0.08)}
+
+        @media(max-width:768px){.comms-platform-chips{display:none}.comms-detail-panel{width:100%;position:absolute;inset:0;z-index:10}.comms-bar-label{width:60px}.lcs{flex-wrap:wrap}}
       `}</style>
     </div>
   );
