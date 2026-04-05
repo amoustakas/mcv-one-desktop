@@ -1,6 +1,6 @@
 // src/lib/ledger/service.ts
 
-import { supabase } from '@/lib/supabase';
+import { supabase } from '../supabase';
 import type { WalletBinding, CustodyType, SyncStrategy } from './types';
 import {
   CreateAccountInput,
@@ -383,7 +383,7 @@ export async function getTrialBalance(
     .in('id', accountIds);
 
   return (accounts ?? [])
-    .map((acc) => {
+    .map((acc: { id: string; code: string; name: string; type: string; currency: string }) => {
       const totals = accountTotals.get(acc.id)!;
       const isDebitNormal = acc.type === 'asset' || acc.type === 'expense';
       const netBalance = totals.debits - totals.credits;
@@ -391,11 +391,11 @@ export async function getTrialBalance(
         accountId: acc.id,
         accountCode: acc.code,
         accountName: acc.name,
-        accountType: acc.type,
+        accountType: acc.type as TrialBalanceRow['accountType'],
         debitBalance: isDebitNormal ? Math.max(netBalance, 0) : Math.max(-netBalance, 0),
         creditBalance: isDebitNormal ? Math.max(-netBalance, 0) : Math.max(netBalance, 0),
         currency: acc.currency,
       };
     })
-    .sort((a, b) => a.accountCode.localeCompare(b.accountCode));
+    .sort((a: TrialBalanceRow, b: TrialBalanceRow) => a.accountCode.localeCompare(b.accountCode));
 }

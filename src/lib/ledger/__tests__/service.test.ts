@@ -5,9 +5,8 @@ import { DEFAULT_CHART_OF_ACCOUNTS } from '../chart-of-accounts';
 
 // Mock Supabase client
 const mockFrom = vi.fn();
-const mockSupabase = { from: mockFrom };
 
-vi.mock('@/lib/supabase', () => ({
+vi.mock('../../supabase', () => ({
   supabase: { from: (...args: unknown[]) => mockFrom(...args) },
 }));
 

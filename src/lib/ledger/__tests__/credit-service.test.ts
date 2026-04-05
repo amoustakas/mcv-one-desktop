@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { grantCredits, consumeCredits, getCreditBalance, createCreditAccount } from '../credit-service';
 
 const mockFrom = vi.fn();
-vi.mock('@/lib/supabase', () => ({
+vi.mock('../../supabase', () => ({
   supabase: { from: (...args: unknown[]) => mockFrom(...args) },
 }));
 

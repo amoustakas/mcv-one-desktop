@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { LedgerAccount, JournalEntry, TrialBalanceRow, CreditAccount } from '@/lib/ledger/types';
+import type { LedgerAccount, JournalEntry, TrialBalanceRow, CreditAccount } from '../lib/ledger/types';
 
 interface LedgerState {
   // Accounts

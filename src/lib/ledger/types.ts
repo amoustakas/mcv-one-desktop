@@ -69,7 +69,7 @@ export const LedgerAccountSchema = z.object({
   currentBalance: z.number(),
   isSystem: z.boolean(),
   wallet: WalletBindingSchema.nullable(),
-  metadata: z.record(z.unknown()).default({}),
+  metadata: z.record(z.string(), z.unknown()).default({}),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
@@ -84,7 +84,7 @@ export const CreateAccountInput = z.object({
   currency: z.string().min(2).max(10).default('USD'),
   isSystem: z.boolean().default(false),
   wallet: WalletBindingSchema.nullable().default(null),
-  metadata: z.record(z.unknown()).default({}),
+  metadata: z.record(z.string(), z.unknown()).default({}),
 });
 export type CreateAccountInput = z.infer<typeof CreateAccountInput>;
 
@@ -176,7 +176,7 @@ export const CreateCreditAccountInput = z.object({
   currency: z.string().default('credits'),
   creditLimit: z.number().min(0).default(0),
   expiresAt: z.string().datetime().nullable().default(null),
-  metadata: z.record(z.unknown()).default({}),
+  metadata: z.record(z.string(), z.unknown()).default({}),
 });
 export type CreateCreditAccountInput = z.infer<typeof CreateCreditAccountInput>;
 

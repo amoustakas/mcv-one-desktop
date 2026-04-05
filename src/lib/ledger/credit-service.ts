@@ -1,6 +1,6 @@
 // src/lib/ledger/credit-service.ts
 
-import { supabase } from '@/lib/supabase';
+import { supabase } from '../supabase';
 import { CreateCreditAccountInput, type CreditAccount } from './types';
 import { createJournalEntry, postJournalEntry, getAccountByCode } from './service';
 
