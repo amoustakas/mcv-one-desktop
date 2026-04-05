@@ -8,7 +8,7 @@ const supabase = createClient(
 );
 
 async function notify(type: string, title: string, description: string, source: string, ventureId?: string) {
-  await supabase.from('notifications').insert({ type, title, description, source, venture_id: ventureId || null }).catch(() => {});
+  await supabase.from('notifications').insert({ type, title, description, source, venture_id: ventureId || null });
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

@@ -93,7 +93,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (installError) throw installError;
 
         // Increment download count
-        await supabase.rpc('increment_kit_downloads', { p_kit_id: kitId }).catch(() => {});
+        await supabase.rpc('increment_kit_downloads', { p_kit_id: kitId });
 
         return res.json({ success: true, message: `Kit "${kit.name}" installed` });
       }

@@ -56,7 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           title: `Welcome, ${data.name}!`,
           description: 'Your MCV One account has been set up.',
           source: 'system',
-        }).catch(() => {});
+        });
 
         return res.json({ member: data, created: true });
       }

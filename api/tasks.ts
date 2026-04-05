@@ -30,7 +30,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       case 'create': {
         const { data, error } = await supabase.from('tasks').insert(req.body.task).select().single();
         if (error) throw error;
-        await supabase.from('notifications').insert({ type: 'info', title: `Task created: ${data.title}`, description: `Priority: ${data.priority || 'medium'}`, source: 'system', venture_id: data.venture_id }).catch(() => {});
+        await supabase.from('notifications').insert({ type: 'info', title: `Task created: ${data.title}`, description: `Priority: ${data.priority || 'medium'}`, source: 'system', venture_id: data.venture_id });
         return res.json({ task: data });
       }
       case 'update': {
