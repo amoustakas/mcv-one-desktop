@@ -57,16 +57,58 @@ const notionImportPage: KitToolHandler = async (input, ctx) => {
   };
 };
 
+const notionCreatePage: KitToolHandler = async (input, ctx) => {
+  const d = await postJson('/api/notion', { action: 'create-page', parentId: input.parentId, title: input.title, content: input.content }, ctx);
+  return { success: true, data: d, displayMarkdown: `**Page created:** ${d.title || input.title} \`${d.id}\`` };
+};
+
+const notionUpdatePage: KitToolHandler = async (input, ctx) => {
+  const d = await postJson('/api/notion', { action: 'update-page', pageId: input.pageId, properties: input.properties }, ctx);
+  return { success: true, data: d, displayMarkdown: `**Page updated:** \`${input.pageId}\`` };
+};
+
+const notionArchivePage: KitToolHandler = async (input, ctx) => {
+  const d = await postJson('/api/notion', { action: 'archive-page', pageId: input.pageId }, ctx);
+  return { success: true, data: d, displayMarkdown: `**Page archived:** \`${input.pageId}\`` };
+};
+
+const notionCreateDatabase: KitToolHandler = async (input, ctx) => {
+  const d = await postJson('/api/notion', { action: 'create-database', parentPageId: input.parentPageId, title: input.title, properties: input.properties }, ctx);
+  return { success: true, data: d, displayMarkdown: `**Database created:** ${d.title || input.title} \`${d.id}\`` };
+};
+
+const notionQueryDatabase: KitToolHandler = async (input, ctx) => {
+  const d = await postJson('/api/notion', { action: 'query-database', databaseId: input.databaseId, filter: input.filter, sorts: input.sorts }, ctx);
+  const results = d.results ?? [];
+  return { success: true, data: results, displayMarkdown: `## Query Results (${results.length})\n\n${JSON.stringify(results).slice(0, 1000)}` };
+};
+
+const notionGetBlockChildren: KitToolHandler = async (input, ctx) => {
+  const d = await postJson('/api/notion', { action: 'get-block-children', blockId: input.blockId }, ctx);
+  const blocks = d.results ?? [];
+  return { success: true, data: blocks, displayMarkdown: `## Block Children (${blocks.length})\n\n${JSON.stringify(blocks).slice(0, 1000)}` };
+};
+
+const notionAppendBlocks: KitToolHandler = async (input, ctx) => {
+  const d = await postJson('/api/notion', { action: 'append-blocks', blockId: input.blockId, children: input.children }, ctx);
+  return { success: true, data: d, displayMarkdown: `**Blocks appended to** \`${input.blockId}\`` };
+};
+
+const notionAddComment: KitToolHandler = async (input, ctx) => {
+  const d = await postJson('/api/notion', { action: 'add-comment', pageId: input.pageId, text: input.text }, ctx);
+  return { success: true, data: d, displayMarkdown: `**Comment added to** \`${input.pageId}\`` };
+};
+
 export const manifest: KitManifest = {
   id: 'notion-connector',
   name: 'Notion Connector',
-  version: '1.0.0',
-  description: 'Search Notion pages, list databases, and import Notion content into the document library.',
+  version: '2.0.0',
+  description: 'Search, create, update, and archive Notion pages and databases. Import content, query databases, manage blocks and comments.',
   author: 'MCV',
   capabilities: ['network', 'credentials'],
   runtime: 'inline',
   ventureScope: '*',
-  instructions: 'Use these tools when the user asks about Notion pages, databases, or wants to import content from Notion.',
+  instructions: 'Use these tools when the user asks about Notion pages, databases, blocks, comments, or wants to import/create/update content in Notion.',
   tools: [
     {
       name: 'notion_search',
@@ -91,6 +133,78 @@ export const manifest: KitManifest = {
         required: ['page_id'],
       },
     },
+    {
+      name: 'notion_create_page',
+      description: 'Create a new page in Notion under a parent page or database.',
+      input_schema: {
+        type: 'object',
+        properties: { parentId: { type: 'string', description: 'Parent page or database ID' }, title: { type: 'string', description: 'Page title' }, content: { type: 'string', description: 'Page content (markdown)' } },
+        required: ['parentId', 'title'],
+      },
+    },
+    {
+      name: 'notion_update_page',
+      description: 'Update properties on an existing Notion page.',
+      input_schema: {
+        type: 'object',
+        properties: { pageId: { type: 'string', description: 'Page ID' }, properties: { type: 'object', description: 'Properties to update' } },
+        required: ['pageId', 'properties'],
+      },
+    },
+    {
+      name: 'notion_archive_page',
+      description: 'Archive (soft-delete) a Notion page.',
+      input_schema: {
+        type: 'object',
+        properties: { pageId: { type: 'string', description: 'Page ID to archive' } },
+        required: ['pageId'],
+      },
+    },
+    {
+      name: 'notion_create_database',
+      description: 'Create a new database in Notion under a parent page.',
+      input_schema: {
+        type: 'object',
+        properties: { parentPageId: { type: 'string', description: 'Parent page ID' }, title: { type: 'string', description: 'Database title' }, properties: { type: 'object', description: 'Database property schema' } },
+        required: ['parentPageId', 'title'],
+      },
+    },
+    {
+      name: 'notion_query_database',
+      description: 'Query a Notion database with optional filters and sorts.',
+      input_schema: {
+        type: 'object',
+        properties: { databaseId: { type: 'string', description: 'Database ID' }, filter: { type: 'object', description: 'Notion filter object' }, sorts: { type: 'array', description: 'Sort criteria' } },
+        required: ['databaseId'],
+      },
+    },
+    {
+      name: 'notion_get_block_children',
+      description: 'Get all child blocks of a Notion block or page.',
+      input_schema: {
+        type: 'object',
+        properties: { blockId: { type: 'string', description: 'Block or page ID' } },
+        required: ['blockId'],
+      },
+    },
+    {
+      name: 'notion_append_blocks',
+      description: 'Append child blocks to a Notion block or page.',
+      input_schema: {
+        type: 'object',
+        properties: { blockId: { type: 'string', description: 'Block or page ID' }, children: { type: 'array', description: 'Array of block objects to append' } },
+        required: ['blockId', 'children'],
+      },
+    },
+    {
+      name: 'notion_add_comment',
+      description: 'Add a comment to a Notion page.',
+      input_schema: {
+        type: 'object',
+        properties: { pageId: { type: 'string', description: 'Page ID' }, text: { type: 'string', description: 'Comment text' } },
+        required: ['pageId', 'text'],
+      },
+    },
   ],
 };
 
@@ -98,4 +212,12 @@ export const handlers: Record<string, KitToolHandler> = {
   notion_search: notionSearch,
   notion_list_databases: notionListDatabases,
   notion_import_page: notionImportPage,
+  notion_create_page: notionCreatePage,
+  notion_update_page: notionUpdatePage,
+  notion_archive_page: notionArchivePage,
+  notion_create_database: notionCreateDatabase,
+  notion_query_database: notionQueryDatabase,
+  notion_get_block_children: notionGetBlockChildren,
+  notion_append_blocks: notionAppendBlocks,
+  notion_add_comment: notionAddComment,
 };

@@ -50,8 +50,48 @@ const vapiOverview: KitToolHandler = async (_i, ctx) => {
   return { success: true, data: d, displayMarkdown: `## Vapi Overview\n\n- **Assistants:** ${d.assistants}\n- **Recent Calls:** ${d.recent_calls}\n- **Phone Numbers:** ${d.phone_numbers}` };
 };
 
+const getCallDetails: KitToolHandler = async (input, ctx) => {
+  const d = await vapiApi('get-call-details', { id: input.id }, ctx);
+  return { success: true, data: d, displayMarkdown: `## Call \`${input.id}\`\n\n- **Status:** ${d.status}\n- **Type:** ${d.type}\n- **Duration:** ${d.duration ?? 'N/A'}s` };
+};
+
+const endCall: KitToolHandler = async (input, ctx) => {
+  const d = await vapiApi('end-call', { id: input.id }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `Call \`${input.id}\` ended.` };
+};
+
+const createWorkflow: KitToolHandler = async (input, ctx) => {
+  const d = await vapiApi('create-workflow', { name: input.name, steps: input.steps }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `Workflow created: **${input.name}** (\`${d.id || 'pending'}\`)` };
+};
+
+const deleteWorkflow: KitToolHandler = async (input, ctx) => {
+  const d = await vapiApi('delete-workflow', { id: input.id }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `Workflow \`${input.id}\` deleted.` };
+};
+
+const createKnowledgeBase: KitToolHandler = async (input, ctx) => {
+  const d = await vapiApi('create-knowledge-base', { name: input.name }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `Knowledge base created: **${input.name}** (\`${d.id || 'pending'}\`)` };
+};
+
+const deleteKnowledgeBase: KitToolHandler = async (input, ctx) => {
+  const d = await vapiApi('delete-knowledge-base', { id: input.id }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `Knowledge base \`${input.id}\` deleted.` };
+};
+
+const createTool: KitToolHandler = async (input, ctx) => {
+  const d = await vapiApi('create-tool', { type: input.type, function: input.function }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `Tool created: type=${input.type} (\`${d.id || 'pending'}\`)` };
+};
+
+const deleteTool: KitToolHandler = async (input, ctx) => {
+  const d = await vapiApi('delete-tool', { id: input.id }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `Tool \`${input.id}\` deleted.` };
+};
+
 export const manifest: KitManifest = {
-  id: 'vapi-voice', name: 'Vapi Voice AI', version: '1.0.0',
+  id: 'vapi-voice', name: 'Vapi Voice AI', version: '2.0.0',
   description: 'Vapi — AI voice assistants, outbound calls, phone numbers, workflows, and call analytics.',
   author: 'MCV', capabilities: ['network', 'credentials'], runtime: 'inline', ventureScope: '*',
   instructions: 'Use vapi tools for AI voice assistant management, making outbound calls, managing phone numbers, and reviewing call logs.',
@@ -62,6 +102,14 @@ export const manifest: KitManifest = {
     { name: 'vapi_make_call', description: 'Initiate an outbound AI voice call.', input_schema: { type: 'object', properties: { assistantId: { type: 'string' }, phoneNumberId: { type: 'string' }, customer: { type: 'object' } }, required: ['assistantId'] } },
     { name: 'vapi_list_phone_numbers', description: 'List available phone numbers.', input_schema: { type: 'object', properties: {} } },
     { name: 'vapi_overview', description: 'Vapi account overview.', input_schema: { type: 'object', properties: {} } },
+    { name: 'vapi_get_call', description: 'Get detailed info about a specific call.', input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } },
+    { name: 'vapi_end_call', description: 'End an active call.', input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } },
+    { name: 'vapi_create_workflow', description: 'Create a voice workflow.', input_schema: { type: 'object', properties: { name: { type: 'string' }, steps: { type: 'array', description: 'Workflow step definitions' } }, required: ['name'] } },
+    { name: 'vapi_delete_workflow', description: 'Delete a workflow.', input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } },
+    { name: 'vapi_create_knowledge_base', description: 'Create a knowledge base.', input_schema: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] } },
+    { name: 'vapi_delete_knowledge_base', description: 'Delete a knowledge base.', input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } },
+    { name: 'vapi_create_tool', description: 'Create a custom tool for assistants.', input_schema: { type: 'object', properties: { type: { type: 'string', description: 'Tool type (e.g. function)' }, function: { type: 'object', description: 'Function definition' } }, required: ['type', 'function'] } },
+    { name: 'vapi_delete_tool', description: 'Delete a custom tool.', input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } },
   ],
 };
 
@@ -69,4 +117,8 @@ export const handlers: Record<string, KitToolHandler> = {
   vapi_list_assistants: listAssistants, vapi_create_assistant: createAssistant,
   vapi_list_calls: listCalls, vapi_make_call: makeCall,
   vapi_list_phone_numbers: listPhoneNumbers, vapi_overview: vapiOverview,
+  vapi_get_call: getCallDetails, vapi_end_call: endCall,
+  vapi_create_workflow: createWorkflow, vapi_delete_workflow: deleteWorkflow,
+  vapi_create_knowledge_base: createKnowledgeBase, vapi_delete_knowledge_base: deleteKnowledgeBase,
+  vapi_create_tool: createTool, vapi_delete_tool: deleteTool,
 };

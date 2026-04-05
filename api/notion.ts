@@ -218,6 +218,179 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.json({ databases, hasMore: data.has_more });
       }
 
+      // --- Create a new page ---
+      case 'create-page': {
+        const { parent, properties, children } = req.body;
+        if (!parent) return res.status(400).json({ error: 'parent is required (database_id or page_id)' });
+        const response = await fetch(`${NOTION_BASE}/pages`, {
+          method: 'POST',
+          headers: notionHeaders(),
+          body: JSON.stringify({ parent, properties: properties || {}, children: children || [] }),
+        });
+        const data = await response.json();
+        if (!response.ok) return res.status(response.status).json({ error: data.message || 'Notion API error' });
+        return res.json({ page: simplifyPage(data) });
+      }
+
+      // --- Update page properties ---
+      case 'update-page': {
+        const { pageId, properties } = req.body;
+        if (!pageId) return res.status(400).json({ error: 'pageId is required' });
+        if (!properties) return res.status(400).json({ error: 'properties is required' });
+        const response = await fetch(`${NOTION_BASE}/pages/${pageId}`, {
+          method: 'PATCH',
+          headers: notionHeaders(),
+          body: JSON.stringify({ properties }),
+        });
+        const data = await response.json();
+        if (!response.ok) return res.status(response.status).json({ error: data.message || 'Notion API error' });
+        return res.json({ page: simplifyPage(data) });
+      }
+
+      // --- Archive a page ---
+      case 'archive-page': {
+        const { pageId } = req.body;
+        if (!pageId) return res.status(400).json({ error: 'pageId is required' });
+        const response = await fetch(`${NOTION_BASE}/pages/${pageId}`, {
+          method: 'PATCH',
+          headers: notionHeaders(),
+          body: JSON.stringify({ archived: true }),
+        });
+        const data = await response.json();
+        if (!response.ok) return res.status(response.status).json({ error: data.message || 'Notion API error' });
+        return res.json({ page: simplifyPage(data) });
+      }
+
+      // --- Create a database ---
+      case 'create-database': {
+        const { parent, title, properties } = req.body;
+        if (!parent) return res.status(400).json({ error: 'parent (page_id) is required' });
+        if (!title) return res.status(400).json({ error: 'title is required' });
+        const response = await fetch(`${NOTION_BASE}/databases`, {
+          method: 'POST',
+          headers: notionHeaders(),
+          body: JSON.stringify({
+            parent,
+            title: [{ type: 'text', text: { content: title } }],
+            properties: properties || { Name: { title: {} } },
+          }),
+        });
+        const data = await response.json();
+        if (!response.ok) return res.status(response.status).json({ error: data.message || 'Notion API error' });
+        return res.json({ database: simplifyDatabase(data) });
+      }
+
+      // --- Get a database ---
+      case 'get-database': {
+        const { databaseId } = req.body;
+        if (!databaseId) return res.status(400).json({ error: 'databaseId is required' });
+        const response = await fetch(`${NOTION_BASE}/databases/${databaseId}`, {
+          method: 'GET',
+          headers: notionHeaders(),
+        });
+        const data = await response.json();
+        if (!response.ok) return res.status(response.status).json({ error: data.message || 'Notion API error' });
+        return res.json({ database: simplifyDatabase(data) });
+      }
+
+      // --- Query a database ---
+      case 'query-database': {
+        const { databaseId, filter, sorts } = req.body;
+        if (!databaseId) return res.status(400).json({ error: 'databaseId is required' });
+        const body: Record<string, unknown> = { page_size: 50 };
+        if (filter) body.filter = filter;
+        if (sorts) body.sorts = sorts;
+        const response = await fetch(`${NOTION_BASE}/databases/${databaseId}/query`, {
+          method: 'POST',
+          headers: notionHeaders(),
+          body: JSON.stringify(body),
+        });
+        const data = await response.json();
+        if (!response.ok) return res.status(response.status).json({ error: data.message || 'Notion API error' });
+        const results = (data.results || []).map((item: Record<string, unknown>) => simplifyPage(item));
+        return res.json({ results, hasMore: data.has_more });
+      }
+
+      // --- Get block children ---
+      case 'get-block-children': {
+        const { blockId } = req.body;
+        if (!blockId) return res.status(400).json({ error: 'blockId is required' });
+        const response = await fetch(`${NOTION_BASE}/blocks/${blockId}/children?page_size=100`, {
+          method: 'GET',
+          headers: notionHeaders(),
+        });
+        const data = await response.json();
+        if (!response.ok) return res.status(response.status).json({ error: data.message || 'Notion API error' });
+        const blocks = (data.results || []).map((block: Record<string, unknown>) => simplifyBlock(block));
+        return res.json({ blocks, hasMore: data.has_more });
+      }
+
+      // --- Append blocks to a page or block ---
+      case 'append-blocks': {
+        const { blockId, children } = req.body;
+        if (!blockId) return res.status(400).json({ error: 'blockId is required' });
+        if (!children || !Array.isArray(children)) return res.status(400).json({ error: 'children array is required' });
+        const response = await fetch(`${NOTION_BASE}/blocks/${blockId}/children`, {
+          method: 'PATCH',
+          headers: notionHeaders(),
+          body: JSON.stringify({ children }),
+        });
+        const data = await response.json();
+        if (!response.ok) return res.status(response.status).json({ error: data.message || 'Notion API error' });
+        const blocks = (data.results || []).map((block: Record<string, unknown>) => simplifyBlock(block));
+        return res.json({ blocks, hasMore: data.has_more });
+      }
+
+      // --- Delete a block ---
+      case 'delete-block': {
+        const { blockId } = req.body;
+        if (!blockId) return res.status(400).json({ error: 'blockId is required' });
+        const response = await fetch(`${NOTION_BASE}/blocks/${blockId}`, {
+          method: 'DELETE',
+          headers: notionHeaders(),
+        });
+        const data = await response.json();
+        if (!response.ok) return res.status(response.status).json({ error: data.message || 'Notion API error' });
+        return res.json({ success: true, id: blockId });
+      }
+
+      // --- List users ---
+      case 'list-users': {
+        const response = await fetch(`${NOTION_BASE}/users`, {
+          method: 'GET',
+          headers: notionHeaders(),
+        });
+        const data = await response.json();
+        if (!response.ok) return res.status(response.status).json({ error: data.message || 'Notion API error' });
+        const users = (data.results || []).map((u: Record<string, unknown>) => ({
+          id: u.id,
+          name: u.name,
+          type: u.type,
+          avatarUrl: u.avatar_url,
+        }));
+        return res.json({ users });
+      }
+
+      // --- Add a comment ---
+      case 'add-comment': {
+        const { pageId, richText } = req.body;
+        if (!pageId) return res.status(400).json({ error: 'pageId is required' });
+        if (!richText) return res.status(400).json({ error: 'richText is required' });
+        const response = await fetch(`${NOTION_BASE}/comments`, {
+          method: 'POST',
+          headers: notionHeaders(),
+          body: JSON.stringify({
+            parent: { page_id: pageId },
+            rich_text: Array.isArray(richText)
+              ? richText
+              : [{ type: 'text', text: { content: String(richText) } }],
+          }),
+        });
+        const data = await response.json();
+        if (!response.ok) return res.status(response.status).json({ error: data.message || 'Notion API error' });
+        return res.json({ comment: { id: data.id, createdTime: data.created_time } });
+      }
+
       default:
         return res.status(400).json({ error: `Unknown action: ${action}` });
     }

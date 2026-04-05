@@ -67,8 +67,53 @@ const hsOverview: KitToolHandler = async (_i, ctx) => {
   return { success: true, data: d, displayMarkdown: `## HubSpot CRM Overview\n\n- **Contacts:** ${d.contacts}\n- **Deals:** ${d.deals}\n- **Companies:** ${d.companies}\n- **Tickets:** ${d.tickets}` };
 };
 
+const updateContact: KitToolHandler = async (input, ctx) => {
+  const d = await hsApi('update-contact', { id: input.id, properties: input.properties }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `Contact \`${input.id}\` updated.` };
+};
+
+const deleteContact: KitToolHandler = async (input, ctx) => {
+  const d = await hsApi('delete-contact', { id: input.id }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `Contact \`${input.id}\` deleted.` };
+};
+
+const createCompany: KitToolHandler = async (input, ctx) => {
+  const d = await hsApi('create-company', { name: input.name, domain: input.domain, industry: input.industry }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `Company created: **${input.name}** (${input.domain || 'no domain'})` };
+};
+
+const updateCompany: KitToolHandler = async (input, ctx) => {
+  const d = await hsApi('update-company', { id: input.id, properties: input.properties }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `Company \`${input.id}\` updated.` };
+};
+
+const updateDeal: KitToolHandler = async (input, ctx) => {
+  const d = await hsApi('update-deal', { id: input.id, properties: input.properties }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `Deal \`${input.id}\` updated.` };
+};
+
+const deleteDeal: KitToolHandler = async (input, ctx) => {
+  const d = await hsApi('delete-deal', { id: input.id }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `Deal \`${input.id}\` deleted.` };
+};
+
+const createTask: KitToolHandler = async (input, ctx) => {
+  const d = await hsApi('create-task', { subject: input.subject, body: input.body, status: input.status }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `Task created: **${input.subject}**` };
+};
+
+const createNote: KitToolHandler = async (input, ctx) => {
+  const d = await hsApi('create-note', { body: input.body }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `Note created.` };
+};
+
+const createAssociation: KitToolHandler = async (input, ctx) => {
+  const d = await hsApi('create-association', { fromType: input.fromType, fromId: input.fromId, toType: input.toType, toId: input.toId }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `Association created: ${input.fromType} \`${input.fromId}\` → ${input.toType} \`${input.toId}\`` };
+};
+
 export const manifest: KitManifest = {
-  id: 'hubspot-crm', name: 'HubSpot CRM', version: '1.0.0',
+  id: 'hubspot-crm', name: 'HubSpot CRM', version: '2.0.0',
   description: 'HubSpot — contacts, deals, companies, tickets, pipelines, owners, and CRM search.',
   author: 'MCV', capabilities: ['network', 'credentials'], runtime: 'inline', ventureScope: '*',
   instructions: 'Use hubspot tools for enterprise CRM: contacts, deals pipeline, company research, ticket management, and sales analytics.',
@@ -81,6 +126,15 @@ export const manifest: KitManifest = {
     { name: 'hubspot_companies', description: 'List companies.', input_schema: { type: 'object', properties: { limit: { type: 'number' } } } },
     { name: 'hubspot_tickets', description: 'List support tickets.', input_schema: { type: 'object', properties: { limit: { type: 'number' } } } },
     { name: 'hubspot_overview', description: 'HubSpot CRM overview: contacts, deals, companies, tickets.', input_schema: { type: 'object', properties: {} } },
+    { name: 'hubspot_update_contact', description: 'Update a contact by ID.', input_schema: { type: 'object', properties: { id: { type: 'string' }, properties: { type: 'object', description: 'Key-value properties to update' } }, required: ['id', 'properties'] } },
+    { name: 'hubspot_delete_contact', description: 'Delete a contact by ID.', input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } },
+    { name: 'hubspot_create_company', description: 'Create a new company.', input_schema: { type: 'object', properties: { name: { type: 'string' }, domain: { type: 'string' }, industry: { type: 'string' } }, required: ['name'] } },
+    { name: 'hubspot_update_company', description: 'Update a company by ID.', input_schema: { type: 'object', properties: { id: { type: 'string' }, properties: { type: 'object', description: 'Key-value properties to update' } }, required: ['id', 'properties'] } },
+    { name: 'hubspot_update_deal', description: 'Update a deal by ID.', input_schema: { type: 'object', properties: { id: { type: 'string' }, properties: { type: 'object', description: 'Key-value properties to update' } }, required: ['id', 'properties'] } },
+    { name: 'hubspot_delete_deal', description: 'Delete a deal by ID.', input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } },
+    { name: 'hubspot_create_task', description: 'Create a CRM task.', input_schema: { type: 'object', properties: { subject: { type: 'string' }, body: { type: 'string' }, status: { type: 'string', description: 'e.g. NOT_STARTED, IN_PROGRESS, COMPLETED' } }, required: ['subject'] } },
+    { name: 'hubspot_create_note', description: 'Create a CRM note.', input_schema: { type: 'object', properties: { body: { type: 'string' } }, required: ['body'] } },
+    { name: 'hubspot_associate', description: 'Create an association between two CRM objects.', input_schema: { type: 'object', properties: { fromType: { type: 'string', description: 'e.g. contact, company, deal' }, fromId: { type: 'string' }, toType: { type: 'string' }, toId: { type: 'string' } }, required: ['fromType', 'fromId', 'toType', 'toId'] } },
   ],
 };
 
@@ -88,4 +142,9 @@ export const handlers: Record<string, KitToolHandler> = {
   hubspot_contacts: listContacts, hubspot_search_contacts: searchContacts, hubspot_create_contact: createContact,
   hubspot_deals: listDeals, hubspot_create_deal: createDeal, hubspot_companies: listCompanies,
   hubspot_tickets: listTickets, hubspot_overview: hsOverview,
+  hubspot_update_contact: updateContact, hubspot_delete_contact: deleteContact,
+  hubspot_create_company: createCompany, hubspot_update_company: updateCompany,
+  hubspot_update_deal: updateDeal, hubspot_delete_deal: deleteDeal,
+  hubspot_create_task: createTask, hubspot_create_note: createNote,
+  hubspot_associate: createAssociation,
 };

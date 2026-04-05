@@ -99,6 +99,7 @@ interface NavigationState {
   // Split panel
   splitView: ViewId | null;
   splitRatio: number; // 0.3 to 0.7
+  splitDirection: 'horizontal' | 'vertical'; // horizontal = side-by-side, vertical = top-bottom
   // History stack for back/forward
   history: ViewId[];
   historyIndex: number;
@@ -109,9 +110,10 @@ interface NavigationState {
   toggleChatDock: () => void;
   setChatVenture: (slug: string) => void;
   // Split actions
-  openSplit: (view: ViewId) => void;
+  openSplit: (view: ViewId, direction?: 'horizontal' | 'vertical') => void;
   closeSplit: () => void;
   setSplitRatio: (ratio: number) => void;
+  setSplitDirection: (dir: 'horizontal' | 'vertical') => void;
   toggleSplit: () => void;
   swapPanels: () => void;
   // History navigation
@@ -165,6 +167,7 @@ export const useNavigation = create<NavigationState>()(
       chatVenture: 'mcv',
       splitView: null,
       splitRatio: 0.5,
+      splitDirection: 'horizontal',
       history: ['command-center'],
       historyIndex: 0,
 
@@ -212,14 +215,17 @@ export const useNavigation = create<NavigationState>()(
       setChatVenture: (slug) =>
         set({ chatVenture: slug }),
 
-      openSplit: (view) =>
-        set({ splitView: view }),
+      openSplit: (view, direction) =>
+        set((s) => ({ splitView: view, splitDirection: direction || s.splitDirection })),
 
       closeSplit: () =>
         set({ splitView: null }),
 
       setSplitRatio: (ratio) =>
-        set({ splitRatio: Math.max(0.25, Math.min(0.75, ratio)) }),
+        set({ splitRatio: Math.max(0.15, Math.min(0.85, ratio)) }),
+
+      setSplitDirection: (dir) =>
+        set({ splitDirection: dir }),
 
       toggleSplit: () => {
         const s = get();
@@ -284,6 +290,7 @@ export const useNavigation = create<NavigationState>()(
         chatVenture: s.chatVenture,
         splitView: s.splitView,
         splitRatio: s.splitRatio,
+        splitDirection: s.splitDirection,
       }),
     },
   ),

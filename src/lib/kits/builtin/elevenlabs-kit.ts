@@ -49,8 +49,38 @@ const xiOverview: KitToolHandler = async (_i, ctx) => {
   return { success: true, data: d, displayMarkdown: `## ElevenLabs Overview\n\n- **Tier:** ${d.tier}\n- **Characters Used:** ${d.character_count?.toLocaleString()} / ${d.character_limit?.toLocaleString()}\n- **Voices:** ${d.voice_count}\n- **Models:** ${d.model_count}` };
 };
 
+const cloneVoice: KitToolHandler = async (input, ctx) => {
+  const d = await xiApi('clone-voice', { name: input.name, description: input.description }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `Voice cloned: **${input.name}** (\`${d.voice_id || 'pending'}\`)` };
+};
+
+const getVoiceSettings: KitToolHandler = async (input, ctx) => {
+  const d = await xiApi('get-voice-settings', { voiceId: input.voiceId }, ctx);
+  return { success: true, data: d, displayMarkdown: `## Voice Settings (\`${input.voiceId}\`)\n\n- **Stability:** ${d.stability}\n- **Similarity Boost:** ${d.similarity_boost}` };
+};
+
+const updateVoiceSettings: KitToolHandler = async (input, ctx) => {
+  const d = await xiApi('update-voice-settings', { voiceId: input.voiceId, stability: input.stability, similarity_boost: input.similarity_boost }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `Voice \`${input.voiceId}\` settings updated.` };
+};
+
+const deleteVoice: KitToolHandler = async (input, ctx) => {
+  const d = await xiApi('delete-voice', { voiceId: input.voiceId }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `Voice \`${input.voiceId}\` deleted.` };
+};
+
+const deleteHistoryItem: KitToolHandler = async (input, ctx) => {
+  const d = await xiApi('delete-history-item', { historyItemId: input.historyItemId }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `History item \`${input.historyItemId}\` deleted.` };
+};
+
+const getUsage: KitToolHandler = async (_i, ctx) => {
+  const d = await xiApi('get-usage', {}, ctx);
+  return { success: true, data: d, displayMarkdown: `## ElevenLabs Usage\n\n\`\`\`json\n${JSON.stringify(d, null, 2).slice(0, 1000)}\n\`\`\`` };
+};
+
 export const manifest: KitManifest = {
-  id: 'elevenlabs-voice', name: 'ElevenLabs Voice', version: '1.0.0',
+  id: 'elevenlabs-voice', name: 'ElevenLabs Voice', version: '2.0.0',
   description: 'ElevenLabs — text-to-speech, voices, voice search, sound effects, models, and usage.',
   author: 'MCV', capabilities: ['network', 'credentials'], runtime: 'inline', ventureScope: '*',
   instructions: 'Use elevenlabs tools for TTS generation, voice browsing, sound effects, and voice AI capabilities.',
@@ -61,10 +91,19 @@ export const manifest: KitManifest = {
     { name: 'elevenlabs_list_models', description: 'List available TTS models.', input_schema: { type: 'object', properties: {} } },
     { name: 'elevenlabs_search_voices', description: 'Search the voice library.', input_schema: { type: 'object', properties: { query: { type: 'string' }, limit: { type: 'number' } }, required: ['query'] } },
     { name: 'elevenlabs_overview', description: 'Account overview: tier, usage, voice count.', input_schema: { type: 'object', properties: {} } },
+    { name: 'elevenlabs_clone_voice', description: 'Clone a voice from samples.', input_schema: { type: 'object', properties: { name: { type: 'string', description: 'Voice name' }, description: { type: 'string', description: 'Voice description' } }, required: ['name'] } },
+    { name: 'elevenlabs_voice_settings', description: 'Get voice settings (stability, similarity).', input_schema: { type: 'object', properties: { voiceId: { type: 'string' } }, required: ['voiceId'] } },
+    { name: 'elevenlabs_update_voice', description: 'Update voice settings.', input_schema: { type: 'object', properties: { voiceId: { type: 'string' }, stability: { type: 'number' }, similarity_boost: { type: 'number' } }, required: ['voiceId'] } },
+    { name: 'elevenlabs_delete_voice', description: 'Delete a voice by ID.', input_schema: { type: 'object', properties: { voiceId: { type: 'string' } }, required: ['voiceId'] } },
+    { name: 'elevenlabs_delete_history', description: 'Delete a history item.', input_schema: { type: 'object', properties: { historyItemId: { type: 'string' } }, required: ['historyItemId'] } },
+    { name: 'elevenlabs_usage', description: 'Get account usage stats.', input_schema: { type: 'object', properties: {} } },
   ],
 };
 
 export const handlers: Record<string, KitToolHandler> = {
   elevenlabs_list_voices: listVoices, elevenlabs_tts: tts, elevenlabs_generate_sfx: generateSfx,
   elevenlabs_list_models: listModels, elevenlabs_search_voices: searchVoices, elevenlabs_overview: xiOverview,
+  elevenlabs_clone_voice: cloneVoice, elevenlabs_voice_settings: getVoiceSettings,
+  elevenlabs_update_voice: updateVoiceSettings, elevenlabs_delete_voice: deleteVoice,
+  elevenlabs_delete_history: deleteHistoryItem, elevenlabs_usage: getUsage,
 };

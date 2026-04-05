@@ -90,6 +90,86 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       case 'sender-identities':
         return res.json(await sgFetch('/verified_senders'));
 
+      // ── Contact Management ──
+      case 'create-contact': {
+        const { contacts } = req.body;
+        if (!contacts || !Array.isArray(contacts)) return res.status(400).json({ error: 'contacts array required' });
+        return res.json(await sgFetch('/marketing/contacts', { method: 'PUT', body: { contacts } }));
+      }
+      case 'delete-contacts': {
+        const { ids } = req.body;
+        if (!ids) return res.status(400).json({ error: 'ids required' });
+        const idsParam = Array.isArray(ids) ? ids.join(',') : ids;
+        return res.json(await sgFetch(`/marketing/contacts?ids=${encodeURIComponent(idsParam)}`, { method: 'DELETE' }));
+      }
+
+      // ── List Management ──
+      case 'create-list': {
+        const { name } = req.body;
+        if (!name) return res.status(400).json({ error: 'name required' });
+        return res.json(await sgFetch('/marketing/lists', { method: 'POST', body: { name } }));
+      }
+      case 'delete-list': {
+        const { id } = req.body;
+        if (!id) return res.status(400).json({ error: 'id required' });
+        return res.json(await sgFetch(`/marketing/lists/${id}`, { method: 'DELETE' }));
+      }
+      case 'add-to-list': {
+        const { id, contact_ids } = req.body;
+        if (!id || !contact_ids) return res.status(400).json({ error: 'id and contact_ids required' });
+        return res.json(await sgFetch(`/marketing/lists/${id}/contacts`, { method: 'PUT', body: { contact_ids } }));
+      }
+
+      // ── Campaign Management ──
+      case 'create-campaign': {
+        const { name, sender_id, subject, html_content } = req.body;
+        if (!name) return res.status(400).json({ error: 'name required' });
+        return res.json(await sgFetch('/marketing/singlesends', {
+          method: 'POST', body: { name, sender_id, email_config: { subject, html_content } },
+        }));
+      }
+      case 'update-campaign': {
+        const { id, ...updates } = req.body;
+        if (!id) return res.status(400).json({ error: 'id required' });
+        return res.json(await sgFetch(`/marketing/singlesends/${id}`, { method: 'PATCH', body: updates }));
+      }
+      case 'send-campaign': {
+        const { id } = req.body;
+        if (!id) return res.status(400).json({ error: 'id required' });
+        return res.json(await sgFetch(`/marketing/singlesends/${id}/schedule`, {
+          method: 'PUT', body: { send_at: 'now' },
+        }));
+      }
+      case 'delete-campaign': {
+        const { id } = req.body;
+        if (!id) return res.status(400).json({ error: 'id required' });
+        return res.json(await sgFetch(`/marketing/singlesends/${id}`, { method: 'DELETE' }));
+      }
+
+      // ── Sender Management ──
+      case 'create-sender': {
+        const { from, reply_to, nickname, address, city, country } = req.body;
+        if (!from) return res.status(400).json({ error: 'from required (email and name)' });
+        return res.json(await sgFetch('/marketing/senders', {
+          method: 'POST', body: { from, reply_to, nickname, address, city, country },
+        }));
+      }
+      case 'verify-sender': {
+        const { id } = req.body;
+        if (!id) return res.status(400).json({ error: 'id required' });
+        return res.json(await sgFetch(`/marketing/senders/${id}/resend_verification`, { method: 'POST' }));
+      }
+
+      // ── Suppression Management ──
+      case 'list-suppressions-bounces':
+        return res.json(await sgFetch('/suppression/bounces?limit=50'));
+
+      case 'delete-bounce': {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ error: 'email required' });
+        return res.json(await sgFetch(`/suppression/bounces/${encodeURIComponent(email)}`, { method: 'DELETE' }));
+      }
+
       case 'overview': {
         const start = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
         const end = new Date().toISOString().split('T')[0];

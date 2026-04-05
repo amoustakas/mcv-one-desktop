@@ -126,6 +126,67 @@ const d1Query: KitToolHandler = async (input, ctx) => {
   return { success: true, data, displayMarkdown: md };
 };
 
+// ── Workers CRUD ───────────────────────────────────────────────
+
+const deployWorker: KitToolHandler = async (input, ctx) => {
+  const d = await postJson('/api/cloudflare-proxy', { action: 'deploy-worker', scriptName: input.scriptName, code: input.code }, ctx);
+  return { success: true, data: d, displayMarkdown: `**Worker deployed:** \`${input.scriptName}\`` };
+};
+
+const deleteWorker: KitToolHandler = async (input, ctx) => {
+  const d = await postJson('/api/cloudflare-proxy', { action: 'delete-worker', scriptName: input.scriptName }, ctx);
+  return { success: true, data: d, displayMarkdown: `**Worker deleted:** \`${input.scriptName}\`` };
+};
+
+// ── KV Delete ──────────────────────────────────────────────────
+
+const kvDelete: KitToolHandler = async (input, ctx) => {
+  const d = await postJson('/api/cloudflare-proxy', { action: 'kv-delete', namespace_id: input.namespaceId, key: input.key }, ctx);
+  return { success: true, data: d, displayMarkdown: `**KV key deleted:** \`${input.key}\` from namespace \`${input.namespaceId}\`` };
+};
+
+// ── R2 Delete ──────────────────────────────────────────────────
+
+const r2DeleteObject: KitToolHandler = async (input, ctx) => {
+  const d = await postJson('/api/cloudflare-proxy', { action: 'r2-delete-object', bucketName: input.bucketName, key: input.key }, ctx);
+  return { success: true, data: d, displayMarkdown: `**R2 object deleted:** \`${input.key}\` from bucket \`${input.bucketName}\`` };
+};
+
+// ── D1 Execute ─────────────────────────────────────────────────
+
+const d1Execute: KitToolHandler = async (input, ctx) => {
+  const d = await postJson('/api/cloudflare-proxy', { action: 'd1-execute', database_id: input.databaseId, sql: input.sql, params: input.params }, ctx);
+  return { success: true, data: d, displayMarkdown: `**D1 executed:** ${d.meta?.rows_written ?? 0} rows written, ${d.meta?.rows_read ?? 0} rows read` };
+};
+
+// ── DNS Records ────────────────────────────────────────────────
+
+const createDnsRecord: KitToolHandler = async (input, ctx) => {
+  const d = await postJson('/api/cloudflare-proxy', { action: 'create-dns-record', zoneId: input.zoneId, type: input.type, name: input.name, content: input.content, ttl: input.ttl }, ctx);
+  return { success: true, data: d, displayMarkdown: `**DNS record created:** ${input.type} ${input.name} -> ${input.content}` };
+};
+
+const deleteDnsRecord: KitToolHandler = async (input, ctx) => {
+  const d = await postJson('/api/cloudflare-proxy', { action: 'delete-dns-record', zoneId: input.zoneId, recordId: input.recordId }, ctx);
+  return { success: true, data: d, displayMarkdown: `**DNS record deleted:** \`${input.recordId}\`` };
+};
+
+const listDnsRecords: KitToolHandler = async (input, ctx) => {
+  const d = await postJson('/api/cloudflare-proxy', { action: 'list-dns-records', zoneId: input.zoneId }, ctx);
+  const records = d.records ?? [];
+  if (records.length === 0) return { success: true, data: [], displayMarkdown: 'No DNS records found.' };
+  const lines = records.map((r: { type: string; name: string; content: string; id: string }) =>
+    `- **${r.type}** ${r.name} -> ${r.content} \`${r.id.slice(0, 8)}\``);
+  return { success: true, data: records, displayMarkdown: `## DNS Records (${records.length})\n\n${lines.join('\n')}` };
+};
+
+// ── Cache Purge ────────────────────────────────────────────────
+
+const purgeCache: KitToolHandler = async (input, ctx) => {
+  const d = await postJson('/api/cloudflare-proxy', { action: 'purge-cache', zoneId: input.zoneId, files: input.files }, ctx);
+  return { success: true, data: d, displayMarkdown: `**Cache purged** for zone \`${input.zoneId}\`` };
+};
+
 // ── Zones ───────────────────────────────────────────────────────
 
 const listZones: KitToolHandler = async (_input, ctx) => {
@@ -144,8 +205,8 @@ const listZones: KitToolHandler = async (_input, ctx) => {
 export const manifest: KitManifest = {
   id: 'cloudflare-ops',
   name: 'Cloudflare Operations',
-  version: '1.0.0',
-  description: 'Manage Cloudflare Workers, KV storage, R2 buckets, D1 databases, and DNS zones. Full infrastructure visibility and control.',
+  version: '2.0.0',
+  description: 'Manage Cloudflare Workers, KV storage, R2 buckets, D1 databases, DNS records, and cache. Full infrastructure CRUD and control.',
   author: 'MCV',
   capabilities: ['network', 'credentials'],
   runtime: 'inline',
@@ -227,6 +288,51 @@ export const manifest: KitManifest = {
       description: 'List all Cloudflare DNS zones (domains) in the account.',
       input_schema: { type: 'object', properties: {} },
     },
+    {
+      name: 'cf_deploy_worker',
+      description: 'Deploy (create or update) a Cloudflare Worker script.',
+      input_schema: { type: 'object', properties: { scriptName: { type: 'string', description: 'Worker script name' }, code: { type: 'string', description: 'Worker JavaScript/TypeScript code' } }, required: ['scriptName', 'code'] },
+    },
+    {
+      name: 'cf_delete_worker',
+      description: 'Delete a Cloudflare Worker script.',
+      input_schema: { type: 'object', properties: { scriptName: { type: 'string', description: 'Worker script name' } }, required: ['scriptName'] },
+    },
+    {
+      name: 'cf_kv_delete',
+      description: 'Delete a key from a KV namespace.',
+      input_schema: { type: 'object', properties: { namespaceId: { type: 'string', description: 'KV namespace ID' }, key: { type: 'string', description: 'Key to delete' } }, required: ['namespaceId', 'key'] },
+    },
+    {
+      name: 'cf_r2_delete_object',
+      description: 'Delete an object from an R2 bucket.',
+      input_schema: { type: 'object', properties: { bucketName: { type: 'string', description: 'R2 bucket name' }, key: { type: 'string', description: 'Object key to delete' } }, required: ['bucketName', 'key'] },
+    },
+    {
+      name: 'cf_d1_execute',
+      description: 'Execute a write SQL statement against a D1 database (INSERT, UPDATE, DELETE, CREATE).',
+      input_schema: { type: 'object', properties: { databaseId: { type: 'string', description: 'D1 database UUID' }, sql: { type: 'string', description: 'SQL statement' }, params: { type: 'array', items: { type: 'string' }, description: 'Query parameters' } }, required: ['databaseId', 'sql'] },
+    },
+    {
+      name: 'cf_create_dns_record',
+      description: 'Create a DNS record in a Cloudflare zone.',
+      input_schema: { type: 'object', properties: { zoneId: { type: 'string', description: 'Zone ID' }, type: { type: 'string', description: 'Record type (A, AAAA, CNAME, TXT, MX, etc.)' }, name: { type: 'string', description: 'Record name' }, content: { type: 'string', description: 'Record content/value' }, ttl: { type: 'number', description: 'TTL in seconds (1 = auto)' } }, required: ['zoneId', 'type', 'name', 'content'] },
+    },
+    {
+      name: 'cf_delete_dns_record',
+      description: 'Delete a DNS record from a Cloudflare zone.',
+      input_schema: { type: 'object', properties: { zoneId: { type: 'string', description: 'Zone ID' }, recordId: { type: 'string', description: 'DNS record ID' } }, required: ['zoneId', 'recordId'] },
+    },
+    {
+      name: 'cf_list_dns_records',
+      description: 'List all DNS records for a Cloudflare zone.',
+      input_schema: { type: 'object', properties: { zoneId: { type: 'string', description: 'Zone ID' } }, required: ['zoneId'] },
+    },
+    {
+      name: 'cf_purge_cache',
+      description: 'Purge cached files for a Cloudflare zone.',
+      input_schema: { type: 'object', properties: { zoneId: { type: 'string', description: 'Zone ID' }, files: { type: 'array', items: { type: 'string' }, description: 'URLs to purge (omit for full purge)' } }, required: ['zoneId'] },
+    },
   ],
 };
 
@@ -240,4 +346,13 @@ export const handlers: Record<string, KitToolHandler> = {
   list_cf_d1_databases: listD1Databases,
   cf_d1_query: d1Query,
   list_cf_zones: listZones,
+  cf_deploy_worker: deployWorker,
+  cf_delete_worker: deleteWorker,
+  cf_kv_delete: kvDelete,
+  cf_r2_delete_object: r2DeleteObject,
+  cf_d1_execute: d1Execute,
+  cf_create_dns_record: createDnsRecord,
+  cf_delete_dns_record: deleteDnsRecord,
+  cf_list_dns_records: listDnsRecords,
+  cf_purge_cache: purgeCache,
 };

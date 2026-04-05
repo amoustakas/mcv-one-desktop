@@ -85,10 +85,49 @@ const linearOverview: KitToolHandler = async (_input, ctx) => {
   return { success: true, data, displayMarkdown: md };
 };
 
+const deleteIssue: KitToolHandler = async (input, ctx) => {
+  const d = await linearApi('delete-issue', { id: input.id }, ctx);
+  return { success: true, data: d, displayMarkdown: `Issue \`${input.id}\` deleted.` };
+};
+
+const archiveIssue: KitToolHandler = async (input, ctx) => {
+  const d = await linearApi('archive-issue', { id: input.id }, ctx);
+  return { success: true, data: d, displayMarkdown: `Issue \`${input.id}\` archived.` };
+};
+
+const createProject: KitToolHandler = async (input, ctx) => {
+  const d = await linearApi('create-project', { name: input.name, teamIds: input.teamIds, description: input.description }, ctx);
+  const project = d.projectCreate?.project;
+  return { success: !!d.projectCreate?.success, data: project, displayMarkdown: project ? `Project created: **${project.name}**` : 'Failed to create project' };
+};
+
+const updateProject: KitToolHandler = async (input, ctx) => {
+  const d = await linearApi('update-project', { id: input.id, name: input.name, state: input.state }, ctx);
+  const project = d.projectUpdate?.project;
+  return { success: !!d.projectUpdate?.success, data: project, displayMarkdown: project ? `Project updated: **${project.name}** (${project.state})` : 'Failed to update project' };
+};
+
+const createCycle: KitToolHandler = async (input, ctx) => {
+  const d = await linearApi('create-cycle', { teamId: input.teamId, name: input.name, startsAt: input.startsAt, endsAt: input.endsAt }, ctx);
+  const cycle = d.cycleCreate?.cycle;
+  return { success: !!d.cycleCreate?.success, data: cycle, displayMarkdown: cycle ? `Cycle created: **${cycle.name}**` : 'Failed to create cycle' };
+};
+
+const createLabel: KitToolHandler = async (input, ctx) => {
+  const d = await linearApi('create-label', { name: input.name, color: input.color, teamId: input.teamId }, ctx);
+  const label = d.issueLabelCreate?.issueLabel;
+  return { success: !!d.issueLabelCreate?.success, data: label, displayMarkdown: label ? `Label created: **${label.name}**` : 'Failed to create label' };
+};
+
+const createIssueRelation: KitToolHandler = async (input, ctx) => {
+  const d = await linearApi('create-issue-relation', { issueId: input.issueId, relatedIssueId: input.relatedIssueId, type: input.type }, ctx);
+  return { success: !!d.issueRelationCreate?.success, data: d, displayMarkdown: `Relation created: \`${input.issueId}\` ${input.type} \`${input.relatedIssueId}\`` };
+};
+
 export const manifest: KitManifest = {
   id: 'linear-pm',
   name: 'Linear Project Management',
-  version: '1.0.0',
+  version: '2.0.0',
   description: 'Linear issue tracking — issues, projects, teams, cycles, labels, and comments.',
   author: 'MCV',
   capabilities: ['network', 'credentials'],
@@ -104,6 +143,13 @@ export const manifest: KitManifest = {
     { name: 'linear_list_teams', description: 'List all teams.', input_schema: { type: 'object', properties: {} } },
     { name: 'linear_add_comment', description: 'Add a comment to an issue.', input_schema: { type: 'object', properties: { issueId: { type: 'string' }, body: { type: 'string', description: 'Comment text (markdown)' } }, required: ['issueId', 'body'] } },
     { name: 'linear_overview', description: 'Get Linear workspace overview.', input_schema: { type: 'object', properties: {} } },
+    { name: 'linear_delete_issue', description: 'Delete an issue.', input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } },
+    { name: 'linear_archive_issue', description: 'Archive an issue.', input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } },
+    { name: 'linear_create_project', description: 'Create a new project.', input_schema: { type: 'object', properties: { name: { type: 'string' }, teamIds: { type: 'array', items: { type: 'string' }, description: 'Team IDs to associate' }, description: { type: 'string' } }, required: ['name', 'teamIds'] } },
+    { name: 'linear_update_project', description: 'Update a project.', input_schema: { type: 'object', properties: { id: { type: 'string' }, name: { type: 'string' }, state: { type: 'string', description: 'e.g. planned, started, paused, completed, canceled' } }, required: ['id'] } },
+    { name: 'linear_create_cycle', description: 'Create a sprint cycle.', input_schema: { type: 'object', properties: { teamId: { type: 'string' }, name: { type: 'string' }, startsAt: { type: 'string', description: 'ISO 8601 start date' }, endsAt: { type: 'string', description: 'ISO 8601 end date' } }, required: ['teamId', 'name', 'startsAt', 'endsAt'] } },
+    { name: 'linear_create_label', description: 'Create an issue label.', input_schema: { type: 'object', properties: { name: { type: 'string' }, color: { type: 'string', description: 'Hex color (e.g. #FF0000)' }, teamId: { type: 'string' } }, required: ['name'] } },
+    { name: 'linear_create_relation', description: 'Create a relation between two issues.', input_schema: { type: 'object', properties: { issueId: { type: 'string' }, relatedIssueId: { type: 'string' }, type: { type: 'string', description: 'blocks, duplicate, related' } }, required: ['issueId', 'relatedIssueId', 'type'] } },
   ],
 };
 
@@ -116,4 +162,11 @@ export const handlers: Record<string, KitToolHandler> = {
   linear_list_teams: listTeams,
   linear_add_comment: createComment,
   linear_overview: linearOverview,
+  linear_delete_issue: deleteIssue,
+  linear_archive_issue: archiveIssue,
+  linear_create_project: createProject,
+  linear_update_project: updateProject,
+  linear_create_cycle: createCycle,
+  linear_create_label: createLabel,
+  linear_create_relation: createIssueRelation,
 };

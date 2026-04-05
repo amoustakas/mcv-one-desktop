@@ -103,6 +103,52 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       case 'list-broadcasts':
         return res.json(await resendFetch('/broadcasts'));
 
+      case 'create-domain': {
+        const { name, region = 'us-east-1' } = req.body;
+        if (!name) return res.status(400).json({ error: 'name required' });
+        return res.json(await resendFetch('/domains', { method: 'POST', body: { name, region } }));
+      }
+
+      case 'delete-domain': {
+        const { id } = req.body;
+        if (!id) return res.status(400).json({ error: 'id required' });
+        return res.json(await resendFetch(`/domains/${id}`, { method: 'DELETE' }));
+      }
+
+      case 'delete-audience': {
+        const { id } = req.body;
+        if (!id) return res.status(400).json({ error: 'id required' });
+        return res.json(await resendFetch(`/audiences/${id}`, { method: 'DELETE' }));
+      }
+
+      case 'remove-contact': {
+        const { audienceId, contactId } = req.body;
+        if (!audienceId || !contactId) return res.status(400).json({ error: 'audienceId and contactId required' });
+        return res.json(await resendFetch(`/audiences/${audienceId}/contacts/${contactId}`, { method: 'DELETE' }));
+      }
+
+      case 'update-contact': {
+        const { audienceId, contactId, firstName, lastName, unsubscribed } = req.body;
+        if (!audienceId || !contactId) return res.status(400).json({ error: 'audienceId and contactId required' });
+        const body: Record<string, unknown> = {};
+        if (firstName !== undefined) body.first_name = firstName;
+        if (lastName !== undefined) body.last_name = lastName;
+        if (unsubscribed !== undefined) body.unsubscribed = unsubscribed;
+        return res.json(await resendFetch(`/audiences/${audienceId}/contacts/${contactId}`, { method: 'PATCH', body }));
+      }
+
+      case 'create-broadcast': {
+        const { audienceId, from, subject, html } = req.body;
+        if (!audienceId || !from || !subject || !html) return res.status(400).json({ error: 'audienceId, from, subject, html required' });
+        return res.json(await resendFetch('/broadcasts', { method: 'POST', body: { audienceId, from, subject, html } }));
+      }
+
+      case 'send-broadcast': {
+        const { id } = req.body;
+        if (!id) return res.status(400).json({ error: 'id required' });
+        return res.json(await resendFetch(`/broadcasts/${id}/send`, { method: 'POST' }));
+      }
+
       case 'overview': {
         const [domains, audiences, keys] = await Promise.all([
           resendFetch('/domains'),

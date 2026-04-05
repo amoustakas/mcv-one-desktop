@@ -26,9 +26,24 @@ async function vercelFetch(path: string) {
   return res.json();
 }
 
+async function vercelMutate(path: string, method: string, body?: unknown) {
+  const url = `https://api.vercel.com${path}${path.includes('?') ? '&' : '?'}teamId=${TEAM_SLUG}`;
+  const res = await fetch(url, {
+    method,
+    headers: {
+      Authorization: `Bearer ${VERCEL_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) throw new Error(`Vercel API ${res.status}: ${await res.text()}`);
+  if (res.status === 204) return { success: true };
+  return res.json();
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const userId = await requireAuth(req, res); if (!userId) return;
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  if (!['GET', 'POST'].includes(req.method || '')) return res.status(405).json({ error: 'Method not allowed' });
   if (!VERCEL_TOKEN) return res.status(500).json({ error: 'VERCEL_TOKEN not configured' });
 
   const action = req.query.action as string;
@@ -63,6 +78,104 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             created: d.created,
             ready: d.ready,
             target: d.target,
+          })),
+        });
+      }
+
+      // ── Deployment CRUD ────────────────────────────────────
+
+      case 'create-deployment': {
+        const { name, gitSource } = req.body;
+        if (!name) return res.status(400).json({ error: 'name required' });
+        const data = await vercelMutate('/v13/deployments', 'POST', { name, gitSource: gitSource || {} });
+        return res.json({ deployment: { uid: data.id, url: `https://${data.url}`, state: data.readyState } });
+      }
+
+      case 'cancel-deployment': {
+        const { id } = req.body;
+        if (!id) return res.status(400).json({ error: 'deployment id required' });
+        const data = await vercelMutate(`/v13/deployments/${id}/cancel`, 'PATCH');
+        return res.json({ deployment: { uid: data.id || id, state: data.readyState || 'CANCELED' } });
+      }
+
+      // ── Environment Variables ───────────────────────────────
+
+      case 'list-env-vars': {
+        const { projectId } = req.body || req.query;
+        if (!projectId) return res.status(400).json({ error: 'projectId required' });
+        const data = await vercelFetch(`/v9/projects/${projectId}/env`);
+        return res.json({
+          envs: (data.envs || []).map((e: Record<string, unknown>) => ({
+            id: e.id, key: e.key, target: e.target, type: e.type,
+          })),
+        });
+      }
+
+      case 'create-env-var': {
+        const { projectId, key, value, target, type } = req.body;
+        if (!projectId || !key) return res.status(400).json({ error: 'projectId and key required' });
+        const data = await vercelMutate(`/v10/projects/${projectId}/env`, 'POST', {
+          key, value: value || '', target: target || ['production', 'preview', 'development'], type: type || 'encrypted',
+        });
+        return res.json({ env: { id: data.id, key: data.key, target: data.target } });
+      }
+
+      case 'delete-env-var': {
+        const { projectId, envId } = req.body;
+        if (!projectId || !envId) return res.status(400).json({ error: 'projectId and envId required' });
+        await vercelMutate(`/v9/projects/${projectId}/env/${envId}`, 'DELETE');
+        return res.json({ success: true, envId });
+      }
+
+      // ── Domains ─────────────────────────────────────────────
+
+      case 'list-domains': {
+        const { projectId } = req.body || req.query;
+        if (!projectId) return res.status(400).json({ error: 'projectId required' });
+        const data = await vercelFetch(`/v9/projects/${projectId}/domains`);
+        return res.json({
+          domains: (data.domains || []).map((d: Record<string, unknown>) => ({
+            name: d.name, verified: d.verified, redirect: d.redirect,
+          })),
+        });
+      }
+
+      case 'add-domain': {
+        const { projectId, name } = req.body;
+        if (!projectId || !name) return res.status(400).json({ error: 'projectId and name required' });
+        const data = await vercelMutate(`/v10/projects/${projectId}/domains`, 'POST', { name });
+        return res.json({ domain: { name: data.name, verified: data.verified } });
+      }
+
+      case 'remove-domain': {
+        const { projectId, domain } = req.body;
+        if (!projectId || !domain) return res.status(400).json({ error: 'projectId and domain required' });
+        await vercelMutate(`/v9/projects/${projectId}/domains/${domain}`, 'DELETE');
+        return res.json({ success: true, domain });
+      }
+
+      // ── Project info ────────────────────────────────────────
+
+      case 'get-project': {
+        const { projectId } = req.body || req.query;
+        if (!projectId) return res.status(400).json({ error: 'projectId required' });
+        const data = await vercelFetch(`/v9/projects/${projectId}`);
+        return res.json({
+          project: {
+            id: data.id, name: data.name, framework: data.framework,
+            url: `https://${data.targets?.production?.url || data.name + '.vercel.app'}`,
+            updatedAt: data.updatedAt, nodeVersion: data.nodeVersion,
+          },
+        });
+      }
+
+      // ── Aliases ─────────────────────────────────────────────
+
+      case 'list-aliases': {
+        const data = await vercelFetch('/v4/aliases');
+        return res.json({
+          aliases: (data.aliases || []).map((a: Record<string, unknown>) => ({
+            uid: a.uid, alias: a.alias, deploymentId: a.deploymentId, created: a.createdAt,
           })),
         });
       }

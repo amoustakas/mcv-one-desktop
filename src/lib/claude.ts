@@ -110,6 +110,7 @@ export async function streamMessageWithTools(
   toolExecutor: (toolCall: ToolCallEvent) => Promise<ToolCallResult>,
   callbacks: StreamWithToolsCallbacks,
   maxToolRounds = 5,
+  model?: string,
 ): Promise<{ text: string; toolCalls: ToolCallEvent[] }> {
   let conversationMessages = [...messages];
   let fullText = '';
@@ -125,6 +126,7 @@ export async function streamMessageWithTools(
       tools,
       callbacks,
       fullText,
+      model,
     );
 
     fullText += text;
@@ -185,11 +187,12 @@ async function streamOnce(
   tools: KitToolSchema[],
   callbacks: StreamWithToolsCallbacks,
   existingText: string,
+  model?: string,
 ): Promise<{ text: string; toolCalls: ToolCallEvent[]; stopReason: string }> {
   const res = await fetch('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages, systemPrompt, stream: true, tools }),
+    body: JSON.stringify({ messages, systemPrompt, stream: true, tools, model }),
   });
 
   if (!res.ok) {

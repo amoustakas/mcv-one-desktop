@@ -33,17 +33,20 @@ export class AgentOrchestrator {
   private ventureId: string;
   private baseSystemPrompt: string;
   private context: KitExecutionContext;
+  private model?: string;
 
   constructor(config: {
     kits: KitInstance[];
     ventureId: string;
     systemPrompt: string;
     context: KitExecutionContext;
+    model?: string;
   }) {
     this.kits = config.kits;
     this.ventureId = config.ventureId;
     this.baseSystemPrompt = config.systemPrompt;
     this.context = config.context;
+    this.model = config.model;
   }
 
   /** Assemble all tool schemas from kits scoped to the current venture */
@@ -312,6 +315,7 @@ export class AgentOrchestrator {
       toolExecutor,
       streamCallbacks,
       maxToolRounds,
+      this.model,
     );
 
     flightRecorder.addStep('api_call', `Streaming complete — ${result.toolCalls.length} tool calls`, { toolCallCount: result.toolCalls.length }, Date.now() - apiStart);

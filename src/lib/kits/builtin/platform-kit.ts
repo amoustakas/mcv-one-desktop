@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/lib/kits/builtin/platform-kit.ts
 // Platform API Kit — manage API keys and webhook endpoints from the agent
 

@@ -25,7 +25,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { messages, systemPrompt, stream, tools } = req.body;
+  const { messages, systemPrompt, stream, tools, model, max_tokens } = req.body;
 
   if (!messages || !Array.isArray(messages)) {
     return res.status(400).json({ error: 'messages array required' });
@@ -37,8 +37,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Build params shared between streaming and non-streaming
   const params: Anthropic.MessageCreateParams = {
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 4096,
+    model: model || 'claude-sonnet-4-20250514',
+    max_tokens: max_tokens || 4096,
     system: systemPrompt || 'You are a helpful assistant.',
     messages: messages.map((m: { role: string; content: unknown }) => ({
       role: m.role as 'user' | 'assistant',

@@ -174,6 +174,98 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }));
       }
 
+      // ── Channel Management ──
+      case 'create-channel': {
+        const { guildId, name, type = 0, parent_id } = req.body;
+        if (!guildId || !name) return res.status(400).json({ error: 'guildId and name required' });
+        return res.json(await fetch_(`/guilds/${guildId}/channels`, {
+          method: 'POST', body: { name, type, parent_id },
+        }));
+      }
+      case 'delete-channel': {
+        const { channelId } = req.body;
+        if (!channelId) return res.status(400).json({ error: 'channelId required' });
+        return res.json(await fetch_(`/channels/${channelId}`, { method: 'DELETE' }));
+      }
+      case 'update-channel': {
+        const { channelId, name, topic, position } = req.body;
+        if (!channelId) return res.status(400).json({ error: 'channelId required' });
+        return res.json(await fetch_(`/channels/${channelId}`, {
+          method: 'PATCH', body: { name, topic, position },
+        }));
+      }
+
+      // ── Role Management ──
+      case 'create-role': {
+        const { guildId, name, color, permissions } = req.body;
+        if (!guildId || !name) return res.status(400).json({ error: 'guildId and name required' });
+        return res.json(await fetch_(`/guilds/${guildId}/roles`, {
+          method: 'POST', body: { name, color, permissions },
+        }));
+      }
+      case 'delete-role': {
+        const { guildId, roleId } = req.body;
+        if (!guildId || !roleId) return res.status(400).json({ error: 'guildId and roleId required' });
+        return res.json(await fetch_(`/guilds/${guildId}/roles/${roleId}`, { method: 'DELETE' }));
+      }
+      case 'assign-role': {
+        const { guildId, userId, roleId } = req.body;
+        if (!guildId || !userId || !roleId) return res.status(400).json({ error: 'guildId, userId, and roleId required' });
+        return res.json(await fetch_(`/guilds/${guildId}/members/${userId}/roles/${roleId}`, { method: 'PUT' }));
+      }
+      case 'remove-role': {
+        const { guildId, userId, roleId } = req.body;
+        if (!guildId || !userId || !roleId) return res.status(400).json({ error: 'guildId, userId, and roleId required' });
+        return res.json(await fetch_(`/guilds/${guildId}/members/${userId}/roles/${roleId}`, { method: 'DELETE' }));
+      }
+
+      // ── Moderation ──
+      case 'kick-member': {
+        const { guildId, userId } = req.body;
+        if (!guildId || !userId) return res.status(400).json({ error: 'guildId and userId required' });
+        return res.json(await fetch_(`/guilds/${guildId}/members/${userId}`, { method: 'DELETE' }));
+      }
+      case 'ban-member': {
+        const { guildId, userId, reason } = req.body;
+        if (!guildId || !userId) return res.status(400).json({ error: 'guildId and userId required' });
+        return res.json(await fetch_(`/guilds/${guildId}/bans/${userId}`, {
+          method: 'PUT', body: { reason },
+        }));
+      }
+      case 'unban-member': {
+        const { guildId, userId } = req.body;
+        if (!guildId || !userId) return res.status(400).json({ error: 'guildId and userId required' });
+        return res.json(await fetch_(`/guilds/${guildId}/bans/${userId}`, { method: 'DELETE' }));
+      }
+      case 'timeout-member': {
+        const { guildId, userId, communication_disabled_until } = req.body;
+        if (!guildId || !userId) return res.status(400).json({ error: 'guildId and userId required' });
+        return res.json(await fetch_(`/guilds/${guildId}/members/${userId}`, {
+          method: 'PATCH', body: { communication_disabled_until },
+        }));
+      }
+
+      // ── Pins ──
+      case 'pin-message': {
+        const { channelId, messageId } = req.body;
+        if (!channelId || !messageId) return res.status(400).json({ error: 'channelId and messageId required' });
+        return res.json(await fetch_(`/channels/${channelId}/pins/${messageId}`, { method: 'PUT' }));
+      }
+
+      // ── Webhooks ──
+      case 'create-webhook': {
+        const { channelId, name } = req.body;
+        if (!channelId || !name) return res.status(400).json({ error: 'channelId and name required' });
+        return res.json(await fetch_(`/channels/${channelId}/webhooks`, {
+          method: 'POST', body: { name },
+        }));
+      }
+      case 'list-webhooks': {
+        const { channelId } = req.query;
+        if (!channelId) return res.status(400).json({ error: 'channelId required' });
+        return res.json(await fetch_(`/channels/${channelId}/webhooks`));
+      }
+
       // ── Overview ──
       case 'overview': {
         const guilds = await discordFetch('/users/@me/guilds', token);

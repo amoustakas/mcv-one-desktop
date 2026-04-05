@@ -37,9 +37,25 @@ async function ghFetch(path: string, token: string) {
   return res.json();
 }
 
+async function ghMutate(path: string, token: string, method: string, body?: unknown) {
+  const res = await fetch(`https://api.github.com${path}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      'Content-Type': 'application/json',
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) throw new Error(`GitHub API ${res.status}: ${await res.text()}`);
+  if (res.status === 204) return { success: true };
+  return res.json();
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const userId = await requireAuth(req, res); if (!userId) return;
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  if (!['GET', 'POST'].includes(req.method || '')) return res.status(405).json({ error: 'Method not allowed' });
 
   let token: string;
   try {
@@ -226,6 +242,148 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             additions: f.additions,
             deletions: f.deletions,
             patch: f.patch,
+          })),
+        });
+      }
+
+      // ── Issue CRUD (Phase C) ─────────────────────────────────
+
+      case 'create-issue': {
+        const repoName = repo || 'mcv-one-desktop';
+        const { title, body: issueBody, labels, assignees } = req.body;
+        if (!title) return res.status(400).json({ error: 'title required' });
+        const data = await ghMutate(`/repos/${GITHUB_USER}/${repoName}/issues`, token, 'POST', {
+          title, body: issueBody || '', labels: labels || [], assignees: assignees || [],
+        });
+        return res.json({ issue: { number: data.number, title: data.title, url: data.html_url, state: data.state } });
+      }
+
+      case 'update-issue': {
+        const repoName = repo || 'mcv-one-desktop';
+        const { number, title, body: issueBody, state, labels } = req.body;
+        if (!number) return res.status(400).json({ error: 'number required' });
+        const payload: Record<string, unknown> = {};
+        if (title !== undefined) payload.title = title;
+        if (issueBody !== undefined) payload.body = issueBody;
+        if (state !== undefined) payload.state = state;
+        if (labels !== undefined) payload.labels = labels;
+        const data = await ghMutate(`/repos/${GITHUB_USER}/${repoName}/issues/${number}`, token, 'PATCH', payload);
+        return res.json({ issue: { number: data.number, title: data.title, url: data.html_url, state: data.state } });
+      }
+
+      case 'close-issue': {
+        const repoName = repo || 'mcv-one-desktop';
+        const { number } = req.body;
+        if (!number) return res.status(400).json({ error: 'number required' });
+        const data = await ghMutate(`/repos/${GITHUB_USER}/${repoName}/issues/${number}`, token, 'PATCH', { state: 'closed' });
+        return res.json({ issue: { number: data.number, title: data.title, state: data.state } });
+      }
+
+      case 'add-issue-comment': {
+        const repoName = repo || 'mcv-one-desktop';
+        const { number, body: commentBody } = req.body;
+        if (!number || !commentBody) return res.status(400).json({ error: 'number and body required' });
+        const data = await ghMutate(`/repos/${GITHUB_USER}/${repoName}/issues/${number}/comments`, token, 'POST', { body: commentBody });
+        return res.json({ comment: { id: data.id, url: data.html_url, created: data.created_at } });
+      }
+
+      case 'list-issues': {
+        const repoName = repo || 'mcv-one-desktop';
+        const state = (req.query.state as string) || 'open';
+        const data = await ghFetch(`/repos/${GITHUB_USER}/${repoName}/issues?state=${state}&per_page=20`, token);
+        return res.json({
+          issues: data.map((i: Record<string, unknown>) => ({
+            number: i.number, title: i.title, state: i.state, url: i.html_url,
+            labels: ((i.labels as Array<{ name: string }>) || []).map((l) => l.name),
+            created: i.created_at, updated: i.updated_at,
+          })),
+        });
+      }
+
+      // ── Pull Request CRUD (Phase C) ───────────────────────────
+
+      case 'create-pr': {
+        const repoName = repo || 'mcv-one-desktop';
+        const { title, body: prBody, head, base } = req.body;
+        if (!title || !head || !base) return res.status(400).json({ error: 'title, head, and base required' });
+        const data = await ghMutate(`/repos/${GITHUB_USER}/${repoName}/pulls`, token, 'POST', {
+          title, body: prBody || '', head, base,
+        });
+        return res.json({ pr: { number: data.number, title: data.title, url: data.html_url, state: data.state } });
+      }
+
+      case 'merge-pr': {
+        const repoName = repo || 'mcv-one-desktop';
+        const { number, merge_method } = req.body;
+        if (!number) return res.status(400).json({ error: 'number required' });
+        const data = await ghMutate(`/repos/${GITHUB_USER}/${repoName}/pulls/${number}/merge`, token, 'PUT', {
+          merge_method: merge_method || 'squash',
+        });
+        return res.json({ merged: data.merged, message: data.message, sha: data.sha });
+      }
+
+      // ── Release CRUD (Phase C) ────────────────────────────────
+
+      case 'create-release': {
+        const repoName = repo || 'mcv-one-desktop';
+        const { tag_name, name, body: releaseBody, draft, prerelease } = req.body;
+        if (!tag_name) return res.status(400).json({ error: 'tag_name required' });
+        const data = await ghMutate(`/repos/${GITHUB_USER}/${repoName}/releases`, token, 'POST', {
+          tag_name, name: name || tag_name, body: releaseBody || '', draft: draft || false, prerelease: prerelease || false,
+        });
+        return res.json({ release: { id: data.id, tag: data.tag_name, url: data.html_url } });
+      }
+
+      case 'list-releases': {
+        const repoName = repo || 'mcv-one-desktop';
+        const data = await ghFetch(`/repos/${GITHUB_USER}/${repoName}/releases?per_page=10`, token);
+        return res.json({
+          releases: data.map((r: Record<string, unknown>) => ({
+            id: r.id, tag: r.tag_name, name: r.name, url: r.html_url,
+            draft: r.draft, prerelease: r.prerelease, published: r.published_at,
+          })),
+        });
+      }
+
+      // ── Branch management (Phase C) ───────────────────────────
+
+      case 'create-branch': {
+        const repoName = repo || 'mcv-one-desktop';
+        const { branch, sha } = req.body;
+        if (!branch || !sha) return res.status(400).json({ error: 'branch and sha required' });
+        const data = await ghMutate(`/repos/${GITHUB_USER}/${repoName}/git/refs`, token, 'POST', {
+          ref: `refs/heads/${branch}`, sha,
+        });
+        return res.json({ ref: data.ref, sha: data.object?.sha });
+      }
+
+      case 'delete-branch': {
+        const repoName = repo || 'mcv-one-desktop';
+        const { branch } = req.body;
+        if (!branch) return res.status(400).json({ error: 'branch required' });
+        await ghMutate(`/repos/${GITHUB_USER}/${repoName}/git/refs/heads/${branch}`, token, 'DELETE');
+        return res.json({ success: true, branch });
+      }
+
+      // ── Actions (Phase C) ─────────────────────────────────────
+
+      case 'trigger-workflow': {
+        const repoName = repo || 'mcv-one-desktop';
+        const { workflow_id, ref, inputs } = req.body;
+        if (!workflow_id) return res.status(400).json({ error: 'workflow_id required' });
+        await ghMutate(`/repos/${GITHUB_USER}/${repoName}/actions/workflows/${workflow_id}/dispatches`, token, 'POST', {
+          ref: ref || 'master', inputs: inputs || {},
+        });
+        return res.json({ success: true, workflow_id });
+      }
+
+      case 'list-actions': {
+        const repoName = repo || 'mcv-one-desktop';
+        const data = await ghFetch(`/repos/${GITHUB_USER}/${repoName}/actions/runs?per_page=10`, token);
+        return res.json({
+          runs: (data.workflow_runs || []).map((r: Record<string, unknown>) => ({
+            id: r.id, name: r.name, status: r.status, conclusion: r.conclusion,
+            url: r.html_url, branch: r.head_branch, created: r.created_at,
           })),
         });
       }

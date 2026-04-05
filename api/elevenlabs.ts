@@ -119,6 +119,61 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.json(await xiFetch(`/history/${historyItemId}`));
       }
 
+      // ── Voice Clone ──
+      case 'clone-voice': {
+        // NOTE: Full voice cloning requires multipart/form-data with audio file uploads.
+        // This endpoint accepts name + description for metadata; audio files must be sent
+        // via direct client upload or a separate multipart handler.
+        const { name, description, labels } = req.body;
+        if (!name) return res.status(400).json({ error: 'name required. Note: audio files must be uploaded via multipart/form-data directly to ElevenLabs.' });
+        return res.json(await xiFetch('/voices/add', {
+          method: 'POST',
+          body: { name, description, labels },
+        }));
+      }
+
+      // ── Voice Settings ──
+      case 'get-voice-settings': {
+        const { voiceId } = req.query;
+        if (!voiceId) return res.status(400).json({ error: 'voiceId required' });
+        return res.json(await xiFetch(`/voices/${voiceId}/settings`));
+      }
+
+      case 'update-voice-settings': {
+        const { voiceId, stability, similarity_boost } = req.body;
+        if (!voiceId) return res.status(400).json({ error: 'voiceId required' });
+        return res.json(await xiFetch(`/voices/${voiceId}/settings/edit`, {
+          method: 'POST',
+          body: { stability, similarity_boost },
+        }));
+      }
+
+      case 'delete-voice': {
+        const { voiceId } = req.body;
+        if (!voiceId) return res.status(400).json({ error: 'voiceId required' });
+        return res.json(await xiFetch(`/voices/${voiceId}`, { method: 'DELETE' }));
+      }
+
+      // ── History Audio & Deletion ──
+      case 'get-history-audio': {
+        const { historyItemId } = req.query;
+        if (!historyItemId) return res.status(400).json({ error: 'historyItemId required' });
+        return res.json(await xiFetch(`/history/${historyItemId}/audio`));
+      }
+
+      case 'delete-history-item': {
+        const { historyItemId } = req.body;
+        if (!historyItemId) return res.status(400).json({ error: 'historyItemId required' });
+        return res.json(await xiFetch(`/history/${historyItemId}`, { method: 'DELETE' }));
+      }
+
+      // ── Projects ──
+      case 'list-projects':
+        return res.json(await xiFetch('/projects'));
+
+      case 'get-usage':
+        return res.json(await xiFetch('/user'));
+
       // ── Pronunciation Dictionaries ──
       case 'list-dictionaries':
         return res.json(await xiFetch('/pronunciation-dictionaries'));

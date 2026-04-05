@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import AnimatedBackground from './components/AnimatedBackground';
 import NavRail from './components/NavRail';
 import ChatDock from './components/ChatDock';
@@ -270,7 +270,7 @@ function ViewPanel({ viewId }: { viewId?: ViewId }) {
 }
 
 function SplitWorkspace() {
-  const { splitView, splitRatio, setSplitRatio, closeSplit, swapPanels } = useNavigation();
+  const { splitView, splitRatio, splitDirection, setSplitRatio, setSplitDirection, closeSplit, swapPanels } = useNavigation();
   const [dragging, setDragging] = useState(false);
 
   function handleMouseDown() {
@@ -279,7 +279,9 @@ function SplitWorkspace() {
       const container = document.querySelector('.app-workspace') as HTMLElement;
       if (!container) return;
       const rect = container.getBoundingClientRect();
-      const ratio = (e.clientX - rect.left) / rect.width;
+      const ratio = splitDirection === 'horizontal'
+        ? (e.clientX - rect.left) / rect.width
+        : (e.clientY - rect.top) / rect.height;
       setSplitRatio(ratio);
     }
     function onUp() {
@@ -299,22 +301,30 @@ function SplitWorkspace() {
     );
   }
 
+  const isH = splitDirection === 'horizontal';
+  const firstStyle = isH ? { width: `${splitRatio * 100}%` } : { height: `${splitRatio * 100}%` };
+  const secondStyle = isH ? { width: `${(1 - splitRatio) * 100}%` } : { height: `${(1 - splitRatio) * 100}%` };
+  const dividerClass = `split-divider ${isH ? 'split-h' : 'split-v'} ${dragging ? 'active' : ''}`;
+
   return (
-    <>
-      <div className="app-content split-left" style={{ width: `${splitRatio * 100}%` }}>
+    <div className={`split-container ${isH ? 'split-horizontal' : 'split-vertical'}`}>
+      <div className="app-content split-pane" style={firstStyle}>
         <ViewPanel />
       </div>
-      <div className={`split-divider ${dragging ? 'active' : ''}`} onMouseDown={handleMouseDown}>
+      <div className={dividerClass} onMouseDown={handleMouseDown}>
         <div className="split-divider-line" />
         <div className="split-divider-actions">
+          <button className="split-action-btn" onClick={() => setSplitDirection(isH ? 'vertical' : 'horizontal')} title={isH ? 'Switch to vertical split' : 'Switch to horizontal split'}>
+            {isH ? '⏛' : '⏚'}
+          </button>
           <button className="split-action-btn" onClick={swapPanels} title="Swap panels">⇄</button>
           <button className="split-action-btn" onClick={closeSplit} title="Close split (Ctrl+\\)">✕</button>
         </div>
       </div>
-      <div className="app-content split-right" style={{ width: `${(1 - splitRatio) * 100}%` }}>
+      <div className="app-content split-pane" style={secondStyle}>
         <ViewPanel viewId={splitView} />
       </div>
-    </>
+    </div>
   );
 }
 
@@ -386,10 +396,76 @@ function Breadcrumbs() {
   );
 }
 
+function LayoutPicker() {
+  const { splitView, splitDirection, openSplit, closeSplit, setSplitDirection, toggleSplit, activeView } = useNavigation();
+  const [showMenu, setShowMenu] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showMenu) return;
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setShowMenu(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showMenu]);
+
+  const layouts = [
+    { id: 'single', label: 'Single View', icon: '▣', active: !splitView },
+    { id: 'h-split', label: 'Side by Side', icon: '◫', active: splitView && splitDirection === 'horizontal' },
+    { id: 'v-split', label: 'Top & Bottom', icon: '⬓', active: splitView && splitDirection === 'vertical' },
+  ];
+
+  function handleLayout(id: string) {
+    if (id === 'single') {
+      closeSplit();
+    } else if (id === 'h-split') {
+      if (!splitView) toggleSplit();
+      setSplitDirection('horizontal');
+    } else if (id === 'v-split') {
+      if (!splitView) toggleSplit();
+      setSplitDirection('vertical');
+    }
+    setShowMenu(false);
+  }
+
+  return (
+    <div className="layout-picker" ref={ref}>
+      <button
+        className="header-icon-btn"
+        onClick={() => setShowMenu(!showMenu)}
+        title="Layout (Ctrl+\\"
+        style={splitView ? { color: 'var(--cyan)' } : undefined}
+      >
+        <Columns2 size={15} />
+      </button>
+      {showMenu && (
+        <div className="layout-menu">
+          <div className="layout-menu-title">Layout</div>
+          {layouts.map(l => (
+            <button key={l.id} className={`layout-option ${l.active ? 'active' : ''}`} onClick={() => handleLayout(l.id)}>
+              <span className="layout-option-icon">{l.icon}</span>
+              <span>{l.label}</span>
+            </button>
+          ))}
+          <div className="layout-menu-sep" />
+          <div className="layout-menu-title">Quick Split</div>
+          {(['chat', 'docs', 'tasks', 'engineering', 'war-room'] as ViewId[]).filter(v => v !== activeView).map(v => (
+            <button key={v} className="layout-option" onClick={() => { openSplit(v); setShowMenu(false); }}>
+              <span className="layout-option-icon">+</span>
+              <span>{VIEW_LABELS[v] || v}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
-  const { chatDocked, toggleChatDock, setView, toggleSplit, splitView, mode, switchToGlobal, switchToVenture, goBack, goForward } = useNavigation();
+  const { chatDocked, toggleChatDock, setView, toggleSplit, mode, switchToGlobal, switchToVenture, goBack, goForward } = useNavigation();
   const { isOpen: paletteOpen, toggle: togglePalette, close: closePalette } = useCommandStore();
   const { sidebarCollapsed, statusBarVisible, presets } = useLayoutStore();
   useTheme();
@@ -507,14 +583,7 @@ export default function App() {
           </button>
 
           <div className="header-right">
-            <button
-              className="header-icon-btn"
-              onClick={toggleSplit}
-              title={splitView ? 'Close Split (Ctrl+\\)' : 'Split View (Ctrl+\\)'}
-              style={splitView ? { color: 'var(--cyan)' } : undefined}
-            >
-              <Columns2 size={15} />
-            </button>
+            <LayoutPicker />
             <NotificationCenter />
             <button className="header-icon-btn" onClick={() => setView('settings')} title="Settings">
               <Settings size={15} />
@@ -722,64 +791,57 @@ export default function App() {
           overflow: hidden;
           min-width: 0;
         }
-        .app-content.split-left,
-        .app-content.split-right {
-          flex: none;
-        }
+        .split-pane { flex: none; overflow: hidden; min-width: 0; min-height: 0; }
+
+        /* ── Split Container ── */
+        .split-container { display: flex; flex: 1; overflow: hidden; }
+        .split-horizontal { flex-direction: row; }
+        .split-vertical { flex-direction: column; }
 
         /* ── Split Divider ── */
         .split-divider {
-          width: 6px;
           flex-shrink: 0;
           background: var(--border);
-          cursor: col-resize;
           position: relative;
           display: flex;
           align-items: center;
           justify-content: center;
           transition: background 0.15s;
+          z-index: 2;
         }
-        .split-divider:hover, .split-divider.active {
-          background: var(--cyan);
-        }
+        .split-divider.split-h { width: 6px; cursor: col-resize; }
+        .split-divider.split-v { height: 6px; cursor: row-resize; }
+        .split-divider:hover, .split-divider.active { background: var(--cyan); }
         .split-divider-line {
-          width: 2px;
-          height: 32px;
           background: var(--text-muted);
           border-radius: 1px;
           opacity: 0.3;
         }
+        .split-h .split-divider-line { width: 2px; height: 32px; }
+        .split-v .split-divider-line { height: 2px; width: 32px; }
         .split-divider:hover .split-divider-line,
-        .split-divider.active .split-divider-line {
-          opacity: 0;
-        }
+        .split-divider.active .split-divider-line { opacity: 0; }
         .split-divider-actions {
           position: absolute;
-          top: 50%;
-          left: 50%;
+          top: 50%; left: 50%;
           transform: translate(-50%, -50%);
           display: flex;
-          flex-direction: column;
           gap: 4px;
           opacity: 0;
           pointer-events: none;
           transition: opacity 0.15s;
         }
-        .split-divider:hover .split-divider-actions {
-          opacity: 1;
-          pointer-events: all;
-        }
+        .split-h .split-divider-actions { flex-direction: column; }
+        .split-v .split-divider-actions { flex-direction: row; }
+        .split-divider:hover .split-divider-actions { opacity: 1; pointer-events: all; }
         .split-action-btn {
-          width: 20px;
-          height: 20px;
+          width: 20px; height: 20px;
           border-radius: 50%;
           background: var(--bg-surface);
           border: 1px solid var(--cyan);
           color: var(--cyan);
           font-size: 10px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          display: flex; align-items: center; justify-content: center;
           cursor: pointer;
         }
         .split-action-btn:hover {
@@ -795,6 +857,34 @@ export default function App() {
           animation: viewSpin 0.6s linear infinite;
         }
         @keyframes viewSpin { to { transform: rotate(360deg); } }
+
+        /* ── Layout Picker ── */
+        .layout-picker { position: relative; }
+        .layout-menu {
+          position: absolute; top: calc(100% + 8px); right: 0;
+          width: 200px; padding: 6px 0;
+          background: var(--bg-card); border: 1px solid var(--border);
+          border-radius: var(--radius-md);
+          box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+          z-index: 100;
+          animation: fadeIn 0.12s ease;
+        }
+        .layout-menu-title {
+          font-size: 9px; font-weight: 600; text-transform: uppercase;
+          letter-spacing: 0.5px; color: var(--text-muted);
+          padding: 6px 12px 4px; font-family: var(--font-display);
+        }
+        .layout-menu-sep { height: 1px; background: var(--border); margin: 4px 0; }
+        .layout-option {
+          display: flex; align-items: center; gap: 8px;
+          width: 100%; padding: 6px 12px;
+          font-size: 11px; color: var(--text-secondary);
+          transition: all 0.1s; text-align: left;
+        }
+        .layout-option:hover { background: var(--bg-elevated); color: var(--text-primary); }
+        .layout-option.active { color: var(--cyan); background: rgba(0,240,255,0.05); }
+        .layout-option-icon { width: 18px; text-align: center; font-size: 14px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
     </div>
   );

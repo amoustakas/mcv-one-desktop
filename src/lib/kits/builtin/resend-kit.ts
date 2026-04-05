@@ -33,8 +33,38 @@ const resendOverview: KitToolHandler = async (_i, ctx) => {
   return { success: true, data: d, displayMarkdown: `## Resend Overview\n\n- **Domains:** ${d.domains}\n- **Audiences:** ${d.audiences}\n- **API Keys:** ${d.api_keys}` };
 };
 
+const createDomain: KitToolHandler = async (input, ctx) => {
+  const d = await resendApi('create-domain', { name: input.name, region: input.region }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `Domain created: **${input.name}** (region: ${input.region || 'us-east-1'})` };
+};
+
+const deleteDomain: KitToolHandler = async (input, ctx) => {
+  const d = await resendApi('delete-domain', { id: input.id }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `Domain \`${input.id}\` deleted.` };
+};
+
+const deleteAudience: KitToolHandler = async (input, ctx) => {
+  const d = await resendApi('delete-audience', { id: input.id }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `Audience \`${input.id}\` deleted.` };
+};
+
+const removeContact: KitToolHandler = async (input, ctx) => {
+  const d = await resendApi('remove-contact', { audienceId: input.audienceId, contactId: input.contactId }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `Contact \`${input.contactId}\` removed from audience \`${input.audienceId}\`.` };
+};
+
+const createBroadcast: KitToolHandler = async (input, ctx) => {
+  const d = await resendApi('create-broadcast', { audienceId: input.audienceId, from: input.from, subject: input.subject, html: input.html }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `Broadcast created: "${input.subject}" for audience \`${input.audienceId}\`` };
+};
+
+const sendBroadcast: KitToolHandler = async (input, ctx) => {
+  const d = await resendApi('send-broadcast', { id: input.id }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `Broadcast \`${input.id}\` sent.` };
+};
+
 export const manifest: KitManifest = {
-  id: 'resend-email', name: 'Resend Email', version: '1.0.0',
+  id: 'resend-email', name: 'Resend Email', version: '2.0.0',
   description: 'Resend — developer email API, domains, audiences, contacts, broadcasts.',
   author: 'MCV', capabilities: ['network', 'credentials'], runtime: 'inline', ventureScope: '*',
   instructions: 'Use resend tools for transactional email, domain management, audience building, and contact management.',
@@ -43,8 +73,17 @@ export const manifest: KitManifest = {
     { name: 'resend_domains', description: 'List verified domains.', input_schema: { type: 'object', properties: {} } },
     { name: 'resend_audiences', description: 'List audiences.', input_schema: { type: 'object', properties: {} } },
     { name: 'resend_overview', description: 'Resend account overview.', input_schema: { type: 'object', properties: {} } },
+    { name: 'resend_create_domain', description: 'Add a sending domain.', input_schema: { type: 'object', properties: { name: { type: 'string', description: 'Domain name' }, region: { type: 'string', description: 'e.g. us-east-1, eu-west-1' } }, required: ['name'] } },
+    { name: 'resend_delete_domain', description: 'Delete a domain by ID.', input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } },
+    { name: 'resend_delete_audience', description: 'Delete an audience by ID.', input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } },
+    { name: 'resend_remove_contact', description: 'Remove a contact from an audience.', input_schema: { type: 'object', properties: { audienceId: { type: 'string' }, contactId: { type: 'string' } }, required: ['audienceId', 'contactId'] } },
+    { name: 'resend_create_broadcast', description: 'Create a broadcast email.', input_schema: { type: 'object', properties: { audienceId: { type: 'string' }, from: { type: 'string' }, subject: { type: 'string' }, html: { type: 'string' } }, required: ['audienceId', 'from', 'subject', 'html'] } },
+    { name: 'resend_send_broadcast', description: 'Send a broadcast by ID.', input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } },
   ],
 };
 export const handlers: Record<string, KitToolHandler> = {
   resend_send: sendEmail, resend_domains: listDomains, resend_audiences: listAudiences, resend_overview: resendOverview,
+  resend_create_domain: createDomain, resend_delete_domain: deleteDomain,
+  resend_delete_audience: deleteAudience, resend_remove_contact: removeContact,
+  resend_create_broadcast: createBroadcast, resend_send_broadcast: sendBroadcast,
 };

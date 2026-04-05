@@ -99,6 +99,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }));
       }
 
+      // ── Calls (extended) ──
+      case 'get-call-details': {
+        const { id } = req.query;
+        if (!id) return res.status(400).json({ error: 'id required' });
+        return res.json(await vapiFetch(`/call/${id}`));
+      }
+
+      case 'end-call': {
+        const { id } = req.body;
+        if (!id) return res.status(400).json({ error: 'id required' });
+        return res.json(await vapiFetch(`/call/${id}`, { method: 'DELETE' }));
+      }
+
       // ── Workflows ──
       case 'list-workflows':
         return res.json(await vapiFetch('/workflow'));
@@ -109,6 +122,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.json(await vapiFetch(`/workflow/${id}`));
       }
 
+      case 'create-workflow': {
+        const { name, steps } = req.body;
+        if (!name) return res.status(400).json({ error: 'name required' });
+        return res.json(await vapiFetch('/workflow', { method: 'POST', body: { name, steps } }));
+      }
+
+      case 'update-workflow': {
+        const { id, ...updates } = req.body;
+        if (!id) return res.status(400).json({ error: 'id required' });
+        return res.json(await vapiFetch(`/workflow/${id}`, { method: 'PATCH', body: updates }));
+      }
+
+      case 'delete-workflow': {
+        const { id } = req.body;
+        if (!id) return res.status(400).json({ error: 'id required' });
+        return res.json(await vapiFetch(`/workflow/${id}`, { method: 'DELETE' }));
+      }
+
       // ── Squads ──
       case 'list-squads':
         return res.json(await vapiFetch('/squad'));
@@ -117,9 +148,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       case 'list-knowledge-bases':
         return res.json(await vapiFetch('/knowledge-base'));
 
+      case 'create-knowledge-base': {
+        const { name, ...rest } = req.body;
+        if (!name) return res.status(400).json({ error: 'name required' });
+        return res.json(await vapiFetch('/knowledge-base', { method: 'POST', body: { name, ...rest } }));
+      }
+
+      case 'update-knowledge-base': {
+        const { id, ...updates } = req.body;
+        if (!id) return res.status(400).json({ error: 'id required' });
+        return res.json(await vapiFetch(`/knowledge-base/${id}`, { method: 'PATCH', body: updates }));
+      }
+
+      case 'delete-knowledge-base': {
+        const { id } = req.body;
+        if (!id) return res.status(400).json({ error: 'id required' });
+        return res.json(await vapiFetch(`/knowledge-base/${id}`, { method: 'DELETE' }));
+      }
+
       // ── Tools ──
       case 'list-tools':
         return res.json(await vapiFetch('/tool'));
+
+      case 'create-tool': {
+        const { type, function: fn, ...rest } = req.body;
+        if (!type) return res.status(400).json({ error: 'type required' });
+        return res.json(await vapiFetch('/tool', { method: 'POST', body: { type, function: fn, ...rest } }));
+      }
+
+      case 'delete-tool': {
+        const { id } = req.body;
+        if (!id) return res.status(400).json({ error: 'id required' });
+        return res.json(await vapiFetch(`/tool/${id}`, { method: 'DELETE' }));
+      }
 
       // ── Analytics ──
       case 'get-analytics': {

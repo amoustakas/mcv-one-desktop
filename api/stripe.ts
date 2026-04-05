@@ -173,6 +173,121 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }));
       }
 
+      // ── Customer CRUD ──
+      case 'update-customer': {
+        const { id, email, name: custName, description: custDesc, metadata: custMeta } = req.body;
+        if (!id) return res.status(400).json({ error: 'id required' });
+        const body: Record<string, unknown> = {};
+        if (email) body.email = email;
+        if (custName) body.name = custName;
+        if (custDesc) body.description = custDesc;
+        if (custMeta) Object.assign(body, custMeta);
+        return res.json(await stripeFetch(`/customers/${id}`, token, { method: 'POST', body }));
+      }
+
+      case 'delete-customer': {
+        const { id } = req.body;
+        if (!id) return res.status(400).json({ error: 'id required' });
+        return res.json(await stripeFetch(`/customers/${id}`, token, { method: 'DELETE' }));
+      }
+
+      // ── Product CRUD ──
+      case 'create-product': {
+        const { name: prodName, description: prodDesc, metadata: prodMeta } = req.body;
+        if (!prodName) return res.status(400).json({ error: 'name required' });
+        return res.json(await stripeFetch('/products', token, { method: 'POST', body: { name: prodName, description: prodDesc, ...prodMeta } }));
+      }
+
+      case 'update-product': {
+        const { id, name: upName, description: upDesc, active } = req.body;
+        if (!id) return res.status(400).json({ error: 'id required' });
+        const body: Record<string, unknown> = {};
+        if (upName) body.name = upName;
+        if (upDesc) body.description = upDesc;
+        if (active !== undefined) body.active = active;
+        return res.json(await stripeFetch(`/products/${id}`, token, { method: 'POST', body }));
+      }
+
+      case 'delete-product': {
+        const { id } = req.body;
+        if (!id) return res.status(400).json({ error: 'id required' });
+        return res.json(await stripeFetch(`/products/${id}`, token, { method: 'DELETE' }));
+      }
+
+      // ── Price CRUD ──
+      case 'create-price': {
+        const { product: priceProduct, unit_amount, currency = 'usd', recurring } = req.body;
+        if (!priceProduct || !unit_amount) return res.status(400).json({ error: 'product and unit_amount required' });
+        const body: Record<string, unknown> = { product: priceProduct, unit_amount, currency };
+        if (recurring) body['recurring[interval]'] = recurring;
+        return res.json(await stripeFetch('/prices', token, { method: 'POST', body }));
+      }
+
+      // ── Subscription CRUD ──
+      case 'create-subscription': {
+        const { customer: subCust, price: subPrice, trial_period_days } = req.body;
+        if (!subCust || !subPrice) return res.status(400).json({ error: 'customer and price required' });
+        const body: Record<string, unknown> = { customer: subCust, 'items[0][price]': subPrice };
+        if (trial_period_days) body.trial_period_days = trial_period_days;
+        return res.json(await stripeFetch('/subscriptions', token, { method: 'POST', body }));
+      }
+
+      case 'update-subscription': {
+        const { id, price: newPrice, proration_behavior = 'create_prorations' } = req.body;
+        if (!id) return res.status(400).json({ error: 'id required' });
+        const body: Record<string, unknown> = { proration_behavior };
+        if (newPrice) body['items[0][price]'] = newPrice;
+        return res.json(await stripeFetch(`/subscriptions/${id}`, token, { method: 'POST', body }));
+      }
+
+      // ── Refund from PaymentIntent ──
+      case 'refund-payment': {
+        const { payment_intent, amount: refAmount, reason: refReason } = req.body;
+        if (!payment_intent) return res.status(400).json({ error: 'payment_intent required' });
+        const body: Record<string, unknown> = { payment_intent };
+        if (refAmount) body.amount = refAmount;
+        if (refReason) body.reason = refReason;
+        return res.json(await stripeFetch('/refunds', token, { method: 'POST', body }));
+      }
+
+      // ── Coupons ──
+      case 'create-coupon': {
+        const { percent_off, duration = 'once', name: couponName, max_redemptions } = req.body;
+        if (!percent_off) return res.status(400).json({ error: 'percent_off required' });
+        return res.json(await stripeFetch('/coupons', token, { method: 'POST', body: { percent_off, duration, name: couponName, max_redemptions } }));
+      }
+
+      case 'list-coupons':
+        return res.json(await stripeFetch('/coupons?limit=20', token));
+
+      // ── Disputes ──
+      case 'list-disputes': {
+        const { limit = '10' } = req.query;
+        return res.json(await stripeFetch(`/disputes?limit=${limit}`, token));
+      }
+
+      // ── Checkout Sessions ──
+      case 'create-checkout-session': {
+        const { customer: csCust, mode = 'payment', line_items, success_url, cancel_url } = req.body;
+        if (!line_items || !success_url) return res.status(400).json({ error: 'line_items and success_url required' });
+        return res.json(await stripeFetch('/checkout/sessions', token, {
+          method: 'POST', body: { customer: csCust, mode, success_url, cancel_url, ...line_items },
+        }));
+      }
+
+      // ── Billing Portal ──
+      case 'create-portal-session': {
+        const { customer: portalCust, return_url } = req.body;
+        if (!portalCust || !return_url) return res.status(400).json({ error: 'customer and return_url required' });
+        return res.json(await stripeFetch('/billing_portal/sessions', token, {
+          method: 'POST', body: { customer: portalCust, return_url },
+        }));
+      }
+
+      // ── Webhooks ──
+      case 'list-webhook-endpoints':
+        return res.json(await stripeFetch('/webhook_endpoints?limit=20', token));
+
       // ── Account ──
       case 'get-account':
         return res.json(await stripeFetch('/account', token));

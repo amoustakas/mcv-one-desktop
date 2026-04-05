@@ -22,6 +22,19 @@ async function fetchJson(url: string, ctx: KitExecutionContext) {
   return res.json();
 }
 
+async function postJson(url: string, body: Record<string, unknown>, ctx: KitExecutionContext) {
+  const res = await ctx.fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Request failed' }));
+    throw new Error(err.error || `API error: ${res.status}`);
+  }
+  return res.json();
+}
+
 // ---------------------------------------------------------------------------
 // Tool Handlers
 // ---------------------------------------------------------------------------
@@ -107,14 +120,82 @@ const checkStatus: KitToolHandler = async (_input, ctx) => {
 };
 
 // ---------------------------------------------------------------------------
+// CRUD Handlers
+// ---------------------------------------------------------------------------
+
+const createIssue: KitToolHandler = async (input, ctx) => {
+  const d = await postJson('/api/github', { action: 'create-issue', repo: input.repo, title: input.title, body: input.body, labels: input.labels }, ctx);
+  return { success: true, data: d, displayMarkdown: `**Issue created:** #${d.number} ${d.title}` };
+};
+
+const updateIssue: KitToolHandler = async (input, ctx) => {
+  const d = await postJson('/api/github', { action: 'update-issue', repo: input.repo, number: input.number, title: input.title, body: input.body, state: input.state }, ctx);
+  return { success: true, data: d, displayMarkdown: `**Issue updated:** #${input.number}` };
+};
+
+const closeIssue: KitToolHandler = async (input, ctx) => {
+  const d = await postJson('/api/github', { action: 'close-issue', repo: input.repo, number: input.number }, ctx);
+  return { success: true, data: d, displayMarkdown: `**Issue closed:** #${input.number}` };
+};
+
+const addComment: KitToolHandler = async (input, ctx) => {
+  const d = await postJson('/api/github', { action: 'add-comment', repo: input.repo, number: input.number, body: input.body }, ctx);
+  return { success: true, data: d, displayMarkdown: `**Comment added** to #${input.number}` };
+};
+
+const createPr: KitToolHandler = async (input, ctx) => {
+  const d = await postJson('/api/github', { action: 'create-pr', repo: input.repo, title: input.title, body: input.body, head: input.head, base: input.base }, ctx);
+  return { success: true, data: d, displayMarkdown: `**PR created:** #${d.number} ${d.title}` };
+};
+
+const mergePr: KitToolHandler = async (input, ctx) => {
+  const d = await postJson('/api/github', { action: 'merge-pr', repo: input.repo, number: input.number }, ctx);
+  return { success: true, data: d, displayMarkdown: `**PR merged:** #${input.number}` };
+};
+
+const createRelease: KitToolHandler = async (input, ctx) => {
+  const d = await postJson('/api/github', { action: 'create-release', repo: input.repo, tag: input.tag, name: input.name, body: input.body }, ctx);
+  return { success: true, data: d, displayMarkdown: `**Release created:** ${d.tag_name || input.tag} — ${d.name || input.name}` };
+};
+
+const createBranch: KitToolHandler = async (input, ctx) => {
+  const d = await postJson('/api/github', { action: 'create-branch', repo: input.repo, branch: input.branch, fromSha: input.fromSha }, ctx);
+  return { success: true, data: d, displayMarkdown: `**Branch created:** \`${input.branch}\`` };
+};
+
+const listIssues: KitToolHandler = async (input, ctx) => {
+  const repo = (input.repo as string) || 'mcv-one-desktop';
+  const data = await fetchJson(`/api/github?action=issues&repo=${encodeURIComponent(repo)}`, ctx);
+  const issues = data.issues ?? [];
+  if (issues.length === 0) return { success: true, data: [], displayMarkdown: `No issues found for **${repo}**.` };
+  const lines = issues.map(
+    (i: { number: number; title: string; state: string; labels: string[] }) =>
+      `- #${i.number} \`${i.state}\` **${i.title}** ${(i.labels || []).map((l: string) => `\`${l}\``).join(' ')}`,
+  );
+  return { success: true, data: issues, displayMarkdown: `## Issues — ${repo}\n\n${lines.join('\n')}` };
+};
+
+const listActions: KitToolHandler = async (input, ctx) => {
+  const repo = (input.repo as string) || 'mcv-one-desktop';
+  const data = await fetchJson(`/api/github?action=actions&repo=${encodeURIComponent(repo)}`, ctx);
+  const runs = data.workflow_runs ?? [];
+  if (runs.length === 0) return { success: true, data: [], displayMarkdown: `No workflow runs found for **${repo}**.` };
+  const lines = runs.map(
+    (r: { id: number; name: string; status: string; conclusion: string; created_at: string }) =>
+      `- **${r.name}** \`${r.conclusion || r.status}\` — ${timeAgo(r.created_at)} \`${r.id}\``,
+  );
+  return { success: true, data: runs, displayMarkdown: `## Actions — ${repo}\n\n${lines.join('\n')}` };
+};
+
+// ---------------------------------------------------------------------------
 // Manifest & Export
 // ---------------------------------------------------------------------------
 
 export const manifest: KitManifest = {
   id: 'github-ops',
   name: 'GitHub Operations',
-  version: '1.0.0',
-  description: 'List repositories, pull requests, commits, and check system status across all EdgeIQ GitHub repos.',
+  version: '2.0.0',
+  description: 'Full GitHub CRUD — repositories, issues, pull requests, commits, releases, branches, actions, and system status.',
   author: 'MCV',
   capabilities: ['network'],
   runtime: 'inline',
@@ -205,7 +286,61 @@ const getPrDiff: KitToolHandler = async (input, ctx) => {
   return { success: true, data: files, displayMarkdown: md };
 };
 
-// Update manifest tools to include new ones
+// CRUD tools
+manifest.tools.push(
+  {
+    name: 'github_create_issue',
+    description: 'Create a new GitHub issue.',
+    input_schema: { type: 'object', properties: { repo: { type: 'string', description: 'Repository name' }, title: { type: 'string', description: 'Issue title' }, body: { type: 'string', description: 'Issue body' }, labels: { type: 'array', items: { type: 'string' }, description: 'Labels to apply' } }, required: ['repo', 'title'] },
+  },
+  {
+    name: 'github_update_issue',
+    description: 'Update an existing GitHub issue.',
+    input_schema: { type: 'object', properties: { repo: { type: 'string', description: 'Repository name' }, number: { type: 'number', description: 'Issue number' }, title: { type: 'string' }, body: { type: 'string' }, state: { type: 'string', description: 'open or closed' } }, required: ['repo', 'number'] },
+  },
+  {
+    name: 'github_close_issue',
+    description: 'Close a GitHub issue.',
+    input_schema: { type: 'object', properties: { repo: { type: 'string', description: 'Repository name' }, number: { type: 'number', description: 'Issue number' } }, required: ['repo', 'number'] },
+  },
+  {
+    name: 'github_add_comment',
+    description: 'Add a comment to an issue or PR.',
+    input_schema: { type: 'object', properties: { repo: { type: 'string', description: 'Repository name' }, number: { type: 'number', description: 'Issue/PR number' }, body: { type: 'string', description: 'Comment body' } }, required: ['repo', 'number', 'body'] },
+  },
+  {
+    name: 'github_create_pr',
+    description: 'Create a new pull request.',
+    input_schema: { type: 'object', properties: { repo: { type: 'string', description: 'Repository name' }, title: { type: 'string', description: 'PR title' }, body: { type: 'string', description: 'PR body' }, head: { type: 'string', description: 'Head branch' }, base: { type: 'string', description: 'Base branch' } }, required: ['repo', 'title', 'head', 'base'] },
+  },
+  {
+    name: 'github_merge_pr',
+    description: 'Merge a pull request.',
+    input_schema: { type: 'object', properties: { repo: { type: 'string', description: 'Repository name' }, number: { type: 'number', description: 'PR number' } }, required: ['repo', 'number'] },
+  },
+  {
+    name: 'github_create_release',
+    description: 'Create a new release with a tag.',
+    input_schema: { type: 'object', properties: { repo: { type: 'string', description: 'Repository name' }, tag: { type: 'string', description: 'Tag name (e.g. v1.0.0)' }, name: { type: 'string', description: 'Release name' }, body: { type: 'string', description: 'Release notes' } }, required: ['repo', 'tag'] },
+  },
+  {
+    name: 'github_create_branch',
+    description: 'Create a new branch from a SHA.',
+    input_schema: { type: 'object', properties: { repo: { type: 'string', description: 'Repository name' }, branch: { type: 'string', description: 'New branch name' }, fromSha: { type: 'string', description: 'SHA to branch from' } }, required: ['repo', 'branch', 'fromSha'] },
+  },
+  {
+    name: 'github_list_issues',
+    description: 'List open issues for a repository.',
+    input_schema: { type: 'object', properties: { repo: { type: 'string', description: 'Repository name (default: mcv-one-desktop)' } } },
+  },
+  {
+    name: 'github_list_actions',
+    description: 'List recent GitHub Actions workflow runs for a repository.',
+    input_schema: { type: 'object', properties: { repo: { type: 'string', description: 'Repository name (default: mcv-one-desktop)' } } },
+  },
+);
+
+// Phase B: Repository Browsing Tools
 manifest.tools.push(
   {
     name: 'browse_repo_tree',
@@ -253,4 +388,14 @@ export const handlers: Record<string, KitToolHandler> = {
   browse_repo_tree: browseRepoTree,
   read_repo_file: readRepoFile,
   get_pr_diff: getPrDiff,
+  github_create_issue: createIssue,
+  github_update_issue: updateIssue,
+  github_close_issue: closeIssue,
+  github_add_comment: addComment,
+  github_create_pr: createPr,
+  github_merge_pr: mergePr,
+  github_create_release: createRelease,
+  github_create_branch: createBranch,
+  github_list_issues: listIssues,
+  github_list_actions: listActions,
 };

@@ -180,6 +180,197 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.json({ zones });
       }
 
+      // ── Worker Deploy / Delete ────────────────────────────────
+      case 'deploy-worker': {
+        const { scriptName, script, bindings } = req.body;
+        if (!scriptName || !script) return res.status(400).json({ error: 'scriptName and script required' });
+        // Workers API expects multipart form for script upload; use metadata + script parts
+        const metadata = JSON.stringify({ main_module: 'worker.js', bindings: bindings || [] });
+        const boundary = '----CFWorkerBoundary';
+        const body = [
+          `--${boundary}`,
+          'Content-Disposition: form-data; name="metadata"; filename="metadata.json"',
+          'Content-Type: application/json',
+          '',
+          metadata,
+          `--${boundary}`,
+          'Content-Disposition: form-data; name="worker.js"; filename="worker.js"',
+          'Content-Type: application/javascript+module',
+          '',
+          script,
+          `--${boundary}--`,
+        ].join('\r\n');
+
+        const url = `${CF_BASE}/accounts/${CF_ACCOUNT_ID}/workers/scripts/${scriptName}`;
+        const deployRes = await fetch(url, {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${CF_API_TOKEN}`,
+            'Content-Type': `multipart/form-data; boundary=${boundary}`,
+          },
+          body,
+        });
+        const data = await deployRes.json().catch(() => ({ success: false, errors: [{ message: 'Non-JSON response' }] }));
+        if (!data.success && data.errors?.length) throw new Error(data.errors.map((e: { message: string }) => e.message).join('; '));
+        return res.json({ success: true, worker: data.result });
+      }
+
+      case 'delete-worker': {
+        const { scriptName } = req.body;
+        if (!scriptName) return res.status(400).json({ error: 'scriptName required' });
+        await cfFetch(`/accounts/${CF_ACCOUNT_ID}/workers/scripts/${scriptName}`, { method: 'DELETE' });
+        return res.json({ success: true, scriptName });
+      }
+
+      // ── KV Delete / Bulk Put ────────────────────────────────
+      case 'kv-delete': {
+        const { namespace_id: nsId, key } = req.body;
+        if (!nsId || !key) return res.status(400).json({ error: 'namespace_id and key required' });
+        const url = `${CF_BASE}/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces/${nsId}/values/${encodeURIComponent(key)}`;
+        await fetch(url, { method: 'DELETE', headers: { Authorization: `Bearer ${CF_API_TOKEN}` } });
+        return res.json({ success: true, key });
+      }
+
+      case 'kv-bulk-put': {
+        const { namespace_id: nsId, kvPairs } = req.body;
+        if (!nsId || !kvPairs || !Array.isArray(kvPairs)) return res.status(400).json({ error: 'namespace_id and kvPairs array required' });
+        await cfFetch(
+          `/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces/${nsId}/bulk`,
+          { method: 'PUT', body: JSON.stringify(kvPairs) },
+        );
+        return res.json({ success: true, count: kvPairs.length });
+      }
+
+      // ── R2 Object Operations ────────────────────────────────
+      case 'r2-upload-object': {
+        const { bucket, key, metadata } = req.body;
+        if (!bucket || !key) return res.status(400).json({ error: 'bucket and key required' });
+        // Note: actual binary upload requires direct S3-compatible client; this creates metadata placeholder
+        const data = await cfFetch(
+          `/accounts/${CF_ACCOUNT_ID}/r2/buckets/${bucket}/objects/${encodeURIComponent(key)}`,
+          { method: 'PUT', body: JSON.stringify(metadata || {}) },
+        );
+        return res.json({ success: true, object: data.result });
+      }
+
+      case 'r2-delete-object': {
+        const { bucket, key } = req.body;
+        if (!bucket || !key) return res.status(400).json({ error: 'bucket and key required' });
+        await cfFetch(
+          `/accounts/${CF_ACCOUNT_ID}/r2/buckets/${bucket}/objects/${encodeURIComponent(key)}`,
+          { method: 'DELETE' },
+        );
+        return res.json({ success: true, bucket, key });
+      }
+
+      case 'r2-get-object-info': {
+        const { bucket, key } = req.body;
+        if (!bucket || !key) return res.status(400).json({ error: 'bucket and key required' });
+        const url = `${CF_BASE}/accounts/${CF_ACCOUNT_ID}/r2/buckets/${bucket}/objects/${encodeURIComponent(key)}`;
+        const headRes = await fetch(url, {
+          method: 'HEAD',
+          headers: { Authorization: `Bearer ${CF_API_TOKEN}` },
+        });
+        return res.json({
+          exists: headRes.ok,
+          contentLength: headRes.headers.get('content-length'),
+          contentType: headRes.headers.get('content-type'),
+          lastModified: headRes.headers.get('last-modified'),
+        });
+      }
+
+      // ── D1 Execute (write operations) ──────────────────────
+      case 'd1-execute': {
+        const { database_id, sql, params } = req.body;
+        if (!database_id || !sql) return res.status(400).json({ error: 'database_id and sql required' });
+        const data = await cfFetch(
+          `/accounts/${CF_ACCOUNT_ID}/d1/database/${database_id}/query`,
+          { method: 'POST', body: JSON.stringify({ sql, params: params || [] }) },
+        );
+        return res.json({
+          results: data.result?.[0]?.results ?? [],
+          meta: data.result?.[0]?.meta ?? {},
+          success: true,
+        });
+      }
+
+      // ── Zone / DNS Management ──────────────────────────────
+      case 'create-zone': {
+        const { name, jumpStart } = req.body;
+        if (!name) return res.status(400).json({ error: 'domain name required' });
+        const data = await cfFetch('/zones', {
+          method: 'POST',
+          body: JSON.stringify({ name, account: { id: CF_ACCOUNT_ID }, jump_start: jumpStart ?? true }),
+        });
+        return res.json({ zone: { id: data.result?.id, name: data.result?.name, status: data.result?.status } });
+      }
+
+      case 'create-dns-record': {
+        const { zoneId, type: recordType, name: recordName, content, proxied, ttl } = req.body;
+        if (!zoneId || !recordType || !recordName || !content) {
+          return res.status(400).json({ error: 'zoneId, type, name, and content required' });
+        }
+        const data = await cfFetch(`/zones/${zoneId}/dns_records`, {
+          method: 'POST',
+          body: JSON.stringify({ type: recordType, name: recordName, content, proxied: proxied ?? true, ttl: ttl || 1 }),
+        });
+        return res.json({ record: data.result });
+      }
+
+      case 'update-dns-record': {
+        const { zoneId, recordId, type: recordType, name: recordName, content, proxied, ttl } = req.body;
+        if (!zoneId || !recordId) return res.status(400).json({ error: 'zoneId and recordId required' });
+        const payload: Record<string, unknown> = {};
+        if (recordType !== undefined) payload.type = recordType;
+        if (recordName !== undefined) payload.name = recordName;
+        if (content !== undefined) payload.content = content;
+        if (proxied !== undefined) payload.proxied = proxied;
+        if (ttl !== undefined) payload.ttl = ttl;
+        const data = await cfFetch(`/zones/${zoneId}/dns_records/${recordId}`, {
+          method: 'PATCH',
+          body: JSON.stringify(payload),
+        });
+        return res.json({ record: data.result });
+      }
+
+      case 'delete-dns-record': {
+        const { zoneId, recordId } = req.body;
+        if (!zoneId || !recordId) return res.status(400).json({ error: 'zoneId and recordId required' });
+        await cfFetch(`/zones/${zoneId}/dns_records/${recordId}`, { method: 'DELETE' });
+        return res.json({ success: true, recordId });
+      }
+
+      case 'list-dns-records': {
+        const { zoneId } = req.body;
+        if (!zoneId) return res.status(400).json({ error: 'zoneId required' });
+        const data = await cfFetch(`/zones/${zoneId}/dns_records?per_page=100`);
+        return res.json({
+          records: (data.result ?? []).map((r: Record<string, unknown>) => ({
+            id: r.id, type: r.type, name: r.name, content: r.content,
+            proxied: r.proxied, ttl: r.ttl,
+          })),
+        });
+      }
+
+      // ── Cache Purge ─────────────────────────────────────────
+      case 'purge-cache': {
+        const { zoneId, purgeEverything, files } = req.body;
+        if (!zoneId) return res.status(400).json({ error: 'zoneId required' });
+        const payload: Record<string, unknown> = {};
+        if (purgeEverything) {
+          payload.purge_everything = true;
+        } else if (files && Array.isArray(files)) {
+          payload.files = files;
+        } else {
+          return res.status(400).json({ error: 'purgeEverything or files array required' });
+        }
+        const data = await cfFetch(`/zones/${zoneId}/purge_cache`, {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+        return res.json({ success: true, id: data.result?.id });
+      }
+
       default:
         return res.status(400).json({ error: `Unknown action: ${action}` });
     }

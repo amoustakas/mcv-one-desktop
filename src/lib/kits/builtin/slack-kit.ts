@@ -52,10 +52,53 @@ const slackOverview: KitToolHandler = async (_input, ctx) => {
   return { success: true, data, displayMarkdown: `## Slack Overview\n\n- **Team:** ${data.team}\n- **User:** ${data.user}\n- **Channels:** ${data.channels}\n- **Members:** ${data.members}` };
 };
 
+const editMessage: KitToolHandler = async (input, ctx) => {
+  const d = await slackApi('update-message', { channel: input.channel, ts: input.ts, text: input.text }, ctx);
+  return { success: true, data: d, displayMarkdown: `Message updated in <#${input.channel}> at ${input.ts}` };
+};
+
+const deleteMessage: KitToolHandler = async (input, ctx) => {
+  const d = await slackApi('delete-message', { channel: input.channel, ts: input.ts }, ctx);
+  return { success: true, data: d, displayMarkdown: `Message deleted in <#${input.channel}> at ${input.ts}` };
+};
+
+const createChannel: KitToolHandler = async (input, ctx) => {
+  const d = await slackApi('create-channel', { name: input.name, is_private: input.isPrivate ?? false }, ctx);
+  return { success: true, data: d, displayMarkdown: `Channel created: **#${input.name}**${input.isPrivate ? ' (private)' : ''}` };
+};
+
+const archiveChannel: KitToolHandler = async (input, ctx) => {
+  const d = await slackApi('archive-channel', { channel: input.channel }, ctx);
+  return { success: true, data: d, displayMarkdown: `Channel <#${input.channel}> archived.` };
+};
+
+const setTopic: KitToolHandler = async (input, ctx) => {
+  const d = await slackApi('set-channel-topic', { channel: input.channel, topic: input.topic }, ctx);
+  return { success: true, data: d, displayMarkdown: `Topic set for <#${input.channel}>: "${input.topic}"` };
+};
+
+const addReaction: KitToolHandler = async (input, ctx) => {
+  const d = await slackApi('add-reaction', { channel: input.channel, timestamp: input.timestamp, name: input.name }, ctx);
+  return { success: true, data: d, displayMarkdown: `Reaction :${input.name}: added in <#${input.channel}>` };
+};
+
+const threadReplies: KitToolHandler = async (input, ctx) => {
+  const d = await slackApi('get-thread-replies', { channel: input.channel, ts: input.ts }, ctx);
+  const msgs = d.messages ?? [];
+  const lines = msgs.map((m: { text: string; user: string; ts: string }) =>
+    `- <@${m.user}>: ${(m.text || '').slice(0, 100)}`);
+  return { success: true, data: msgs, displayMarkdown: `## Thread Replies (${msgs.length})\n\n${lines.join('\n')}` };
+};
+
+const setStatus: KitToolHandler = async (input, ctx) => {
+  const d = await slackApi('set-user-status', { statusText: input.statusText, statusEmoji: input.statusEmoji }, ctx);
+  return { success: true, data: d, displayMarkdown: `Status set: ${input.statusEmoji || ''} ${input.statusText}` };
+};
+
 export const manifest: KitManifest = {
   id: 'slack-comms',
   name: 'Slack Communications',
-  version: '1.0.0',
+  version: '2.0.0',
   description: 'Slack team messaging — channels, messages, users, search, and notifications.',
   author: 'MCV',
   capabilities: ['network', 'credentials'],
@@ -69,6 +112,14 @@ export const manifest: KitManifest = {
     { name: 'slack_list_users', description: 'List team members (non-bots).', input_schema: { type: 'object', properties: { limit: { type: 'number' } } } },
     { name: 'slack_search', description: 'Search Slack messages across all channels.', input_schema: { type: 'object', properties: { query: { type: 'string', description: 'Search query' }, limit: { type: 'number' } }, required: ['query'] } },
     { name: 'slack_overview', description: 'Get Slack workspace summary: team, channels, members.', input_schema: { type: 'object', properties: {} } },
+    { name: 'slack_edit_message', description: 'Edit an existing Slack message.', input_schema: { type: 'object', properties: { channel: { type: 'string', description: 'Channel ID' }, ts: { type: 'string', description: 'Message timestamp' }, text: { type: 'string', description: 'New message text' } }, required: ['channel', 'ts', 'text'] } },
+    { name: 'slack_delete_message', description: 'Delete a Slack message.', input_schema: { type: 'object', properties: { channel: { type: 'string', description: 'Channel ID' }, ts: { type: 'string', description: 'Message timestamp' } }, required: ['channel', 'ts'] } },
+    { name: 'slack_create_channel', description: 'Create a new Slack channel.', input_schema: { type: 'object', properties: { name: { type: 'string', description: 'Channel name' }, isPrivate: { type: 'boolean', description: 'Create as private channel' } }, required: ['name'] } },
+    { name: 'slack_archive_channel', description: 'Archive a Slack channel.', input_schema: { type: 'object', properties: { channel: { type: 'string', description: 'Channel ID' } }, required: ['channel'] } },
+    { name: 'slack_set_topic', description: 'Set a channel topic.', input_schema: { type: 'object', properties: { channel: { type: 'string', description: 'Channel ID' }, topic: { type: 'string', description: 'Topic text' } }, required: ['channel', 'topic'] } },
+    { name: 'slack_add_reaction', description: 'Add a reaction emoji to a message.', input_schema: { type: 'object', properties: { channel: { type: 'string', description: 'Channel ID' }, timestamp: { type: 'string', description: 'Message timestamp' }, name: { type: 'string', description: 'Emoji name (without colons)' } }, required: ['channel', 'timestamp', 'name'] } },
+    { name: 'slack_thread_replies', description: 'Get replies in a message thread.', input_schema: { type: 'object', properties: { channel: { type: 'string', description: 'Channel ID' }, ts: { type: 'string', description: 'Thread parent timestamp' } }, required: ['channel', 'ts'] } },
+    { name: 'slack_set_status', description: 'Set your Slack status text and emoji.', input_schema: { type: 'object', properties: { statusText: { type: 'string', description: 'Status text' }, statusEmoji: { type: 'string', description: 'Status emoji (e.g. :house:)' } }, required: ['statusText'] } },
   ],
 };
 
@@ -79,4 +130,12 @@ export const handlers: Record<string, KitToolHandler> = {
   slack_list_users: listUsers,
   slack_search: searchMessages,
   slack_overview: slackOverview,
+  slack_edit_message: editMessage,
+  slack_delete_message: deleteMessage,
+  slack_create_channel: createChannel,
+  slack_archive_channel: archiveChannel,
+  slack_set_topic: setTopic,
+  slack_add_reaction: addReaction,
+  slack_thread_replies: threadReplies,
+  slack_set_status: setStatus,
 };
