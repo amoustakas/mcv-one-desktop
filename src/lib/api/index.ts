@@ -1,0 +1,10 @@
+// Re-export all domain API modules
+export * as crmApi from './crm';
+export * as tasksApi from './tasks';
+export * as docsApi from './docs';
+export * as githubApi from './github';
+export * as vercelApi from './vercel';
+export * as teamApi from './team';
+export * as campaignsApi from './campaigns';
+export * as treasuryApi from './treasury';
+export { ApiError } from './client';

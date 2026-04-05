@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Loader2, Bot, User, Trash2, Plus, Mic, MicOff, Volume2, Square } from 'lucide-react';
-import { streamMessage, type ChatMessage } from '../lib/claude';
+import { Send, Loader2, Bot, User, Trash2, Plus, Mic, MicOff, Volume2, Square, Wrench } from 'lucide-react';
+import { streamMessage, streamMessageWithTools, type ChatMessage, type ToolCallEvent } from '../lib/claude';
 import { handleCommand } from '../lib/commands';
 import { isRecordingSupported, startRecording, stopRecording, speakText, stopSpeaking } from '../lib/voice';
 import { type Venture } from '../lib/ventures';
@@ -13,7 +13,17 @@ import {
   deleteConversation,
   type DbConversation,
 } from '../lib/supabase';
+import { useKitStore } from '../stores/kits';
+import { executeKitTool } from '../lib/kits/loader';
 import Markdown from './Markdown';
+
+/** Tracks a tool call in progress or completed */
+interface ToolCallStatus {
+  id: string;
+  name: string;
+  status: 'running' | 'done' | 'error';
+  result?: string;
+}
 
 interface AegisChatProps {
   venture: Venture;
@@ -55,7 +65,12 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const useDb = !!supabase;
+  const [activeToolCalls, setActiveToolCalls] = useState<ToolCallStatus[]>([]);
   const hasVoice = isRecordingSupported();
+
+  // Kit system — initialize on mount and get tools for current venture
+  const { initBuiltins, getToolsForVenture, getKitInstructions, getLoadedKits } = useKitStore();
+  useEffect(() => { initBuiltins(); }, [initBuiltins]);
 
   async function handleMicToggle() {
     if (recording) {
@@ -252,14 +267,68 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
     }
 
     try {
-      const full = await streamMessage(
-        newMessages,
-        venture.systemPrompt,
-        (partial) => setStreamingText(partial),
-      );
-      const finalMessages = [...newMessages, { role: 'assistant' as const, content: full }];
+      // Check if kits provide tools for this venture
+      const tools = getToolsForVenture(venture.id);
+      const kitInstructions = getKitInstructions(venture.id);
+      const systemPrompt = venture.systemPrompt + kitInstructions;
+
+      let full: string;
+      if (tools.length > 0) {
+        // Use tool-calling path
+        setActiveToolCalls([]);
+        const loadedKits = getLoadedKits();
+
+        const result = await streamMessageWithTools(
+          newMessages,
+          systemPrompt,
+          tools,
+          async (toolCall: ToolCallEvent) => {
+            const kitResult = await executeKitTool(
+              loadedKits,
+              toolCall.name,
+              toolCall.input,
+              {
+                userId: '',
+                ventureId: venture.id,
+                conversationId: convId!,
+                fetch: globalThis.fetch,
+              },
+            );
+            return kitResult;
+          },
+          {
+            onText: (partial) => setStreamingText(partial),
+            onToolCall: (tc) => {
+              setActiveToolCalls((prev) => [
+                ...prev,
+                { id: tc.id, name: tc.name, status: 'running' },
+              ]);
+            },
+            onToolResult: (toolName, result) => {
+              setActiveToolCalls((prev) =>
+                prev.map((tc) =>
+                  tc.name === toolName
+                    ? { ...tc, status: result.success ? 'done' : 'error', result: result.displayMarkdown || result.error }
+                    : tc,
+                ),
+              );
+            },
+          },
+        );
+        full = result.text;
+      } else {
+        // Fallback to plain streaming (no kits loaded)
+        full = await streamMessage(
+          newMessages,
+          systemPrompt,
+          (partial) => setStreamingText(partial),
+        );
+      }
+
+      const finalMessages: ChatMessage[] = [...newMessages, { role: 'assistant' as const, content: full }];
       setMessages(finalMessages);
       setStreamingText('');
+      setActiveToolCalls([]);
 
       // Persist assistant message
       if (useDb) {
@@ -269,9 +338,10 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-      const errMessages = [...newMessages, { role: 'assistant' as const, content: `**Error:** ${errorMsg}` }];
+      const errMessages: ChatMessage[] = [...newMessages, { role: 'assistant' as const, content: `**Error:** ${errorMsg}` }];
       setMessages(errMessages);
       setStreamingText('');
+      setActiveToolCalls([]);
       if (!useDb) saveLocal(venture.id, convId!, errMessages);
     } finally {
       setLoading(false);
@@ -341,7 +411,7 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
                   {msg.role === 'assistant' && (
                     <button
                       className="chat-tts-btn"
-                      onClick={() => handleSpeak(msg.content)}
+                      onClick={() => handleSpeak(typeof msg.content === 'string' ? msg.content : '')}
                       aria-label={speaking ? 'Stop speaking' : 'Read aloud'}
                     >
                       {speaking ? <Square size={10} /> : <Volume2 size={12} />}
@@ -349,11 +419,28 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
                   )}
                 </div>
                 <div className="chat-msg-text">
-                  {msg.role === 'assistant' ? <Markdown content={msg.content} /> : msg.content}
+                  {msg.role === 'assistant' ? <Markdown content={typeof msg.content === 'string' ? msg.content : ''} /> : (typeof msg.content === 'string' ? msg.content : '')}
                 </div>
               </div>
             </div>
           ))}
+
+          {/* Tool call indicators */}
+          {activeToolCalls.length > 0 && (
+            <div className="tool-calls-area">
+              {activeToolCalls.map((tc) => (
+                <div key={tc.id} className={`tool-call-indicator ${tc.status}`}>
+                  <div className="tool-call-header">
+                    {tc.status === 'running' ? <Loader2 size={12} className="spin" /> : <Wrench size={12} />}
+                    <span className="tool-call-name">{tc.name.replace(/_/g, ' ')}</span>
+                    <span className="tool-call-status">
+                      {tc.status === 'running' ? 'running...' : tc.status === 'done' ? 'done' : 'failed'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {streamingText && (
             <div className="chat-msg assistant">
@@ -691,6 +778,47 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
 
         @keyframes spin { to { transform: rotate(360deg); } }
         .spin { animation: spin 1s linear infinite; }
+
+        /* Tool call indicators */
+        .tool-calls-area {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          max-width: 800px;
+          padding-left: 38px;
+        }
+
+        .tool-call-indicator {
+          display: inline-flex;
+          align-items: center;
+          padding: 4px 10px;
+          border-radius: var(--radius-sm);
+          font-size: 11px;
+          border: 1px solid var(--border);
+          background: var(--bg-card);
+        }
+
+        .tool-call-indicator.running {
+          border-color: rgba(0, 240, 255, 0.2);
+          background: rgba(0, 240, 255, 0.04);
+        }
+
+        .tool-call-indicator.done { border-color: rgba(34, 197, 94, 0.2); }
+        .tool-call-indicator.error { border-color: rgba(239, 68, 68, 0.2); }
+
+        .tool-call-header {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          color: var(--text-secondary);
+        }
+
+        .tool-call-indicator.running .tool-call-header { color: var(--cyan); }
+        .tool-call-indicator.done .tool-call-header { color: rgb(34, 197, 94); }
+        .tool-call-indicator.error .tool-call-header { color: rgb(239, 68, 68); }
+
+        .tool-call-name { font-weight: 600; text-transform: capitalize; }
+        .tool-call-status { font-weight: 400; opacity: 0.7; }
 
         @media (max-width: 768px) {
           .conv-sidebar { display: none; }

@@ -12,7 +12,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { messages, systemPrompt, stream } = req.body;
+  const { messages, systemPrompt, stream, tools } = req.body;
 
   if (!messages || !Array.isArray(messages)) {
     return res.status(400).json({ error: 'messages array required' });
@@ -22,48 +22,103 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
   }
 
+  // Build params shared between streaming and non-streaming
+  const params: Anthropic.MessageCreateParams = {
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 4096,
+    system: systemPrompt || 'You are a helpful assistant.',
+    messages: messages.map((m: { role: string; content: unknown }) => ({
+      role: m.role as 'user' | 'assistant',
+      content: m.content,
+    })),
+  };
+
+  // Add tools if provided (Kit system tool-calling)
+  if (tools && Array.isArray(tools) && tools.length > 0) {
+    params.tools = tools;
+  }
+
   try {
     if (stream) {
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
 
-      const response = client.messages.stream({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4096,
-        system: systemPrompt || 'You are a helpful assistant.',
-        messages: messages.map((m: { role: string; content: string }) => ({
-          role: m.role as 'user' | 'assistant',
-          content: m.content,
-        })),
+      const response = client.messages.stream(params);
+
+      // Track current content block for tool_use events
+      let currentBlock: { type: string; id?: string; name?: string; input?: string } | null = null;
+
+      response.on('contentBlockStart', (event) => {
+        const block = event.content_block;
+        if (block.type === 'tool_use') {
+          currentBlock = { type: 'tool_use', id: block.id, name: block.name, input: '' };
+        } else {
+          currentBlock = { type: 'text' };
+        }
       });
 
       response.on('text', (text) => {
-        res.write(`data: ${JSON.stringify({ text })}\n\n`);
+        res.write(`data: ${JSON.stringify({ type: 'text', text })}\n\n`);
+      });
+
+      response.on('inputJson', (_delta, snapshot) => {
+        if (currentBlock?.type === 'tool_use') {
+          currentBlock.input = snapshot;
+        }
+      });
+
+      response.on('contentBlockStop', () => {
+        if (currentBlock?.type === 'tool_use') {
+          let parsedInput = {};
+          try {
+            parsedInput = typeof currentBlock.input === 'string'
+              ? JSON.parse(currentBlock.input)
+              : currentBlock.input;
+          } catch { /* keep empty object */ }
+
+          res.write(`data: ${JSON.stringify({
+            type: 'tool_use',
+            id: currentBlock.id,
+            name: currentBlock.name,
+            input: parsedInput,
+          })}\n\n`);
+        }
+        currentBlock = null;
       });
 
       response.on('end', () => {
+        // Send stop reason so client knows if it needs to handle tool results
+        const msg = response.currentMessage();
+        res.write(`data: ${JSON.stringify({ type: 'message_end', stop_reason: msg?.stop_reason })}\n\n`);
         res.write('data: [DONE]\n\n');
         res.end();
       });
 
       response.on('error', (error) => {
-        res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+        res.write(`data: ${JSON.stringify({ type: 'error', error: error.message })}\n\n`);
         res.end();
       });
     } else {
-      const response = await client.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4096,
-        system: systemPrompt || 'You are a helpful assistant.',
-        messages: messages.map((m: { role: string; content: string }) => ({
-          role: m.role as 'user' | 'assistant',
-          content: m.content,
-        })),
-      });
+      const response = await client.messages.create(params);
 
-      const content = response.content[0];
-      const text = content.type === 'text' ? content.text : '';
+      // Check if response contains tool_use blocks
+      const toolUseBlocks = response.content.filter((b) => b.type === 'tool_use');
+      const textBlocks = response.content.filter((b) => b.type === 'text');
+      const text = textBlocks.map((b) => b.type === 'text' ? b.text : '').join('');
+
+      if (toolUseBlocks.length > 0) {
+        return res.status(200).json({
+          content: text,
+          stop_reason: response.stop_reason,
+          tool_calls: toolUseBlocks.map((b) => ({
+            id: b.type === 'tool_use' ? b.id : '',
+            name: b.type === 'tool_use' ? b.name : '',
+            input: b.type === 'tool_use' ? b.input : {},
+          })),
+        });
+      }
+
       return res.status(200).json({ content: text });
     }
   } catch (error) {

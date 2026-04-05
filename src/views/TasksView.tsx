@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { CheckSquare, Plus, RefreshCw, Trash2, Clock, AlertTriangle, Circle, CheckCircle2, Ban, ArrowUp, ArrowDown, Minus } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
 import { useToast } from '../components/Toasts';
-
-interface Task { id: string; title: string; description: string; status: string; priority: string; venture_id: string; assignee: string; due_date: string; tags: string[]; created_at: string; }
+import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from '../hooks/use-tasks';
+import type { Task } from '../lib/schemas/tasks';
 
 const STATUS_COLS = ['todo', 'in_progress', 'review', 'done'];
 const STATUS_LABELS: Record<string, string> = { todo: 'To Do', in_progress: 'In Progress', review: 'Review', done: 'Done', blocked: 'Blocked' };
@@ -11,14 +11,7 @@ const STATUS_ICONS: Record<string, React.ReactNode> = { todo: <Circle size={12} 
 const STATUS_COLORS: Record<string, string> = { todo: '#6B7280', in_progress: '#00F0FF', review: '#F59E0B', done: '#10B981', blocked: '#EF4444' };
 const PRIO_ICONS: Record<string, React.ReactNode> = { critical: <ArrowUp size={11} className="prio-critical" />, high: <ArrowUp size={11} className="prio-high" />, medium: <Minus size={11} className="prio-med" />, low: <ArrowDown size={11} className="prio-low" /> };
 
-async function api(body: Record<string, unknown>) {
-  const r = await fetch('/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  return r.json();
-}
-
 export default function TasksView() {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newPriority, setNewPriority] = useState('medium');
@@ -26,35 +19,34 @@ export default function TasksView() {
   const { mode, activeVenture } = useNavigation();
   const { toast } = useToast();
 
-  async function load() {
-    setLoading(true);
-    const v = mode === 'venture' ? activeVenture : undefined;
-    const d = await api({ action: 'list', venture_id: v || undefined });
-    setTasks(d.tasks || []);
-    setLoading(false);
-  }
-
-  useEffect(() => { load(); }, [activeVenture, mode]);
+  const ventureFilter = mode === 'venture' ? activeVenture : undefined;
+  const { data: tasks = [], isLoading, refetch } = useTasks(ventureFilter || undefined);
+  const createTask = useCreateTask();
+  const updateTask = useUpdateTask();
+  const deleteTask = useDeleteTask();
 
   async function handleCreate() {
     if (!newTitle.trim()) return;
-    await api({ action: 'create', task: { title: newTitle, priority: newPriority, venture_id: newVenture || (mode === 'venture' ? activeVenture : null), status: 'todo' } });
+    await createTask.mutateAsync({
+      title: newTitle,
+      priority: newPriority,
+      venture_id: newVenture || (mode === 'venture' ? activeVenture : null) || '',
+      status: 'todo',
+    });
     toast('success', `Task "${newTitle}" created`);
-    setNewTitle(''); setShowAdd(false); load();
+    setNewTitle(''); setShowAdd(false);
   }
 
-  async function handleStatusChange(id: string, status: string) {
-    await api({ action: 'update', id, status });
-    setTasks(t => t.map(tk => tk.id === id ? { ...tk, status } : tk));
+  function handleStatusChange(id: string, status: string) {
+    updateTask.mutate({ id, status });
   }
 
-  async function handleDelete(id: string) {
-    await api({ action: 'delete', id });
-    setTasks(t => t.filter(tk => tk.id !== id));
+  function handleDelete(id: string) {
+    deleteTask.mutate(id);
   }
 
-  const grouped = STATUS_COLS.reduce((acc, s) => { acc[s] = tasks.filter(t => t.status === s); return acc; }, {} as Record<string, Task[]>);
-  const blocked = tasks.filter(t => t.status === 'blocked');
+  const grouped = STATUS_COLS.reduce((acc, s) => { acc[s] = tasks.filter((t: Task) => t.status === s); return acc; }, {} as Record<string, Task[]>);
+  const blocked = tasks.filter((t: Task) => t.status === 'blocked');
 
   return (
     <div className="tv">
@@ -64,7 +56,7 @@ export default function TasksView() {
         <span className="tv-count">{tasks.length}</span>
         <div className="tv-header-right">
           <button className="tv-add-btn" onClick={() => setShowAdd(!showAdd)}><Plus size={13} /> New Task</button>
-          <button className="tv-refresh" onClick={load}><RefreshCw size={14} className={loading ? 'spin' : ''} /></button>
+          <button className="tv-refresh" onClick={() => refetch()}><RefreshCw size={14} className={isLoading ? 'spin' : ''} /></button>
         </div>
       </div>
 

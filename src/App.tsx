@@ -5,6 +5,7 @@ import ChatDock from './components/ChatDock';
 import StatusBar from './components/StatusBar';
 import CommandPalette from './components/CommandPalette';
 import SettingsPanel from './components/SettingsPanel';
+import { ViewErrorBoundary } from './components/ErrorBoundary';
 import { useNavigation, type ViewId } from './stores/navigation';
 import { useTheme } from './stores/theme';
 import { getVenture, ventures } from './lib/ventures';
@@ -147,8 +148,13 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
 function ViewPanel({ viewId }: { viewId?: ViewId }) {
   const { activeView, activeVenture } = useNavigation();
   const venture = getVenture(activeVenture || 'mcv') ?? ventures[0];
-  const view = renderView(viewId ?? activeView, venture);
-  return <Suspense fallback={<ViewLoadingFallback />}>{view}</Suspense>;
+  const currentView = viewId ?? activeView;
+  const view = renderView(currentView, venture);
+  return (
+    <ViewErrorBoundary key={currentView} fallbackTitle={`Error loading ${currentView}`}>
+      <Suspense fallback={<ViewLoadingFallback />}>{view}</Suspense>
+    </ViewErrorBoundary>
+  );
 }
 
 function SplitWorkspace() {

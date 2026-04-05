@@ -44,7 +44,20 @@
       "Bash(grep -E \"\\\\.tsx?$|package\\\\.json\")",
       "Bash(node:*)",
       "Bash(wc -l /c/Users/moust/Documents/GitHub/mcv/docs-v2/tier-5-domains/mcv-only/agentic-os/*.md)",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "Bash(wc -l src/**/*.tsx src/**/*.ts src/views/*.tsx src/components/*.tsx)",
+      "Bash(xargs wc:*)",
+      "Bash(grep -l \"fetch\\\\|export\\\\|async\" /c/Users/moust/mcv-one-desktop/api/*.ts)",
+      "Bash(rm:*)",
+      "Bash(grep -n '`' src/views/CRMView.tsx)",
+      "Bash(gh api:*)",
+      "Bash(ls:*)",
+      "Bash(npx tsx:*)",
+      "Bash(netstat -ano)",
+      "Bash(tasklist)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f\\\\\"Path: {d['path']}\\\\nItems: {len\\(d['items']\\)}\\\\nFirst 5:\\\\\"\\); [print\\(f\\\\\"  {'[DIR]' if i['isDirectory'] else i['extension']:>6} {i['name']}\\\\\"\\) for i in d['items'][:5]]\")",
+      "Bash(taskkill /F /IM \"tsx\")",
+      "Bash(taskkill /F /FI \"WINDOWTITLE eq tsx*\")"
     ]
   }
 }
