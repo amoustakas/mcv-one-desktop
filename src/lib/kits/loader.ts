@@ -65,6 +65,7 @@ import { manifest as storageLocalManifest, handlers as storageLocalHandlers } fr
 import { manifest as storageGdriveManifest, handlers as storageGdriveHandlers } from './builtin/storage-gdrive-kit';
 import { manifest as storageAiManifest, handlers as storageAiHandlers } from './builtin/storage-ai-kit';
 import { manifest as googleRagManifest, handlers as googleRagHandlers } from './builtin/google-rag-kit';
+import { manifest as adStudioManifest, handlers as adStudioHandlers } from './builtin/ad-studio-kit';
 import {
   manifest as mcpBridgeManifest,
   handlers as mcpBridgeHandlers,
@@ -89,6 +90,8 @@ import { manifest as googleAdsManifest, handlers as googleAdsHandlers } from './
 import { manifest as msAdsManifest, handlers as msAdsHandlers } from './builtin/microsoft-ads-kit';
 import { manifest as metaAdsManifest, handlers as metaAdsHandlers } from './builtin/meta-ads-kit';
 import { manifest as tiktokManifest, handlers as tiktokHandlers } from './builtin/tiktok-kit';
+import { manifest as gtmManifest, handlers as gtmHandlers } from './builtin/google-tag-manager-kit';
+import { manifest as paymentsManifest, handlers as paymentsHandlers } from './builtin/payments-kit';
 
 // ---------------------------------------------------------------------------
 // Local Kit Registry
@@ -157,6 +160,7 @@ const builtinKits: KitInstance[] = [
   kit(storageGdriveManifest, storageGdriveHandlers),
   kit(storageAiManifest, storageAiHandlers),
   kit(googleRagManifest, googleRagHandlers),
+  kit(adStudioManifest, adStudioHandlers),
   kit(mcpBridgeManifest, mcpBridgeHandlers),
   kit(deviceManifest, deviceHandlers),
   kit(ledgerManifest, ledgerHandlers),
@@ -176,6 +180,8 @@ const builtinKits: KitInstance[] = [
   kit(msAdsManifest, msAdsHandlers),
   kit(metaAdsManifest, metaAdsHandlers),
   kit(tiktokManifest, tiktokHandlers),
+  kit(gtmManifest, gtmHandlers),
+  kit(paymentsManifest, paymentsHandlers),
 ];
 
 /** Returns all built-in kit instances */
