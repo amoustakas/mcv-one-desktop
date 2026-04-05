@@ -114,7 +114,7 @@ export async function generateIncomeStatement(scope: ReportScope): Promise<Incom
   const cogsAccum: Record<string, number> = {};
   const opexAccum: Record<string, number> = {};
 
-  for (const line of lines as Array<{
+  for (const line of (lines as unknown) as Array<{
     debit_amount: number;
     credit_amount: number;
     ledger_accounts: { code: string; type: string };

@@ -14,7 +14,7 @@ function daysAgo(n: number): string {
   return d.toISOString();
 }
 
-function startOfMonthsAgo(n: number): string {
+export function startOfMonthsAgo(n: number): string {
   const d = new Date();
   d.setMonth(d.getMonth() - n, 1);
   d.setHours(0, 0, 0, 0);

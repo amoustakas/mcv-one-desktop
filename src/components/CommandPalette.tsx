@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, ArrowRight, Globe, MessageSquare, FileText, CheckSquare, Users, Hash, Slash, Wrench, Package } from 'lucide-react';
+import { Search, ArrowRight, Globe, MessageSquare, FileText, CheckSquare, Users, Hash, Slash, Wrench, Package, Mail, Phone } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
 import { useTheme } from '../stores/theme';
 import { ventures } from '../lib/ventures';
 import { apiPost } from '../lib/api/client';
 import { useKitStore } from '../stores/kits';
+import { useCommsActions } from '../stores/comms-actions';
 import { cn } from '../lib/utils';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
@@ -19,7 +20,7 @@ interface PaletteItem {
   category: Category;
 }
 
-type Category = 'Views' | 'Ventures' | 'Documents' | 'Tasks' | 'Contacts' | 'Commands' | 'Kits';
+type Category = 'Views' | 'Ventures' | 'Comms' | 'Documents' | 'Tasks' | 'Contacts' | 'Commands' | 'Kits';
 
 interface CachedData {
   docs: PaletteItem[];
@@ -49,11 +50,12 @@ const SLASH_COMMANDS: { name: string; description: string }[] = [
 
 /* ─── Category order & icons ─────────────────────────────────────── */
 
-const CATEGORY_ORDER: Category[] = ['Views', 'Ventures', 'Kits', 'Documents', 'Tasks', 'Contacts', 'Commands'];
+const CATEGORY_ORDER: Category[] = ['Views', 'Ventures', 'Comms', 'Kits', 'Documents', 'Tasks', 'Contacts', 'Commands'];
 
 const CATEGORY_ICONS: Record<Category, React.ReactNode> = {
   Views: <Globe size={11} />,
   Ventures: <ArrowRight size={11} />,
+  Comms: <MessageSquare size={11} />,
   Documents: <FileText size={11} />,
   Tasks: <CheckSquare size={11} />,
   Contacts: <Users size={11} />,
@@ -232,8 +234,17 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
       ),
   ];
 
+  const { openFab } = useCommsActions();
+  const commsItems: PaletteItem[] = [
+    { id: 'comms-slack', label: 'Send Slack Message', sublabel: 'Message a channel or DM', category: 'Comms', icon: <Hash size={14} />, action: () => { openFab('slack'); } },
+    { id: 'comms-email', label: 'Send Email', sublabel: 'Compose and send via Gmail', category: 'Comms', icon: <Mail size={14} />, action: () => { openFab('email'); } },
+    { id: 'comms-sms', label: 'Send SMS', sublabel: 'Text via Twilio', category: 'Comms', icon: <MessageSquare size={14} />, action: () => { openFab('sms'); } },
+    { id: 'comms-call', label: 'Make Call', sublabel: 'Voice call via Twilio', category: 'Comms', icon: <Phone size={14} />, action: () => { openFab('call'); } },
+  ];
+
   const allItems = [
     ...staticItems,
+    ...commsItems,
     ...kitItems,
     ...cacheRef.current.docs,
     ...cacheRef.current.tasks,

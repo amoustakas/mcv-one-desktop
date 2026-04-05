@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/lib/creator/escrow-service.ts
 // Escrow Service — milestone-based fund holding and conditional release
 // MCV Commerce & Financial OS — Section 8

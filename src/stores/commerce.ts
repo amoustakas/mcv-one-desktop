@@ -72,7 +72,7 @@ interface CommerceState {
 
 const API_BASE = '/api/commerce';
 
-async function get<T>(action: string, params: Record<string, string | number | undefined>): Promise<T> {
+async function apiGet<T>(action: string, params: Record<string, string | number | undefined>): Promise<T> {
   const query = new URLSearchParams({ action });
   for (const [k, v] of Object.entries(params)) {
     if (v !== undefined && v !== null && String(v) !== '') {
@@ -104,7 +104,7 @@ async function post<T>(action: string, ventureId: string, body: Record<string, u
 // STORE
 // ─────────────────────────────────────────────────────────
 
-export const useCommerceStore = create<CommerceState>((set, get) => ({
+export const useCommerceStore = create<CommerceState>((set, _get) => ({
   products: [],
   productsLoading: false,
   subscriptions: [],
@@ -119,7 +119,7 @@ export const useCommerceStore = create<CommerceState>((set, get) => ({
   fetchProducts: async (ventureId, type, status) => {
     set({ productsLoading: true });
     try {
-      const { data } = await get<{ data: Product[] }>('list-products', { ventureId, type, status });
+      const { data } = await apiGet<{ data: Product[] }>('list-products', { ventureId, type, status });
       set({ products: data ?? [] });
     } finally {
       set({ productsLoading: false });
@@ -127,7 +127,7 @@ export const useCommerceStore = create<CommerceState>((set, get) => ({
   },
 
   searchProducts: async (ventureId, query) => {
-    const { data } = await get<{ data: Product[] }>('search-products', { ventureId, query });
+    const { data } = await apiGet<{ data: Product[] }>('search-products', { ventureId, query });
     return data ?? [];
   },
 
@@ -142,7 +142,7 @@ export const useCommerceStore = create<CommerceState>((set, get) => ({
   fetchSubscriptions: async (ventureId, status, customerId) => {
     set({ subscriptionsLoading: true });
     try {
-      const { data } = await get<{ data: Subscription[] }>('list-subscriptions', { ventureId, status, customerId });
+      const { data } = await apiGet<{ data: Subscription[] }>('list-subscriptions', { ventureId, status, customerId });
       set({ subscriptions: data ?? [] });
     } finally {
       set({ subscriptionsLoading: false });
@@ -158,7 +158,7 @@ export const useCommerceStore = create<CommerceState>((set, get) => ({
   cancelSubscription: async (ventureId, subscriptionId, immediate = false) => {
     await post('cancel-subscription', ventureId, { subscriptionId, immediate });
     set((state) => ({
-      subscriptions: state.subscriptions.map((s) =>
+      subscriptions: state.subscriptions.map((s: any) =>
         s.id === subscriptionId
           ? { ...s, status: immediate ? 'canceled' : s.status, cancelAtPeriodEnd: !immediate }
           : s,
@@ -175,7 +175,7 @@ export const useCommerceStore = create<CommerceState>((set, get) => ({
   fetchInvoices: async (ventureId, status, customerId) => {
     set({ invoicesLoading: true });
     try {
-      const { data } = await get<{ data: Invoice[] }>('list-invoices', { ventureId, status, customerId });
+      const { data } = await apiGet<{ data: Invoice[] }>('list-invoices', { ventureId, status, customerId });
       set({ invoices: data ?? [] });
     } finally {
       set({ invoicesLoading: false });
@@ -191,7 +191,7 @@ export const useCommerceStore = create<CommerceState>((set, get) => ({
   sendInvoice: async (ventureId, invoiceId) => {
     await post('send-invoice', ventureId, { invoiceId });
     set((state) => ({
-      invoices: state.invoices.map((inv) =>
+      invoices: state.invoices.map((inv: any) =>
         inv.id === invoiceId ? { ...inv, status: 'sent' } : inv,
       ),
     }));
@@ -200,12 +200,12 @@ export const useCommerceStore = create<CommerceState>((set, get) => ({
   recordInvoicePayment: async (ventureId, invoiceId, amount) => {
     const { data } = await post<{ data: Invoice }>('record-invoice-payment', ventureId, { invoiceId, amount });
     set((state) => ({
-      invoices: state.invoices.map((inv) => (inv.id === invoiceId ? data : inv)),
+      invoices: state.invoices.map((inv: any) => (inv.id === invoiceId ? data : inv)),
     }));
   },
 
   fetchOverdueInvoices: async (ventureId) => {
-    const { data } = await get<{ data: Invoice[] }>('get-overdue', { ventureId });
+    const { data } = await apiGet<{ data: Invoice[] }>('get-overdue', { ventureId });
     return data ?? [];
   },
 
@@ -214,7 +214,7 @@ export const useCommerceStore = create<CommerceState>((set, get) => ({
   fetchLoans: async (ventureId, status) => {
     set({ loansLoading: true });
     try {
-      const { data } = await get<{ data: Loan[] }>('list-loans', { ventureId, status });
+      const { data } = await apiGet<{ data: Loan[] }>('list-loans', { ventureId, status });
       set({ loans: data ?? [] });
     } finally {
       set({ loansLoading: false });
@@ -230,40 +230,40 @@ export const useCommerceStore = create<CommerceState>((set, get) => ({
   disburseLoan: async (ventureId, loanId) => {
     const { data } = await post<{ data: Loan }>('disburse-loan', ventureId, { loanId });
     set((state) => ({
-      loans: state.loans.map((l) => (l.id === loanId ? data : l)),
+      loans: state.loans.map((l: any) => (l.id === loanId ? data : l)),
     }));
   },
 
   recordRepayment: async (ventureId, loanId, amount) => {
     const { data } = await post<{ data: Loan }>('record-repayment', ventureId, { loanId, amount });
     set((state) => ({
-      loans: state.loans.map((l) => (l.id === loanId ? data : l)),
+      loans: state.loans.map((l: any) => (l.id === loanId ? data : l)),
     }));
   },
 
   // ── Derived ──────────────────────────────────────────────
 
   getProductsByType: (type) => {
-    return get().products.filter((p) => p.type === type);
+    return _get().products.filter((p: any) => p.type === type);
   },
 
   getActiveSubscriptions: () => {
-    return get().subscriptions.filter((s) =>
+    return _get().subscriptions.filter((s: any) =>
       s.status === 'active' || s.status === 'trialing',
     );
   },
 
   getOverdueInvoices: () => {
     const today = new Date().toISOString().split('T')[0];
-    return get().invoices.filter(
-      (inv) =>
+    return _get().invoices.filter(
+      (inv: any) =>
         (inv.status === 'sent' || inv.status === 'viewed' || inv.status === 'partial') &&
         inv.dueDate < today,
     );
   },
 
   getActiveLoans: () => {
-    return get().loans.filter((l) =>
+    return _get().loans.filter((l: any) =>
       l.status === 'disbursed' || l.status === 'repaying',
     );
   },
