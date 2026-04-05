@@ -98,6 +98,50 @@ const PROVIDER_CONFIGS: Record<string, () => ProviderTokenConfig> = {
     clientSecret: process.env.CLOUDFLARE_OAUTH_CLIENT_SECRET || '',
     scopes: ['account:read', 'zone:read', 'worker:read'],
   }),
+  stripe: () => ({
+    authUrl: 'https://connect.stripe.com/oauth/authorize',
+    tokenUrl: 'https://connect.stripe.com/oauth/token',
+    revokeUrl: 'https://connect.stripe.com/oauth/deauthorize',
+    userInfoUrl: 'https://api.stripe.com/v1/account',
+    clientId: process.env.STRIPE_CLIENT_ID || '',
+    clientSecret: process.env.STRIPE_SECRET_KEY || '',
+    scopes: ['read_write'],
+  }),
+  slack: () => ({
+    authUrl: 'https://slack.com/oauth/v2/authorize',
+    tokenUrl: 'https://slack.com/api/oauth.v2.access',
+    revokeUrl: 'https://slack.com/api/auth.revoke',
+    userInfoUrl: 'https://slack.com/api/auth.test',
+    clientId: process.env.SLACK_CLIENT_ID || '',
+    clientSecret: process.env.SLACK_CLIENT_SECRET || '',
+    scopes: ['channels:read', 'chat:write', 'users:read', 'team:read'],
+  }),
+  discord: () => ({
+    authUrl: 'https://discord.com/oauth2/authorize',
+    tokenUrl: 'https://discord.com/api/oauth2/token',
+    revokeUrl: 'https://discord.com/api/oauth2/token/revoke',
+    userInfoUrl: 'https://discord.com/api/users/@me',
+    clientId: process.env.DISCORD_CLIENT_ID || '',
+    clientSecret: process.env.DISCORD_CLIENT_SECRET || '',
+    scopes: ['identify', 'guilds', 'guilds.members.read'],
+  }),
+  linear: () => ({
+    authUrl: 'https://linear.app/oauth/authorize',
+    tokenUrl: 'https://api.linear.app/oauth/token',
+    revokeUrl: 'https://api.linear.app/oauth/revoke',
+    userInfoUrl: 'https://api.linear.app/graphql',
+    clientId: process.env.LINEAR_CLIENT_ID || '',
+    clientSecret: process.env.LINEAR_CLIENT_SECRET || '',
+    scopes: ['read', 'write'],
+  }),
+  figma: () => ({
+    authUrl: 'https://www.figma.com/oauth',
+    tokenUrl: 'https://api.figma.com/v1/oauth/token',
+    userInfoUrl: 'https://api.figma.com/v1/me',
+    clientId: process.env.FIGMA_CLIENT_ID || '',
+    clientSecret: process.env.FIGMA_CLIENT_SECRET || '',
+    scopes: ['files:read'],
+  }),
 };
 
 export function getProviderConfig(provider: string): ProviderTokenConfig {
@@ -150,6 +194,11 @@ export async function getProviderToken(
     google: process.env.GOOGLE_AI_KEY || '',
     notion: process.env.NOTION_API_KEY || process.env.NOTION_TOKEN || '',
     cloudflare: process.env.CLOUDFLARE_API_TOKEN || '',
+    stripe: process.env.STRIPE_SECRET_KEY || '',
+    slack: process.env.SLACK_BOT_TOKEN || '',
+    discord: process.env.DISCORD_BOT_TOKEN || '',
+    linear: process.env.LINEAR_API_KEY || '',
+    figma: process.env.FIGMA_ACCESS_TOKEN || '',
   };
 
   const envToken = envFallbacks[provider];

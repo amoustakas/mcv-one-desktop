@@ -21,13 +21,9 @@ import ToolCallIndicator from './ToolCallIndicator';
 import Markdown from './Markdown';
 import FileDropzone from './FileDropzone';
 import FileAttachmentBar from './FileAttachmentBar';
-// @ts-expect-error parallel session feature
 import ThinkingIndicator from './chat/ThinkingIndicator';
-// @ts-expect-error parallel session feature
 import MessageActions from './chat/MessageActions';
-// @ts-expect-error parallel session feature
 import ArtifactsPanel from './chat/ArtifactsPanel';
-// @ts-expect-error parallel session feature
 import ReasoningTrace from './chat/ReasoningTrace';
 import { useFileBridge } from '../stores/file-bridge';
 import { useArtifactStore } from '../stores/artifacts';
@@ -79,7 +75,7 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
   const [streamingText, setStreamingText] = useState('');
   const [recording, setRecording] = useState(false);
   const [speaking, setSpeaking] = useState(false);
-  const [, setIsThinking] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { addArtifacts } = useArtifactStore();
 

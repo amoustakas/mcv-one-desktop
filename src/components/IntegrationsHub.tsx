@@ -5,6 +5,8 @@ import {
   ChevronDown, ChevronUp, Server, Star, StarOff, Search,
   Grid3X3, List, Layers, ExternalLink, Clock, Activity,
   AlertTriangle, Workflow, Layout, X, Eye,
+  CreditCard, MessageSquare, Gamepad2, Palette,
+  Mail, Phone, Landmark, Users,
 } from 'lucide-react';
 import { Button, Badge } from './ui';
 import { cn } from '../lib/utils';
@@ -22,11 +24,18 @@ import { useNotificationStore } from '../stores/notifications';
 // Icon registry
 // ---------------------------------------------------------------------------
 const ICONS: Record<string, typeof Cloud> = {
+  // OAuth providers
   github: GitBranch, google: Globe, notion: Database, cloudflare: Cloud,
+  stripe: CreditCard, slack: MessageSquare, discord: Gamepad2,
+  linear: GitBranch, figma: Palette,
+  // API key services
   'Claude API': Zap, Deepgram: Mic, ElevenLabs: Volume2,
   'Google AI': Zap, 'Google Maps': Globe, Vercel: Radio, n8n: Server,
+  'Twilio': Phone, 'SendGrid': Mail, 'Resend': Mail,
+  'Plaid': Landmark, 'Upstash': Database, 'OpenAI': Zap,
   // Category icons
   GitBranch, Layout, Zap: Zap, Cloud, Radio, Mic, Database, Workflow,
+  MessageSquare, CreditCard, Palette, Users,
 };
 
 const FLOW_STATE_COLORS: Record<ConnectionFlowState, string> = {
