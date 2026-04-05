@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useWorkspaceStore } from '../stores/workspace';
 import {
   LayoutGrid, PieChart, Bot, Brain, Landmark, Activity,
   Wrench, Radio, Settings, ChevronLeft, ChevronRight, ChevronDown,
@@ -200,7 +201,10 @@ const ventureSections: NavSection[] = [
 
 export default function NavRail() {
   const [expanded, setExpanded] = useState(() => window.innerWidth >= 1600);
-  const { mode, activeView, activeVenture, setView, openSplit, splitView } = useNavigation();
+  const { mode, activeView, activeVenture, setView } = useNavigation();
+  const splitPanelWith = useWorkspaceStore(s => s.splitPanelWith);
+  const wsLayout = useWorkspaceStore(s => s.layout);
+  const activePanelId = useWorkspaceStore(s => s.activePanelId);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const setActiveVenture = useVentureContextStore((s) => s.setActiveVenture);
 
@@ -251,10 +255,19 @@ export default function NavRail() {
                 return (
                   <button
                     key={item.id}
-                    className={cn('rail-btn', isActive && 'active', splitView === item.id && 'split-active')}
+                    className={cn('rail-btn', isActive && 'active', false && 'split-active')}
                     onClick={() => setView(item.id)}
-                    onContextMenu={(e) => { e.preventDefault(); openSplit(item.id); }}
-                    title={`${item.label} (right-click: open in split)`}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      // Right-click: split the active panel with this view
+                      function getFirstPanelId(node: any): string | null {
+                        if (node.type === 'view') return node.id;
+                        return getFirstPanelId(node.children[0]);
+                      }
+                      const targetPanel = activePanelId || getFirstPanelId(wsLayout);
+                      if (targetPanel) splitPanelWith(targetPanel, 'horizontal', item.id);
+                    }}
+                    title={`${item.label} (right-click: open in new panel)`}
                   >
                     <Icon size={16} />
                     {expanded && (

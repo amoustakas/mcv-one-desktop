@@ -428,6 +428,26 @@ export default function App() {
   const { isOpen: paletteOpen, toggle: togglePalette, close: closePalette } = useCommandStore();
   const { sidebarCollapsed, statusBarVisible, presets } = useLayoutStore();
   useTheme();
+
+  // Bridge: navigation store → workspace store
+  // When NavRail/keyboard sets activeView, update the active workspace panel
+  const navActiveView = useNavigation(s => s.activeView);
+  const { activePanelId, setPanelView, layout: wsLayout } = useWorkspaceStore();
+  useEffect(() => {
+    if (activePanelId) {
+      // Update the focused panel to show the new view
+      setPanelView(activePanelId, navActiveView);
+    } else {
+      // No panel focused — update the first panel
+      function getFirstPanelId(node: import('./stores/workspace').LayoutNode): string | null {
+        if (node.type === 'view') return node.id;
+        return getFirstPanelId(node.children[0]);
+      }
+      const firstId = getFirstPanelId(wsLayout);
+      if (firstId) setPanelView(firstId, navActiveView);
+    }
+  }, [navActiveView]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useLocalServer(); // Detect local server connection
   usePipelineSync(); // Auto-sync local data → Supabase every 5min
   useRealtimeSync(); // Supabase Realtime — live push updates across devices
