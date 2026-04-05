@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Users, Plus, RefreshCw, Trash2, Mail, Building, DollarSign, TrendingUp,
   ArrowRight, Phone, Globe, X, Edit3, Save, MessageSquare,
@@ -8,36 +8,14 @@ import {
 import { useNavigation } from '../stores/navigation';
 import { ventures } from '../lib/ventures';
 import { useToast } from '../components/Toasts';
-
-// ── Types ──
-interface Contact {
-  id: string; name: string; email: string; phone: string; company: string;
-  role: string; type: string; status: string; venture_id: string; notes: string;
-  tags: string[]; linkedin_url: string; twitter_url: string;
-  last_contacted: string; created_at: string; updated_at: string;
-  account_id: string; lead_score: number; engagement_score: number;
-  source: string; lifecycle_stage: string; title: string;
-}
-interface Account {
-  id: string; name: string; domain: string; industry: string; size: string;
-  revenue: string; description: string; website: string; type: string; status: string;
-  health_score: number; venture_id: string; tags: string[];
-  created_at: string; updated_at: string;
-}
-interface PipelineStage {
-  stage: string; count: number; totalValue: number; weightedValue: number;
-}
-interface Deal {
-  id: string; title: string; value: number; stage: string; venture_id: string;
-  contact_id: string; contacts: { name: string; company: string } | null;
-  probability: number; expected_close: string; notes: string;
-  created_at: string; updated_at: string;
-}
-interface ActivityItem {
-  id: string; type: string; title: string; description: string;
-  contact_id: string; deal_id: string; venture_id: string;
-  contacts: { name: string } | null; created_at: string;
-}
+import {
+  useContacts, useContact, useCreateContact, useUpdateContact, useDeleteContact,
+  useDeals, useCreateDeal, useUpdateDeal, useDeleteDeal,
+  useActivities, useCreateActivity,
+  useAccounts, useCreateAccount, useDeleteAccount,
+  usePipelineStats,
+} from '../hooks/use-crm';
+import type { Contact } from '../lib/schemas/crm';
 
 // ── Constants ──
 const TYPE_COLORS: Record<string, string> = { lead: '#F59E0B', prospect: '#00F0FF', client: '#10B981', partner: '#8B5CF6', investor: '#3B82F6', vendor: '#6B7280' };
@@ -51,37 +29,30 @@ function timeAgo(d: string) { if (!d) return '—'; const mins = Math.floor((Dat
 function formatMoney(n: number) { if (n >= 1e6) return `$${(n/1e6).toFixed(1)}M`; if (n >= 1e3) return `$${(n/1e3).toFixed(0)}K`; return `$${n}`; }
 function formatDate(d: string) { if (!d) return '—'; return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
 
-async function api(body: Record<string, unknown>) {
-  const r = await fetch('/api/crm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  return r.json();
-}
-
 // ═══════════════════════════════════════════
 // Contact Detail Panel (right side drawer)
 // ═══════════════════════════════════════════
-function ContactDetail({ contact, onClose, onUpdate, onDelete }: {
+function ContactDetail({ contact, onClose, onDelete }: {
   contact: Contact; onClose: () => void;
-  onUpdate: (c: Contact) => void; onDelete: (id: string) => void;
+  onDelete: (id: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(contact);
-  const [activities, setActivities] = useState<ActivityItem[]>([]);
-  const [deals, setDeals] = useState<Deal[]>([]);
   const [newTag, setNewTag] = useState('');
   const [actForm, setActForm] = useState({ type: 'note', title: '' });
 
-  useEffect(() => {
-    api({ action: 'get-contact', id: contact.id }).then(r => {
-      if (r.activities) setActivities(r.activities);
-      if (r.deals) setDeals(r.deals);
-    });
-  }, [contact.id]);
+  const { data: contactData } = useContact(contact.id);
+  const activities = contactData?.activities || [];
+  const deals = contactData?.deals || [];
+  const updateContact = useUpdateContact();
+  const createActivity = useCreateActivity();
 
+  // Reset form when contact changes
   useEffect(() => { setForm(contact); setEditing(false); }, [contact.id]);
 
   async function handleSave() {
-    const res = await api({ action: 'update-contact', contact: { id: form.id, name: form.name, email: form.email, phone: form.phone, company: form.company, role: form.role, type: form.type, notes: form.notes, tags: form.tags, linkedin_url: form.linkedin_url, twitter_url: form.twitter_url } });
-    if (res.contact) { onUpdate(res.contact); setEditing(false); }
+    const result = await updateContact.mutateAsync({ id: form.id, name: form.name, email: form.email, phone: form.phone, company: form.company, role: form.role, type: form.type, notes: form.notes, tags: form.tags, linkedin_url: form.linkedin_url, twitter_url: form.twitter_url });
+    if (result.contact) setEditing(false);
   }
 
   async function handleAddTag() {
@@ -89,19 +60,18 @@ function ContactDetail({ contact, onClose, onUpdate, onDelete }: {
     const tags = [...(form.tags || []), newTag.trim()];
     setForm({ ...form, tags });
     setNewTag('');
-    await api({ action: 'update-contact', contact: { id: form.id, tags } });
+    updateContact.mutate({ id: form.id, tags });
   }
 
   function removeTag(t: string) {
     const tags = (form.tags || []).filter(x => x !== t);
     setForm({ ...form, tags });
-    api({ action: 'update-contact', contact: { id: form.id, tags } });
+    updateContact.mutate({ id: form.id, tags });
   }
 
   async function handleLogActivity() {
     if (!actForm.title.trim()) return;
-    const res = await api({ action: 'create-activity', activity: { ...actForm, contact_id: contact.id, venture_id: contact.venture_id } });
-    if (res.activity) setActivities(prev => [res.activity, ...prev]);
+    await createActivity.mutateAsync({ ...actForm, contact_id: contact.id, venture_id: contact.venture_id });
     setActForm({ type: 'note', title: '' });
   }
 
@@ -272,12 +242,6 @@ function ContactDetail({ contact, onClose, onUpdate, onDelete }: {
 // ═══════════════════════════════════════════
 export default function CRMView() {
   const [tab, setTab] = useState<'contacts' | 'deals' | 'accounts' | 'activities' | 'pipeline'>('contacts');
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [deals, setDeals] = useState<Deal[]>([]);
-  const [activities, setActivities] = useState<ActivityItem[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [pipelineData, setPipelineData] = useState<PipelineStage[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -289,68 +253,59 @@ export default function CRMView() {
   const { mode, activeVenture } = useNavigation();
   const { toast } = useToast();
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const v = mode === 'venture' ? activeVenture : undefined;
-    const [c, d, a, ac, p] = await Promise.all([
-      api({ action: 'list-contacts', venture_id: v || undefined }),
-      api({ action: 'list-deals', venture_id: v || undefined }),
-      api({ action: 'list-activities', venture_id: v || undefined }),
-      api({ action: 'list-accounts', venture_id: v || undefined }),
-      api({ action: 'pipeline-analytics' }),
-    ]);
-    setContacts(c.contacts || []);
-    setDeals(d.deals || []);
-    setActivities(a.activities || []);
-    setAccounts(ac.accounts || []);
-    setPipelineData(p.analytics || []);
-    setLoading(false);
-  }, [mode, activeVenture]);
+  const ventureFilter = mode === 'venture' ? activeVenture : undefined;
+  const { data: contacts = [], isLoading: loading, refetch } = useContacts(ventureFilter || undefined);
+  const { data: deals = [] } = useDeals(ventureFilter || undefined);
+  const { data: activities = [] } = useActivities(ventureFilter || undefined);
+  const { data: accounts = [] } = useAccounts(ventureFilter || undefined);
+  const { data: pipelineData = [] } = usePipelineStats(ventureFilter || undefined);
 
-  useEffect(() => { load(); }, [load]);
+  const createContactMut = useCreateContact();
+  const deleteContactMut = useDeleteContact();
+  const createDealMut = useCreateDeal();
+  const updateDealMut = useUpdateDeal();
+  const deleteDealMut = useDeleteDeal();
+  const createAccountMut = useCreateAccount();
+  const deleteAccountMut = useDeleteAccount();
 
   async function handleCreateContact() {
     if (!form.name.trim()) return;
-    await api({ action: 'create-contact', contact: { ...form, venture_id: form.venture_id || (mode === 'venture' ? activeVenture : null) } });
+    await createContactMut.mutateAsync({ ...form, venture_id: form.venture_id || (mode === 'venture' ? activeVenture : null) || '' });
     toast('success', `Contact "${form.name}" created`);
-    setForm({ name: '', email: '', company: '', role: '', type: 'lead', phone: '', venture_id: '' }); setShowAdd(false); load();
+    setForm({ name: '', email: '', company: '', role: '', type: 'lead', phone: '', venture_id: '' }); setShowAdd(false);
   }
 
   async function handleCreateDeal() {
     if (!dealForm.title.trim()) return;
-    await api({ action: 'create-deal', deal: { ...dealForm, venture_id: dealForm.venture_id || (mode === 'venture' ? activeVenture : null), contact_id: dealForm.contact_id || null } });
+    await createDealMut.mutateAsync({ ...dealForm, venture_id: dealForm.venture_id || (mode === 'venture' ? activeVenture : null) || '', contact_id: dealForm.contact_id || '' });
     toast('success', `Deal "${dealForm.title}" created`);
-    setDealForm({ title: '', value: 0, stage: 'discovery', venture_id: '', contact_id: '', probability: 20, expected_close: '' }); setShowAdd(false); load();
+    setDealForm({ title: '', value: 0, stage: 'discovery', venture_id: '', contact_id: '', probability: 20, expected_close: '' }); setShowAdd(false);
   }
 
-  async function handleDeleteContact(id: string) {
-    await api({ action: 'delete-contact', id });
-    setContacts(c => c.filter(x => x.id !== id));
+  function handleDeleteContact(id: string) {
+    deleteContactMut.mutate(id);
     if (selectedContact?.id === id) setSelectedContact(null);
     toast('info', 'Contact deleted');
   }
 
-  async function handleUpdateDealStage(dealId: string, newStage: string) {
-    await api({ action: 'update-deal', deal: { id: dealId, stage: newStage } });
-    setDeals(prev => prev.map(d => d.id === dealId ? { ...d, stage: newStage } : d));
+  function handleUpdateDealStage(dealId: string, newStage: string) {
+    updateDealMut.mutate({ id: dealId, stage: newStage });
     toast('info', `Deal moved to ${newStage.replace(/_/g, ' ')}`);
   }
 
-  async function handleDeleteDeal(id: string) {
-    await api({ action: 'delete-deal', id });
-    setDeals(prev => prev.filter(d => d.id !== id));
+  function handleDeleteDeal(id: string) {
+    deleteDealMut.mutate(id);
   }
 
   async function handleCreateAccount() {
     if (!accountForm.name.trim()) return;
-    await api({ action: 'create-account', account: { ...accountForm, venture_id: accountForm.venture_id || (mode === 'venture' ? activeVenture : null) } });
+    await createAccountMut.mutateAsync({ ...accountForm, venture_id: accountForm.venture_id || (mode === 'venture' ? activeVenture : null) || '' });
     toast('success', `Account "${accountForm.name}" created`);
-    setAccountForm({ name: '', domain: '', industry: '', size: '', type: 'prospect', venture_id: '' }); setShowAdd(false); load();
+    setAccountForm({ name: '', domain: '', industry: '', size: '', type: 'prospect', venture_id: '' }); setShowAdd(false);
   }
 
-  async function handleDeleteAccount(id: string) {
-    await api({ action: 'delete-account', id });
-    setAccounts(prev => prev.filter(a => a.id !== id));
+  function handleDeleteAccount(id: string) {
+    deleteAccountMut.mutate(id);
   }
 
   // Filtered contacts
@@ -395,7 +350,7 @@ export default function CRMView() {
           {tab !== 'activities' && tab !== 'pipeline' && (
             <button className="crm-add-btn" onClick={() => setShowAdd(!showAdd)}><Plus size={13} /> {tab === 'contacts' ? 'Contact' : tab === 'accounts' ? 'Account' : 'Deal'}</button>
           )}
-          <button className="crm-refresh" onClick={load}><RefreshCw size={14} className={loading ? 'spin' : ''} /></button>
+          <button className="crm-refresh" onClick={() => refetch()}><RefreshCw size={14} className={loading ? 'spin' : ''} /></button>
         </div>
       </div>
 
@@ -644,7 +599,6 @@ export default function CRMView() {
           <ContactDetail
             contact={selectedContact}
             onClose={() => setSelectedContact(null)}
-            onUpdate={(c) => { setContacts(prev => prev.map(x => x.id === c.id ? c : x)); setSelectedContact(c); }}
             onDelete={handleDeleteContact}
           />
         )}

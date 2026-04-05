@@ -202,13 +202,15 @@ async function streamOnce(
   let text = '';
   let stopReason = 'end_turn';
   const toolCalls: ToolCallEvent[] = [];
+  let buffer = '';
 
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
 
-    const chunk = decoder.decode(value, { stream: true });
-    const lines = chunk.split('\n');
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? ''; // keep incomplete last line for next read
 
     for (const line of lines) {
       if (!line.startsWith('data: ')) continue;

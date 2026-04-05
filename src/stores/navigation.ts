@@ -38,7 +38,10 @@ export type ViewId =
   | 'venture-forge'
   | 'venture-tasks'
   | 'venture-settings'
-  | 'venture-onboarding';
+  | 'venture-onboarding'
+  // Kit views
+  | 'kit-store'
+  | 'kit-studio';
 
 export type ContextMode = 'global' | 'venture';
 

@@ -658,8 +658,87 @@ export async function handleCommand(input: string): Promise<CommandResult> {
 | \`/version\` | Show app version |
 | \`/clear\` | Clear the chat |
 | \`/venture <name>\` | Switch active venture context |
-| \`/help\` | Show this command reference |`,
+| \`/help\` | Show this command reference |
+
+### Kits
+| Command | Description |
+|---------|-------------|
+| \`/kits\` | List all loaded kits and their tools |
+| \`/kit info <id>\` | Show detailed kit information |
+| \`/kit disable <id>\` | Disable a loaded kit |
+| \`/kit enable <id>\` | Re-enable a disabled kit |`,
       };
+    }
+
+    // =====================================================================
+    //  KIT COMMANDS
+    // =====================================================================
+
+    if (cmd === 'kits') {
+      // Dynamic import to avoid circular dependency
+      const { useKitStore } = await import('../stores/kits');
+      const kits = useKitStore.getState().getLoadedKits();
+      if (kits.length === 0) {
+        return { handled: true, response: 'No kits loaded.' };
+      }
+      let md = '## Loaded Kits\n\n';
+      for (const kit of kits) {
+        const tools = kit.manifest.tools.map((t) => `\`${t.name}\``).join(', ');
+        const status = kit.status === 'loaded' ? '`active`' : `\`${kit.status}\``;
+        md += `- ${status} **${kit.manifest.name}** (${kit.manifest.id} v${kit.manifest.version})\n`;
+        md += `  Tools: ${tools}\n`;
+        md += `  Source: ${kit.source} · Scope: ${kit.manifest.ventureScope === '*' ? 'all ventures' : (kit.manifest.ventureScope as string[]).join(', ')}\n\n`;
+      }
+      return { handled: true, response: md };
+    }
+
+    if (cmd === 'kit') {
+      const sub = parts[1]?.toLowerCase();
+      if (!sub) {
+        return {
+          handled: true,
+          response: '**Kit Commands:**\n- `/kits` — list loaded kits\n- `/kit info <id>` — show kit details\n- `/kit disable <id>` — disable a kit\n- `/kit enable <id>` — enable a kit',
+        };
+      }
+
+      const { useKitStore } = await import('../stores/kits');
+
+      if (sub === 'info') {
+        const kitId = parts[2];
+        if (!kitId) return { handled: true, response: 'Usage: `/kit info <kit-id>`' };
+        const kits = useKitStore.getState().getLoadedKits();
+        const kit = kits.find((k) => k.manifest.id === kitId);
+        if (!kit) return { handled: true, response: `Kit "${kitId}" not found.` };
+
+        let md = `## ${kit.manifest.name}\n\n`;
+        md += `**ID:** ${kit.manifest.id}\n**Version:** ${kit.manifest.version}\n**Author:** ${kit.manifest.author}\n`;
+        md += `**Status:** ${kit.status}\n**Runtime:** ${kit.manifest.runtime}\n**Source:** ${kit.source}\n\n`;
+        md += `${kit.manifest.description}\n\n`;
+        md += `### Tools\n\n`;
+        for (const tool of kit.manifest.tools) {
+          md += `- **${tool.name}** — ${tool.description}\n`;
+        }
+        if (kit.manifest.instructions) {
+          md += `\n### Instructions\n\n${kit.manifest.instructions}\n`;
+        }
+        return { handled: true, response: md };
+      }
+
+      if (sub === 'disable') {
+        const kitId = parts[2];
+        if (!kitId) return { handled: true, response: 'Usage: `/kit disable <kit-id>`' };
+        useKitStore.getState().disableKit(kitId);
+        return { handled: true, response: `Kit **${kitId}** disabled.` };
+      }
+
+      if (sub === 'enable') {
+        const kitId = parts[2];
+        if (!kitId) return { handled: true, response: 'Usage: `/kit enable <kit-id>`' };
+        useKitStore.getState().enableKit(kitId);
+        return { handled: true, response: `Kit **${kitId}** enabled.` };
+      }
+
+      return { handled: true, response: `Unknown kit command: \`${sub}\`. Try \`/kit\` for usage.` };
     }
 
     // =====================================================================

@@ -3,7 +3,7 @@ import {
   LayoutGrid, PieChart, Bot, Brain, Landmark, Activity,
   Wrench, Radio, Settings, ChevronLeft, ChevronRight, ChevronDown,
   CheckSquare, Users, Hammer, BookOpen, Monitor, Sparkles,
-  Wand2, Swords, TrendingUp, FileText, Plus,
+  Wand2, Swords, TrendingUp, FileText, Plus, Package,
 } from 'lucide-react';
 import { useNavigation, type ViewId } from '../stores/navigation';
 
@@ -16,6 +16,7 @@ const VIEW_ICONS: Record<string, React.FC<{ size: number }>> = {
   tasks: CheckSquare, docs: BookOpen,
   team: Users,
   'ai-studio': Sparkles, 'prompt-composer': Wand2,
+  'kit-store': Package,
   settings: Settings,
   'venture-dashboard': LayoutGrid, 'venture-profile': FileText,
   'venture-engineering': Wrench, 'venture-growth': TrendingUp,
@@ -74,6 +75,7 @@ const globalSections: NavSection[] = [
     items: [
       { id: 'ai-studio', label: 'AI Studio' },
       { id: 'prompt-composer', label: 'Prompt Composer' },
+      { id: 'kit-store', label: 'Kit Store' },
     ],
   },
 ];

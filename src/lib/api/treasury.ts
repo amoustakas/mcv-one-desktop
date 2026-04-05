@@ -24,3 +24,17 @@ export async function getTreasuryOverview() {
 export async function getVentureFinancials(ventureId: string) {
   return apiPost<{ financials: Record<string, unknown> }>(EP, { action: 'venture', venture_id: ventureId });
 }
+
+export interface FinancialRow {
+  venture_id: string;
+  revenue: number;
+  expenses: number;
+}
+
+export async function listFinancials(month: string) {
+  return apiPost<{ financials: FinancialRow[] }>(EP, { action: 'list', month });
+}
+
+export async function upsertFinancials(ventureId: string, month: string, revenue: number, expenses: number) {
+  return apiPost<{ success: boolean }>(EP, { action: 'upsert', venture_id: ventureId, month, revenue, expenses });
+}

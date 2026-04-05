@@ -1,9 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PieChart, ExternalLink, RefreshCw, GitBranch, Cloud, FileText, CheckSquare, MessageSquare } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
 import { useTheme } from '../stores/theme';
 import { ventures } from '../lib/ventures';
 import { supabase } from '../lib/supabase';
+import { useGithubOverview } from '../hooks/use-github';
+import { useDeployments } from '../hooks/use-deployments';
+import { useDocuments } from '../hooks/use-docs';
+import { useTasks } from '../hooks/use-tasks';
 
 const statusOrder: Record<string, number> = { active: 0, development: 1, planned: 2, concept: 3 };
 const statusLabels: Record<string, string> = { active: 'ACTIVE', development: 'DEV', planned: 'PLANNED', concept: 'CONCEPT' };
@@ -18,43 +22,46 @@ interface VentureKPIs {
 export default function PortfolioView() {
   const { switchToVenture } = useNavigation();
   const { applyVentureTheme } = useTheme();
-  const [kpis, setKPIs] = useState<Record<string, VentureKPIs>>({});
-  const [loading, setLoading] = useState(true);
-  const [totals, setTotals] = useState({ repos: 0, deploys: 0, docs: 0, tasks: 0, chats: 0 });
+  const queryClient = useQueryClient();
 
-  async function load() {
-    setLoading(true);
-    const [gh, vc, docs, tasks, convos] = await Promise.all([
-      fetch('/api/github?action=overview').then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('/api/vercel-status?action=deployments').then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('/api/docs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) }).then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) }).then(r => r.ok ? r.json() : null).catch(() => null),
-      supabase ? supabase.from('conversations').select('venture_id') : null,
-    ]);
+  const { data: githubOverview } = useGithubOverview();
+  const { data: deployments } = useDeployments();
+  const { data: allDocs = [] } = useDocuments();
+  const { data: allTasksRaw = [] } = useTasks();
+  const { data: allConvos = [], isLoading: loading } = useQuery({
+    queryKey: ['conversations', 'all'],
+    queryFn: async () => {
+      if (!supabase) return [];
+      const { data } = await supabase.from('conversations').select('venture_id');
+      return data || [];
+    },
+  });
 
-    const repoCount = gh?.repos?.length || 0;
-    const deployCount = vc?.deployments?.length || 0;
-    const allDocs = docs?.documents || [];
-    const allTasks = (tasks?.tasks || []).filter((t: { status?: string }) => t.status !== 'done' && t.status !== 'completed');
-    const allConvos = convos?.data || [];
+  const allTasks = allTasksRaw.filter((t: { status?: string }) => t.status !== 'done' && t.status !== 'completed');
 
-    const newKPIs: Record<string, VentureKPIs> = {};
-    for (const v of ventures) {
-      newKPIs[v.id] = {
-        repos: 0,
-        deploys: 0,
-        docs: allDocs.filter((d: { venture_id?: string }) => d.venture_id === v.id).length,
-        tasks: allTasks.filter((t: { venture_id?: string }) => t.venture_id === v.id).length,
-        chats: allConvos.filter((c: { venture_id?: string }) => c.venture_id === v.id).length,
-      };
-    }
+  const repoCount = githubOverview?.repos || 0;
+  const deployCount = deployments?.length || 0;
 
-    setKPIs(newKPIs);
-    setTotals({ repos: repoCount, deploys: deployCount, docs: allDocs.length, tasks: allTasks.length, chats: allConvos.length });
-    setLoading(false);
+  const kpis: Record<string, VentureKPIs> = {};
+  for (const v of ventures) {
+    kpis[v.id] = {
+      repos: 0,
+      deploys: 0,
+      docs: allDocs.filter((d: { venture_id?: string }) => d.venture_id === v.id).length,
+      tasks: allTasks.filter((t: { venture_id?: string }) => t.venture_id === v.id).length,
+      chats: allConvos.filter((c: { venture_id?: string }) => c.venture_id === v.id).length,
+    };
   }
 
-  useEffect(() => { load(); }, []);
+  const totals = { repos: repoCount, deploys: deployCount, docs: allDocs.length, tasks: allTasks.length, chats: allConvos.length };
+
+  function refresh() {
+    queryClient.invalidateQueries({ queryKey: ['github', 'overview'] });
+    queryClient.invalidateQueries({ queryKey: ['vercel', 'deployments'] });
+    queryClient.invalidateQueries({ queryKey: ['docs'] });
+    queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    queryClient.invalidateQueries({ queryKey: ['conversations', 'all'] });
+  }
 
   function enter(slug: string) {
     switchToVenture(slug);
@@ -70,7 +77,7 @@ export default function PortfolioView() {
           <h1 className="port-title"><PieChart size={20} /> Venture Portfolio</h1>
           <p className="port-subtitle">EdgeIQ Holdings — {ventures.length} ventures across gaming, fintech, Web3, infrastructure, and R&D</p>
         </div>
-        <button className="port-refresh" onClick={load}><RefreshCw size={14} className={loading ? 'spin' : ''} /></button>
+        <button className="port-refresh" onClick={refresh}><RefreshCw size={14} className={loading ? 'spin' : ''} /></button>
       </div>
 
       {/* Portfolio KPIs */}

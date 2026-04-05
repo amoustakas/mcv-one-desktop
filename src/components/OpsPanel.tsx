@@ -1,43 +1,58 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Activity, Cpu, Database, GitBranch, Globe, Shield, Wifi, Zap, RefreshCw, ExternalLink, Cloud, Server, Radio, CheckCircle2 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
-
-interface RepoInfo { name: string; updated: string | null; open_issues: number; language?: string }
-interface CommitInfo { sha: string; message: string; date: string }
-interface DeployInfo { name: string; state: string; url: string; target: string; created: number }
+import { useGithubRepos, useGithubCommits } from '../hooks/use-github';
+import { useDeployments } from '../hooks/use-deployments';
+import { apiGet } from '../lib/api/client';
 
 function timeAgo(d: string | number) { const mins = Math.floor((Date.now() - (typeof d === 'number' ? d : new Date(d).getTime())) / 60000); if (mins < 1) return 'now'; if (mins < 60) return `${mins}m`; const h = Math.floor(mins / 60); if (h < 24) return `${h}h`; return `${Math.floor(h / 24)}d`; }
 
 interface ServiceStatus { name: string; icon: React.ReactNode; status: 'online' | 'offline' | 'degraded'; latency?: string; detail?: string }
 
 export default function OpsPanel() {
-  const [repos, setRepos] = useState<RepoInfo[]>([]);
-  const [commits, setCommits] = useState<CommitInfo[]>([]);
-  const [deploys, setDeploys] = useState<DeployInfo[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+
+  // TanStack Query hooks for GitHub + Vercel
+  const { data: repos = [], isLoading: reposLoading } = useGithubRepos();
+  const { data: rawCommits = [], isLoading: commitsLoading } = useGithubCommits();
+  const { data: rawDeploys = [], isLoading: deploysLoading } = useDeployments();
+
+  // Map GithubCommit → flat shape used in JSX
+  const commits = rawCommits.map(c => ({
+    sha: c.sha.slice(0, 7),
+    message: c.commit.message.split('\n')[0],
+    date: c.commit.author.date,
+  }));
+
+  // Deployments (already close to expected shape)
+  const deploys = rawDeploys.slice(0, 12);
+
+  // Repos mapped to expected shape
+  const mappedRepos = repos.map(r => ({
+    name: r.name,
+    updated: r.updated_at,
+    open_issues: r.open_issues_count,
+    language: r.language,
+  }));
+
+  // Health check + DB stats — no dedicated hook, use local state
   const [services, setServices] = useState<ServiceStatus[]>([]);
   const [dbStats, setDbStats] = useState({ tables: 0, conversations: 0, documents: 0, tasks: 0, contacts: 0 });
+  const [healthLoading, setHealthLoading] = useState(true);
 
-  async function load() {
-    setLoading(true);
+  const loadHealth = useCallback(async () => {
+    setHealthLoading(true);
     const t0 = Date.now();
-    const [gh, vc, hp] = await Promise.all([
-      fetch('/api/github?action=overview').then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('/api/vercel-status?action=deployments').then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('/api/health').then(r => r.ok ? r.json() : null).catch(() => null),
-    ]);
+    const hp = await apiGet<Record<string, boolean>>('/api/health').catch(() => null);
     const apiLatency = `${Date.now() - t0}ms`;
 
-    if (gh) { setRepos(gh.repos || []); setCommits(gh.recent_commits || []); }
-    if (vc) setDeploys(vc.deployments?.slice(0, 12) || []);
-
-    // Build real service status from health check
     const h = hp || {};
     const svc: ServiceStatus[] = [
       { name: 'Claude API', icon: <Cpu size={13} />, status: h.ANTHROPIC_API_KEY ? 'online' : 'offline', latency: apiLatency },
       { name: 'Supabase', icon: <Database size={13} />, status: h.SUPABASE_URL ? 'online' : 'offline' },
-      { name: 'Vercel', icon: <Cloud size={13} />, status: vc ? 'online' : 'offline', detail: vc ? `${(vc.deployments || []).length} deploys` : undefined },
-      { name: 'GitHub', icon: <GitBranch size={13} />, status: (h.GITHUB_TOKEN && gh) ? 'online' : h.GITHUB_TOKEN ? 'degraded' : 'offline', detail: gh ? `${(gh.repos || []).length} repos` : undefined },
+      { name: 'Vercel', icon: <Cloud size={13} />, status: rawDeploys.length > 0 ? 'online' : 'offline', detail: rawDeploys.length > 0 ? `${rawDeploys.length} deploys` : undefined },
+      { name: 'GitHub', icon: <GitBranch size={13} />, status: (h.GITHUB_TOKEN && repos.length > 0) ? 'online' : h.GITHUB_TOKEN ? 'degraded' : 'offline', detail: repos.length > 0 ? `${repos.length} repos` : undefined },
       { name: 'Gemini', icon: <Zap size={13} />, status: h.GOOGLE_AI_KEY ? 'online' : 'offline' },
       { name: 'Clerk Auth', icon: <Shield size={13} />, status: h.CLERK_SECRET_KEY ? 'online' : 'offline' },
       { name: 'Deepgram', icon: <Radio size={13} />, status: h.DEEPGRAM_API_KEY ? 'online' : 'offline' },
@@ -57,10 +72,18 @@ export default function OpsPanel() {
       ]);
       setDbStats({ tables: 9, conversations: conv.count || 0, documents: doc.count || 0, tasks: task.count || 0, contacts: contact.count || 0 });
     }
-    setLoading(false);
-  }
+    setHealthLoading(false);
+  }, [repos.length, rawDeploys.length]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { loadHealth(); }, [loadHealth]);
+
+  const loading = reposLoading || commitsLoading || deploysLoading || healthLoading;
+
+  const handleRefresh = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['github'] });
+    queryClient.invalidateQueries({ queryKey: ['vercel'] });
+    loadHealth();
+  }, [queryClient, loadHealth]);
 
   const onlineCount = services.filter(s => s.status === 'online').length;
   const liveCount = deploys.filter(d => d.state === 'READY').length;
@@ -72,10 +95,10 @@ export default function OpsPanel() {
         <h1 className="ops-title">Ops Center</h1>
         <div className="ops-header-stats">
           <span className="ops-stat-pill online"><CheckCircle2 size={10} /> {onlineCount}/{services.length} Online</span>
-          <span className="ops-stat-pill">{repos.length} Repos</span>
+          <span className="ops-stat-pill">{mappedRepos.length} Repos</span>
           <span className="ops-stat-pill">{liveCount} Live</span>
         </div>
-        <button className="ops-refresh" onClick={load} disabled={loading}>
+        <button className="ops-refresh" onClick={handleRefresh} disabled={loading}>
           <RefreshCw size={14} className={loading ? 'spin' : ''} />
         </button>
       </div>
@@ -111,9 +134,9 @@ export default function OpsPanel() {
             </div>
           </div>
           <div className="ops-section">
-            <h2 className="ops-section-title"><GitBranch size={11} /> Repositories ({repos.length})</h2>
+            <h2 className="ops-section-title"><GitBranch size={11} /> Repositories ({mappedRepos.length})</h2>
             <div className="ops-repos">
-              {repos.map(r => (
+              {mappedRepos.map(r => (
                 <div key={r.name} className="ops-repo">
                   <span className="ops-repo-name">{r.name}</span>
                   <span className="ops-repo-time">{r.updated ? timeAgo(r.updated) : '—'}</span>

@@ -1,14 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { TrendingUp, Target, Megaphone, BarChart3, Plus, RefreshCw, Trash2, Calendar, DollarSign, Edit3, X, Users, Zap } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
 import { ventures } from '../lib/ventures';
-
-interface Campaign {
-  id: string; name: string; status: string; type: string; venture_id: string;
-  channel: string; budget: number; reach: number; conversions: number;
-  start_date: string; end_date: string; description: string;
-  created_at: string; updated_at: string;
-}
+import { useCampaigns, useCreateCampaign, useUpdateCampaign, useDeleteCampaign } from '../hooks/use-campaigns';
+import type { Campaign } from '../lib/api/campaigns';
 
 const STATUS_COLORS: Record<string, string> = { active: '#10B981', draft: '#00F0FF', planned: '#8B5CF6', completed: '#3B82F6', paused: '#F59E0B' };
 const CHANNEL_COLORS: Record<string, string> = { social: '#3B82F6', email: '#10B981', seo: '#8B5CF6', paid: '#F59E0B', content: '#00F0FF', pr: '#EC4899', events: '#EF4444', referral: '#6366F1' };
@@ -16,45 +11,32 @@ const CHANNEL_COLORS: Record<string, string> = { social: '#3B82F6', email: '#10B
 function formatMoney(n: number) { if (n >= 1e6) return `$${(n/1e6).toFixed(1)}M`; if (n >= 1e3) return `$${(n/1e3).toFixed(0)}K`; return `$${n}`; }
 function formatNum(n: number) { if (n >= 1e6) return `${(n/1e6).toFixed(1)}M`; if (n >= 1e3) return `${(n/1e3).toFixed(1)}K`; return `${n}`; }
 
-async function api(body: Record<string, unknown>) {
-  const r = await fetch('/api/campaigns', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  return r.json();
-}
-
 export default function GrowthView() {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', type: 'marketing', channel: 'social', status: 'draft', venture_id: '', budget: 0, description: '', start_date: '', end_date: '' });
   const { mode, activeVenture } = useNavigation();
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const v = mode === 'venture' ? activeVenture : undefined;
-    const res = await api({ action: 'list', venture_id: v || undefined });
-    setCampaigns(res.campaigns || []);
-    setLoading(false);
-  }, [mode, activeVenture]);
-
-  useEffect(() => { load(); }, [load]);
+  const ventureId = mode === 'venture' ? activeVenture || undefined : undefined;
+  const { data: campaigns = [], isLoading, refetch } = useCampaigns(ventureId);
+  const createCampaign = useCreateCampaign();
+  const updateCampaign = useUpdateCampaign();
+  const deleteCampaign = useDeleteCampaign();
 
   async function handleCreate() {
     if (!form.name.trim()) return;
-    await api({ action: 'create', campaign: { ...form, venture_id: form.venture_id || (mode === 'venture' ? activeVenture : null) } });
+    await createCampaign.mutateAsync({ ...form, venture_id: form.venture_id || (mode === 'venture' ? activeVenture : '') } as Partial<Campaign>);
     setForm({ name: '', type: 'marketing', channel: 'social', status: 'draft', venture_id: '', budget: 0, description: '', start_date: '', end_date: '' });
-    setShowAdd(false); load();
+    setShowAdd(false);
   }
 
   async function handleUpdate(id: string, updates: Partial<Campaign>) {
-    await api({ action: 'update', campaign: { id, ...updates } });
-    setCampaigns(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
+    await updateCampaign.mutateAsync({ id, ...updates });
     setEditId(null);
   }
 
   async function handleDelete(id: string) {
-    await api({ action: 'delete', id });
-    setCampaigns(prev => prev.filter(c => c.id !== id));
+    await deleteCampaign.mutateAsync(id);
   }
 
   // KPIs
@@ -90,7 +72,7 @@ export default function GrowthView() {
         </div>
         <div className="growth-header-right">
           <button className="growth-add-btn" onClick={() => setShowAdd(!showAdd)}><Plus size={13} /> Campaign</button>
-          <button className="growth-refresh" onClick={load}><RefreshCw size={14} className={loading ? 'spin' : ''} /></button>
+          <button className="growth-refresh" onClick={() => refetch()}><RefreshCw size={14} className={isLoading ? 'spin' : ''} /></button>
         </div>
       </div>
 
@@ -148,7 +130,7 @@ export default function GrowthView() {
         <div className="growth-section growth-section-wide">
           <h2 className="growth-section-title"><Megaphone size={14} /> All Campaigns</h2>
           <div className="growth-campaigns">
-            {campaigns.length === 0 && !loading && <p className="growth-empty-hint">No campaigns yet. Use the + Campaign button to create your first growth initiative.</p>}
+            {campaigns.length === 0 && !isLoading && <p className="growth-empty-hint">No campaigns yet. Use the + Campaign button to create your first growth initiative.</p>}
             {campaigns.map(c => {
               const ventureObj = ventures.find(v => v.id === c.venture_id);
               const isEditing = editId === c.id;

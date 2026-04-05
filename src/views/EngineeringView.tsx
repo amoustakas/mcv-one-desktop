@@ -1,9 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Wrench, GitBranch, GitPullRequest, ExternalLink, RefreshCw, CheckCircle2, XCircle, Clock } from 'lucide-react';
-
-interface Repo { name: string; description: string | null; url: string; language: string; updated: string; open_issues: number; stars: number }
-interface Commit { sha: string; message: string; author: string; date: string; url: string }
-interface PR { number: number; title: string; state: string; author: string; updated: string; merged: string | null; url: string }
+import { useGithubRepos, useGithubCommits, useGithubPRs } from '../hooks/use-github';
 
 function timeAgo(d: string) {
   const mins = Math.floor((Date.now() - new Date(d).getTime()) / 60000);
@@ -16,33 +13,26 @@ function timeAgo(d: string) {
 const LANG_COLORS: Record<string, string> = { TypeScript: '#3178C6', Python: '#3572A5', JavaScript: '#F7DF1E', Rust: '#DEA584' };
 
 export default function EngineeringView() {
-  const [repos, setRepos] = useState<Repo[]>([]);
-  const [commits, setCommits] = useState<Commit[]>([]);
-  const [prs, setPrs] = useState<PR[]>([]);
-  const [loading, setLoading] = useState(true);
   const [activeRepo, setActiveRepo] = useState('mcv-one-desktop');
 
-  async function load() {
-    setLoading(true);
-    const [repoData, commitData, prData] = await Promise.all([
-      fetch('/api/github?action=repos').then(r => r.ok ? r.json() : { repos: [] }).catch(() => ({ repos: [] })),
-      fetch(`/api/github?action=commits&repo=${activeRepo}`).then(r => r.ok ? r.json() : { commits: [] }).catch(() => ({ commits: [] })),
-      fetch(`/api/github?action=prs&repo=${activeRepo}`).then(r => r.ok ? r.json() : { prs: [] }).catch(() => ({ prs: [] })),
-    ]);
-    setRepos(repoData.repos || []);
-    setCommits(commitData.commits || []);
-    setPrs(prData.prs || []);
-    setLoading(false);
-  }
+  const { data: repos = [], isLoading: reposLoading, refetch: refetchRepos } = useGithubRepos();
+  const { data: commits = [], isLoading: commitsLoading, refetch: refetchCommits } = useGithubCommits(activeRepo);
+  const { data: prs = [], isLoading: prsLoading, refetch: refetchPRs } = useGithubPRs(activeRepo);
 
-  useEffect(() => { load(); }, [activeRepo]);
+  const loading = reposLoading || commitsLoading || prsLoading;
+
+  function refresh() {
+    refetchRepos();
+    refetchCommits();
+    refetchPRs();
+  }
 
   return (
     <div className="eng">
       <div className="eng-header">
         <Wrench size={20} />
         <h1 className="eng-title">Engineering</h1>
-        <button className="eng-refresh" onClick={load} disabled={loading}>
+        <button className="eng-refresh" onClick={refresh} disabled={loading}>
           <RefreshCw size={14} className={loading ? 'spin' : ''} />
         </button>
       </div>
@@ -59,8 +49,8 @@ export default function EngineeringView() {
                   {r.language && <span className="eng-repo-lang" style={{ color: LANG_COLORS[r.language] || '#888' }}>{r.language}</span>}
                 </div>
                 <div className="eng-repo-meta">
-                  {r.updated && <span>{timeAgo(r.updated)} ago</span>}
-                  {r.open_issues > 0 && <span>{r.open_issues} issues</span>}
+                  {r.updated_at && <span>{timeAgo(r.updated_at)} ago</span>}
+                  {r.open_issues_count > 0 && <span>{r.open_issues_count} issues</span>}
                 </div>
               </button>
             ))}
@@ -75,10 +65,10 @@ export default function EngineeringView() {
           </h2>
           <div className="eng-commits">
             {commits.map(c => (
-              <a key={c.sha} href={c.url} target="_blank" rel="noreferrer" className="eng-commit">
-                <code className="eng-sha">{c.sha}</code>
-                <span className="eng-commit-msg">{c.message}</span>
-                <span className="eng-commit-meta">{c.author} &middot; {timeAgo(c.date)}</span>
+              <a key={c.sha} href={c.html_url} target="_blank" rel="noreferrer" className="eng-commit">
+                <code className="eng-sha">{c.sha.slice(0, 7)}</code>
+                <span className="eng-commit-msg">{c.commit.message}</span>
+                <span className="eng-commit-meta">{c.commit.author.name} &middot; {timeAgo(c.commit.author.date)}</span>
               </a>
             ))}
             {commits.length === 0 && !loading && <p className="eng-empty">No commits</p>}
@@ -93,13 +83,13 @@ export default function EngineeringView() {
           </h2>
           <div className="eng-prs">
             {prs.map(p => (
-              <a key={p.number} href={p.url} target="_blank" rel="noreferrer" className="eng-pr">
+              <a key={p.number} href={p.html_url} target="_blank" rel="noreferrer" className="eng-pr">
                 <span className="eng-pr-icon">
-                  {p.merged ? <CheckCircle2 size={13} className="merged" /> : p.state === 'open' ? <GitPullRequest size={13} className="open" /> : <XCircle size={13} className="closed" />}
+                  {p.state === 'closed' ? <CheckCircle2 size={13} className="merged" /> : p.state === 'open' ? <GitPullRequest size={13} className="open" /> : <XCircle size={13} className="closed" />}
                 </span>
                 <div className="eng-pr-info">
                   <span className="eng-pr-title">#{p.number} {p.title}</span>
-                  <span className="eng-pr-meta">{p.author} &middot; {timeAgo(p.updated)}</span>
+                  <span className="eng-pr-meta">{p.user.login} &middot; {timeAgo(p.updated_at)}</span>
                 </div>
                 <ExternalLink size={10} className="eng-pr-link" />
               </a>

@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { Landmark, Coins, Clock, ArrowUpRight, ArrowDownRight, RefreshCw, Edit3, Save, X } from 'lucide-react';
 import { ventures as ventureRegistry } from '../lib/ventures';
+import { useFinancialsList, useUpsertFinancials } from '../hooks/use-treasury';
 
 interface VentureBurn { venture_id: string; name: string; color: string; revenue: number; expenses: number; burn: number; }
 
@@ -13,40 +14,29 @@ function formatUSD(n: number) {
   return `$${abs}`;
 }
 
-async function api(body: Record<string, unknown>) {
-  const r = await fetch('/api/treasury', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  return r.json();
-}
-
 export default function TreasuryView() {
-  const [burns, setBurns] = useState<VentureBurn[]>([]);
-  const [loading, setLoading] = useState(true);
   const [editId, setEditId] = useState<string | null>(null);
   const [editRevenue, setEditRevenue] = useState(0);
   const [editExpenses, setEditExpenses] = useState(0);
   const [month, setMonth] = useState(currentMonth);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const res = await api({ action: 'list', month });
+  const { data: financials, isLoading, refetch } = useFinancialsList(month);
+  const upsertFinancials = useUpsertFinancials();
+
+  const burns: VentureBurn[] = useMemo(() => {
     const data: Record<string, { revenue: number; expenses: number }> = {};
-    for (const f of (res.financials || [])) {
+    for (const f of (financials || [])) {
       data[f.venture_id] = { revenue: Number(f.revenue) || 0, expenses: Number(f.expenses) || 0 };
     }
-    const rows = ventureRegistry.map(v => {
+    return ventureRegistry.map(v => {
       const d = data[v.id] || { revenue: 0, expenses: 0 };
       return { venture_id: v.id, name: v.name, color: v.color, revenue: d.revenue, expenses: d.expenses, burn: d.revenue - d.expenses };
     });
-    setBurns(rows);
-    setLoading(false);
-  }, [month]);
-
-  useEffect(() => { load(); }, [load]);
+  }, [financials]);
 
   async function handleSave(ventureId: string) {
-    await api({ action: 'upsert', venture_id: ventureId, month, revenue: editRevenue, expenses: editExpenses });
+    await upsertFinancials.mutateAsync({ ventureId, month, revenue: editRevenue, expenses: editExpenses });
     setEditId(null);
-    load();
   }
 
   function startEdit(b: VentureBurn) {
@@ -66,7 +56,7 @@ export default function TreasuryView() {
         <h1 className="trsy-title"><Landmark size={20} /> Treasury & Token Economy</h1>
         <div className="trsy-header-right">
           <input type="month" value={month} onChange={e => setMonth(e.target.value)} className="trsy-month" />
-          <button className="trsy-refresh" onClick={load}><RefreshCw size={14} className={loading ? 'spin' : ''} /></button>
+          <button className="trsy-refresh" onClick={() => refetch()}><RefreshCw size={14} className={isLoading ? 'spin' : ''} /></button>
         </div>
       </div>
 

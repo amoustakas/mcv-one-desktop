@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import {
   Users, RefreshCw, Trash2, Shield, Mail, Edit3, X,
   Crown, Wrench, BarChart3, Eye, UserPlus,
 } from 'lucide-react';
 import { ventures } from '../lib/ventures';
 import { useToast } from '../components/Toasts';
+import { useTeamMembers, useCreateTeamMember, useUpdateTeamMember, useDeleteTeamMember, useAssignVentures } from '../hooks/use-team';
 
 interface TeamMember {
   id: string; name: string; email: string; avatar_url: string;
@@ -27,55 +28,55 @@ const DEPARTMENTS = ['Engineering', 'Operations', 'Growth', 'Finance', 'Research
 
 function timeAgo(d: string) { if (!d) return 'Never'; const mins = Math.floor((Date.now() - new Date(d).getTime()) / 60000); if (mins < 60) return `${mins}m ago`; const h = Math.floor(mins / 60); if (h < 24) return `${h}h ago`; return `${Math.floor(h / 24)}d ago`; }
 
-async function api(body: Record<string, unknown>) {
-  const r = await fetch('/api/team', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  return r.json();
-}
-
 export default function TeamView() {
-  const [members, setMembers] = useState<TeamMember[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: apiMembers = [], isLoading: loading, refetch } = useTeamMembers();
+  const members = apiMembers as unknown as TeamMember[];
+  const createMember = useCreateTeamMember();
+  const updateMember = useUpdateTeamMember();
+  const deleteMember = useDeleteTeamMember();
+  const assignVentures = useAssignVentures();
+
   const [showAdd, setShowAdd] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', email: '', role: 'developer', title: '', department: 'Engineering' });
   const [ventureModal, setVentureModal] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const res = await api({ action: 'list' });
-    setMembers(res.members || []);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  async function handleCreate() {
+  function handleCreate() {
     if (!form.name.trim() || !form.email.trim()) return;
-    await api({ action: 'create', member: form });
-    toast('success', `${form.name} added to team`);
-    setForm({ name: '', email: '', role: 'developer', title: '', department: 'Engineering' });
-    setShowAdd(false); load();
+    createMember.mutate(form as Record<string, unknown>, {
+      onSuccess: () => {
+        toast('success', `${form.name} added to team`);
+        setForm({ name: '', email: '', role: 'developer', title: '', department: 'Engineering' });
+        setShowAdd(false);
+      },
+    });
   }
 
-  async function handleUpdate(id: string, updates: Partial<TeamMember>) {
-    await api({ action: 'update', member: { id, ...updates } });
-    setMembers(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
-    setEditId(null);
-    toast('info', 'Member updated');
+  function handleUpdate(id: string, updates: Partial<TeamMember>) {
+    updateMember.mutate({ id, ...updates } as { id: string } & Record<string, unknown>, {
+      onSuccess: () => {
+        setEditId(null);
+        toast('info', 'Member updated');
+      },
+    });
   }
 
-  async function handleDelete(id: string) {
-    await api({ action: 'delete', id });
-    setMembers(prev => prev.filter(m => m.id !== id));
-    toast('info', 'Member removed');
+  function handleDelete(id: string) {
+    deleteMember.mutate(id, {
+      onSuccess: () => {
+        toast('info', 'Member removed');
+      },
+    });
   }
 
-  async function handleAssignVentures(id: string, ventureIds: string[]) {
-    await api({ action: 'assign-ventures', id, venture_assignments: ventureIds });
-    setMembers(prev => prev.map(m => m.id === id ? { ...m, venture_assignments: ventureIds } : m));
-    setVentureModal(null);
-    toast('success', 'Venture assignments updated');
+  function handleAssignVentures(id: string, ventureIds: string[]) {
+    assignVentures.mutate({ id, venture_assignments: ventureIds }, {
+      onSuccess: () => {
+        setVentureModal(null);
+        toast('success', 'Venture assignments updated');
+      },
+    });
   }
 
   const byRole: Record<string, TeamMember[]> = {};
@@ -93,7 +94,7 @@ export default function TeamView() {
         </div>
         <div className="tm-header-right">
           <button className="tm-add-btn" onClick={() => setShowAdd(!showAdd)}><UserPlus size={13} /> Add Member</button>
-          <button className="tm-refresh" onClick={load}><RefreshCw size={14} className={loading ? 'spin' : ''} /></button>
+          <button className="tm-refresh" onClick={() => refetch()}><RefreshCw size={14} className={loading ? 'spin' : ''} /></button>
         </div>
       </div>
 

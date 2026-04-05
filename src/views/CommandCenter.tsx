@@ -1,13 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { GitBranch, Cloud, Zap, RefreshCw, ExternalLink, CheckSquare, Users, BookOpen, MessageSquare, Activity, Shield, TrendingUp, Cpu } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
 import { useTheme } from '../stores/theme';
 import { ventures } from '../lib/ventures';
 import { supabase } from '../lib/supabase';
-
-interface RepoInfo { name: string; updated: string | null; open_issues: number }
-interface CommitInfo { sha: string; message: string; date: string }
-interface DeployInfo { name: string; state: string; url: string; target: string; created: number }
+import { useGithubRepos, useGithubCommits } from '../hooks/use-github';
+import { useDeployments } from '../hooks/use-deployments';
+import { useDocuments } from '../hooks/use-docs';
+import { useTasks } from '../hooks/use-tasks';
+import { useContacts, useDeals, useActivities } from '../hooks/use-crm';
+import { useTeamMembers } from '../hooks/use-team';
+import { useCampaigns } from '../hooks/use-campaigns';
 
 function timeAgo(d: string | number) { const mins = Math.floor((Date.now() - (typeof d === 'number' ? d : new Date(d).getTime())) / 60000); if (mins < 1) return 'now'; if (mins < 60) return `${mins}m`; const h = Math.floor(mins / 60); if (h < 24) return `${h}h`; return `${Math.floor(h / 24)}d`; }
 
@@ -23,43 +26,26 @@ function getGreeting(): string {
 }
 
 export default function CommandCenter() {
-  const [repos, setRepos] = useState<RepoInfo[]>([]);
-  const [commits, setCommits] = useState<CommitInfo[]>([]);
-  const [deploys, setDeploys] = useState<DeployInfo[]>([]);
-  const [docCount, setDocCount] = useState(0);
-  const [taskCount, setTaskCount] = useState(0);
-  const [contactCount, setContactCount] = useState(0);
-  const [dealCount, setDealCount] = useState(0);
-  const [convCount, setConvCount] = useState(0);
-  const [msgCount, setMsgCount] = useState(0);
-  const [teamCount, setTeamCount] = useState(0);
-  const [campaignCount, setCampaignCount] = useState(0);
-  const [activities, setActivities] = useState<{ type: string; title: string; created_at: string; contacts?: { name: string } | null }[]>([]);
-  const [loading, setLoading] = useState(true);
   const { switchToVenture, setView } = useNavigation();
   const { applyVentureTheme } = useTheme();
 
-  async function load() {
-    setLoading(true);
-    const [gh, vc, docs, tasks, crm, team, campaigns, acts] = await Promise.all([
-      fetch('/api/github?action=overview').then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('/api/vercel-status?action=deployments').then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('/api/docs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) }).then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) }).then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('/api/crm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'stats' }) }).then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('/api/team', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) }).then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('/api/campaigns', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) }).then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('/api/crm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list-activities' }) }).then(r => r.ok ? r.json() : null).catch(() => null),
-    ]);
-    if (gh) { setRepos(gh.repos || []); setCommits(gh.recent_commits || []); }
-    if (vc) setDeploys(vc.deployments?.slice(0, 8) || []);
-    if (docs) setDocCount(docs.documents?.length || 0);
-    if (tasks) setTaskCount((tasks.tasks || []).filter((t: { status?: string }) => t.status !== 'done' && t.status !== 'completed').length);
-    if (crm) { setContactCount(crm.totalContacts || 0); setDealCount(crm.totalDeals || 0); }
-    if (team) setTeamCount((team.members || []).length);
-    if (campaigns) setCampaignCount((campaigns.campaigns || []).length);
-    if (acts) setActivities((acts.activities || []).slice(0, 8));
+  // TanStack Query hooks
+  const { data: repos = [], isLoading: reposLoading, refetch: refetchRepos } = useGithubRepos();
+  const { data: commits = [], isLoading: commitsLoading, refetch: refetchCommits } = useGithubCommits();
+  const { data: deploys = [], isLoading: deploysLoading, refetch: refetchDeploys } = useDeployments();
+  const { data: documents = [], isLoading: docsLoading, refetch: refetchDocs } = useDocuments();
+  const { data: tasks = [], isLoading: tasksLoading, refetch: refetchTasks } = useTasks();
+  const { data: contacts = [], isLoading: contactsLoading, refetch: refetchContacts } = useContacts();
+  const { data: deals = [], refetch: refetchDeals } = useDeals();
+  const { data: activities = [], refetch: refetchActivities } = useActivities();
+  const { data: teamMembers = [], refetch: refetchTeam } = useTeamMembers();
+  const { data: campaigns = [], refetch: refetchCampaigns } = useCampaigns();
 
+  // Supabase counts (no hook available)
+  const [convCount, setConvCount] = useState(0);
+  const [msgCount, setMsgCount] = useState(0);
+
+  const loadSupabaseCounts = useCallback(async () => {
     if (supabase) {
       const [c, m] = await Promise.all([
         supabase.from('conversations').select('*', { count: 'exact', head: true }),
@@ -68,10 +54,35 @@ export default function CommandCenter() {
       setConvCount(c.count || 0);
       setMsgCount(m.count || 0);
     }
-    setLoading(false);
+  }, []);
+
+  useEffect(() => { loadSupabaseCounts(); }, [loadSupabaseCounts]);
+
+  const loading = reposLoading || commitsLoading || deploysLoading || docsLoading || tasksLoading || contactsLoading;
+
+  function refetchAll() {
+    refetchRepos();
+    refetchCommits();
+    refetchDeploys();
+    refetchDocs();
+    refetchTasks();
+    refetchContacts();
+    refetchDeals();
+    refetchActivities();
+    refetchTeam();
+    refetchCampaigns();
+    loadSupabaseCounts();
   }
 
-  useEffect(() => { load(); }, []);
+  // Derived counts
+  const docCount = documents.length;
+  const taskCount = tasks.filter(t => t.status !== 'done' && t.status !== 'completed').length;
+  const contactCount = contacts.length;
+  const dealCount = deals.length;
+  const teamCount = teamMembers.length;
+  const campaignCount = campaigns.length;
+  const recentActivities = activities.slice(0, 8);
+  const recentDeploys = deploys.slice(0, 8);
 
   function enterVenture(slug: string) { switchToVenture(slug); applyVentureTheme(slug); }
 
@@ -87,7 +98,7 @@ export default function CommandCenter() {
             <h1 className="cc-title">Command Center</h1>
             <p className="cc-sub">EdgeIQ Holdings &middot; {ventures.length} ventures &middot; {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
           </div>
-          <button className="cc-refresh" onClick={load} disabled={loading}><RefreshCw size={14} className={loading ? 'spin' : ''} /></button>
+          <button className="cc-refresh" onClick={refetchAll} disabled={loading}><RefreshCw size={14} className={loading ? 'spin' : ''} /></button>
         </div>
       </div>
 
@@ -133,7 +144,7 @@ export default function CommandCenter() {
           <div className="cc-section">
             <h2 className="cc-sec-title"><Activity size={12}/> Recent Activity</h2>
             <div className="cc-activity-feed">
-              {activities.map((a, i) => (
+              {recentActivities.map((a, i) => (
                 <div key={i} className="cc-act-item">
                   <span className="cc-act-type" style={{ color: a.type === 'call' ? '#10B981' : a.type === 'email' ? '#3B82F6' : a.type === 'meeting' ? '#8B5CF6' : '#F59E0B' }}>{a.type}</span>
                   <span className="cc-act-title">{a.title}</span>
@@ -141,7 +152,7 @@ export default function CommandCenter() {
                   <span className="cc-act-time">{timeAgo(a.created_at)}</span>
                 </div>
               ))}
-              {activities.length === 0 && <p className="cc-empty-hint">No recent activity. Log interactions in the CRM.</p>}
+              {recentActivities.length === 0 && <p className="cc-empty-hint">No recent activity. Log interactions in the CRM.</p>}
             </div>
           </div>
 
@@ -168,9 +179,9 @@ export default function CommandCenter() {
             <div className="cc-feed-list">
               {commits.map(c => (
                 <div key={c.sha} className="cc-feed-item">
-                  <code className="cc-sha">{c.sha}</code>
-                  <span className="cc-feed-msg">{c.message}</span>
-                  <span className="cc-feed-time">{timeAgo(c.date)}</span>
+                  <code className="cc-sha">{c.sha.slice(0, 7)}</code>
+                  <span className="cc-feed-msg">{c.commit.message}</span>
+                  <span className="cc-feed-time">{timeAgo(c.commit.author.date)}</span>
                 </div>
               ))}
             </div>
@@ -179,11 +190,11 @@ export default function CommandCenter() {
           <div className="cc-feed">
             <h2 className="cc-sec-title"><Cloud size={12}/> Deployments</h2>
             <div className="cc-feed-list">
-              {deploys.map((d, i) => (
-                <a key={i} href={d.url} target="_blank" rel="noreferrer" className="cc-feed-item link">
+              {recentDeploys.map(d => (
+                <a key={d.uid} href={d.url} target="_blank" rel="noreferrer" className="cc-feed-item link">
                   <span className={`cc-badge ${d.state === 'READY' ? 'live' : 'other'}`}>{d.state === 'READY' ? 'LIVE' : d.state}</span>
                   <span className="cc-feed-msg">{d.name}</span>
-                  <span className="cc-feed-time">{d.target || 'preview'}</span>
+                  <span className="cc-feed-time">{'preview'}</span>
                   <ExternalLink size={9} />
                 </a>
               ))}

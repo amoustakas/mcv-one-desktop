@@ -1,45 +1,56 @@
-import { useState, useEffect } from 'react';
 import {
   Globe, ExternalLink, Users, Code, Calendar, DollarSign, BarChart3,
   FileText, CheckSquare, MessageSquare, Shield, Layers,
   Target, Zap, RefreshCw,
 } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type Venture } from '../lib/ventures';
 import { useNavigation } from '../stores/navigation';
 import { supabase } from '../lib/supabase';
+import { useDocuments } from '../hooks/use-docs';
+import { useTasks } from '../hooks/use-tasks';
+import { useContacts, useDeals, useActivities } from '../hooks/use-crm';
 
 const statusColors: Record<string, string> = { active: '#10B981', development: '#00F0FF', planned: '#8B5CF6', concept: '#6B7280' };
 
-interface VentureStats { docs: number; tasks: number; chats: number; contacts: number; deals: number; activities: number; }
-
-async function loadVentureStats(ventureId: string): Promise<VentureStats> {
-  const [docs, tasks, contacts, deals, activities, chats] = await Promise.all([
-    fetch('/api/docs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list', venture_id: ventureId }) }).then(r => r.ok ? r.json() : null).catch(() => null),
-    fetch('/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list', venture_id: ventureId }) }).then(r => r.ok ? r.json() : null).catch(() => null),
-    fetch('/api/crm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list-contacts', venture_id: ventureId }) }).then(r => r.ok ? r.json() : null).catch(() => null),
-    fetch('/api/crm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list-deals', venture_id: ventureId }) }).then(r => r.ok ? r.json() : null).catch(() => null),
-    fetch('/api/crm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list-activities', venture_id: ventureId }) }).then(r => r.ok ? r.json() : null).catch(() => null),
-    supabase ? supabase.from('conversations').select('id', { count: 'exact', head: true }).eq('venture_id', ventureId) : null,
-  ]);
-  return {
-    docs: docs?.documents?.length || 0,
-    tasks: (tasks?.tasks || []).filter((t: { status?: string }) => t.status !== 'done' && t.status !== 'completed').length,
-    chats: chats?.count || 0,
-    contacts: contacts?.contacts?.length || 0,
-    deals: deals?.deals?.length || 0,
-    activities: activities?.activities?.length || 0,
-  };
-}
-
 export default function VentureProfile({ venture }: { venture: Venture }) {
-  const [stats, setStats] = useState<VentureStats | null>(null);
-  const [loading, setLoading] = useState(true);
   const { setView } = useNavigation();
+  const queryClient = useQueryClient();
+  const ventureId = venture.id || undefined;
 
-  useEffect(() => {
-    setLoading(true);
-    loadVentureStats(venture.id).then(s => { setStats(s); setLoading(false); });
-  }, [venture.id]);
+  const { data: docs = [] } = useDocuments(ventureId);
+  const { data: tasksRaw = [] } = useTasks(ventureId);
+  const { data: contacts = [] } = useContacts(ventureId);
+  const { data: deals = [] } = useDeals(ventureId);
+  const { data: activities = [] } = useActivities(ventureId);
+  const { data: chatCount = 0, isLoading: loading } = useQuery({
+    queryKey: ['conversations', 'count', ventureId],
+    queryFn: async () => {
+      if (!supabase) return 0;
+      const { count } = await supabase.from('conversations').select('id', { count: 'exact', head: true }).eq('venture_id', venture.id);
+      return count || 0;
+    },
+  });
+
+  const activeTasks = tasksRaw.filter((t: { status?: string }) => t.status !== 'done' && t.status !== 'completed');
+
+  const stats = {
+    docs: docs.length,
+    tasks: activeTasks.length,
+    chats: chatCount,
+    contacts: contacts.length,
+    deals: deals.length,
+    activities: activities.length,
+  };
+
+  function refresh() {
+    queryClient.invalidateQueries({ queryKey: ['docs', ventureId] });
+    queryClient.invalidateQueries({ queryKey: ['tasks', ventureId] });
+    queryClient.invalidateQueries({ queryKey: ['crm', 'contacts', ventureId] });
+    queryClient.invalidateQueries({ queryKey: ['crm', 'deals', ventureId] });
+    queryClient.invalidateQueries({ queryKey: ['crm', 'activities', ventureId] });
+    queryClient.invalidateQueries({ queryKey: ['conversations', 'count', ventureId] });
+  }
 
   const socialIcons: { key: string; label: string }[] = [
     { key: 'website', label: 'Website' }, { key: 'github', label: 'GitHub' },
@@ -70,7 +81,7 @@ export default function VentureProfile({ venture }: { venture: Venture }) {
               </div>
             </div>
           </div>
-          <button className="vp-refresh" onClick={() => { setLoading(true); loadVentureStats(venture.id).then(s => { setStats(s); setLoading(false); }); }}>
+          <button className="vp-refresh" onClick={refresh}>
             <RefreshCw size={14} className={loading ? 'spin' : ''} />
           </button>
         </div>
@@ -79,12 +90,12 @@ export default function VentureProfile({ venture }: { venture: Venture }) {
       <div className="vp-body">
         {/* Stats Strip */}
         <div className="vp-stats">
-          <div className="vp-stat" onClick={() => setView('venture-docs')} style={{ cursor: 'pointer' }}><FileText size={13} /><div><span className="vp-stat-v">{stats?.docs ?? '...'}</span><span className="vp-stat-l">Documents</span></div></div>
-          <div className="vp-stat" onClick={() => setView('venture-tasks')} style={{ cursor: 'pointer' }}><CheckSquare size={13} /><div><span className="vp-stat-v">{stats?.tasks ?? '...'}</span><span className="vp-stat-l">Active Tasks</span></div></div>
-          <div className="vp-stat"><MessageSquare size={13} /><div><span className="vp-stat-v">{stats?.chats ?? '...'}</span><span className="vp-stat-l">Conversations</span></div></div>
-          <div className="vp-stat"><Users size={13} /><div><span className="vp-stat-v">{stats?.contacts ?? '...'}</span><span className="vp-stat-l">Contacts</span></div></div>
-          <div className="vp-stat"><BarChart3 size={13} /><div><span className="vp-stat-v">{stats?.deals ?? '...'}</span><span className="vp-stat-l">Deals</span></div></div>
-          <div className="vp-stat"><Zap size={13} /><div><span className="vp-stat-v">{stats?.activities ?? '...'}</span><span className="vp-stat-l">Activities</span></div></div>
+          <div className="vp-stat" onClick={() => setView('venture-docs')} style={{ cursor: 'pointer' }}><FileText size={13} /><div><span className="vp-stat-v">{stats.docs}</span><span className="vp-stat-l">Documents</span></div></div>
+          <div className="vp-stat" onClick={() => setView('venture-tasks')} style={{ cursor: 'pointer' }}><CheckSquare size={13} /><div><span className="vp-stat-v">{stats.tasks}</span><span className="vp-stat-l">Active Tasks</span></div></div>
+          <div className="vp-stat"><MessageSquare size={13} /><div><span className="vp-stat-v">{stats.chats}</span><span className="vp-stat-l">Conversations</span></div></div>
+          <div className="vp-stat"><Users size={13} /><div><span className="vp-stat-v">{stats.contacts}</span><span className="vp-stat-l">Contacts</span></div></div>
+          <div className="vp-stat"><BarChart3 size={13} /><div><span className="vp-stat-v">{stats.deals}</span><span className="vp-stat-l">Deals</span></div></div>
+          <div className="vp-stat"><Zap size={13} /><div><span className="vp-stat-v">{stats.activities}</span><span className="vp-stat-l">Activities</span></div></div>
         </div>
 
         <div className="vp-grid">

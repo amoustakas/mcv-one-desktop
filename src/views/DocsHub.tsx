@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { BookOpen, Plus, Search, RefreshCw, FileText, Folder, Edit3, Save, X, ExternalLink, Trash2, Upload, Brain, ChevronRight, ChevronDown, Clock, Tag, Hash, Link2, History, FolderOpen, SortAsc, SortDesc, AlertCircle, Database, Star } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
 import Markdown from '../components/Markdown';
+import { useDocuments, useDocument, useCreateDocument, useUpdateDocument, useDeleteDocument } from '../hooks/use-docs';
+import { apiPost } from '../lib/api/client';
 
 /* ── Types ── */
 interface DocMetadata {
@@ -119,26 +121,13 @@ function getVentureInfo(id: string) {
   return VENTURES.find(v => v.id === id) || { id, name: id, color: '#6B7280' };
 }
 
-/* ── API ── */
-async function api(body: Record<string, unknown>) {
-  const res = await fetch('/api/docs', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  return res.json();
-}
-
 /* ── Component ── */
 export default function DocsHub() {
   const { mode, activeVenture } = useNavigation();
 
-  // Data
-  const [docs, setDocs] = useState<Doc[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Data — via TanStack Query hooks
+  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [selectedDoc, setSelectedDoc] = useState<Doc | null>(null);
-  const [docContent, setDocContent] = useState<string>('');
-  const [loadingDoc, setLoadingDoc] = useState(false);
 
   // Editing
   const [editing, setEditing] = useState(false);
@@ -171,37 +160,15 @@ export default function DocsHub() {
 
   const editorRef = useRef<HTMLTextAreaElement>(null);
 
-  /* ── Data fetching ── */
-  const loadDocs = useCallback(async () => {
-    setLoading(true);
-    try {
-      const v = filterVenture || (mode === 'venture' ? activeVenture : '') || '';
-      const body: Record<string, string> = { action: 'list' };
-      if (v) body.venture_id = v;
-      const data = await api(body);
-      setDocs(data.documents || []);
-    } catch {
-      setDocs([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [filterVenture, mode, activeVenture]);
+  /* ── Data fetching via TanStack Query ── */
+  const ventureFilter = filterVenture || (mode === 'venture' ? activeVenture || undefined : undefined);
+  const { data: docs = [], isLoading: loading, refetch: loadDocs } = useDocuments(ventureFilter, filterType || undefined);
+  const { data: fetchedDoc, isLoading: loadingDoc } = useDocument(selectedDocId || '');
+  const docContent = fetchedDoc?.content || '';
 
-  useEffect(() => { loadDocs(); }, [loadDocs]);
-
-  const loadDocContent = useCallback(async (doc: Doc) => {
-    setLoadingDoc(true);
-    try {
-      const data = await api({ action: 'get', id: doc.id });
-      const full = data.document || data;
-      setDocContent(full.content || '');
-      setSelectedDoc({ ...doc, content: full.content || '' });
-    } catch {
-      setDocContent('');
-    } finally {
-      setLoadingDoc(false);
-    }
-  }, []);
+  const createDocMut = useCreateDocument();
+  const updateDocMut = useUpdateDocument();
+  const deleteDocMut = useDeleteDocument();
 
   /* ── Filtering + Sorting ── */
   const filteredDocs = docs
@@ -282,10 +249,10 @@ export default function DocsHub() {
 
   function handleSelectDoc(doc: Doc) {
     setSelectedDoc(doc);
+    setSelectedDocId(doc.id);
     setEditing(false);
     setAiAnswer('');
     setAiQuery('');
-    loadDocContent(doc);
   }
 
   function handleStartEdit() {
@@ -300,10 +267,8 @@ export default function DocsHub() {
     if (!selectedDoc || saving) return;
     setSaving(true);
     try {
-      await api({ action: 'update', id: selectedDoc.id, title: editTitle, content: editContent });
-      setDocContent(editContent);
+      await updateDocMut.mutateAsync({ id: selectedDoc.id, title: editTitle, content: editContent });
       setSelectedDoc({ ...selectedDoc, title: editTitle, content: editContent, updated_at: new Date().toISOString() });
-      setDocs(prev => prev.map(d => d.id === selectedDoc.id ? { ...d, title: editTitle, updated_at: new Date().toISOString() } : d));
       setEditing(false);
     } catch { /* silent */ } finally {
       setSaving(false);
@@ -314,11 +279,10 @@ export default function DocsHub() {
     if (!newTitle.trim()) return;
     setSaving(true);
     try {
-      await api({ action: 'create', title: newTitle, content: newContent, doc_type: newType, venture_id: newVenture });
+      await createDocMut.mutateAsync({ title: newTitle, content: newContent, doc_type: newType, venture_id: newVenture });
       setNewTitle('');
       setNewContent('');
       setShowCreate(false);
-      loadDocs();
     } catch { /* silent */ } finally {
       setSaving(false);
     }
@@ -326,11 +290,10 @@ export default function DocsHub() {
 
   async function handleDelete(id: string) {
     try {
-      await api({ action: 'delete', id });
-      setDocs(prev => prev.filter(d => d.id !== id));
+      await deleteDocMut.mutateAsync(id);
       if (selectedDoc?.id === id) {
         setSelectedDoc(null);
-        setDocContent('');
+        setSelectedDocId(null);
         setEditing(false);
       }
     } catch { /* silent */ }
@@ -341,7 +304,7 @@ export default function DocsHub() {
     setAiAsking(true);
     setAiAnswer('');
     try {
-      const res = await api({
+      const res = await apiPost<{ answer: string }>('/api/docs', {
         action: 'query',
         question: `Regarding the document "${selectedDoc.title}": ${aiQuery}`,
         venture_id: selectedDoc.venture_id || undefined,
@@ -382,7 +345,7 @@ export default function DocsHub() {
           <button className="dh-btn dh-btn-ghost" title="Import from URL">
             <Link2 size={12} /> URL
           </button>
-          <button className="dh-btn dh-btn-icon" onClick={loadDocs} title="Refresh">
+          <button className="dh-btn dh-btn-icon" onClick={() => loadDocs()} title="Refresh">
             <RefreshCw size={14} className={loading ? 'dh-spin' : ''} />
           </button>
         </div>

@@ -6,14 +6,18 @@ export interface Campaign {
   type: string;
   status: string;
   venture_id: string;
+  channel: string;
   budget: number;
   spent: number;
+  reach: number;
   impressions: number;
   clicks: number;
   conversions: number;
   start_date: string;
   end_date: string;
+  description: string;
   created_at: string;
+  updated_at: string;
 }
 
 const EP = '/api/campaigns';
@@ -27,7 +31,7 @@ export async function createCampaign(campaign: Partial<Campaign>) {
 }
 
 export async function updateCampaign(id: string, updates: Partial<Campaign>) {
-  return apiPost<{ campaign: Campaign }>(EP, { action: 'update', id, ...updates });
+  return apiPost<{ campaign: Campaign }>(EP, { action: 'update', campaign: { id, ...updates } });
 }
 
 export async function deleteCampaign(id: string) {

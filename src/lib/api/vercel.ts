@@ -6,6 +6,8 @@ export interface Deployment {
   url: string;
   state: string;
   created: number;
+  target?: string;
+  ready?: number;
   meta?: { githubCommitMessage?: string };
 }
 

@@ -38,6 +38,7 @@ const PromptComposer = lazy(() => import('./views/PromptComposer'));
 const WarRoom = lazy(() => import('./views/WarRoom'));
 const VentureProfile = lazy(() => import('./views/VentureProfile'));
 const TeamView = lazy(() => import('./views/TeamView'));
+const KitStoreView = lazy(() => import('./views/KitStoreView'));
 const SettingsView = lazy(() => import('./views/SettingsView'));
 const VentureOnboarding = lazy(() => import('./views/VentureOnboarding'));
 
@@ -115,6 +116,8 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <WarRoom />;
     case 'team':
       return <TeamView />;
+    case 'kit-store':
+      return <KitStoreView />;
     case 'settings':
       return <SettingsView />;
     // Venture views

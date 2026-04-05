@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { RefreshCw, TrendingUp, Building, Users, DollarSign, Coins, Target, Zap, Shield, Gamepad2, BarChart3, Brain, Globe } from 'lucide-react';
 import { type Venture } from '../lib/ventures';
+import { apiGet } from '../lib/api/client';
 
 // ── Shared Helpers ──
 function formatCAD(n: number) { return new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(n); }
@@ -8,16 +10,20 @@ function formatCompact(n: number) { if (n >= 1e6) return `$${(n/1e6).toFixed(1)}
 
 // ── FutureState Dashboard ──
 function FutureStateDash() {
-  const [data, setData] = useState<{ properties: any[]; portfolio: any; stats: any } | null>(null);
-  useEffect(() => {
-    Promise.all([
-      fetch('/api/futurestate?action=properties').then(r=>r.json()),
-      fetch('/api/futurestate?action=portfolio').then(r=>r.json()),
-      fetch('/api/futurestate?action=stats').then(r=>r.json()),
-    ]).then(([p,po,s]) => setData({ properties: p.data||[], portfolio: po.data, stats: s.data }));
-  }, []);
-  if (!data) return <div className="vd-loading">Loading FutureState data...</div>;
-  const { properties, portfolio, stats } = data;
+  const { data: properties = [] } = useQuery({
+    queryKey: ['futurestate', 'properties'],
+    queryFn: () => apiGet<{ data: any[] }>('/api/futurestate', { action: 'properties' }).then(r => r.data || []),
+  });
+  const { data: portfolio } = useQuery({
+    queryKey: ['futurestate', 'portfolio'],
+    queryFn: () => apiGet<{ data: any }>('/api/futurestate', { action: 'portfolio' }).then(r => r.data),
+  });
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ['futurestate', 'stats'],
+    queryFn: () => apiGet<{ data: any }>('/api/futurestate', { action: 'stats' }).then(r => r.data),
+  });
+
+  if (isLoading) return <div className="vd-loading">Loading FutureState data...</div>;
   return (
     <>
       <div className="vd-kpi-row">
