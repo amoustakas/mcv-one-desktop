@@ -72,7 +72,7 @@ export const manifest: KitManifest = {
   tools: [
     {
       name: 'gemini_generate',
-      description: 'Send a prompt to Google Gemini Pro for text generation or analysis.',
+      description: 'Send a prompt to Google Gemini Pro. Use for long-context document analysis (100k+ tokens), second-opinion reasoning, or Google-specific knowledge not available to Claude.',
       input_schema: {
         type: 'object',
         properties: { prompt: { type: 'string', description: 'The prompt to send to Gemini' } },

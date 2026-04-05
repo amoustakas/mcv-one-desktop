@@ -45,10 +45,11 @@ const listRepos: KitToolHandler = async (_input, ctx) => {
 const listPrs: KitToolHandler = async (input, ctx) => {
   const repo = (input.repo as string) || 'mcv-one-desktop';
   const data = await fetchJson(`/api/github?action=prs&repo=${encodeURIComponent(repo)}`, ctx);
-  if (data.prs.length === 0) {
+  const prs = data.prs ?? [];
+  if (prs.length === 0) {
     return { success: true, data: [], displayMarkdown: `No PRs found for **${repo}**.` };
   }
-  const lines = data.prs.map(
+  const lines = prs.map(
     (pr: { number: number; title: string; state: string; merged: string | null; author: string; updated: string }) => {
       const status = pr.merged ? '`merged`' : pr.state === 'open' ? '`open`' : '`closed`';
       return `- #${pr.number} ${status} **${pr.title}** by ${pr.author} · ${timeAgo(pr.updated)}`;
@@ -56,7 +57,7 @@ const listPrs: KitToolHandler = async (input, ctx) => {
   );
   return {
     success: true,
-    data: data.prs,
+    data: prs,
     displayMarkdown: `## PRs — ${repo}\n\n${lines.join('\n')}`,
   };
 };

@@ -265,9 +265,9 @@ function Breadcrumbs() {
 export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
-  const { chatDocked, toggleChatDock, setView, toggleSplit, splitView, mode, switchToGlobal, switchToVenture } = useNavigation();
+  const { chatDocked, toggleChatDock, setView, toggleSplit, splitView, mode, switchToGlobal, switchToVenture, goBack, goForward } = useNavigation();
   const { isOpen: paletteOpen, toggle: togglePalette, close: closePalette } = useCommandStore();
-  const { sidebarCollapsed, statusBarVisible } = useLayoutStore();
+  const { sidebarCollapsed, statusBarVisible, presets } = useLayoutStore();
   useTheme();
   useLocalServer(); // Detect local server connection
 
@@ -321,10 +321,27 @@ export default function App() {
         const idx = parseInt(e.key) - 1;
         if (ventures[idx]) switchToVenture(ventures[idx].id);
       }
+      // Alt+1/2/3 for workspace presets
+      if (e.altKey && !e.metaKey && !e.ctrlKey && e.key >= '1' && e.key <= '3') {
+        e.preventDefault();
+        const preset = presets[parseInt(e.key) - 1];
+        if (preset) {
+          setView(preset.activeView);
+          if (preset.splitView) {
+            // Use navigation store's openSplit
+            const nav = useNavigation.getState();
+            nav.openSplit(preset.splitView);
+            nav.setSplitRatio(preset.splitRatio);
+          }
+        }
+      }
+      // Alt+Left/Right for history navigation
+      if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); goBack(); }
+      if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); goForward(); }
     }
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [paletteOpen, settingsOpen, togglePalette, closePalette, toggleChatDock, setView, toggleSplit, mode, switchToGlobal, switchToVenture]);
+  }, [paletteOpen, settingsOpen, togglePalette, closePalette, toggleChatDock, setView, toggleSplit, mode, switchToGlobal, switchToVenture, goBack, goForward, presets]);
 
   // Context used by VentureMegaMenu in header
 

@@ -99,8 +99,8 @@ export class AgentOrchestrator {
     const systemPrompt = this.buildSystemPrompt();
 
     if (tools.length === 0) {
-      // No tools available — shouldn't happen if orchestrator is used correctly
-      return { text: '', toolCalls: [] };
+      // No tools available — signal caller to fall back to plain streaming
+      throw new Error('NO_TOOLS');
     }
 
     const toolExecutor = async (toolCall: ToolCallEvent): Promise<ToolCallResult> => {

@@ -107,7 +107,7 @@ export const manifest: KitManifest = {
     },
     {
       name: 'query_documents',
-      description: 'Ask a question against the document library using Gemini RAG. Returns an AI-generated answer with source citations.',
+      description: 'Ask a question against previously saved documents/notes using Gemini RAG. Only use if the user has saved notes or imported documents. Returns an AI-generated answer with source citations.',
       input_schema: {
         type: 'object',
         properties: {

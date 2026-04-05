@@ -38,6 +38,13 @@ const serviceConfigs: Record<string, {
     }),
     envKey: 'GOOGLE_API_KEY',
   },
+  n8n: {
+    baseUrl: process.env.N8N_BASE_URL || 'https://n8n.mcv.one',
+    authHeader: (token) => ({
+      'X-N8N-API-KEY': token,
+    }),
+    envKey: 'N8N_API_KEY',
+  },
 };
 
 // Allowed API paths per service (prevent arbitrary URL access)
@@ -57,6 +64,11 @@ const allowedPaths: Record<string, RegExp[]> = {
   google: [
     /^\/drive\//,
     /^\/calendar\//,
+  ],
+  n8n: [
+    /^\/api\/v1\/workflows/,
+    /^\/api\/v1\/executions/,
+    /^\/webhook\//,
   ],
 };
 

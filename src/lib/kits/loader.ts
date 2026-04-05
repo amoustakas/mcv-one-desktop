@@ -16,6 +16,7 @@ import { manifest as geminiManifest, handlers as geminiHandlers } from './builti
 import { manifest as notionManifest, handlers as notionHandlers } from './builtin/notion-kit';
 import { manifest as driveManifest, handlers as driveHandlers } from './builtin/drive-kit';
 import { manifest as localManifest, handlers as localHandlers } from './builtin/local-server-kit';
+import { manifest as n8nManifest, handlers as n8nHandlers } from './builtin/n8n-kit';
 
 // ---------------------------------------------------------------------------
 // Local Kit Registry
@@ -35,6 +36,7 @@ const builtinKits: KitInstance[] = [
   kit(notionManifest, notionHandlers),
   kit(driveManifest, driveHandlers),
   kit(localManifest, localHandlers),
+  kit(n8nManifest, n8nHandlers),
 ];
 
 /** Returns all built-in kit instances */

@@ -301,29 +301,38 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
           },
         });
 
-        const result = await orchestrator.processMessage(
-          newMessages,
-          {
-            onText: (partial) => setStreamingText(partial),
-            onToolCall: (tc) => {
-              setActiveToolCalls((prev) => [
-                ...prev,
-                { id: tc.id, name: tc.name, status: 'running' },
-              ]);
+        try {
+          const result = await orchestrator.processMessage(
+            newMessages,
+            {
+              onText: (partial) => setStreamingText(partial),
+              onToolCall: (tc) => {
+                setActiveToolCalls((prev) => [
+                  ...prev,
+                  { id: tc.id, name: tc.name, status: 'running' },
+                ]);
+              },
+              onToolResult: (toolCallId, result) => {
+                setActiveToolCalls((prev) =>
+                  prev.map((tc) =>
+                    tc.id === toolCallId
+                      ? { ...tc, status: result.success ? 'done' : 'error', result: result.displayMarkdown || result.error }
+                      : tc,
+                  ),
+                );
+              },
             },
-            onToolResult: (toolCallId, result) => {
-              setActiveToolCalls((prev) =>
-                prev.map((tc) =>
-                  tc.id === toolCallId
-                    ? { ...tc, status: result.success ? 'done' : 'error', result: result.displayMarkdown || result.error }
-                    : tc,
-                ),
-              );
-            },
-          },
-        );
-        full = result.text;
-        toolCallLog = result.toolCalls.map((tc) => ({ id: tc.id, name: tc.name, input: tc.input }));
+          );
+          full = result.text;
+          toolCallLog = result.toolCalls.map((tc) => ({ id: tc.id, name: tc.name, input: tc.input }));
+        } catch (orchErr) {
+          // Orchestrator had no tools for this venture — fall back to plain streaming
+          full = await streamMessage(
+            newMessages,
+            venture.systemPrompt,
+            (partial) => setStreamingText(partial),
+          );
+        }
       } else {
         // Fallback to plain streaming (no kits loaded)
         full = await streamMessage(

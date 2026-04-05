@@ -103,7 +103,7 @@ async function executeServerside(
       return { success: false, error: err.error || `Server error: ${res.status}` };
     }
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({ success: false, error: 'Non-JSON server response' }));
     return data as ToolCallResult;
   } catch (err) {
     return {

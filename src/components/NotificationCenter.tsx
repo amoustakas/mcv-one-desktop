@@ -3,6 +3,8 @@ import { Bell, Check, Trash2, Zap, GitBranch, Cloud, Users, FileText, MessageSqu
 import { supabase } from '../lib/supabase';
 import { useNotificationStore } from '../stores/notifications';
 import type { AppNotification } from '../stores/notifications';
+import { GlassCard, Button, Badge } from './ui';
+import { cn, timeAgo } from '../lib/utils';
 
 interface SupabaseNotification {
   id: string; type: string; title: string; description: string;
@@ -28,8 +30,6 @@ function mapToStore(row: SupabaseNotification): AppNotification {
     createdAt: row.created_at,
   };
 }
-
-function timeAgo(d: string) { const mins = Math.floor((Date.now() - new Date(d).getTime()) / 60000); if (mins < 1) return 'now'; if (mins < 60) return `${mins}m`; const h = Math.floor(mins / 60); if (h < 24) return `${h}h`; return `${Math.floor(h / 24)}d`; }
 
 export default function NotificationCenter() {
   const [open, setOpen] = useState(false);
@@ -84,16 +84,16 @@ export default function NotificationCenter() {
     <div className="nc" ref={ref}>
       <button className="nc-bell" onClick={() => setOpen(!open)} title="Notifications">
         <Bell size={15} />
-        {unreadCount > 0 && <span className="nc-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
+        {unreadCount > 0 && <Badge color="var(--error)" size="sm" className="nc-badge">{unreadCount > 9 ? '9+' : unreadCount}</Badge>}
       </button>
 
       {open && (
-        <div className="nc-dropdown glass-neural">
+        <GlassCard variant="neural" className="nc-dropdown">
           <div className="nc-header">
             <span className="nc-title">Notifications</span>
             <div className="nc-actions">
-              {unreadCount > 0 && <button className="nc-action" onClick={markAllRead}><Check size={11} /> Mark all read</button>}
-              <button className="nc-action" onClick={clearAll}><Trash2 size={11} /> Clear read</button>
+              {unreadCount > 0 && <Button variant="ghost" size="sm" className="nc-action" onClick={markAllRead} icon={<Check size={11} />}>Mark all read</Button>}
+              <Button variant="ghost" size="sm" className="nc-action" onClick={clearAll} icon={<Trash2 size={11} />}>Clear read</Button>
             </div>
           </div>
 
@@ -103,7 +103,7 @@ export default function NotificationCenter() {
               const Icon = SOURCE_ICONS[n.source] || Bell;
               const color = TYPE_COLORS[n.type] || '#6B7280';
               return (
-                <div key={n.id} className={`nc-item ${n.read ? 'read' : 'unread'}`} onClick={() => !n.read && markRead(n.id)}>
+                <div key={n.id} className={cn('nc-item', n.read ? 'read' : 'unread')} onClick={() => !n.read && markRead(n.id)}>
                   <div className="nc-item-icon" style={{ background: `${color}15`, color }}>
                     <Icon size={12} />
                   </div>
@@ -120,7 +120,7 @@ export default function NotificationCenter() {
               );
             })}
           </div>
-        </div>
+        </GlassCard>
       )}
 
       <style>{`

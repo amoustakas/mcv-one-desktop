@@ -100,6 +100,8 @@ VITE_GOOGLE_AI_KEY=              # Gemini API (Google AI Studio)
 VITE_DEEPGRAM_API_KEY=           # Voice STT
 VITE_ELEVENLABS_API_KEY=         # Voice TTS
 VITE_APP_ENV=development
+N8N_BASE_URL=                    # n8n instance URL (e.g. https://n8n.mcv.one)
+N8N_API_KEY=                     # n8n API key for workflow automation
 ```
 
 ## BUILD RULES

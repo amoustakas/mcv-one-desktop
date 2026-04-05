@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Volume2, Mic, Monitor, Moon, Sun, RotateCcw } from 'lucide-react';
+import { Volume2, Mic, Monitor, Moon, Sun, RotateCcw, Package, ToggleLeft, ToggleRight } from 'lucide-react';
+import { useKitStore } from '../stores/kits';
 import { APP_VERSION, BUILD_TIME } from '../lib/version';
 import { apiGet } from '../lib/api/client';
 
@@ -187,6 +188,9 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             </div>
           </div>
 
+          {/* Loaded Kits */}
+          <KitsSettingsSection />
+
           {/* Keyboard Shortcuts */}
           <div className="settings-section">
             <h3>Keyboard Shortcuts</h3>
@@ -283,7 +287,46 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
           .settings-shortcuts { display: flex; flex-direction: column; gap: 4px; }
           .settings-shortcut { display: flex; align-items: center; justify-content: space-between; padding: 4px 0; font-size: var(--text-xs); color: var(--text-secondary); }
           .settings-kbd { font-size: 9px; font-family: var(--font-mono); background: var(--bg-card); border: 1px solid var(--border); padding: 2px 8px; border-radius: 3px; color: var(--text-muted); }
+          .kits-section-list { display: flex; flex-direction: column; gap: 6px; }
+          .kits-section-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+          .kits-section-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+          .kits-section-dot.loaded { background: rgb(34, 197, 94); }
+          .kits-section-dot.disabled { background: var(--text-muted); }
+          .kits-section-info { flex: 1; min-width: 0; }
+          .kits-section-name { font-size: var(--text-xs); font-weight: 600; color: var(--text-primary); }
+          .kits-section-tools { font-size: 10px; color: var(--text-muted); }
+          .kits-section-toggle { color: var(--text-secondary); padding: 2px; }
+          .kits-section-toggle:hover { color: var(--cyan); }
         `}</style>
+      </div>
+    </div>
+  );
+}
+
+function KitsSettingsSection() {
+  const { getLoadedKits, disableKit, enableKit } = useKitStore();
+  const kits = getLoadedKits();
+
+  return (
+    <div className="settings-section">
+      <h3><Package size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />Agent Kits ({kits.length})</h3>
+      <div className="kits-section-list">
+        {kits.map((kit) => (
+          <div key={kit.manifest.id} className="kits-section-row">
+            <div className={`kits-section-dot ${kit.status}`} />
+            <div className="kits-section-info">
+              <div className="kits-section-name">{kit.manifest.name} <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>v{kit.manifest.version}</span></div>
+              <div className="kits-section-tools">{kit.manifest.tools.length} tools · {kit.source}</div>
+            </div>
+            <button
+              className="kits-section-toggle"
+              onClick={() => kit.status === 'loaded' ? disableKit(kit.manifest.id) : enableKit(kit.manifest.id)}
+              title={kit.status === 'loaded' ? 'Disable' : 'Enable'}
+            >
+              {kit.status === 'loaded' ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+            </button>
+          </div>
+        ))}
       </div>
     </div>
   );

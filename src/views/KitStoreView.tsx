@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Package, Search, Download, Trash2, RefreshCw, Wrench, ToggleLeft, ToggleRight } from 'lucide-react';
+import { PageShell, PageHeader, Tabs, EmptyState, Button } from '../components/ui';
 import { listKits, searchKits, installKit, uninstallKit, getInstalledKits } from '../lib/kits/registry-client';
 import { useKitStore } from '../stores/kits';
 import { useNavigation } from '../stores/navigation';
@@ -15,10 +16,8 @@ interface RegistryKitItem {
   downloads?: number;
 }
 
-type Tab = 'browse' | 'installed';
-
 export default function KitStoreView() {
-  const [tab, setTab] = useState<Tab>('browse');
+  const [tab, setTab] = useState('browse');
   const [query, setQuery] = useState('');
   const [kits, setKits] = useState<RegistryKitItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -27,7 +26,6 @@ export default function KitStoreView() {
   const { getLoadedKits, disableKit, enableKit } = useKitStore();
   const { activeVenture, mode } = useNavigation();
   const allLoadedKits = getLoadedKits();
-  // Filter installed kits by active venture scope when in venture mode
   const loadedKits = mode === 'venture' && activeVenture
     ? allLoadedKits.filter((k) => {
         const scope = k.manifest.ventureScope;
@@ -46,7 +44,6 @@ export default function KitStoreView() {
       const data = await listKits();
       setKits(data);
     } catch {
-      // Registry may not have tables yet — show empty
       setKits([]);
     } finally {
       setLoading(false);
@@ -82,7 +79,7 @@ export default function KitStoreView() {
     try {
       await installKit(kitId);
       setInstalledIds((prev) => new Set(prev).add(kitId));
-    } catch (err) {
+    } catch {
       // Show error inline
     }
   }
@@ -100,30 +97,18 @@ export default function KitStoreView() {
     }
   }
 
-  return (
-    <div className="ks-layout">
-      <div className="ks-header">
-        <div className="ks-title-row">
-          <Package size={20} />
-          <h2>Kit Store</h2>
-        </div>
-        <p className="ks-subtitle">Discover and install agent capabilities</p>
-      </div>
+  const tabItems = [
+    { id: 'browse', label: 'Browse' },
+    { id: 'installed', label: 'Installed', count: loadedKits.length },
+  ];
 
-      <div className="ks-tabs">
-        <button
-          className={`ks-tab ${tab === 'browse' ? 'active' : ''}`}
-          onClick={() => setTab('browse')}
-        >
-          Browse
-        </button>
-        <button
-          className={`ks-tab ${tab === 'installed' ? 'active' : ''}`}
-          onClick={() => setTab('installed')}
-        >
-          Installed ({loadedKits.length})
-        </button>
-      </div>
+  return (
+    <PageShell scroll={false}>
+      <PageHeader icon={<Package size={20} />} title="Kit Store">
+        <span className="ks-subtitle">Discover and install agent capabilities</span>
+      </PageHeader>
+
+      <Tabs tabs={tabItems} active={tab} onChange={setTab} className="ks-tabs-wrap" />
 
       {tab === 'browse' && (
         <>
@@ -144,11 +129,11 @@ export default function KitStoreView() {
           <div className="ks-grid">
             {loading && <p className="ks-loading">Loading...</p>}
             {!loading && kits.length === 0 && (
-              <div className="ks-empty">
-                <Package size={32} />
-                <p>No kits found in the registry yet.</p>
-                <p className="ks-empty-hint">Built-in kits are loaded automatically. Remote kits will appear here once the registry is populated.</p>
-              </div>
+              <EmptyState
+                icon={<Package size={32} />}
+                title="No kits found in the registry yet"
+                description="Built-in kits are loaded automatically. Remote kits will appear here once the registry is populated."
+              />
             )}
             {kits.map((kit) => (
               <div
@@ -169,19 +154,9 @@ export default function KitStoreView() {
                     </span>
                   )}
                   {installedIds.has(kit.kit_id) ? (
-                    <button
-                      className="ks-btn-uninstall"
-                      onClick={(e) => { e.stopPropagation(); handleUninstall(kit.kit_id); }}
-                    >
-                      <Trash2 size={10} /> Uninstall
-                    </button>
+                    <Button variant="ghost" size="sm" icon={<Trash2 size={10} />} onClick={(e) => { e.stopPropagation(); handleUninstall(kit.kit_id); }}>Uninstall</Button>
                   ) : (
-                    <button
-                      className="ks-btn-install"
-                      onClick={(e) => { e.stopPropagation(); handleInstall(kit.kit_id); }}
-                    >
-                      <Download size={10} /> Install
-                    </button>
+                    <Button variant="secondary" size="sm" icon={<Download size={10} />} onClick={(e) => { e.stopPropagation(); handleInstall(kit.kit_id); }}>Install</Button>
                   )}
                 </div>
               </div>
@@ -193,10 +168,7 @@ export default function KitStoreView() {
       {tab === 'installed' && (
         <div className="ks-installed">
           {loadedKits.length === 0 && (
-            <div className="ks-empty">
-              <Wrench size={32} />
-              <p>No kits loaded.</p>
-            </div>
+            <EmptyState icon={<Wrench size={32} />} title="No kits loaded" />
           )}
           {loadedKits.map((kit) => (
             <div key={kit.manifest.id} className="ks-installed-row">
@@ -256,318 +228,72 @@ export default function KitStoreView() {
       )}
 
       <style>{`
-        .ks-layout {
-          height: 100%;
-          display: flex;
-          flex-direction: column;
-          overflow: hidden;
-          padding: var(--space-lg);
-          gap: var(--space-md);
-        }
-
-        .ks-header { flex-shrink: 0; }
-
-        .ks-title-row {
-          display: flex;
-          align-items: center;
-          gap: var(--space-sm);
-          color: var(--text-primary);
-        }
-
-        .ks-title-row h2 { font-size: var(--text-xl); font-weight: 700; margin: 0; }
-        .ks-subtitle { font-size: var(--text-sm); color: var(--text-secondary); margin: 4px 0 0; }
-
-        .ks-tabs {
-          display: flex;
-          gap: 2px;
-          background: var(--bg-surface);
-          border-radius: var(--radius-sm);
-          padding: 2px;
-          flex-shrink: 0;
-        }
-
-        .ks-tab {
-          flex: 1;
-          padding: 6px 12px;
-          border-radius: var(--radius-sm);
-          font-size: var(--text-sm);
-          font-weight: 500;
-          color: var(--text-secondary);
-          transition: all var(--transition-fast);
-        }
-
-        .ks-tab.active {
-          background: var(--bg-card);
-          color: var(--text-primary);
-          border: 1px solid var(--border);
-        }
+        .ks-subtitle { font-size:var(--text-sm); color:var(--text-secondary); }
+        .ks-tabs-wrap { margin:0 var(--space-lg); flex-shrink:0; }
 
         .ks-search {
-          display: flex;
-          align-items: center;
-          gap: var(--space-sm);
-          padding: var(--space-sm);
-          background: var(--bg-input);
-          border: 1px solid var(--border);
-          border-radius: var(--radius-md);
-          color: var(--text-secondary);
-          flex-shrink: 0;
+          display:flex; align-items:center; gap:var(--space-sm); padding:var(--space-sm);
+          background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-md);
+          color:var(--text-secondary); flex-shrink:0; margin:0 var(--space-lg);
         }
-
-        .ks-search input {
-          flex: 1;
-          background: none;
-          border: none;
-          color: var(--text-primary);
-          font-size: var(--text-sm);
-        }
-
-        .ks-search input:focus { outline: none; }
-
-        .ks-search-btn {
-          padding: 4px;
-          border-radius: 4px;
-          color: var(--text-muted);
-          transition: color var(--transition-fast);
-        }
-
-        .ks-search-btn:hover { color: var(--cyan); }
+        .ks-search input { flex:1; background:none; border:none; color:var(--text-primary); font-size:var(--text-sm); }
+        .ks-search input:focus { outline:none; }
+        .ks-search-btn { padding:4px; border-radius:4px; color:var(--text-muted); transition:color var(--transition-fast); }
+        .ks-search-btn:hover { color:var(--cyan); }
 
         .ks-grid {
-          flex: 1;
-          overflow-y: auto;
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-          gap: var(--space-sm);
-          align-content: start;
+          flex:1; overflow-y:auto; display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+          gap:var(--space-sm); align-content:start; padding:var(--space-md) var(--space-lg);
         }
-
-        .ks-loading, .ks-empty {
-          grid-column: 1 / -1;
-          text-align: center;
-          color: var(--text-muted);
-          padding: var(--space-2xl);
-        }
-
-        .ks-empty { display: flex; flex-direction: column; align-items: center; gap: var(--space-sm); }
-        .ks-empty-hint { font-size: var(--text-xs); }
+        .ks-loading { grid-column:1/-1; text-align:center; color:var(--text-muted); padding:var(--space-2xl); }
 
         .ks-card {
-          padding: var(--space-md);
-          background: var(--bg-card);
-          border: 1px solid var(--border);
-          border-radius: var(--radius-md);
-          cursor: pointer;
-          transition: all var(--transition-fast);
+          padding:var(--space-md); background:var(--bg-card); border:1px solid var(--border);
+          border-radius:var(--radius-md); cursor:pointer; transition:all var(--transition-fast);
         }
-
-        .ks-card:hover { border-color: var(--border-active); }
-        .ks-card.selected { border-color: var(--cyan); background: rgba(0, 240, 255, 0.03); }
-
-        .ks-card-header { display: flex; align-items: baseline; gap: var(--space-sm); margin-bottom: 4px; }
-        .ks-card-name { font-weight: 600; color: var(--text-primary); font-size: var(--text-sm); }
-        .ks-card-version { font-size: 10px; color: var(--text-muted); }
-
-        .ks-card-desc {
-          font-size: var(--text-xs);
-          color: var(--text-secondary);
-          line-height: 1.4;
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-
-        .ks-card-footer {
-          display: flex;
-          align-items: center;
-          gap: var(--space-sm);
-          margin-top: var(--space-sm);
-          font-size: 10px;
-          color: var(--text-muted);
-        }
-
-        .ks-card-author { flex: 1; }
-        .ks-card-downloads { display: flex; align-items: center; gap: 3px; }
-
-        .ks-btn-install, .ks-btn-uninstall {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          padding: 3px 8px;
-          border-radius: 4px;
-          font-size: 10px;
-          font-weight: 600;
-          transition: all var(--transition-fast);
-        }
-
-        .ks-btn-install {
-          color: var(--cyan);
-          border: 1px solid rgba(0, 240, 255, 0.2);
-        }
-
-        .ks-btn-install:hover { background: rgba(0, 240, 255, 0.1); }
-
-        .ks-btn-uninstall {
-          color: var(--text-muted);
-          border: 1px solid var(--border);
-        }
-
-        .ks-btn-uninstall:hover { color: rgb(239, 68, 68); border-color: rgba(239, 68, 68, 0.3); }
+        .ks-card:hover { border-color:var(--border-active); }
+        .ks-card.selected { border-color:var(--cyan); background:rgba(0,240,255,0.03); }
+        .ks-card-header { display:flex; align-items:baseline; gap:var(--space-sm); margin-bottom:4px; }
+        .ks-card-name { font-weight:600; color:var(--text-primary); font-size:var(--text-sm); }
+        .ks-card-version { font-size:10px; color:var(--text-muted); }
+        .ks-card-desc { font-size:var(--text-xs); color:var(--text-secondary); line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+        .ks-card-footer { display:flex; align-items:center; gap:var(--space-sm); margin-top:var(--space-sm); font-size:10px; color:var(--text-muted); }
+        .ks-card-author { flex:1; }
+        .ks-card-downloads { display:flex; align-items:center; gap:3px; }
 
         /* Installed tab */
-        .ks-installed {
-          flex: 1;
-          overflow-y: auto;
-          display: flex;
-          flex-direction: column;
-          gap: var(--space-sm);
-        }
-
-        .ks-installed-row {
-          display: flex;
-          align-items: center;
-          gap: var(--space-md);
-          padding: var(--space-md);
-          background: var(--bg-card);
-          border: 1px solid var(--border);
-          border-radius: var(--radius-md);
-        }
-
-        .ks-installed-info { flex: 1; min-width: 0; }
-
-        .ks-installed-name {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          font-weight: 600;
-          font-size: var(--text-sm);
-          color: var(--text-primary);
-        }
-
-        .ks-dot {
-          width: 6px;
-          height: 6px;
-          border-radius: 50%;
-          flex-shrink: 0;
-        }
-
-        .ks-dot.loaded { background: rgb(34, 197, 94); }
-        .ks-dot.disabled { background: var(--text-muted); }
-        .ks-dot.error { background: rgb(239, 68, 68); }
-
-        .ks-badge {
-          font-size: 9px;
-          padding: 1px 5px;
-          border-radius: 3px;
-          background: var(--bg-elevated);
-          color: var(--text-muted);
-          font-weight: 500;
-          text-transform: uppercase;
-        }
-
-        .ks-installed-desc {
-          font-size: var(--text-xs);
-          color: var(--text-secondary);
-          margin: 2px 0 4px;
-        }
-
-        .ks-installed-tools {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 3px;
-        }
-
-        .ks-tool-chip {
-          font-size: 10px;
-          padding: 1px 6px;
-          border-radius: 3px;
-          background: rgba(0, 240, 255, 0.06);
-          color: var(--cyan);
-          border: 1px solid rgba(0, 240, 255, 0.12);
-        }
-
-        .ks-toggle {
-          color: var(--text-secondary);
-          transition: color var(--transition-fast);
-          flex-shrink: 0;
-        }
-
-        .ks-toggle:hover { color: var(--cyan); }
+        .ks-installed { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:var(--space-sm); padding:var(--space-md) var(--space-lg); }
+        .ks-installed-row { display:flex; align-items:center; gap:var(--space-md); padding:var(--space-md); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); }
+        .ks-installed-info { flex:1; min-width:0; }
+        .ks-installed-name { display:flex; align-items:center; gap:6px; font-weight:600; font-size:var(--text-sm); color:var(--text-primary); }
+        .ks-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+        .ks-dot.loaded { background:rgb(34,197,94); }
+        .ks-dot.disabled { background:var(--text-muted); }
+        .ks-dot.error { background:rgb(239,68,68); }
+        .ks-badge { font-size:9px; padding:1px 5px; border-radius:3px; background:var(--bg-elevated); color:var(--text-muted); font-weight:500; text-transform:uppercase; }
+        .ks-installed-desc { font-size:var(--text-xs); color:var(--text-secondary); margin:2px 0 4px; }
+        .ks-installed-tools { display:flex; flex-wrap:wrap; gap:3px; }
+        .ks-tool-chip { font-size:10px; padding:1px 6px; border-radius:3px; background:rgba(0,240,255,0.06); color:var(--cyan); border:1px solid rgba(0,240,255,0.12); }
+        .ks-toggle { color:var(--text-secondary); transition:color var(--transition-fast); flex-shrink:0; }
+        .ks-toggle:hover { color:var(--cyan); }
 
         /* Detail panel */
-        .ks-detail {
-          position: absolute;
-          right: 0;
-          top: 0;
-          bottom: 0;
-          width: 320px;
-          background: var(--bg-surface);
-          border-left: 1px solid var(--border);
-          padding: var(--space-lg);
-          overflow-y: auto;
-          z-index: 10;
-        }
+        .ks-detail { position:absolute; right:0; top:0; bottom:0; width:320px; background:var(--bg-surface); border-left:1px solid var(--border); padding:var(--space-lg); overflow-y:auto; z-index:10; }
+        .ks-detail-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:var(--space-md); }
+        .ks-detail-header h3 { font-size:var(--text-lg); font-weight:700; margin:0; }
+        .ks-detail-close { font-size:20px; color:var(--text-muted); padding:4px; }
+        .ks-detail-close:hover { color:var(--text-primary); }
+        .ks-detail-desc { font-size:var(--text-sm); color:var(--text-secondary); line-height:1.5; margin-bottom:var(--space-md); }
+        .ks-detail-meta { display:flex; flex-direction:column; gap:4px; font-size:var(--text-xs); color:var(--text-muted); margin-bottom:var(--space-md); }
+        .ks-detail-tools h4 { font-size:var(--text-sm); font-weight:600; margin:0 0 var(--space-sm); }
+        .ks-detail-tool { display:flex; align-items:flex-start; gap:6px; padding:4px 0; font-size:var(--text-xs); color:var(--text-secondary); }
+        .ks-detail-tool-name { font-weight:600; color:var(--text-primary); white-space:nowrap; }
 
-        .ks-detail-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin-bottom: var(--space-md);
-        }
-
-        .ks-detail-header h3 { font-size: var(--text-lg); font-weight: 700; margin: 0; }
-
-        .ks-detail-close {
-          font-size: 20px;
-          color: var(--text-muted);
-          padding: 4px;
-        }
-
-        .ks-detail-close:hover { color: var(--text-primary); }
-
-        .ks-detail-desc {
-          font-size: var(--text-sm);
-          color: var(--text-secondary);
-          line-height: 1.5;
-          margin-bottom: var(--space-md);
-        }
-
-        .ks-detail-meta {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-          font-size: var(--text-xs);
-          color: var(--text-muted);
-          margin-bottom: var(--space-md);
-        }
-
-        .ks-detail-tools h4 {
-          font-size: var(--text-sm);
-          font-weight: 600;
-          margin: 0 0 var(--space-sm);
-        }
-
-        .ks-detail-tool {
-          display: flex;
-          align-items: flex-start;
-          gap: 6px;
-          padding: 4px 0;
-          font-size: var(--text-xs);
-          color: var(--text-secondary);
-        }
-
-        .ks-detail-tool-name {
-          font-weight: 600;
-          color: var(--text-primary);
-          white-space: nowrap;
-        }
-
-        @media (max-width: 768px) {
-          .ks-grid { grid-template-columns: 1fr; }
-          .ks-detail { width: 100%; }
+        @media (max-width:768px) {
+          .ks-grid { grid-template-columns:1fr; }
+          .ks-detail { width:100%; }
         }
       `}</style>
-    </div>
+    </PageShell>
   );
 }

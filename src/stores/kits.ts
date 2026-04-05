@@ -38,10 +38,7 @@ export const useKitStore = create<KitState>()(
       initialized: false,
 
       initBuiltins: () => {
-        // Always re-register builtins — handlers (functions) aren't serializable
-        // so loadedKits is empty after page refresh even if initialized was persisted
-        const { initialized, loadedKits } = get();
-        if (initialized && Object.keys(loadedKits).length > 0) return;
+        if (get().initialized) return;
         const kits: Record<string, KitInstance> = {};
         for (const kit of getBuiltinKits()) {
           kits[kit.manifest.id] = kit;
@@ -98,12 +95,9 @@ export const useKitStore = create<KitState>()(
     }),
     {
       name: 'mcv-kits',
-      // Only persist kit IDs and status, not handlers (functions aren't serializable)
-      partialize: (state) => ({
-        initialized: state.initialized,
-        // We don't persist loadedKits because handlers (functions) can't be serialized.
-        // Built-in kits are re-initialized on boot via initBuiltins().
-      }),
+      // Don't persist anything — handlers (functions) aren't serializable,
+      // and builtins are re-registered on every boot via initBuiltins().
+      partialize: () => ({}),
     },
   ),
 );
