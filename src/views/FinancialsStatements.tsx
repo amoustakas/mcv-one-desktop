@@ -113,7 +113,10 @@ export default function FinancialsStatements() {
                 <StatLine label="Total COGS" value={incomeStatement.costOfRevenue.total} bold separator />
 
                 <StatLine label="Gross Profit" value={incomeStatement.grossProfit} bold separator />
-                <StatLine label={`Gross Margin`} label2={`${(incomeStatement.grossMargin * 100).toFixed(1)}%`} />
+                <div className="fs-margin-row">
+                  <span className="sl-label">Gross Margin</span>
+                  <span className="sl-val" style={{ color: 'var(--color-cyan)', fontFamily: 'var(--font-mono)' }}>{(incomeStatement.grossMargin * 100).toFixed(1)}%</span>
+                </div>
 
                 <StatLine label="OPERATING EXPENSES" bold />
                 <StatLine label="Infrastructure" value={incomeStatement.operatingExpenses.infrastructure} indent={1} />
@@ -234,12 +237,13 @@ export default function FinancialsStatements() {
           font-weight: 600;
           margin-top: 8px;
         }
+        .fs-margin-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 5px 0;
+        }
       `}</style>
     </PageShell>
   );
-}
-
-// Extend StatLine to support label2 prop
-declare module './FinancialsStatements' {
-  export interface StatLineProps { label2?: string; }
 }

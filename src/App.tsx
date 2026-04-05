@@ -70,6 +70,14 @@ const StreamDeckView = lazy(() => import('./views/StreamDeckView'));
 const AudioRouterView = lazy(() => import('./views/AudioRouterView'));
 const AdStudioView = lazy(() => import('./views/AdStudioView'));
 const ConnectedSessionsView = lazy(() => import('./views/ConnectedSessionsView'));
+// Commerce + Financials views
+const CommerceOverview = lazy(() => import('./views/CommerceOverview'));
+const CommerceProducts = lazy(() => import('./views/CommerceProducts'));
+const CommerceSubscriptions = lazy(() => import('./views/CommerceSubscriptions'));
+const FinancialsDashboard = lazy(() => import('./views/FinancialsDashboard'));
+const FinancialsStatements = lazy(() => import('./views/FinancialsStatements'));
+const CostIntelligence = lazy(() => import('./views/CostIntelligence'));
+const FinancialsLedger = lazy(() => import('./views/FinancialsLedger'));
 
 // Placeholder views
 function PlaceholderView({ title, description }: { title: string; description: string }) {
@@ -201,6 +209,49 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <VentureWorkspaceView />;
     case 'growth':
       return <GrowthView />;
+    // Commerce views
+    case 'commerce-overview':
+      return <CommerceOverview />;
+    case 'commerce-products':
+      return <CommerceProducts />;
+    case 'commerce-subscriptions':
+      return <CommerceSubscriptions />;
+    case 'commerce-invoices':
+      return <PlaceholderView title="Invoices" description="Invoice management — AR tracking, send & collect." />;
+    case 'commerce-orders':
+      return <PlaceholderView title="Orders" description="Order management — physical and digital fulfillment." />;
+    case 'commerce-credits':
+      return <PlaceholderView title="Credits & Wallets" description="Credit ledgers, wallet balances, and grant management." />;
+    case 'commerce-loans':
+      return <PlaceholderView title="Loans" description="Loan origination, disbursement, and repayment tracking." />;
+    case 'commerce-tax':
+      return <PlaceholderView title="Tax" description="Tax calculation, jurisdiction rules, and remittance." />;
+    case 'venture-commerce':
+      return <CommerceOverview />;
+    case 'venture-products':
+      return <CommerceProducts />;
+    case 'venture-subscriptions':
+      return <CommerceSubscriptions />;
+    // Financials views
+    case 'financials-dashboard':
+      return <FinancialsDashboard />;
+    case 'financials-statements':
+      return <FinancialsStatements />;
+    case 'financials-cost-intelligence':
+      return <CostIntelligence />;
+    case 'financials-ledger':
+      return <FinancialsLedger />;
+    case 'financials-reporting':
+      return <PlaceholderView title="Reporting" description="Custom financial reports, exports, and scheduled delivery." />;
+    case 'venture-financials':
+      return <FinancialsDashboard />;
+    // Creator views
+    case 'creator-hub':
+      return <PlaceholderView title="Creator Hub" description="Content creator management, payouts, and analytics." />;
+    case 'creator-royalties':
+      return <PlaceholderView title="Royalties" description="Royalty tracking, splits, and automated distributions." />;
+    case 'creator-escrow':
+      return <PlaceholderView title="Escrow" description="Deal escrow, milestone-based releases, and disputes." />;
     default:
       return <AegisChat venture={venture} />;
   }
@@ -280,6 +331,14 @@ const VIEW_LABELS: Record<string, string> = {
   'venture-forge': 'The Forge', 'venture-tasks': 'Tasks',
   'venture-settings': 'Settings', 'venture-onboarding': 'New Venture',
   files: 'Files', 'venture-workspace': 'Workspace',
+  'commerce-overview': 'Commerce Overview', 'commerce-products': 'Products',
+  'commerce-subscriptions': 'Subscriptions', 'commerce-invoices': 'Invoices',
+  'commerce-orders': 'Orders', 'commerce-credits': 'Credits & Wallets',
+  'commerce-loans': 'Loans', 'commerce-tax': 'Tax',
+  'financials-dashboard': 'Financials', 'financials-statements': 'Statements',
+  'financials-cost-intelligence': 'Cost Intelligence', 'financials-ledger': 'Ledger',
+  'financials-reporting': 'Reporting',
+  'creator-hub': 'Creator Hub', 'creator-royalties': 'Royalties', 'creator-escrow': 'Escrow',
 };
 
 const SECTION_MAP: Record<string, string> = {
@@ -291,6 +350,14 @@ const SECTION_MAP: Record<string, string> = {
   tasks: 'Operations', docs: 'Operations', files: 'Operations', team: 'Operations',
   'ai-studio': 'AI Tools', 'prompt-composer': 'AI Tools',
   settings: 'System',
+  'commerce-overview': 'Commerce', 'commerce-products': 'Commerce',
+  'commerce-subscriptions': 'Commerce', 'commerce-invoices': 'Commerce',
+  'commerce-orders': 'Commerce', 'commerce-credits': 'Commerce',
+  'commerce-loans': 'Commerce', 'commerce-tax': 'Commerce',
+  'financials-dashboard': 'Financials', 'financials-statements': 'Financials',
+  'financials-cost-intelligence': 'Financials', 'financials-ledger': 'Financials',
+  'financials-reporting': 'Financials',
+  'creator-hub': 'Creator', 'creator-royalties': 'Creator', 'creator-escrow': 'Creator',
 };
 
 function Breadcrumbs() {
