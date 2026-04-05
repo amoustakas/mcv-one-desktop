@@ -152,7 +152,7 @@ export async function streamMessageWithTools(
     const toolResults: unknown[] = [];
     for (const tc of toolCalls) {
       allToolCalls.push(tc);
-      callbacks.onToolCall(tc);
+      // onToolCall already fired during SSE parsing in streamOnce
 
       const result = await toolExecutor(tc);
       callbacks.onToolResult(tc.id, result);
@@ -226,11 +226,14 @@ async function streamOnce(
           text += parsed.text;
           callbacks.onText(existingText + text);
         } else if (parsed.type === 'tool_use') {
-          toolCalls.push({
+          const tc: ToolCallEvent = {
             id: parsed.id,
             name: parsed.name,
             input: parsed.input || {},
-          });
+          };
+          toolCalls.push(tc);
+          // Fire onToolCall immediately so UI shows "running" during streaming
+          callbacks.onToolCall(tc);
         } else if (parsed.type === 'message_end') {
           stopReason = parsed.stop_reason || 'end_turn';
         } else if (parsed.type === 'error') {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   LayoutGrid, PieChart, Bot, Brain, Landmark, Activity,
   Wrench, Radio, Settings, ChevronLeft, ChevronRight, ChevronDown,
@@ -6,6 +6,8 @@ import {
   Wand2, Swords, TrendingUp, FileText, Plus, Package,
 } from 'lucide-react';
 import { useNavigation, type ViewId } from '../stores/navigation';
+import { useVentureContextStore } from '../stores/venture-context';
+import { ventures } from '../lib/ventures';
 
 // ── Icon map ──
 const VIEW_ICONS: Record<string, React.FC<{ size: number }>> = {
@@ -109,8 +111,30 @@ const ventureSections: NavSection[] = [
 
 export default function NavRail() {
   const [expanded, setExpanded] = useState(() => window.innerWidth >= 1600);
-  const { mode, activeView, setView, openSplit, splitView } = useNavigation();
+  const { mode, activeView, activeVenture, setView, openSplit, splitView } = useNavigation();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const setActiveVenture = useVentureContextStore((s) => s.setActiveVenture);
+
+  // Sync active venture from navigation store into venture context store
+  useEffect(() => {
+    if (activeVenture) {
+      const v = ventures.find((ven) => ven.id === activeVenture);
+      if (v) {
+        setActiveVenture({
+          id: v.id,
+          name: v.name,
+          color: v.color,
+          status: v.status === 'development' ? 'building' : v.status === 'planned' ? 'paused' : v.status === 'concept' ? 'archived' : 'active',
+          health: null,
+          featureFlags: {},
+          teamCount: v.team.length,
+          lastActivity: null,
+        });
+      }
+    } else {
+      setActiveVenture(null);
+    }
+  }, [activeVenture, setActiveVenture]);
 
   const sections = mode === 'global' ? globalSections : ventureSections;
   const w = expanded ? 220 : 56;

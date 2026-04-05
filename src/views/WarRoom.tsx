@@ -8,6 +8,7 @@ import { useDeployments } from '../hooks/use-deployments';
 import { useTasks } from '../hooks/use-tasks';
 import { useDocuments } from '../hooks/use-docs';
 import { apiGet } from '../lib/api/client';
+import { useAgentsStore } from '../stores/agents';
 
 /* ──────────────────────── Types ──────────────────────── */
 
@@ -279,9 +280,17 @@ export default function WarRoom() {
     connections: 4,
   });
 
+  // Agents store
+  const addAgentTask = useAgentsStore((s) => s.addTask);
+  const completeAgentTask = useAgentsStore((s) => s.completeTask);
+  const activeTaskCount = useAgentsStore((s) => s.activeTaskCount);
+
   // Tasks — seed from hook data
   const [tasks, setTasks] = useState<TaskInfo[]>([]);
   const tasksSeededRef = useRef(false);
+
+  // Map local task IDs to agents store task IDs
+  const storeTaskIdsRef = useRef<Record<string, string>>({});
 
   useEffect(() => {
     if (tasksSeededRef.current || allTasks.length === 0) return;
@@ -296,8 +305,21 @@ export default function WarRoom() {
         progress: t.status === 'review' ? 90 : 30 + i * 15,
         eta: t.status === 'review' ? '~1m' : `~${5 + i * 3}m`,
       }));
-    if (active.length > 0) setTasks(active);
-  }, [allTasks]);
+    if (active.length > 0) {
+      setTasks(active);
+      // Seed agents store with initial tasks
+      for (const t of active) {
+        const storeId = addAgentTask({
+          agentType: 'scout',
+          name: t.name,
+          description: `War Room task: ${t.name} (${t.venture})`,
+          status: 'executing',
+          ventureId: t.venture,
+        });
+        storeTaskIdsRef.current[t.id] = storeId;
+      }
+    }
+  }, [allTasks, addAgentTask]);
 
   // Auto-scroll terminal
   useEffect(() => {
@@ -341,15 +363,33 @@ export default function WarRoom() {
       setTasks(prev => prev.map(t => {
         let p = t.progress + Math.floor(Math.random() * 4);
         if (p >= 100) {
+          // Complete the task in agents store
+          const storeId = storeTaskIdsRef.current[t.id];
+          if (storeId) {
+            completeAgentTask(storeId, `Completed: ${t.name}`);
+          }
+
           // Reset with new task
           const names = [
             'Schema migration deploy', 'Aegis model sync', 'Edge function warm-up',
             'Market data ingest', 'Venture health scan', 'API stress test',
             'Cache rebuild cycle', 'Document embedding batch',
           ];
+          const newName = names[Math.floor(Math.random() * names.length)];
+
+          // Add the new task to agents store
+          const newStoreId = addAgentTask({
+            agentType: 'scout',
+            name: newName,
+            description: `War Room task: ${newName} (${t.venture})`,
+            status: 'executing',
+            ventureId: t.venture,
+          });
+          storeTaskIdsRef.current[t.id] = newStoreId;
+
           return {
             ...t,
-            name: names[Math.floor(Math.random() * names.length)],
+            name: newName,
             progress: Math.floor(Math.random() * 20),
             eta: `~${Math.floor(Math.random() * 10) + 2}m`,
           };
@@ -358,7 +398,7 @@ export default function WarRoom() {
       }));
     }, 4000);
     return () => clearInterval(id);
-  }, []);
+  }, [addAgentTask, completeAgentTask]);
 
   // Command handler
   const handleCommand = useCallback((raw: string) => {
@@ -630,7 +670,7 @@ export default function WarRoom() {
             <div className="wr-panel-head">
               <Activity size={13} />
               <span>Active Tasks</span>
-              <span className="wr-panel-badge">{tasks.length} running</span>
+              <span className="wr-panel-badge">{activeTaskCount} running</span>
             </div>
             <div className="wr-tasks">
               {tasks.map(t => (

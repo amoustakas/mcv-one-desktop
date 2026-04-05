@@ -13,7 +13,9 @@ import {
   deleteConversation,
   type DbConversation,
 } from '../lib/supabase';
+import { useUser } from '../lib/auth';
 import { useKitStore } from '../stores/kits';
+import { useChatStore } from '../stores/chat';
 import { AgentOrchestrator } from '../lib/kits/orchestrator';
 import ToolCallIndicator from './ToolCallIndicator';
 import Markdown from './Markdown';
@@ -68,6 +70,16 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
   const useDb = !!supabase;
   const [activeToolCalls, setActiveToolCalls] = useState<ToolCallStatus[]>([]);
   const hasVoice = isRecordingSupported();
+  const { user } = useUser();
+
+  // Sync local state to global chat store for cross-component access
+  const chatStore = useChatStore();
+  useEffect(() => {
+    chatStore.setMessages(messages);
+    chatStore.setActiveConversation(activeConvId);
+    chatStore.setStreaming(loading);
+    chatStore.setStreamingText(streamingText);
+  }, [messages, activeConvId, loading, streamingText]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Kit system — initialize on mount and get tools for current venture
   const { initBuiltins, getLoadedKits } = useKitStore();
@@ -281,7 +293,7 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
           ventureId: venture.id,
           systemPrompt: venture.systemPrompt,
           context: {
-            userId: '',
+            userId: user?.id ?? '',
             ventureId: venture.id,
             conversationId: convId!,
             fetch: globalThis.fetch,

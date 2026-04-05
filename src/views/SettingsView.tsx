@@ -8,6 +8,7 @@ import { APP_VERSION, BUILD_TIME } from '../lib/version';
 import { ventures } from '../lib/ventures';
 import { useToast } from '../components/Toasts';
 import { apiGet, apiPost } from '../lib/api/client';
+import { useUserStore } from '../stores/user';
 
 // ── Settings State ──
 interface AppSettings {
@@ -78,6 +79,22 @@ export default function SettingsView() {
   const [testing, setTesting] = useState<string | null>(null);
   const { toast } = useToast();
 
+  const userPrefs = useUserStore((s) => s.preferences);
+  const updatePreferences = useUserStore((s) => s.updatePreferences);
+
+  // Hydrate local settings from user store on mount
+  useEffect(() => {
+    setSettings((prev) => {
+      const merged = {
+        ...prev,
+        compactMode: userPrefs.compactMode,
+        autoTTS: userPrefs.voiceEnabled,
+      };
+      saveSettings(merged);
+      return merged;
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     apiGet<Record<string, boolean>>('/api/health').then(d => setHealth(d || {})).catch(() => {});
     navigator.mediaDevices?.enumerateDevices().then(devices => {
@@ -92,6 +109,12 @@ export default function SettingsView() {
     const next = { ...settings, ...partial };
     setSettings(next);
     saveSettings(next);
+
+    // Sync overlapping fields to the user store
+    const storeUpdates: Record<string, unknown> = {};
+    if ('compactMode' in partial) storeUpdates.compactMode = partial.compactMode;
+    if ('autoTTS' in partial) storeUpdates.voiceEnabled = partial.autoTTS;
+    if (Object.keys(storeUpdates).length > 0) updatePreferences(storeUpdates);
   }
 
   async function testService(key: string) {

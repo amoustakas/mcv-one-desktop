@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { Bell, Check, Trash2, Zap, GitBranch, Cloud, Users, FileText, MessageSquare } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useNotificationStore } from '../stores/notifications';
+import type { AppNotification } from '../stores/notifications';
 
-interface Notification {
+interface SupabaseNotification {
   id: string; type: string; title: string; description: string;
   source: string; read: boolean; venture_id: string; created_at: string;
 }
@@ -14,12 +16,31 @@ const TYPE_COLORS: Record<string, string> = {
   info: '#00F0FF', success: '#10B981', warning: '#F59E0B', error: '#EF4444',
 };
 
+function mapToStore(row: SupabaseNotification): AppNotification {
+  return {
+    id: row.id,
+    type: row.type as AppNotification['type'],
+    title: row.title,
+    description: row.description,
+    source: row.source,
+    ventureId: row.venture_id,
+    read: row.read,
+    createdAt: row.created_at,
+  };
+}
+
 function timeAgo(d: string) { const mins = Math.floor((Date.now() - new Date(d).getTime()) / 60000); if (mins < 1) return 'now'; if (mins < 60) return `${mins}m`; const h = Math.floor(mins / 60); if (h < 24) return `${h}h`; return `${Math.floor(h / 24)}d`; }
 
 export default function NotificationCenter() {
   const [open, setOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const ref = useRef<HTMLDivElement>(null);
+
+  const notifications = useNotificationStore((s) => s.notifications);
+  const unreadCount = useNotificationStore((s) => s.unreadCount);
+  const setStoreNotifications = useNotificationStore((s) => s.setNotifications);
+  const storeMarkRead = useNotificationStore((s) => s.markRead);
+  const storeMarkAllRead = useNotificationStore((s) => s.markAllRead);
+  const storeClearRead = useNotificationStore((s) => s.clearRead);
 
   useEffect(() => {
     loadNotifications();
@@ -38,28 +59,26 @@ export default function NotificationCenter() {
   async function loadNotifications() {
     if (!supabase) return;
     const { data } = await supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(30);
-    if (data) setNotifications(data);
+    if (data) setStoreNotifications((data as SupabaseNotification[]).map(mapToStore));
   }
 
   async function markRead(id: string) {
     if (!supabase) return;
     await supabase.from('notifications').update({ read: true }).eq('id', id);
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    storeMarkRead(id);
   }
 
   async function markAllRead() {
     if (!supabase) return;
     await supabase.from('notifications').update({ read: true }).eq('read', false);
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    storeMarkAllRead();
   }
 
   async function clearAll() {
     if (!supabase) return;
     await supabase.from('notifications').delete().eq('read', true);
-    setNotifications(prev => prev.filter(n => !n.read));
+    storeClearRead();
   }
-
-  const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
     <div className="nc" ref={ref}>
@@ -93,7 +112,7 @@ export default function NotificationCenter() {
                     {n.description && <span className="nc-item-desc">{n.description}</span>}
                     <span className="nc-item-meta">
                       <span className="nc-item-source">{n.source}</span>
-                      <span className="nc-item-time">{timeAgo(n.created_at)}</span>
+                      <span className="nc-item-time">{timeAgo(n.createdAt)}</span>
                     </span>
                   </div>
                   {!n.read && <span className="nc-unread-dot" />}

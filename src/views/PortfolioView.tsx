@@ -1,7 +1,10 @@
+import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PieChart, ExternalLink, RefreshCw, GitBranch, Cloud, FileText, CheckSquare, MessageSquare } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
 import { useTheme } from '../stores/theme';
+import { useVentureContextStore } from '../stores/venture-context';
+import type { VentureHealth } from '../stores/venture-context';
 import { ventures } from '../lib/ventures';
 import { supabase } from '../lib/supabase';
 import { useGithubOverview } from '../hooks/use-github';
@@ -54,6 +57,29 @@ export default function PortfolioView() {
   }
 
   const totals = { repos: repoCount, deploys: deployCount, docs: allDocs.length, tasks: allTasks.length, chats: allConvos.length };
+
+  const updateHealth = useVentureContextStore((s) => s.updateHealth);
+
+  // Push computed venture KPIs into the venture context store
+  useEffect(() => {
+    for (const v of ventures) {
+      const vk = kpis[v.id];
+      if (!vk) continue;
+      const docsScore = Math.min(100, vk.docs * 10);
+      const tasksScore = Math.max(0, 100 - vk.tasks * 5);
+      const overall = Math.round((docsScore + tasksScore) / 2);
+      const health: VentureHealth = {
+        ventureId: v.id,
+        overall,
+        github: vk.repos > 0 ? 80 : 40,
+        deploys: vk.deploys > 0 ? 90 : 30,
+        tasks: tasksScore,
+        crm: vk.chats > 0 ? 70 : 20,
+        lastUpdated: new Date().toISOString(),
+      };
+      updateHealth(v.id, health);
+    }
+  }, [kpis, updateHealth]);
 
   function refresh() {
     queryClient.invalidateQueries({ queryKey: ['github', 'overview'] });

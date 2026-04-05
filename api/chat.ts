@@ -83,8 +83,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       response.on('end', () => {
         // Send stop reason so client knows if it needs to handle tool results
-        const msg = response.currentMessage();
-        res.write(`data: ${JSON.stringify({ type: 'message_end', stop_reason: msg?.stop_reason })}\n\n`);
+        const stopReason = response.currentMessage()?.stop_reason ?? 'end_turn';
+        res.write(`data: ${JSON.stringify({ type: 'message_end', stop_reason: stopReason })}\n\n`);
         res.write('data: [DONE]\n\n');
         res.end();
       });

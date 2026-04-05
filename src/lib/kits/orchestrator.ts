@@ -13,7 +13,7 @@ import { searchKits } from './registry-client';
 export interface OrchestratorCallbacks {
   onText: (fullText: string) => void;
   onToolCall: (toolCall: ToolCallEvent) => void;
-  onToolResult: (toolName: string, result: ToolCallResult) => void;
+  onToolResult: (toolCallId: string, result: ToolCallResult) => void;
 }
 
 export interface OrchestratorResult {
