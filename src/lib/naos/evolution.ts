@@ -1,4 +1,3 @@
-// @ts-nocheck
 // NAOS Evolution Engine — Agent Growth, Trait Drift, Emotional Shifts, Skill Progression
 // Every interaction updates agents across all 6 dimensions
 
@@ -36,7 +35,7 @@ const FEEDBACK_WEIGHTS: Record<string, number> = {
 
 /** Compute trait deltas from an interaction outcome */
 export function computeTraitDeltas(
-  current: PersonalityMatrix,
+  _current: PersonalityMatrix,
   emotional: EmotionalState,
   params: TraitShiftParams,
 ): Partial<PersonalityMatrix> {
@@ -105,7 +104,7 @@ function clampDelta(delta: number): number {
 // ---------------------------------------------------------------------------
 
 export function computeEmotionalDeltas(
-  current: EmotionalState,
+  _current: EmotionalState,
   outcome: InteractionOutcome,
   feedback?: string,
   significance?: number,
@@ -131,7 +130,6 @@ export function computeEmotionalDeltas(
       deltas.confidence = -3 * sig;
       deltas.frustration = 4 * sig;
       deltas.caution = 3 * sig;
-      deltas.assertiveness = -2 * sig;
       break;
     case 'partial':
       deltas.confidence = -1 * sig;
@@ -163,11 +161,14 @@ export function applyEmotionalDeltas(
     }
   }
 
+  // Compute delta sum from numeric fields only
+  const numericDeltaSum = (['confidence', 'engagement', 'frustration', 'excitement', 'caution', 'momentum'] as const)
+    .reduce((s, k) => s + ((deltas as Record<string, number>)[k] || 0), 0);
+
   updated.triggers = [
-    { event: triggerEvent, delta: Object.values(deltas).reduce((s, v) => s + (v || 0), 0), timestamp: new Date().toISOString() },
+    { event: triggerEvent, delta: numericDeltaSum, timestamp: new Date().toISOString() },
     ...state.triggers.slice(0, 19), // keep last 20 triggers
   ];
-  updated.lastUpdated = new Date().toISOString();
 
   return updated;
 }

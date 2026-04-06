@@ -1,10 +1,10 @@
-// @ts-nocheck
 // NAOS Genesis Engine — Agent Creation + Identity Generation
 // Handles hiring pipeline: need detection → role synthesis → identity gen → onboarding
 
 import type {
   AgentIdentity, AgentRole, AgentTier, PersonalityMatrix,
   EmotionalState, GenesisRequest, GenesisResult,
+  VenturePersonalityOverride,
 } from './types';
 
 // ---------------------------------------------------------------------------
@@ -110,9 +110,9 @@ export function generateFullName(codename: string, role: AgentRole): string {
 }
 
 /** Generate a genesis story for why this agent was hired */
-export function generateGenesisStory(role: AgentRole, ventureScope: string[], parentCodename?: string): string {
+export function generateGenesisStory(role: AgentRole, ventureScope: string[] | '*', parentCodename?: string): string {
   const domain = ROLE_TO_DOMAIN[role] || 'general';
-  const ventureText = ventureScope.includes('*') ? 'the entire MCV ecosystem' : ventureScope.join(', ');
+  const ventureText = ventureScope === '*' || ventureScope.includes('*') ? 'the entire MCV ecosystem' : ventureScope.join(', ');
   const parentText = parentCodename ? `, reporting to ${parentCodename}` : '';
   return `Recruited to lead ${domain} operations across ${ventureText}${parentText}. Activated during a period of rapid expansion requiring dedicated ${domain} expertise and autonomous decision-making capacity.`;
 }
@@ -121,7 +121,7 @@ export function generateGenesisStory(role: AgentRole, ventureScope: string[], pa
 export function seedPersonality(
   role: AgentRole,
   parentPersonality?: PersonalityMatrix,
-  ventureContext?: string,
+  _ventureContext?: string,
 ): PersonalityMatrix {
   const archetype = ROLE_ARCHETYPES[role] || {};
   const base = { ...DEFAULT_PERSONALITY, ...archetype };
@@ -179,17 +179,20 @@ export function genesisAgent(request: GenesisRequest, existingCodenames: string[
   const tier = getTierForRole(request.role);
   const domain = ROLE_TO_DOMAIN[request.role] || 'general';
 
-  const identity: AgentIdentity = {
+  const ventureScope = request.ventureScope || ['*'];
+  const ventureScopeArr = Array.isArray(ventureScope) ? ventureScope : ['*'];
+
+  const agent: AgentIdentity = {
     id: crypto.randomUUID(),
     codename,
     fullName: null, // emerges at 50 interactions
-    title: request.title,
+    title: `${request.role} agent`,
     role: request.role,
-    domain: request.domains || [domain],
+    domain: request.requiredDomains.length > 0 ? request.requiredDomains : [domain],
     tier,
-    reportsTo: request.reportsTo || null,
-    ventureScope: request.ventureScope || ['*'],
-    genesisStory: generateGenesisStory(request.role, request.ventureScope || ['*'], request.parentCodename),
+    reportsTo: request.parentAgentId,
+    ventureScope,
+    genesisStory: generateGenesisStory(request.role, ventureScopeArr),
     status: 'probationary',
     interactionCount: 0,
     milestone: 'nascent',
@@ -197,10 +200,21 @@ export function genesisAgent(request: GenesisRequest, existingCodenames: string[
     createdAt: new Date().toISOString(),
   };
 
-  const personality = seedPersonality(request.role, parentPersonality, request.ventureScope?.[0]);
+  const roleArchetype = getRoleArchetype(request.role);
+  const firstVenture = Array.isArray(ventureScope) ? ventureScope[0] : undefined;
+  const personality = seedPersonality(request.role, parentPersonality, firstVenture);
   const emotionalState = seedEmotionalState();
 
-  return { identity, personality, emotionalState };
+  const ventureOverrides: VenturePersonalityOverride[] = [];
+
+  const inheritanceBreakdown: GenesisResult['inheritanceBreakdown'] = {
+    roleArchetype,
+    parentTraits: parentPersonality ? { ...parentPersonality } : null,
+    ventureContext: {} as Partial<PersonalityMatrix>,
+    randomVariance: {} as Partial<PersonalityMatrix>,
+  };
+
+  return { agent, personality, emotionalState, ventureOverrides, inheritanceBreakdown };
 }
 
 /** Get the naming domain for a role */

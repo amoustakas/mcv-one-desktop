@@ -1,4 +1,3 @@
-// @ts-nocheck
 // NAOS Culture Engine — Emergent Organizational Metrics
 // Culture isn't configured — it emerges from aggregate agent behavior
 
@@ -15,14 +14,15 @@ export function computeCultureSnapshot(agents: AgentData[]): CultureSnapshot {
   const active = agents.filter(a => a.identity.status === 'active' || a.identity.status === 'probationary');
   if (active.length === 0) {
     return {
+      date: new Date().toISOString().split('T')[0],
       innovationTemperature: 50,
       riskAppetite: 50,
       velocityPressure: 50,
       collaborationDensity: 50,
       trustBaseline: 50,
-      agentCount: 0,
-      snapshotDate: new Date().toISOString().split('T')[0],
-      computedAt: new Date().toISOString(),
+      totalAgents: 0,
+      activePredictions: 0,
+      orgMomentum: 50,
     };
   }
 
@@ -44,14 +44,17 @@ export function computeCultureSnapshot(agents: AgentData[]): CultureSnapshot {
   const collaborationDensity = weightedAvg(a => a.personality.collaborationStyle);
   const trustBaseline = weightedAvg(a => a.emotional.confidence);
 
+  const orgMomentum = weightedAvg(a => a.emotional.momentum);
+
   return {
+    date: new Date().toISOString().split('T')[0],
     innovationTemperature,
     riskAppetite,
     velocityPressure,
     collaborationDensity,
     trustBaseline,
-    agentCount: active.length,
-    snapshotDate: new Date().toISOString().split('T')[0],
-    computedAt: new Date().toISOString(),
+    totalAgents: active.length,
+    activePredictions: 0,
+    orgMomentum,
   };
 }

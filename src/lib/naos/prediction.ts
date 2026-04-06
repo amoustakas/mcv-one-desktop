@@ -1,8 +1,7 @@
-// @ts-nocheck
 // NAOS Prediction Forge — Milofish Integration
 // Every decision is a prediction. Collective intelligence emerges from agent consensus.
 
-import type { Prediction, AgentIdentity, PersonalityMatrix } from './types';
+import type { Prediction } from './types';
 
 /** Create a new prediction entry */
 export function createPrediction(
@@ -14,17 +13,12 @@ export function createPrediction(
   confidenceLevel: number,
 ): Prediction {
   return {
-    id: crypto.randomUUID(),
     agentId,
     ventureId,
     domain,
     decisionContext,
     predictedOutcome,
     confidenceLevel: Math.max(0, Math.min(100, confidenceLevel)),
-    actualOutcome: null,
-    accuracyScore: null,
-    createdAt: new Date().toISOString(),
-    resolvedAt: null,
   };
 }
 
@@ -40,7 +34,6 @@ export function resolvePrediction(prediction: Prediction, actualOutcome: string)
     ...prediction,
     actualOutcome,
     accuracyScore: accuracy,
-    resolvedAt: new Date().toISOString(),
   };
 }
 

@@ -1,13 +1,9 @@
-// @ts-nocheck
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Users, BarChart3, Network, Plus, Search, Shield } from 'lucide-react';
+import { Users, BarChart3, Network, Plus, Shield } from 'lucide-react';
 import { PageShell, PageHeader, Tabs, KpiCard, GlassCard, Button, Badge } from '../components/ui';
 import { staggerContainer, fadeInUp } from '../lib/animations';
 import '../styles/naos.css';
-
-// Lazy component imports — will be created by subagents
-import type { FC } from 'react';
 
 // Placeholder components until subagent files land
 function OrgChartPlaceholder({ agents, onSelect, selectedId }: any) {

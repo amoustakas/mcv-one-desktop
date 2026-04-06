@@ -1,4 +1,3 @@
-// @ts-nocheck
 // NAOS Resonance Network — Cross-Agent Ripple Effects
 // When one agent evolves, it ripples through the organization
 
@@ -103,7 +102,8 @@ export function computeRipples(
   return ripples;
 }
 
-function hasVentureOverlap(scopeA: string[], scopeB: string[]): boolean {
-  if (scopeA.includes('*') || scopeB.includes('*')) return true;
+function hasVentureOverlap(scopeA: string[] | string, scopeB: string[] | string): boolean {
+  if (scopeA === '*' || scopeB === '*') return true;
+  if (!Array.isArray(scopeA) || !Array.isArray(scopeB)) return false;
   return scopeA.some(v => scopeB.includes(v));
 }

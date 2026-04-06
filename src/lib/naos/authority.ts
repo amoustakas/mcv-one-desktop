@@ -1,4 +1,3 @@
-// @ts-nocheck
 // NAOS Authority Engine — Dynamic Autonomy Decisions
 // Determines what each agent can auto-execute vs must escalate
 
@@ -62,7 +61,6 @@ export function evaluateAutonomy(
       requiresEscalation: true,
       escalateTo: agent.reportsTo || 'founder',
       confidence: 0,
-      reason: 'Critical risk always requires escalation',
     };
   }
 
@@ -80,7 +78,6 @@ export function evaluateAutonomy(
       requiresEscalation: true,
       escalateTo: agent.reportsTo || 'founder',
       confidence: 0,
-      reason: 'Public-facing actions require C-Suite+ approval',
     };
   }
 
@@ -98,7 +95,6 @@ export function evaluateAutonomy(
       requiresEscalation: true,
       escalateTo: agent.reportsTo || 'founder',
       confidence: 0,
-      reason: `Spend $${action.spendAmount} exceeds limit $${adjustedSpendLimit} (tier ${agent.tier}, trust ${trustScore})`,
     };
   }
 
@@ -116,7 +112,6 @@ export function evaluateAutonomy(
       requiresEscalation: true,
       escalateTo: agent.reportsTo || 'founder',
       confidence: 0,
-      reason: `${action.riskLevel} risk not within tier ${agent.tier} tolerance`,
     };
   }
 
@@ -134,7 +129,6 @@ export function evaluateAutonomy(
       requiresEscalation: true,
       escalateTo: agent.reportsTo || 'founder',
       confidence: 0,
-      reason: `Outside agent scope: ${!inDomain ? 'domain' : 'venture'} mismatch`,
     };
   }
 
@@ -149,8 +143,7 @@ export function evaluateAutonomy(
     ventureId: action.ventureId,
     canAutoExecute: true,
     requiresEscalation: false,
-    escalateTo: null,
+    escalateTo: '',
     confidence: Math.min(100, trustScore + (100 - agent.tier * 15)),
-    reason: 'Within authority bounds',
   };
 }
