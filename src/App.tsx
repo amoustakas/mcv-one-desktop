@@ -79,6 +79,8 @@ const YouTubePlayerView = lazy(() => import('./views/YouTubePlayerView'));
 // Google Workspace
 const GmailView = lazy(() => import('./views/GmailView'));
 const CalendarView = lazy(() => import('./views/CalendarView'));
+const GoogleDocsView = lazy(() => import('./views/GoogleDocsView'));
+const GoogleTasksView = lazy(() => import('./views/GoogleTasksView'));
 // Commerce + Financials views
 const CommerceOverview = lazy(() => import('./views/CommerceOverview'));
 const CommerceProducts = lazy(() => import('./views/CommerceProducts'));
@@ -303,11 +305,11 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
     case 'drive':
       return <FilesView />;
     case 'sheets':
-      return <PlaceholderView title="Google Sheets" description="Spreadsheet integration with read/write access. Coming next." />;
+      return <GoogleDocsView />;
     case 'google-docs':
-      return <PlaceholderView title="Google Docs" description="Document browser with embedded preview. Coming in Phase 4." />;
+      return <GoogleDocsView />;
     case 'google-tasks':
-      return <PlaceholderView title="Google Tasks" description="Task management with two-way sync. Coming in Phase 4." />;
+      return <GoogleTasksView />;
     default:
       return <AegisChat venture={venture} />;
   }

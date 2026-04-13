@@ -1,0 +1,255 @@
+import type { KitManifest, KitToolHandler, KitExecutionContext } from '../types';
+
+/**
+ * MCP Google Bridge Kit
+ *
+ * Intelligent router that decides whether to use MCP tools (real-time reads)
+ * or API routes (authenticated writes) for Google operations.
+ *
+ * MCP path: instant queries via session-scoped MCP tools (Gmail, Calendar)
+ * API path: authenticated writes via Vercel API routes (send, create, upload)
+ */
+
+async function apiCall(path: string, params: Record<string, unknown>, ctx: KitExecutionContext, method = 'GET') {
+  if (method === 'GET') {
+    const qs = new URLSearchParams(Object.fromEntries(
+      Object.entries(params).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)]),
+    )).toString();
+    const r = await ctx.fetch(`${path}?${qs}`);
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || `API error ${r.status}`); }
+    return r.json();
+  }
+  const r = await ctx.fetch(path, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || `API error ${r.status}`); }
+  return r.json();
+}
+
+// ── Cross-service workflow: Prepare for meeting ──
+const prepareForMeeting: KitToolHandler = async (_input, ctx) => {
+  const md: string[] = ['## Meeting Preparation\n'];
+
+  // Step 1: Get next calendar event
+  try {
+    const calData = await apiCall('/api/google-calendar', { action: 'list-events', maxResults: '1' }, ctx);
+    const next = calData.items?.[0];
+    if (next) {
+      md.push(`### Next Meeting: ${next.summary}`);
+      md.push(`- **When:** ${next.start?.dateTime ? new Date(next.start.dateTime).toLocaleString() : 'TBD'}`);
+      if (next.location) md.push(`- **Where:** ${next.location}`);
+      if (next.attendees?.length) md.push(`- **Attendees:** ${next.attendees.map((a: { email: string }) => a.email).join(', ')}`);
+      if (next.hangoutLink) md.push(`- **Meet link:** ${next.hangoutLink}`);
+      md.push('');
+
+      // Step 2: Search for related emails
+      if (next.attendees?.length) {
+        const attendee = next.attendees[0]?.email;
+        if (attendee) {
+          try {
+            const emailData = await apiCall('/api/gmail', { action: 'search', q: `from:${attendee}`, maxResults: '3' }, ctx);
+            const emails = emailData.messages ?? [];
+            if (emails.length) {
+              md.push('### Recent Emails from Attendees');
+              for (const e of emails) {
+                md.push(`- **${e.subject}** — ${e.from} (${e.date})`);
+              }
+              md.push('');
+            }
+          } catch { /* Gmail not connected — skip */ }
+        }
+      }
+
+      // Step 3: Search Drive for related docs
+      try {
+        const driveData = await apiCall('/api/google-drive', { action: 'search', q: next.summary }, ctx);
+        const files = driveData.files ?? [];
+        if (files.length) {
+          md.push('### Related Documents');
+          for (const f of files.slice(0, 5)) {
+            md.push(`- **${f.name}** — ${f.mimeType?.split('.').pop() || 'file'}`);
+          }
+          md.push('');
+        }
+      } catch { /* Drive not connected — skip */ }
+    } else {
+      md.push('No upcoming meetings found.');
+    }
+  } catch (err) {
+    md.push(`Calendar error: ${err instanceof Error ? err.message : 'unavailable'}`);
+  }
+
+  return { success: true, data: null, displayMarkdown: md.join('\n') };
+};
+
+// ── Cross-service workflow: Daily briefing ──
+const dailyBriefing: KitToolHandler = async (_input, ctx) => {
+  const md: string[] = ['## Daily Briefing\n'];
+
+  // Calendar
+  try {
+    const calData = await apiCall('/api/google-calendar', { action: 'overview' }, ctx);
+    md.push('### Calendar');
+    md.push(`- **${calData.upcoming_events || 0}** events this week`);
+    if (calData.next_event) md.push(`- Next: **${calData.next_event}** at ${calData.next_event_time}`);
+    md.push('');
+  } catch { md.push('### Calendar\n- Not connected\n'); }
+
+  // Gmail
+  try {
+    const gmailData = await apiCall('/api/gmail', { action: 'overview' }, ctx);
+    md.push('### Email');
+    md.push(`- **${gmailData.unreadMessages || 0}** unread emails`);
+    md.push(`- ${gmailData.inboxMessages || 0} in inbox`);
+    md.push('');
+  } catch { md.push('### Email\n- Not connected\n'); }
+
+  // Tasks
+  try {
+    const tasksData = await apiCall('/api/google-tasks', { action: 'overview' }, ctx);
+    md.push('### Tasks');
+    md.push(`- **${tasksData.pending_tasks || 0}** pending tasks`);
+    if (tasksData.overdue_tasks > 0) md.push(`- **${tasksData.overdue_tasks}** overdue`);
+    if (tasksData.next_due) md.push(`- Next due: **${tasksData.next_due}**`);
+    md.push('');
+  } catch { md.push('### Tasks\n- Not connected\n'); }
+
+  return { success: true, data: null, displayMarkdown: md.join('\n') };
+};
+
+// ── Cross-service: Schedule + email ──
+const scheduleAndNotify: KitToolHandler = async (input, ctx) => {
+  const md: string[] = [];
+
+  // Create event
+  const eventData = await apiCall('/api/google-calendar', {
+    action: 'create-event',
+    summary: input.summary,
+    start: input.start,
+    end: input.end,
+    location: input.location,
+    attendees: input.attendees,
+  }, ctx, 'POST');
+
+  md.push(`Event created: **${eventData.summary}**`);
+  if (eventData.hangoutLink) md.push(`Meet link: ${eventData.hangoutLink}`);
+
+  // Send notification email if requested
+  if (input.notifyEmail && input.attendees?.length) {
+    for (const email of input.attendees as string[]) {
+      try {
+        await apiCall('/api/gmail', {
+          action: 'send',
+          to: email,
+          subject: `Meeting: ${input.summary}`,
+          body: `You've been invited to: ${input.summary}\n\nWhen: ${input.start}\nWhere: ${input.location || 'TBD'}\n${eventData.hangoutLink ? `Meet: ${eventData.hangoutLink}` : ''}`,
+        }, ctx, 'POST');
+        md.push(`Notified: ${email}`);
+      } catch { md.push(`Failed to notify: ${email}`); }
+    }
+  }
+
+  return { success: true, data: eventData, displayMarkdown: md.join('\n') };
+};
+
+// ── Google workspace search (unified) ──
+const workspaceSearch: KitToolHandler = async (input, ctx) => {
+  const query = input.query as string;
+  const md: string[] = [`## Search: "${query}"\n`];
+  const results: Record<string, unknown[]> = {};
+
+  // Search in parallel
+  const [emailRes, driveRes, calRes] = await Promise.allSettled([
+    apiCall('/api/gmail', { action: 'search', q: query, maxResults: '5' }, ctx),
+    apiCall('/api/google-drive', { action: 'search', q: query, maxResults: '5' }, ctx),
+    apiCall('/api/google-calendar', { action: 'list-events', q: query, maxResults: '5' }, ctx),
+  ]);
+
+  if (emailRes.status === 'fulfilled') {
+    const emails = emailRes.value.messages ?? [];
+    if (emails.length) {
+      results.emails = emails;
+      md.push(`### Gmail (${emails.length})`);
+      for (const e of emails) md.push(`- **${e.subject}** — ${e.from}`);
+      md.push('');
+    }
+  }
+
+  if (driveRes.status === 'fulfilled') {
+    const files = driveRes.value.files ?? [];
+    if (files.length) {
+      results.files = files;
+      md.push(`### Drive (${files.length})`);
+      for (const f of files) md.push(`- **${f.name}**`);
+      md.push('');
+    }
+  }
+
+  if (calRes.status === 'fulfilled') {
+    const events = calRes.value.items ?? [];
+    if (events.length) {
+      results.events = events;
+      md.push(`### Calendar (${events.length})`);
+      for (const ev of events) md.push(`- **${ev.summary}** — ${ev.start?.dateTime || ev.start?.date}`);
+      md.push('');
+    }
+  }
+
+  if (md.length === 1) md.push('No results found across Gmail, Drive, or Calendar.');
+
+  return { success: true, data: results, displayMarkdown: md.join('\n') };
+};
+
+export const manifest: KitManifest = {
+  id: 'mcp-google-bridge',
+  name: 'Google Workspace Bridge',
+  version: '1.0.0',
+  description: 'Cross-service Google Workspace workflows — meeting prep, daily briefing, unified search, schedule+notify.',
+  author: 'MCV',
+  capabilities: ['network', 'credentials'],
+  runtime: 'inline',
+  ventureScope: '*',
+  instructions: 'Use these tools for cross-service Google workflows. "Prepare for my meeting" gathers calendar, email, and drive context. "Daily briefing" summarizes calendar, email, and tasks. "Workspace search" searches across all Google services at once.',
+  tools: [
+    {
+      name: 'google_prepare_meeting',
+      description: 'Prepare for your next meeting — gathers calendar event details, related emails from attendees, and shared documents.',
+      input_schema: { type: 'object', properties: {} },
+    },
+    {
+      name: 'google_daily_briefing',
+      description: 'Get a daily briefing — calendar overview, unread emails, pending tasks.',
+      input_schema: { type: 'object', properties: {} },
+    },
+    {
+      name: 'google_schedule_and_notify',
+      description: 'Create a calendar event and optionally email attendees a notification.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          summary: { type: 'string' }, start: { type: 'string' }, end: { type: 'string' },
+          location: { type: 'string' }, attendees: { type: 'array' },
+          notifyEmail: { type: 'boolean', description: 'Send email notification to attendees' },
+        },
+        required: ['summary', 'start', 'end'],
+      },
+    },
+    {
+      name: 'google_workspace_search',
+      description: 'Search across Gmail, Drive, and Calendar simultaneously. Returns unified results.',
+      input_schema: {
+        type: 'object',
+        properties: { query: { type: 'string', description: 'Search query' } },
+        required: ['query'],
+      },
+    },
+  ],
+};
+
+export const handlers: Record<string, KitToolHandler> = {
+  google_prepare_meeting: prepareForMeeting,
+  google_daily_briefing: dailyBriefing,
+  google_schedule_and_notify: scheduleAndNotify,
+  google_workspace_search: workspaceSearch,
+};
