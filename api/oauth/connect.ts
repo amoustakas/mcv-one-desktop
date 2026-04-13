@@ -64,6 +64,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (provider === 'google') {
       params.set('access_type', 'offline'); // Get refresh token
       params.set('prompt', 'consent');       // Force consent to get refresh token
+      params.set('include_granted_scopes', 'true'); // Incremental: keep existing scopes
+
+      // Support requesting specific scopes only (incremental auth)
+      const requestedScopes = req.query.scopes as string | undefined;
+      if (requestedScopes) {
+        // Override with only the requested scopes (Google merges with existing)
+        params.set('scope', requestedScopes);
+      }
     }
 
     if (provider === 'notion') {

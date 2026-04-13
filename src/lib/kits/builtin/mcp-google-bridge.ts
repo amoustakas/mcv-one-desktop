@@ -201,10 +201,37 @@ const workspaceSearch: KitToolHandler = async (input, ctx) => {
   return { success: true, data: results, displayMarkdown: md.join('\n') };
 };
 
+// ── Connection health check ──
+const connectionHealth: KitToolHandler = async (_input, ctx) => {
+  try {
+    const data = await (await ctx.fetch('/api/oauth/health?provider=google')).json();
+    if (!data.connected) {
+      return { success: true, data, displayMarkdown: '## Google Connection\n\nNot connected. Please connect Google in Settings > Integrations.' };
+    }
+    const md: string[] = [
+      `## Google Health (${data.healthScore}%)`,
+      '',
+      `**Account:** ${data.userName}`,
+      `**Token expires in:** ${data.expiresInSeconds ? `${Math.round(data.expiresInSeconds / 60)} minutes` : 'unknown'}`,
+      `**Avg latency:** ${data.avgLatencyMs}ms`,
+      data.needsScopeUpgrade ? '\n**Warning:** Scope upgrade available. Reconnect for full access.' : '',
+      '',
+      '### Service Status',
+    ];
+    for (const [svc, info] of Object.entries(data.services) as Array<[string, { status: string; latencyMs: number; error?: string }]>) {
+      const icon = info.status === 'healthy' ? '+' : info.status === 'degraded' ? '~' : '-';
+      md.push(`${icon} **${svc}**: ${info.status} (${info.latencyMs}ms)${info.error ? ` — ${info.error}` : ''}`);
+    }
+    return { success: true, data, displayMarkdown: md.join('\n') };
+  } catch (err) {
+    return { success: false, data: null, displayMarkdown: `Health check failed: ${err instanceof Error ? err.message : 'unknown error'}` };
+  }
+};
+
 export const manifest: KitManifest = {
   id: 'mcp-google-bridge',
   name: 'Google Workspace Bridge',
-  version: '1.0.0',
+  version: '2.0.0',
   description: 'Cross-service Google Workspace workflows — meeting prep, daily briefing, unified search, schedule+notify.',
   author: 'MCV',
   capabilities: ['network', 'credentials'],
@@ -244,6 +271,11 @@ export const manifest: KitManifest = {
         required: ['query'],
       },
     },
+    {
+      name: 'google_connection_health',
+      description: 'Check Google Workspace connection health — per-service status, latency, token expiry, scope coverage.',
+      input_schema: { type: 'object', properties: {} },
+    },
   ],
 };
 
@@ -252,4 +284,5 @@ export const handlers: Record<string, KitToolHandler> = {
   google_daily_briefing: dailyBriefing,
   google_schedule_and_notify: scheduleAndNotify,
   google_workspace_search: workspaceSearch,
+  google_connection_health: connectionHealth,
 };
