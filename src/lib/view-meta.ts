@@ -12,6 +12,7 @@ import {
   Tag, Banknote, FileBarChart, BookMarked, Shield, Truck, Star,
   Gift, Users2, Layers, Percent, SlidersHorizontal,
   Globe, MonitorPlay,
+  Mail, Calendar, HardDrive, Table, FileEdit, ListTodo,
   type LucideIcon,
 } from 'lucide-react';
 import type { ViewId } from '../stores/navigation';
@@ -50,6 +51,8 @@ export const VIEW_ICONS: Record<string, LucideIcon> = {
   files: FolderOpen, 'venture-workspace': Archive, 'ad-studio': Megaphone,
   'naos-command': Shield,
   browser: Globe, 'youtube-player': MonitorPlay,
+  gmail: Mail, calendar: Calendar, drive: HardDrive,
+  sheets: Table, 'google-docs': FileEdit, 'google-tasks': ListTodo,
 };
 
 // ── Label map ──
@@ -87,6 +90,8 @@ export const VIEW_LABELS: Record<string, string> = {
   'creator-hub': 'Creator Hub', 'creator-royalties': 'Royalties',
   'creator-escrow': 'Escrow',
   browser: 'Browser', 'youtube-player': 'YouTube',
+  gmail: 'Gmail', calendar: 'Calendar', drive: 'Drive',
+  sheets: 'Sheets', 'google-docs': 'Docs', 'google-tasks': 'Tasks',
 };
 
 // ── View categories for color accents ──
@@ -107,7 +112,7 @@ const CATEGORY_MAP: Record<ViewCategory, ViewId[]> = {
   ],
   growth: ['crm', 'growth', 'comms-hub', 'ad-studio', 'venture-growth'],
   intelligence: ['intelligence', 'treasury', 'signals', 'memory', 'portfolio'],
-  operations: ['tasks', 'docs', 'files', 'team', 'pipeline', 'venture-tasks', 'venture-docs', 'venture-operations', 'venture-workspace', 'settings', 'venture-settings', 'venture-onboarding', 'venture-profile', 'venture-dashboard'],
+  operations: ['tasks', 'docs', 'files', 'team', 'pipeline', 'venture-tasks', 'venture-docs', 'venture-operations', 'venture-workspace', 'settings', 'venture-settings', 'venture-onboarding', 'venture-profile', 'venture-dashboard', 'gmail', 'calendar', 'drive', 'sheets', 'google-docs', 'google-tasks'],
   devices: ['device-hub', 'stream-deck', 'audio-router', 'connected-sessions'],
 };
 

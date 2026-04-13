@@ -23,6 +23,7 @@ const VIEW_GROUPS: { label: string; views: ViewId[] }[] = [
   { label: 'Engineering', views: ['engineering', 'forge', 'sessions', 'war-room', 'ops'] },
   { label: 'Growth', views: ['crm', 'growth', 'comms-hub', 'ad-studio'] },
   { label: 'Operations', views: ['tasks', 'docs', 'files', 'team', 'pipeline'] },
+  { label: 'Google', views: ['gmail', 'calendar', 'drive', 'sheets', 'google-docs', 'google-tasks'] },
   { label: 'AI Tools', views: ['ai-studio', 'prompt-composer', 'kit-store', 'control-room', 'browser', 'youtube-player'] },
   { label: 'Commerce', views: ['commerce-overview', 'commerce-products', 'commerce-orders', 'commerce-customers'] },
   { label: 'Other', views: ['settings', 'device-hub'] },

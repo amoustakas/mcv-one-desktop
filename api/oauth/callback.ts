@@ -143,6 +143,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       scopes = typeof tokenData.scope === 'string' ? tokenData.scope.split(/[, ]+/) : tokenData.scope;
     }
 
+    // Validate critical scopes were actually granted (user may have denied some)
+    let missingScopes: string[] = [];
+    if (provider === 'google') {
+      const criticalScopes = [
+        'gmail.modify', 'calendar', 'drive', 'spreadsheets',
+      ];
+      const grantedJoined = scopes.join(' ');
+      missingScopes = criticalScopes.filter(s => !grantedJoined.includes(s));
+    }
+
     // Store encrypted connection in Supabase
     await storeOAuthConnection(
       userId,
@@ -155,7 +165,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       providerUserName,
     );
 
-    // Redirect back to SPA
+    // Redirect back to SPA — include missing scopes warning if applicable
+    if (missingScopes.length > 0) {
+      const missing = encodeURIComponent(missingScopes.join(','));
+      return res.redirect(302, `/settings?tab=integrations&connected=${provider}&missing_scopes=${missing}`);
+    }
     return res.redirect(302, `/settings?tab=integrations&connected=${provider}`);
   } catch (error) {
     console.error(`OAuth callback error for ${provider}:`, error);

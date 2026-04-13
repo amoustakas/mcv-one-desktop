@@ -76,6 +76,9 @@ const ConnectedSessionsView = lazy(() => import('./views/ConnectedSessionsView')
 // Browser & YouTube
 const BrowserView = lazy(() => import('./views/BrowserView'));
 const YouTubePlayerView = lazy(() => import('./views/YouTubePlayerView'));
+// Google Workspace
+const GmailView = lazy(() => import('./views/GmailView'));
+const CalendarView = lazy(() => import('./views/CalendarView'));
 // Commerce + Financials views
 const CommerceOverview = lazy(() => import('./views/CommerceOverview'));
 const CommerceProducts = lazy(() => import('./views/CommerceProducts'));
@@ -292,6 +295,19 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <BrowserView />;
     case 'youtube-player':
       return <YouTubePlayerView />;
+    // Google Workspace
+    case 'gmail':
+      return <GmailView />;
+    case 'calendar':
+      return <CalendarView />;
+    case 'drive':
+      return <FilesView />;
+    case 'sheets':
+      return <PlaceholderView title="Google Sheets" description="Spreadsheet integration with read/write access. Coming next." />;
+    case 'google-docs':
+      return <PlaceholderView title="Google Docs" description="Document browser with embedded preview. Coming in Phase 4." />;
+    case 'google-tasks':
+      return <PlaceholderView title="Google Tasks" description="Task management with two-way sync. Coming in Phase 4." />;
     default:
       return <AegisChat venture={venture} />;
   }

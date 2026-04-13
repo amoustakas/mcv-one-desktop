@@ -73,9 +73,13 @@ const PROVIDER_CONFIGS: Record<string, () => ProviderTokenConfig> = {
     clientId: process.env.GOOGLE_OAUTH_CLIENT_ID || '',
     clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET || '',
     scopes: [
-      'https://www.googleapis.com/auth/drive.readonly',
-      'https://www.googleapis.com/auth/calendar.readonly',
-      'https://www.googleapis.com/auth/gmail.readonly',
+      'https://www.googleapis.com/auth/gmail.modify',
+      'https://www.googleapis.com/auth/calendar',
+      'https://www.googleapis.com/auth/drive',
+      'https://www.googleapis.com/auth/spreadsheets',
+      'https://www.googleapis.com/auth/documents',
+      'https://www.googleapis.com/auth/tasks',
+      'https://www.googleapis.com/auth/contacts.readonly',
       'https://www.googleapis.com/auth/analytics.readonly',
       'https://www.googleapis.com/auth/webmasters.readonly',
       'https://www.googleapis.com/auth/userinfo.profile',
@@ -179,9 +183,19 @@ export function getProviderConfig(provider: string): ProviderTokenConfig {
 // Token retrieval — used by API routes to get a user's OAuth token
 // ---------------------------------------------------------------------------
 
+// Providers that require OAuth tokens — env var fallback would use wrong token type
+const OAUTH_ONLY_PROVIDERS = new Set([
+  'google', 'microsoft', 'linkedin',
+]);
+
+// Scopes version — increment when scopes change to detect stale connections
+export const GOOGLE_SCOPES_VERSION = 2; // v1 = read-only, v2 = full access (2026-04-13)
+
 /**
  * Get the decrypted access token for a user+provider.
- * Falls back to static env var if no OAuth connection exists.
+ * Falls back to static env var for API-key providers only.
+ * OAuth-only providers (Google, Microsoft) throw clear errors instead of
+ * falling back to an unrelated API key.
  */
 export async function getProviderToken(
   userId: string,
@@ -197,26 +211,42 @@ export async function getProviderToken(
     .single();
 
   if (data) {
-    // Check expiration and refresh if needed
-    if (data.token_expires_at && new Date(data.token_expires_at) < new Date()) {
+    // Pre-expiration refresh: refresh if token expires within 5 minutes
+    const expiresAt = data.token_expires_at ? new Date(data.token_expires_at) : null;
+    const fiveMinFromNow = new Date(Date.now() + 5 * 60 * 1000);
+    const needsRefresh = expiresAt && expiresAt < fiveMinFromNow;
+
+    if (needsRefresh) {
       if (data.refresh_token_encrypted) {
         const refreshed = await refreshProviderToken(userId, provider, data.refresh_token_encrypted);
         if (refreshed) return { token: refreshed, source: 'oauth' };
       }
-      // Token expired and can't refresh — mark as expired
-      await supabase.from('oauth_connections')
-        .update({ status: 'expired', updated_at: new Date().toISOString() })
-        .eq('user_id', userId)
-        .eq('provider', provider);
+      // Only mark as expired if actually past expiration (not just pre-expiry)
+      if (expiresAt && expiresAt < new Date()) {
+        await supabase.from('oauth_connections')
+          .update({ status: 'expired', updated_at: new Date().toISOString() })
+          .eq('user_id', userId)
+          .eq('provider', provider);
+      } else {
+        // Pre-expiry refresh failed but token still valid — use it
+        return { token: decryptToken(data.access_token_encrypted), source: 'oauth' };
+      }
     } else {
       return { token: decryptToken(data.access_token_encrypted), source: 'oauth' };
     }
   }
 
-  // Fall back to env var
+  // OAuth-only providers must not fall back to env vars (wrong token type)
+  if (OAUTH_ONLY_PROVIDERS.has(provider)) {
+    throw new Error(
+      `${provider.charAt(0).toUpperCase() + provider.slice(1)} not connected. ` +
+      'Please connect your account in Settings > Integrations.',
+    );
+  }
+
+  // Fall back to env var for API-key providers only
   const envFallbacks: Record<string, string> = {
     github: process.env.GITHUB_TOKEN || '',
-    google: process.env.GOOGLE_AI_KEY || '',
     notion: process.env.NOTION_API_KEY || process.env.NOTION_TOKEN || '',
     cloudflare: process.env.CLOUDFLARE_API_TOKEN || '',
     stripe: process.env.STRIPE_SECRET_KEY || '',
@@ -224,21 +254,38 @@ export async function getProviderToken(
     discord: process.env.DISCORD_BOT_TOKEN || '',
     linear: process.env.LINEAR_API_KEY || '',
     figma: process.env.FIGMA_ACCESS_TOKEN || '',
-    linkedin: '',
     twitch: process.env.TWITCH_CLIENT_SECRET || '',
-    microsoft: '',
   };
 
   const envToken = envFallbacks[provider];
   if (envToken) return { token: envToken, source: 'env' };
 
-  throw new Error(`No token available for ${provider}`);
+  throw new Error(`No token available for ${provider}. Connect in Settings > Integrations.`);
 }
+
+// In-memory deduplication for concurrent refresh requests
+const pendingRefreshes = new Map<string, Promise<string | null>>();
 
 /**
  * Refresh an expired OAuth token.
+ * Deduplicates concurrent refresh requests for the same user+provider.
  */
 async function refreshProviderToken(
+  userId: string,
+  provider: string,
+  refreshTokenEncrypted: string,
+): Promise<string | null> {
+  const dedupeKey = `${userId}:${provider}`;
+  const existing = pendingRefreshes.get(dedupeKey);
+  if (existing) return existing;
+
+  const promise = doRefreshToken(userId, provider, refreshTokenEncrypted)
+    .finally(() => pendingRefreshes.delete(dedupeKey));
+  pendingRefreshes.set(dedupeKey, promise);
+  return promise;
+}
+
+async function doRefreshToken(
   userId: string,
   provider: string,
   refreshTokenEncrypted: string,
@@ -312,6 +359,7 @@ export async function storeOAuthConnection(
     refresh_token_encrypted: refreshToken ? encryptToken(refreshToken) : null,
     token_expires_at: expiresIn ? new Date(Date.now() + expiresIn * 1000).toISOString() : null,
     scopes,
+    scopes_version: provider === 'google' ? GOOGLE_SCOPES_VERSION : 1,
     provider_user_id: providerUserId,
     provider_user_name: providerUserName,
     status: 'active',
@@ -330,17 +378,25 @@ export async function storeOAuthConnection(
 export async function getUserConnections(userId: string) {
   const { data } = await supabase
     .from('oauth_connections')
-    .select('provider, provider_user_name, scopes, status, token_expires_at, updated_at')
+    .select('provider, provider_user_name, scopes, scopes_version, status, token_expires_at, updated_at')
     .eq('user_id', userId);
 
-  return (data ?? []).map((c) => ({
-    provider: c.provider,
-    connected: c.status === 'active',
-    userName: c.provider_user_name,
-    scopes: c.scopes,
-    status: c.status,
-    expiresAt: c.token_expires_at,
-  }));
+  return (data ?? []).map((c) => {
+    // Detect stale scopes — user needs to reconnect for new permissions
+    const needsScopeUpgrade = c.provider === 'google'
+      && (c.scopes_version ?? 1) < GOOGLE_SCOPES_VERSION;
+
+    return {
+      provider: c.provider,
+      connected: c.status === 'active',
+      userName: c.provider_user_name,
+      scopes: c.scopes,
+      scopesVersion: c.scopes_version ?? 1,
+      needsScopeUpgrade,
+      status: c.status,
+      expiresAt: c.token_expires_at,
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------

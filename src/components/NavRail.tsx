@@ -72,6 +72,17 @@ const globalSections: NavSection[] = [
     ],
   },
   {
+    label: 'Google Workspace', key: 'google',
+    items: [
+      { id: 'gmail', label: 'Gmail' },
+      { id: 'calendar', label: 'Calendar' },
+      { id: 'drive', label: 'Drive' },
+      { id: 'sheets', label: 'Sheets' },
+      { id: 'google-docs', label: 'Docs' },
+      { id: 'google-tasks', label: 'Tasks' },
+    ],
+  },
+  {
     label: 'AI Tools', key: 'tools',
     items: [
       { id: 'ai-studio', label: 'AI Studio' },

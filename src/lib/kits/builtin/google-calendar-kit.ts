@@ -35,19 +35,41 @@ const calOverview: KitToolHandler = async (_i, ctx) => {
   return { success: true, data: d, displayMarkdown: `## Calendar Overview\n\n- **Calendars:** ${d.calendar_count}\n- **Upcoming (7d):** ${d.upcoming_events}\n- **Next:** ${d.next_event || 'Nothing scheduled'} at ${d.next_event_time || 'N/A'}` };
 };
 
+const listCalendars: KitToolHandler = async (_i, ctx) => {
+  const d = await calApi('list-calendars', {}, ctx);
+  const cals = d.items ?? [];
+  const lines = cals.map((c: { summary: string; id: string; primary?: boolean }) =>
+    `- **${c.summary}**${c.primary ? ' (primary)' : ''}`);
+  return { success: true, data: cals, displayMarkdown: `## Calendars (${cals.length})\n\n${lines.join('\n')}` };
+};
+
+const findFreeTime: KitToolHandler = async (input, ctx) => {
+  const timeMin = input.timeMin || new Date().toISOString();
+  const timeMax = input.timeMax || new Date(Date.now() + 7 * 86400000).toISOString();
+  const d = await calApi('free-busy', { timeMin, timeMax, items: [{ id: 'primary' }] }, ctx, 'POST');
+  return { success: true, data: d, displayMarkdown: `## Free/Busy\n\nChecked ${timeMin} to ${timeMax}.\n\n${JSON.stringify(d.calendars?.primary?.busy ?? [], null, 2)}` };
+};
+
 export const manifest: KitManifest = {
-  id: 'google-calendar', name: 'Google Calendar', version: '1.0.0',
-  description: 'Google Calendar — events, scheduling, free/busy, quick-add, and calendar management.',
+  id: 'google-calendar', name: 'Google Calendar', version: '2.0.0',
+  description: 'Google Calendar — events, scheduling, free/busy, quick-add, calendars, and calendar management.',
   author: 'MCV', capabilities: ['network', 'credentials'], runtime: 'inline', ventureScope: '*',
-  instructions: 'Use calendar tools for scheduling, viewing upcoming events, and creating meetings.',
+  instructions: 'Use calendar tools for scheduling, viewing upcoming events, creating meetings, checking free time, and managing calendars. Requires Google OAuth with calendar scope.',
   tools: [
     { name: 'gcal_list_events', description: 'List upcoming calendar events.', input_schema: { type: 'object', properties: { limit: { type: 'number' }, query: { type: 'string', description: 'Search text in events' } } } },
     { name: 'gcal_create_event', description: 'Create a new calendar event.', input_schema: { type: 'object', properties: { summary: { type: 'string' }, description: { type: 'string' }, start: { type: 'string', description: 'ISO datetime' }, end: { type: 'string', description: 'ISO datetime' }, location: { type: 'string' }, attendees: { type: 'array', description: 'Array of email strings' } }, required: ['summary', 'start', 'end'] } },
     { name: 'gcal_quick_add', description: 'Quick-add event from natural language text.', input_schema: { type: 'object', properties: { text: { type: 'string', description: 'e.g. "Meeting with Tony at 3pm tomorrow"' } }, required: ['text'] } },
+    { name: 'gcal_list_calendars', description: 'List all calendars.', input_schema: { type: 'object', properties: {} } },
+    { name: 'gcal_find_free_time', description: 'Check free/busy status for a time range.', input_schema: { type: 'object', properties: { timeMin: { type: 'string', description: 'ISO datetime start' }, timeMax: { type: 'string', description: 'ISO datetime end' } } } },
     { name: 'gcal_overview', description: 'Calendar summary: calendars, upcoming events, next event.', input_schema: { type: 'object', properties: {} } },
   ],
 };
 
 export const handlers: Record<string, KitToolHandler> = {
-  gcal_list_events: listEvents, gcal_create_event: createEvent, gcal_quick_add: quickAdd, gcal_overview: calOverview,
+  gcal_list_events: listEvents,
+  gcal_create_event: createEvent,
+  gcal_quick_add: quickAdd,
+  gcal_list_calendars: listCalendars,
+  gcal_find_free_time: findFreeTime,
+  gcal_overview: calOverview,
 };

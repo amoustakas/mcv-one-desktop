@@ -22,13 +22,31 @@ async function requireAuth(req: VercelRequest, res: VercelResponse): Promise<str
 
 const GMAIL_API = 'https://gmail.googleapis.com/gmail/v1/users/me';
 
+class GoogleApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
+function mapGoogleStatus(status: number, message: string): GoogleApiError {
+  switch (status) {
+    case 401: return new GoogleApiError('Google token expired or revoked. Please reconnect in Settings > Integrations.', 401);
+    case 403: return new GoogleApiError('Missing permission. Please reconnect Google with required scopes.', 403);
+    case 404: return new GoogleApiError('Resource not found.', 404);
+    case 429: return new GoogleApiError('Rate limited by Google. Try again in a moment.', 429);
+    default: return new GoogleApiError(message || `Gmail API error (${status})`, status >= 500 ? 502 : status);
+  }
+}
+
 async function gmailFetch(path: string, token: string, params: Record<string, string> = {}) {
   const qs = new URLSearchParams(params).toString();
   const url = `${GMAIL_API}${path}${qs ? '?' + qs : ''}`;
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error?.message || `Gmail API ${res.status}`);
+    throw mapGoogleStatus(res.status, err.error?.message || '');
   }
   return res.json();
 }
@@ -41,7 +59,7 @@ async function gmailPost(path: string, token: string, body: unknown) {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error?.message || `Gmail API ${res.status}`);
+    throw mapGoogleStatus(res.status, err.error?.message || '');
   }
   return res.json();
 }
@@ -66,8 +84,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const result = await getProviderToken(userId, 'google');
     token = result.token;
-  } catch {
-    return res.status(500).json({ error: 'Google not connected. Gmail uses Google OAuth.' });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Google not connected.';
+    return res.status(401).json({ error: message });
   }
 
   const action = (req.method === 'GET' ? req.query.action : req.body?.action) as string;
@@ -213,6 +232,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
-    return res.status(500).json({ error: message });
+    const status = err instanceof GoogleApiError ? err.status : 500;
+    return res.status(status).json({ error: message });
   }
 }

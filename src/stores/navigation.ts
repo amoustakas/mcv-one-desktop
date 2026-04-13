@@ -100,7 +100,14 @@ export type ViewId =
   | 'naos-command'
   // Browser & YouTube
   | 'browser'
-  | 'youtube-player';
+  | 'youtube-player'
+  // Google Workspace
+  | 'gmail'
+  | 'calendar'
+  | 'drive'
+  | 'sheets'
+  | 'google-docs'
+  | 'google-tasks';
 
 export type ContextMode = 'global' | 'venture';
 
@@ -176,6 +183,8 @@ const VIEW_LABELS: Record<string, string> = {
   'naos-command': 'NAOS Command',
   browser: 'Browser',
   'youtube-player': 'YouTube',
+  gmail: 'Gmail', calendar: 'Calendar', drive: 'Drive',
+  sheets: 'Sheets', 'google-docs': 'Docs', 'google-tasks': 'Tasks',
 };
 
 export const useNavigation = create<NavigationState>()(

@@ -20,10 +20,28 @@ async function requireAuth(req: VercelRequest, res: VercelResponse): Promise<str
   } catch { res.status(401).json({ error: 'Invalid session' }); return null; }
 }
 
+class GoogleApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
+function mapGoogleStatus(status: number, message: string): GoogleApiError {
+  switch (status) {
+    case 401: return new GoogleApiError('Google token expired or revoked. Please reconnect in Settings > Integrations.', 401);
+    case 403: return new GoogleApiError('Missing permission. Please reconnect Google with required scopes.', 403);
+    case 404: return new GoogleApiError('Resource not found.', 404);
+    case 429: return new GoogleApiError('Rate limited by Google. Try again in a moment.', 429);
+    default: return new GoogleApiError(message || `Calendar API error (${status})`, status >= 500 ? 502 : status);
+  }
+}
+
 async function calFetch(path: string, token: string, params: Record<string, string> = {}) {
   const qs = new URLSearchParams(params).toString();
   const res = await fetch(`${CAL_API}${path}${qs ? '?' + qs : ''}`, { headers: { Authorization: `Bearer ${token}` } });
-  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error?.message || `Calendar ${res.status}`); }
+  if (!res.ok) { const e = await res.json().catch(() => ({})); throw mapGoogleStatus(res.status, e.error?.message || ''); }
   return res.json();
 }
 
@@ -32,7 +50,7 @@ async function calPost(path: string, token: string, body: unknown) {
     method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error?.message || `Calendar ${res.status}`); }
+  if (!res.ok) { const e = await res.json().catch(() => ({})); throw mapGoogleStatus(res.status, e.error?.message || ''); }
   return res.json();
 }
 
@@ -42,7 +60,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   let token: string;
   try { token = (await getProviderToken(userId, 'google')).token; }
-  catch { return res.status(500).json({ error: 'Google not connected.' }); }
+  catch (err) { return res.status(401).json({ error: err instanceof Error ? err.message : 'Google not connected.' }); }
 
   const action = (req.method === 'GET' ? req.query.action : req.body?.action) as string;
 
@@ -115,6 +133,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: `Unknown action: ${action}` });
     }
   } catch (err) {
-    return res.status(500).json({ error: err instanceof Error ? err.message : 'Unknown error' });
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    const status = err instanceof GoogleApiError ? err.status : 500;
+    return res.status(status).json({ error: message });
   }
 }
