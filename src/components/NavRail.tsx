@@ -58,6 +58,7 @@ const globalSections: NavSection[] = [
       { id: 'crm', label: 'CRM Pipeline' },
       { id: 'growth', label: 'Growth Studio' },
       { id: 'comms-hub', label: 'Comms Hub' },
+      { id: 'contact-center', label: 'Contact Center' },
       { id: 'ad-studio', label: 'Ad Studio' },
     ],
   },
@@ -112,6 +113,8 @@ const globalSections: NavSection[] = [
       { id: 'commerce-credits', label: 'Credits & Wallets' },
       { id: 'commerce-loans', label: 'Loans' },
       { id: 'commerce-shop-settings', label: 'Shop Settings' },
+      { id: 'compliance-hub', label: 'Compliance' },
+      { id: 'creator-hub', label: 'Creator Hub' },
     ],
   },
   {

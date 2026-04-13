@@ -107,7 +107,10 @@ export type ViewId =
   | 'drive'
   | 'sheets'
   | 'google-docs'
-  | 'google-tasks';
+  | 'google-tasks'
+  // Contact Center + Compliance
+  | 'contact-center'
+  | 'compliance-hub';
 
 export type ContextMode = 'global' | 'venture';
 
@@ -185,6 +188,7 @@ const VIEW_LABELS: Record<string, string> = {
   'youtube-player': 'YouTube',
   gmail: 'Gmail', calendar: 'Calendar', drive: 'Drive',
   sheets: 'Sheets', 'google-docs': 'Docs', 'google-tasks': 'Tasks',
+  'contact-center': 'Contact Center', 'compliance-hub': 'Compliance',
 };
 
 export const useNavigation = create<NavigationState>()(

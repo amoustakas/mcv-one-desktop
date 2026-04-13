@@ -85,6 +85,10 @@ const GmailView = lazy(() => import('./views/GmailView'));
 const CalendarView = lazy(() => import('./views/CalendarView'));
 const GoogleDocsView = lazy(() => import('./views/GoogleDocsView'));
 const GoogleTasksView = lazy(() => import('./views/GoogleTasksView'));
+// New enterprise views
+const CreatorHubView = lazy(() => import('./views/CreatorHubView'));
+const ComplianceHubView = lazy(() => import('./views/ComplianceHubView'));
+const ContactCenterView = lazy(() => import('./views/ContactCenterView'));
 // Commerce + Financials views
 const CommerceOverview = lazy(() => import('./views/CommerceOverview'));
 const CommerceProducts = lazy(() => import('./views/CommerceProducts'));
@@ -267,7 +271,7 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
     case 'commerce-loans':
       return <PlaceholderView title="Loans" description="Loan origination, disbursement, and repayment tracking." />;
     case 'commerce-tax':
-      return <PlaceholderView title="Tax" description="Tax calculation, jurisdiction rules, and remittance." />;
+      return <ComplianceHubView />;
     case 'venture-commerce':
       return <CommerceOverview />;
     case 'venture-products':
@@ -289,11 +293,11 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <FinancialsDashboard />;
     // Creator views
     case 'creator-hub':
-      return <PlaceholderView title="Creator Hub" description="Content creator management, payouts, and analytics." />;
+      return <CreatorHubView />;
     case 'creator-royalties':
-      return <PlaceholderView title="Royalties" description="Royalty tracking, splits, and automated distributions." />;
+      return <CreatorHubView />;
     case 'creator-escrow':
-      return <PlaceholderView title="Escrow" description="Deal escrow, milestone-based releases, and disputes." />;
+      return <CreatorHubView />;
     case 'checkout':
       return <Checkout />;
     // Browser & YouTube
@@ -314,6 +318,10 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <GoogleDocsView />;
     case 'google-tasks':
       return <GoogleTasksView />;
+    case 'contact-center':
+      return <ContactCenterView />;
+    case 'compliance-hub':
+      return <ComplianceHubView />;
     default:
       return <AegisChat venture={venture} />;
   }

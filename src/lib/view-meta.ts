@@ -13,6 +13,7 @@ import {
   Gift, Users2, Layers, Percent, SlidersHorizontal,
   Globe, MonitorPlay,
   Mail, Calendar, HardDrive, Table, FileEdit, ListTodo,
+  Phone,
   type LucideIcon,
 } from 'lucide-react';
 import type { ViewId } from '../stores/navigation';
@@ -53,6 +54,7 @@ export const VIEW_ICONS: Record<string, LucideIcon> = {
   browser: Globe, 'youtube-player': MonitorPlay,
   gmail: Mail, calendar: Calendar, drive: HardDrive,
   sheets: Table, 'google-docs': FileEdit, 'google-tasks': ListTodo,
+  'contact-center': Phone, 'compliance-hub': Shield,
 };
 
 // ── Label map ──
@@ -92,6 +94,7 @@ export const VIEW_LABELS: Record<string, string> = {
   browser: 'Browser', 'youtube-player': 'YouTube',
   gmail: 'Gmail', calendar: 'Calendar', drive: 'Drive',
   sheets: 'Sheets', 'google-docs': 'Docs', 'google-tasks': 'Tasks',
+  'contact-center': 'Contact Center', 'compliance-hub': 'Compliance',
 };
 
 // ── View categories for color accents ──
@@ -110,7 +113,7 @@ const CATEGORY_MAP: Record<ViewCategory, ViewId[]> = {
     'financials-ledger', 'financials-reporting', 'venture-financials',
     'creator-hub', 'creator-royalties', 'creator-escrow',
   ],
-  growth: ['crm', 'growth', 'comms-hub', 'ad-studio', 'venture-growth'],
+  growth: ['crm', 'growth', 'comms-hub', 'ad-studio', 'venture-growth', 'contact-center'],
   intelligence: ['intelligence', 'treasury', 'signals', 'memory', 'portfolio'],
   operations: ['tasks', 'docs', 'files', 'team', 'pipeline', 'venture-tasks', 'venture-docs', 'venture-operations', 'venture-workspace', 'settings', 'venture-settings', 'venture-onboarding', 'venture-profile', 'venture-dashboard', 'gmail', 'calendar', 'drive', 'sheets', 'google-docs', 'google-tasks'],
   devices: ['device-hub', 'stream-deck', 'audio-router', 'connected-sessions'],
