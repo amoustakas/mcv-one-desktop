@@ -144,6 +144,90 @@ const geminiMockup: KitToolHandler = async (input, ctx) => {
   return { success: true, data, displayMarkdown: `## Product Mockup\n\n${data.images?.length ? `${data.images.length} mockup(s) generated.` : 'Mockup generation completed.'}` };
 };
 
+// Document analysis pipeline: upload → cache → analyze
+const geminiAnalyzeDocument: KitToolHandler = async (input, ctx) => {
+  const md: string[] = ['## Document Analysis\n'];
+
+  // Step 1: Cache the document content
+  const content = input.content as string;
+  const question = (input.question || 'Provide a comprehensive analysis of this document.') as string;
+
+  if (!content) return { success: false, data: null, displayMarkdown: 'No document content provided.' };
+
+  md.push(`*Analyzing ${(content.length / 1000).toFixed(1)}k characters...*\n`);
+
+  // Step 2: Analyze with Gemini using the full content as context
+  const data = await postJson('/api/google', {
+    action: 'gemini-generate',
+    prompt: `You are analyzing a document. Answer the following question about it.\n\nQuestion: ${question}\n\n--- DOCUMENT START ---\n${content.slice(0, 500000)}\n--- DOCUMENT END ---\n\nProvide a thorough, structured answer with key findings, important quotes, and actionable insights.`,
+  }, ctx);
+
+  md.push(data.content || 'No analysis generated.');
+
+  return { success: true, data, displayMarkdown: md.join('\n') };
+};
+
+// Dual-model comparison: Ask same question to Claude and Gemini
+const dualModelCompare: KitToolHandler = async (input, ctx) => {
+  const prompt = input.prompt as string;
+  const md: string[] = ['## Dual-Model Comparison\n', `*Prompt: "${prompt.slice(0, 100)}${prompt.length > 100 ? '...' : ''}"*\n`];
+
+  // Run both in parallel
+  const [geminiRes, claudeRes] = await Promise.allSettled([
+    postJson('/api/google', { action: 'gemini-generate', prompt }, ctx),
+    postJson('/api/chat', { messages: [{ role: 'user', content: prompt }], model: 'claude-sonnet-4-20250514' }, ctx),
+  ]);
+
+  md.push('### Gemini Response\n');
+  if (geminiRes.status === 'fulfilled') {
+    md.push(geminiRes.value.content || 'No response.');
+  } else {
+    md.push('*Gemini unavailable*');
+  }
+
+  md.push('\n### Claude Response\n');
+  if (claudeRes.status === 'fulfilled') {
+    const claudeContent = claudeRes.value.content?.[0]?.text || claudeRes.value.reply || 'No response.';
+    md.push(claudeContent);
+  } else {
+    md.push('*Claude unavailable*');
+  }
+
+  md.push('\n### Key Differences\n');
+  md.push('*Compare the responses above for different perspectives, coverage gaps, and unique insights.*');
+
+  return { success: true, data: { gemini: geminiRes, claude: claudeRes }, displayMarkdown: md.join('\n') };
+};
+
+// Research + write pipeline: search → synthesize → generate
+const geminiResearchAndWrite: KitToolHandler = async (input, ctx) => {
+  const topic = input.topic as string;
+  const format = (input.format || 'article') as string;
+  const md: string[] = [`## Research & Write: ${topic}\n`];
+
+  // Step 1: Research with search grounding
+  md.push('*Researching with Google Search...*\n');
+  const research = await postJson('/api/google-generate', {
+    action: 'generate-with-search',
+    prompt: `Research the topic "${topic}" thoroughly. Gather key facts, recent developments, expert opinions, and statistics. Return a structured research brief with sources.`,
+  }, ctx);
+
+  // Step 2: Generate content based on research
+  md.push('*Writing content...*\n');
+  const content = await postJson('/api/google', {
+    action: 'gemini-generate',
+    prompt: `Using the following research, write a ${format} about "${topic}".\n\nResearch:\n${research.content}\n\nWrite a compelling, well-structured ${format} that incorporates the research findings. Use a professional but engaging tone.`,
+  }, ctx);
+
+  md.push(content.content || 'No content generated.');
+
+  if (research.groundingMetadata) {
+    md.push('\n\n*Sources grounded via Google Search*');
+  }
+
+  return { success: true, data: { research: research.content, content: content.content }, displayMarkdown: md.join('\n') };
+};
+
 // Context cache for long documents
 const geminiContextCache: KitToolHandler = async (input, ctx) => {
   const data = await postJson('/api/google-cache', {
@@ -307,6 +391,39 @@ export const manifest: KitManifest = {
         },
       },
     },
+    {
+      name: 'gemini_analyze_document',
+      description: 'Analyze a document with Gemini. Upload text content and ask questions about it. Supports up to 500k characters.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          content: { type: 'string', description: 'Document text content' },
+          question: { type: 'string', description: 'Question to answer about the document (default: comprehensive analysis)' },
+        },
+        required: ['content'],
+      },
+    },
+    {
+      name: 'gemini_dual_compare',
+      description: 'Compare responses from Gemini and Claude on the same prompt. Returns both answers side-by-side for different perspectives.',
+      input_schema: {
+        type: 'object',
+        properties: { prompt: { type: 'string', description: 'Question or prompt to send to both models' } },
+        required: ['prompt'],
+      },
+    },
+    {
+      name: 'gemini_research_and_write',
+      description: 'Research a topic with Google Search grounding, then generate a written piece (article, report, brief, etc.).',
+      input_schema: {
+        type: 'object',
+        properties: {
+          topic: { type: 'string', description: 'Topic to research and write about' },
+          format: { type: 'string', description: 'Output format: article, report, brief, email, pitch (default: article)' },
+        },
+        required: ['topic'],
+      },
+    },
   ],
 };
 
@@ -325,4 +442,7 @@ export const handlers: Record<string, KitToolHandler> = {
   gemini_image_edit: geminiImageEdit,
   gemini_mockup: geminiMockup,
   gemini_context_cache: geminiContextCache,
+  gemini_analyze_document: geminiAnalyzeDocument,
+  gemini_dual_compare: dualModelCompare,
+  gemini_research_and_write: geminiResearchAndWrite,
 };

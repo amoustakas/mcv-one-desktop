@@ -201,6 +201,89 @@ const workspaceSearch: KitToolHandler = async (input, ctx) => {
   return { success: true, data: results, displayMarkdown: md.join('\n') };
 };
 
+// ── Weekly report generator ──
+const weeklyReport: KitToolHandler = async (input, ctx) => {
+  const md: string[] = ['## Weekly Report\n'];
+  const recipientEmail = input.recipient as string | undefined;
+
+  // Gather all data in parallel
+  const [calRes, gmailRes, tasksRes, analyticsRes] = await Promise.allSettled([
+    apiCall('/api/google-calendar', { action: 'overview' }, ctx),
+    apiCall('/api/gmail', { action: 'overview' }, ctx),
+    apiCall('/api/google-tasks', { action: 'overview' }, ctx),
+    apiCall('/api/google-analytics', { action: 'overview' }, ctx),
+  ]);
+
+  const context: Record<string, unknown> = {};
+  if (calRes.status === 'fulfilled') context.calendar = calRes.value;
+  if (gmailRes.status === 'fulfilled') context.gmail = gmailRes.value;
+  if (tasksRes.status === 'fulfilled') context.tasks = tasksRes.value;
+  if (analyticsRes.status === 'fulfilled') context.analytics = analyticsRes.value;
+
+  // Generate narrative with Gemini
+  try {
+    const r = await (await ctx.fetch('/api/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'gemini-generate',
+        prompt: `Generate a professional weekly report based on this data. Include sections: Executive Summary, Calendar & Meetings, Communications, Task Progress, and Website Performance. Use bullet points and bold key metrics.\n\nData:\n${JSON.stringify(context, null, 2)}`,
+      }),
+    })).json();
+    md.push(r.content || 'Report generation failed.');
+  } catch {
+    // Fallback to raw data
+    md.push('### Calendar\n' + JSON.stringify(context.calendar, null, 2));
+    md.push('\n### Email\n' + JSON.stringify(context.gmail, null, 2));
+    md.push('\n### Tasks\n' + JSON.stringify(context.tasks, null, 2));
+  }
+
+  // Optionally email the report
+  if (recipientEmail) {
+    try {
+      await apiCall('/api/gmail', {
+        action: 'send',
+        to: recipientEmail,
+        subject: `Weekly Report — ${new Date().toLocaleDateString()}`,
+        body: md.join('\n'),
+      }, ctx, 'POST');
+      md.push(`\n\n*Report emailed to ${recipientEmail}*`);
+    } catch { md.push('\n\n*Failed to email report*'); }
+  }
+
+  return { success: true, data: context, displayMarkdown: md.join('\n') };
+};
+
+// ── Inbox intelligence: AI categorize recent emails ──
+const inboxIntelligence: KitToolHandler = async (_input, ctx) => {
+  const md: string[] = ['## Inbox Intelligence\n'];
+
+  try {
+    const emails = await apiCall('/api/gmail', { action: 'search', q: 'in:inbox', maxResults: '20' }, ctx);
+    const messages = emails.messages ?? [];
+    if (messages.length === 0) return { success: true, data: null, displayMarkdown: 'No messages in inbox.' };
+
+    const emailList = messages.map((m: { subject: string; from: string; snippet: string }) =>
+      `- From: ${m.from} | Subject: ${m.subject} | Preview: ${(m.snippet || '').slice(0, 80)}`
+    ).join('\n');
+
+    const r = await (await ctx.fetch('/api/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'gemini-generate',
+        prompt: `Analyze these inbox emails and categorize them. For each email, classify as: URGENT, ACTION REQUIRED, FYI, MARKETING, or PERSONAL. Then provide:\n1. Top 3 emails that need immediate attention\n2. Emails that can be archived\n3. Any patterns you notice (e.g., many unsubscribe-worthy newsletters)\n\nEmails:\n${emailList}`,
+      }),
+    })).json();
+
+    md.push(r.content || 'Analysis failed.');
+  } catch (err) {
+    md.push(`Error: ${err instanceof Error ? err.message : 'unavailable'}`);
+  }
+
+  return { success: true, data: null, displayMarkdown: md.join('\n') };
+};
+
 // ── Connection health check ──
 const connectionHealth: KitToolHandler = async (_input, ctx) => {
   try {
@@ -276,6 +359,21 @@ export const manifest: KitManifest = {
       description: 'Check Google Workspace connection health — per-service status, latency, token expiry, scope coverage.',
       input_schema: { type: 'object', properties: {} },
     },
+    {
+      name: 'google_weekly_report',
+      description: 'Generate a comprehensive weekly report from Calendar, Gmail, Tasks, and Analytics data. Optionally email it to a recipient.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          recipient: { type: 'string', description: 'Email address to send the report to (optional)' },
+        },
+      },
+    },
+    {
+      name: 'google_inbox_intelligence',
+      description: 'AI-analyze your inbox: categorize emails (URGENT, ACTION REQUIRED, FYI, MARKETING), identify top priorities, suggest archivable messages.',
+      input_schema: { type: 'object', properties: {} },
+    },
   ],
 };
 
@@ -285,4 +383,6 @@ export const handlers: Record<string, KitToolHandler> = {
   google_schedule_and_notify: scheduleAndNotify,
   google_workspace_search: workspaceSearch,
   google_connection_health: connectionHealth,
+  google_weekly_report: weeklyReport,
+  google_inbox_intelligence: inboxIntelligence,
 };

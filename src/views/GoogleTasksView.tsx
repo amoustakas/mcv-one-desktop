@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   ListTodo, Plus, Check, Trash2, RefreshCw, Calendar,
   ChevronDown, ChevronRight, AlertTriangle, Circle, CheckCircle2,
+  Bot, Sparkles, ArrowUpDown, X,
 } from 'lucide-react';
 import {
   PageHeader, Button, GlassCard, Badge, Input, Skeleton, EmptyState,
@@ -88,6 +89,33 @@ export default function GoogleTasksView() {
   const [showCompleted, setShowCompleted] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [listsExpanded, setListsExpanded] = useState(true);
+  const [aiPrioritizing, setAiPrioritizing] = useState(false);
+  const [aiPriority, setAiPriority] = useState<string | null>(null);
+
+  // AI: Prioritize tasks
+  const handleAiPrioritize = async () => {
+    if (tasks.length === 0) return;
+    setAiPrioritizing(true);
+    try {
+      const taskList = tasks
+        .filter(t => t.status === 'needsAction')
+        .map(t => `- ${t.title}${t.due ? ` (due: ${new Date(t.due).toLocaleDateString()})` : ''}${t.notes ? ` — ${t.notes}` : ''}`)
+        .join('\n');
+      const res = await fetch('/api/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'gemini-generate',
+          prompt: `You are a productivity expert. Prioritize these tasks by urgency and importance. Group them into: Critical (do today), Important (do this week), and Can Wait. Be concise.\n\nTasks:\n${taskList}`,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAiPriority(data.content || null);
+      }
+    } catch { /* ignore */ }
+    finally { setAiPrioritizing(false); }
+  };
 
   // Load task lists
   useEffect(() => {
@@ -152,6 +180,9 @@ export default function GoogleTasksView() {
   return (
     <div className="gtasks-view">
       <PageHeader title="Google Tasks" subtitle={`${pendingTasks.length} pending${overdueTasks.length ? ` · ${overdueTasks.length} overdue` : ''}`}>
+        <button className="gtask-ai-btn" onClick={handleAiPrioritize} disabled={aiPrioritizing || pendingTasks.length === 0}>
+          <Sparkles size={14} /> {aiPrioritizing ? 'Analyzing...' : 'AI Prioritize'}
+        </button>
         <button className="gtask-icon-btn" onClick={loadTasks} title="Refresh"><RefreshCw size={16} /></button>
       </PageHeader>
 
@@ -191,6 +222,16 @@ export default function GoogleTasksView() {
             <Plus size={14} />
             <input type="text" placeholder="Add a task..." value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} />
           </form>
+
+          {aiPriority && (
+            <div className="gtasks-ai-result">
+              <div className="gtasks-ai-header">
+                <Sparkles size={12} /> <span>NAOS Priority Analysis</span>
+                <button className="gtask-icon-btn" onClick={() => setAiPriority(null)} style={{ width: 20, height: 20 }}><X size={12} /></button>
+              </div>
+              <div className="gtasks-ai-body">{aiPriority}</div>
+            </div>
+          )}
 
           {error && <div className="gtasks-error"><AlertTriangle size={14} />{error}</div>}
 
@@ -264,6 +305,23 @@ export default function GoogleTasksView() {
         .gtask-delete:hover { color: var(--danger, #ef4444); }
         .gtask-icon-btn { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; border-radius: var(--radius-sm); }
         .gtask-icon-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+        .gtask-ai-btn {
+          display: flex; align-items: center; gap: 4px; padding: 5px 10px;
+          border: 1px solid rgba(139, 92, 246, 0.3); background: rgba(139, 92, 246, 0.06);
+          color: var(--purple, #8B5CF6); cursor: pointer; border-radius: var(--radius-sm);
+          font-size: 12px; transition: var(--transition-fast);
+        }
+        .gtask-ai-btn:hover { background: rgba(139, 92, 246, 0.12); }
+        .gtask-ai-btn:disabled { opacity: 0.5; cursor: default; }
+        .gtasks-ai-result {
+          margin: var(--space-sm); background: rgba(139, 92, 246, 0.04);
+          border: 1px solid rgba(139, 92, 246, 0.15); border-radius: var(--radius-sm); padding: var(--space-sm);
+        }
+        .gtasks-ai-header {
+          display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--purple, #8B5CF6);
+          font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: var(--space-xs);
+        }
+        .gtasks-ai-body { font-size: 13px; color: var(--text-secondary); line-height: 1.6; white-space: pre-wrap; }
       `}</style>
     </div>
   );
