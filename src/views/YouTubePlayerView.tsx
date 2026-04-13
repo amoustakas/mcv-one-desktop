@@ -6,7 +6,7 @@
  * transcript search, and AI-powered video Q&A.
  */
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { useYouTubePlayerStore } from '../stores/youtube-player';
 import YouTubePlayer, { seekYouTubePlayer } from '../components/youtube/YouTubePlayer';
 import TranscriptPanel from '../components/youtube/TranscriptPanel';
@@ -36,7 +36,6 @@ export default function YouTubePlayerView() {
   } = useYouTubePlayerStore();
 
   const [urlInput, setUrlInput] = useState('');
-  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const handleLoadVideo = useCallback((e?: React.FormEvent) => {
     e?.preventDefault();

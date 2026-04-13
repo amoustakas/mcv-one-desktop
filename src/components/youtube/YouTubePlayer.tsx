@@ -15,7 +15,7 @@ interface YouTubePlayerProps {
 
 export default function YouTubePlayer({ videoId, onTimeUpdate, onReady }: YouTubePlayerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval>>();
+  const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
   // Poll current time from iframe via postMessage
   useEffect(() => {

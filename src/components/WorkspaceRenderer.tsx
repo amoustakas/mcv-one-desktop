@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   X, Columns2, Rows2, Maximize2, Plus, Lock, Pin,
-  Unlock, ExternalLink, Copy, Trash2,
+  Unlock, ExternalLink, Trash2,
 } from 'lucide-react';
 import {
   useWorkspaceStore, type LayoutNode, type PanelNode, type SplitNode,
@@ -9,7 +9,7 @@ import {
 } from '../stores/workspace';
 import { type ViewId } from '../stores/navigation';
 import { cn } from '../lib/utils';
-import { VIEW_ICONS, VIEW_LABELS, getViewCategory, getViewLabel, getViewIcon } from '../lib/view-meta';
+import { getViewCategory, getViewLabel, getViewIcon } from '../lib/view-meta';
 
 // Forward-declare ViewPanel — imported from App
 interface ViewPanelProps { viewId?: ViewId }
@@ -150,7 +150,7 @@ function PanelContextMenu({ panel, totalPanels, x, y, onClose }: {
 function PanelTabBar({ panel, totalPanels }: { panel: PanelNode; totalPanels: number }) {
   const {
     setActiveTab, closeTab, addTab, reorderTab, moveTab,
-    splitPanelWith, closePanel, lockPanel, unlockPanel, detachPanel, setActivePanel,
+    splitPanelWith, closePanel, detachPanel, setActivePanel,
   } = useWorkspaceStore();
   const [showPicker, setShowPicker] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ tab: PanelTab; x: number; y: number } | null>(null);
@@ -445,8 +445,6 @@ function LayoutRenderer({ node, totalPanels }: { node: LayoutNode; totalPanels: 
 // ── Floating Panels ──
 function FloatingPanels() {
   const floatingPanels = useWorkspaceStore(s => s.floatingPanels);
-  const { updateFloatingPanel, closeFloatingPanel, bringToFront } = useWorkspaceStore();
-
   if (floatingPanels.length === 0) return null;
 
   return (
@@ -519,7 +517,6 @@ function FloatingPanelComponent({ panel }: { panel: import('../stores/workspace'
 
   const activeTab = panel.tabs.find(t => t.id === panel.activeTabId) ?? panel.tabs[0];
   const viewId = activeTab?.viewId ?? 'command-center';
-  const Icon = getViewIcon(viewId);
 
   return (
     <div

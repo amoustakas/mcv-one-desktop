@@ -334,7 +334,7 @@ interface WorkspaceState {
 
 export const useWorkspaceStore = create<WorkspaceState>()(
   persist(
-    (set, get) => ({
+    (set, _get) => ({
       layout: LAYOUT_TEMPLATES[0].tree,
       activeTemplateId: 'single',
       activePanelId: null,

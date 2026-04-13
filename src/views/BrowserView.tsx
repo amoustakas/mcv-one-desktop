@@ -17,7 +17,7 @@ import '../styles/browser.css';
 
 export default function BrowserView() {
   const {
-    tabs, activeTabId, sidebarOpen,
+    tabs, sidebarOpen,
     createTab, updateTab, toggleSidebar, addHistoryEntry, getActiveTab,
   } = useBrowserStore();
 

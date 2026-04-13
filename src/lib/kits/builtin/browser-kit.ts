@@ -66,7 +66,7 @@ async function ensureSession(ctx: KitExecutionContext): Promise<string> {
 
 const browserNavigate: KitToolHandler = async (input, ctx) => {
   const sessionId = await ensureSession(ctx);
-  const data = await browserApi('navigate', { sessionId, url: input.url });
+  const data = await browserApi('navigate', { sessionId, url: input.url }, ctx);
   return {
     success: true,
     data,
@@ -77,9 +77,9 @@ const browserNavigate: KitToolHandler = async (input, ctx) => {
 const browserReadPage: KitToolHandler = async (input, ctx) => {
   const sessionId = await ensureSession(ctx);
   if (input.url) {
-    await browserApi('navigate', { sessionId, url: input.url });
+    await browserApi('navigate', { sessionId, url: input.url }, ctx);
   }
-  const data = await browserApi('readability', { sessionId });
+  const data = await browserApi('readability', { sessionId }, ctx);
   const content = (data.textContent || '').slice(0, 50000);
   return {
     success: true,
@@ -91,9 +91,9 @@ const browserReadPage: KitToolHandler = async (input, ctx) => {
 const browserScreenshot: KitToolHandler = async (input, ctx) => {
   const sessionId = await ensureSession(ctx);
   if (input.url) {
-    await browserApi('navigate', { sessionId, url: input.url });
+    await browserApi('navigate', { sessionId, url: input.url }, ctx);
   }
-  const data = await browserApi('screenshot', { sessionId, fullPage: input.fullPage });
+  const data = await browserApi('screenshot', { sessionId, fullPage: input.fullPage }, ctx);
   return {
     success: true,
     data: { type: 'image', source: { type: 'base64', media_type: data.mimeType, data: data.imageBase64 } },
@@ -108,7 +108,7 @@ const browserClick: KitToolHandler = async (input, ctx) => {
     selector: input.selector,
     x: input.x,
     y: input.y,
-  });
+  }, ctx);
   return {
     success: true,
     displayMarkdown: `Clicked ${input.selector || `at (${input.x}, ${input.y})`}`,
@@ -121,7 +121,7 @@ const browserType: KitToolHandler = async (input, ctx) => {
     sessionId,
     selector: input.selector,
     text: input.text,
-  });
+  }, ctx);
   return {
     success: true,
     displayMarkdown: `Typed "${input.text}" ${input.selector ? `into ${input.selector}` : ''}`,
@@ -133,7 +133,7 @@ const browserScroll: KitToolHandler = async (input, ctx) => {
   const direction = input.direction as string;
   const amount = (input.amount as number) || 300;
   const deltaY = direction === 'up' ? -amount : amount;
-  await browserApi('input/scroll', { sessionId, deltaY });
+  await browserApi('input/scroll', { sessionId, deltaY }, ctx);
   return {
     success: true,
     displayMarkdown: `Scrolled ${direction} by ${amount}px`,
@@ -143,9 +143,9 @@ const browserScroll: KitToolHandler = async (input, ctx) => {
 const browserExtract: KitToolHandler = async (input, ctx) => {
   const sessionId = await ensureSession(ctx);
   if (input.url) {
-    await browserApi('navigate', { sessionId, url: input.url });
+    await browserApi('navigate', { sessionId, url: input.url }, ctx);
   }
-  const data = await browserApi('readability', { sessionId });
+  const data = await browserApi('readability', { sessionId }, ctx);
   return {
     success: true,
     data: {
@@ -160,19 +160,19 @@ const browserExtract: KitToolHandler = async (input, ctx) => {
 
 const browserSearchPage: KitToolHandler = async (input, ctx) => {
   const sessionId = await ensureSession(ctx);
-  const data = await browserApi('readability', { sessionId });
+  const data = await browserApi('readability', { sessionId }, ctx);
   const text = (data.textContent || '').toLowerCase();
   const query = (input.query as string).toLowerCase();
-  const lines = text.split('\n').filter(l => l.includes(query));
+  const lines = text.split('\n').filter((l: string) => l.includes(query));
   return {
     success: true,
     data: { matches: lines.length, results: lines.slice(0, 20) },
-    displayMarkdown: `## Search: "${input.query}" — ${lines.length} matches\n\n${lines.slice(0, 10).map(l => `- ${l.trim().slice(0, 200)}`).join('\n')}`,
+    displayMarkdown: `## Search: "${input.query}" — ${lines.length} matches\n\n${lines.slice(0, 10).map((l: string) => `- ${l.trim().slice(0, 200)}`).join('\n')}`,
   };
 };
 
 const youtubeGetTranscript: KitToolHandler = async (input, ctx) => {
-  const data = await youtubeApi('transcript', { videoId: input.videoId });
+  const data = await youtubeApi('transcript', { videoId: input.videoId }, ctx);
   const segments = data.segments || [];
   const formatted = segments
     .slice(0, 50)
@@ -186,7 +186,7 @@ const youtubeGetTranscript: KitToolHandler = async (input, ctx) => {
 };
 
 const youtubeSearchTranscript: KitToolHandler = async (input, ctx) => {
-  const data = await youtubeApi('search-transcript', { videoId: input.videoId, query: input.query });
+  const data = await youtubeApi('search-transcript', { videoId: input.videoId, query: input.query }, ctx);
   const matches = data.matches || [];
   const formatted = matches
     .slice(0, 20)

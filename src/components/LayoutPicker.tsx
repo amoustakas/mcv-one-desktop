@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import type { ReactElement } from 'react';
 import {
   Save, Trash2, ChevronDown, Pin, PinOff,
-  RotateCcw, Check, ToggleLeft, ToggleRight, Pencil,
+  RotateCcw, ToggleLeft, ToggleRight, Pencil,
 } from 'lucide-react';
 import {
   useWorkspaceStore, LAYOUT_TEMPLATES, countPanels, type LayoutNode,
@@ -20,7 +21,7 @@ function LayoutThumb({ templateId, isActive }: { templateId: string; isActive: b
   const fill = isActive ? 'rgba(0, 240, 255, 0.35)' : 'rgba(255, 255, 255, 0.08)';
   const stroke = isActive ? 'rgba(0, 240, 255, 0.6)' : 'rgba(255, 255, 255, 0.15)';
 
-  const rects: JSX.Element[] = [];
+  const rects: ReactElement[] = [];
   switch (templateId) {
     case 'single':
       rects.push(<rect key="a" x={0.5} y={0.5} width={w-1} height={h-1} rx={r} fill={fill} stroke={stroke} strokeWidth={0.8}/>);
@@ -75,7 +76,7 @@ function LiveLayoutThumb({ layout, size = 32, accent }: { layout: LayoutNode; si
   const fillBase = accent ? 'rgba(0, 240, 255, 0.25)' : 'rgba(255, 255, 255, 0.08)';
   const strokeBase = accent ? 'rgba(0, 240, 255, 0.5)' : 'rgba(255, 255, 255, 0.18)';
 
-  function renderNode(node: LayoutNode, x: number, y: number, nw: number, nh: number): JSX.Element[] {
+  function renderNode(node: LayoutNode, x: number, y: number, nw: number, nh: number): ReactElement[] {
     if (node.type === 'view') {
       return [<rect key={node.id} x={x} y={y} width={Math.max(2, nw)} height={Math.max(2, nh)} rx={1} fill={fillBase} stroke={strokeBase} strokeWidth={0.5}/>];
     }
@@ -147,7 +148,8 @@ export default function LayoutPicker() {
 
   useEffect(() => {
     setSaved(loadSavedLayouts());
-    setSettings({ autosave: true, ...loadSettings() });
+    const loaded = loadSettings();
+    setSettings({ autosave: loaded.autosave ?? true });
   }, []);
 
   // Autosave: persist layout snapshot when it changes (debounced)

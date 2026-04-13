@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import AnimatedBackground from './components/AnimatedBackground';
 import NavRail from './components/NavRail';
 import ChatDock from './components/ChatDock';
