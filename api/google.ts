@@ -370,6 +370,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
+      // ========================================================================
+      // AUTONOMOUS AGENT: Gemini with function calling for multi-step execution
+      // ========================================================================
+      case 'agent-execute': {
+        if (!GOOGLE_AI_KEY) return res.status(500).json({ error: 'GOOGLE_AI_KEY not configured' });
+        const { model: agentModel, temperature: agentTemp, systemInstruction: agentSystemPrompt, history: agentHistory, tools: agentTools } = req.body;
+        const genAI = new GoogleGenerativeAI(GOOGLE_AI_KEY);
+        const model = genAI.getGenerativeModel({
+          model: agentModel || 'gemini-2.5-flash',
+          systemInstruction: agentSystemPrompt || undefined,
+          tools: agentTools || [],
+        });
+
+        // Build contents from history
+        const contents = (agentHistory || []).map((msg: { role: string; parts: unknown[] }) => ({
+          role: msg.role === 'assistant' ? 'model' : msg.role,
+          parts: msg.parts,
+        }));
+
+        const result = await model.generateContent({
+          contents,
+          generationConfig: {
+            temperature: agentTemp ?? 0.7,
+            maxOutputTokens: 8192,
+          },
+        });
+
+        const response = result.response;
+        return res.json({
+          candidates: response.candidates,
+          usageMetadata: response.usageMetadata,
+        });
+      }
+
       default:
         return res.status(400).json({ error: `Unknown action: ${action}` });
     }
