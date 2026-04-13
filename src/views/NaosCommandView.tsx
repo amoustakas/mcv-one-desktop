@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Users, BarChart3, Network, Plus, Shield } from 'lucide-react';
-import { PageShell, PageHeader, Tabs, KpiCard, GlassCard, Button, Badge } from '../components/ui';
+import { Users, BarChart3, Network, Plus, Shield, Bot, Sparkles, Zap, Brain, Play } from 'lucide-react';
+import { PageShell, PageHeader, Tabs, KpiCard, GlassCard, Button, Badge, Input } from '../components/ui';
 import { staggerContainer, fadeInUp } from '../lib/animations';
+import { AGENT_PROFILES, type AgentProfile } from '../lib/agents/autonomous-agent';
 import '../styles/naos.css';
 
 // Placeholder components until subagent files land
@@ -82,6 +83,7 @@ const VIEW_TABS = [
   { id: 'org-chart', label: 'Org Chart' },
   { id: 'roster', label: 'Roster' },
   { id: 'culture', label: 'Culture Pulse' },
+  { id: 'agents', label: 'Agent Profiles' },
 ];
 
 export default function NaosCommandView() {
@@ -217,9 +219,56 @@ export default function NaosCommandView() {
             {activeTab === 'culture' && (
               <CulturePlaceholder snapshot={culture} />
             )}
+
+            {activeTab === 'agents' && (
+              <div className="naos-agents-grid">
+                {Object.entries(AGENT_PROFILES).map(([id, profile]) => (
+                  <GlassCard key={id} className="naos-agent-profile-card">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                      <div style={{
+                        width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: id === 'chief-of-staff' ? 'linear-gradient(135deg, #F59E0B, #D97706)' :
+                          id === 'research-analyst' ? 'linear-gradient(135deg, #3B82F6, #2563EB)' :
+                          id === 'communications-manager' ? 'linear-gradient(135deg, #10B981, #059669)' :
+                          id === 'growth-strategist' ? 'linear-gradient(135deg, #8B5CF6, #7C3AED)' :
+                          'linear-gradient(135deg, #00F0FF, #0072F5)',
+                      }}>
+                        {id === 'chief-of-staff' ? <Shield size={18} color="#fff" /> :
+                         id === 'research-analyst' ? <Brain size={18} color="#fff" /> :
+                         id === 'communications-manager' ? <Zap size={18} color="#fff" /> :
+                         id === 'growth-strategist' ? <Sparkles size={18} color="#fff" /> :
+                         <Bot size={18} color="#fff" />}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', textTransform: 'capitalize' }}>
+                          {id.replace(/-/g, ' ')}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                          {profile.model} · temp {profile.temperature}
+                        </div>
+                      </div>
+                    </div>
+                    <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 12px' }}>
+                      {profile.systemPrompt.split('.').slice(0, 2).join('.') + '.'}
+                    </p>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <Badge>{profile.model.includes('pro') ? 'Pro' : 'Flash'}</Badge>
+                      <Badge>Autonomous</Badge>
+                      <Badge>90+ Tools</Badge>
+                    </div>
+                  </GlassCard>
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>
+
+      <style>{`
+        .naos-agents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--space-md); }
+        .naos-agent-profile-card { transition: var(--transition-fast); }
+        .naos-agent-profile-card:hover { border-color: rgba(0, 240, 255, 0.2); box-shadow: 0 0 20px rgba(0, 240, 255, 0.05); }
+      `}</style>
     </PageShell>
   );
 }

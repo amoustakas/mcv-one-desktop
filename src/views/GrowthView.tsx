@@ -4,6 +4,7 @@ import { staggerContainer, fadeInUp } from '../lib/animations';
 import {
   TrendingUp, DollarSign, Megaphone, Users, Target,
   Plus, Trash2, Archive, Download, Edit3, X,
+  BarChart3, Search, Globe, MousePointer, Sparkles,
 } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
 import { ventures } from '../lib/ventures';
@@ -12,8 +13,10 @@ import {
 } from '../hooks/use-campaigns';
 import {
   PageHeader, PageShell, Button, GlassCard, GridLayout,
-  KpiCard, WidgetContainer, Badge, DataTable, TableToolbar, Pagination,
+  KpiCard, WidgetContainer, Badge, DataTable, TableToolbar, Pagination, Tabs,
 } from '../components/ui';
+import { useGoogleAdsOverview, useGoogleAdsCampaigns, useGoogleAdsRecommendations } from '../hooks/use-google-ads';
+import { useSearchConsoleOverview, useSearchConsoleQueries } from '../hooks/use-search-console';
 import { McvAreaChart, McvDonutChart } from '../components/charts';
 import { formatMoney, formatCompact, formatPercentage } from '../lib/utils';
 import type { Campaign } from '../lib/api/campaigns';
@@ -109,6 +112,23 @@ function sortCampaigns(data: Campaign[], sort: SortState): Campaign[] {
 
 /* ═══════════════════════════════════════════════════════════════ */
 export default function GrowthView() {
+  /* ── tabs ── */
+  const [growthTab, setGrowthTab] = useState('campaigns');
+  const GROWTH_TABS = [
+    { id: 'campaigns', label: 'Campaigns' },
+    { id: 'google-ads', label: 'Google Ads' },
+    { id: 'search-console', label: 'Search Console' },
+  ];
+
+  // Google Ads data
+  const adsOverview = useGoogleAdsOverview();
+  const adsCampaigns = useGoogleAdsCampaigns();
+  const adsRecommendations = useGoogleAdsRecommendations();
+
+  // Search Console data
+  const gscOverview = useSearchConsoleOverview();
+  const gscQueries = useSearchConsoleQueries();
+
   /* ── state ── */
   const [showAdd, setShowAdd] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -375,7 +395,116 @@ export default function GrowthView() {
         </Button>
       </PageHeader>
 
+      <Tabs tabs={GROWTH_TABS} active={growthTab} onChange={setGrowthTab} />
+
+      {/* ══════════ Google Ads Tab ══════════ */}
+      {growthTab === 'google-ads' && (
+        <div style={{ padding: '16px 0', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <motion.div variants={staggerContainer} initial="hidden" animate="show">
+            <GridLayout cols={4} gap="sm">
+              <motion.div variants={fadeInUp}>
+                <KpiCard title="Total Spend" value={adsOverview.data?.totalSpend ? `$${adsOverview.data.totalSpend.toLocaleString()}` : '—'} icon={<DollarSign size={14} />} />
+              </motion.div>
+              <motion.div variants={fadeInUp}>
+                <KpiCard title="Clicks" value={adsOverview.data?.totalClicks?.toLocaleString() ?? '—'} icon={<MousePointer size={14} />} />
+              </motion.div>
+              <motion.div variants={fadeInUp}>
+                <KpiCard title="Conversions" value={adsOverview.data?.totalConversions?.toLocaleString() ?? '—'} icon={<Target size={14} />} />
+              </motion.div>
+              <motion.div variants={fadeInUp}>
+                <KpiCard title="Avg CTR" value={adsOverview.data?.avgCtr ? `${adsOverview.data.avgCtr.toFixed(2)}%` : '—'} icon={<TrendingUp size={14} />} />
+              </motion.div>
+            </GridLayout>
+          </motion.div>
+
+          {/* Campaigns */}
+          <GlassCard>
+            <h3 style={{ margin: '0 0 var(--space-sm)', fontSize: 14, color: 'var(--text-primary)' }}>Google Ads Campaigns</h3>
+            {adsCampaigns.isLoading ? (
+              <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Loading campaigns...</p>
+            ) : adsCampaigns.data?.campaigns?.length ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {adsCampaigns.data.campaigns.map((c: Record<string, unknown>, i: number) => (
+                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 80px 80px 80px 60px', padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: 13, gap: 8, alignItems: 'center' }}>
+                    <span style={{ color: 'var(--text-primary)' }}>{c.name as string}</span>
+                    <Badge>{c.status as string}</Badge>
+                    <span style={{ color: 'var(--text-secondary)', textAlign: 'right' }}>${Number(c.spend || 0).toLocaleString()}</span>
+                    <span style={{ color: 'var(--cyan)', textAlign: 'right' }}>{Number(c.clicks || 0).toLocaleString()}</span>
+                    <span style={{ color: 'var(--text-muted)', textAlign: 'right' }}>{Number(c.ctr || 0).toFixed(1)}%</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>No Google Ads campaigns. Connect Google Ads in Settings &gt; Integrations.</p>
+            )}
+          </GlassCard>
+
+          {/* Recommendations */}
+          {adsRecommendations.data && (
+            <GlassCard>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--space-sm)' }}>
+                <Sparkles size={14} style={{ color: 'var(--purple)' }} />
+                <h3 style={{ margin: 0, fontSize: 14, color: 'var(--text-primary)' }}>Google Recommendations</h3>
+              </div>
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                {typeof adsRecommendations.data === 'object' ? JSON.stringify(adsRecommendations.data).slice(0, 500) : 'No recommendations available.'}
+              </p>
+            </GlassCard>
+          )}
+        </div>
+      )}
+
+      {/* ══════════ Search Console Tab ══════════ */}
+      {growthTab === 'search-console' && (
+        <div style={{ padding: '16px 0', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <motion.div variants={staggerContainer} initial="hidden" animate="show">
+            <GridLayout cols={4} gap="sm">
+              <motion.div variants={fadeInUp}>
+                <KpiCard title="Total Clicks" value={gscOverview.data?.totalClicks?.toLocaleString() ?? '—'} icon={<MousePointer size={14} />} />
+              </motion.div>
+              <motion.div variants={fadeInUp}>
+                <KpiCard title="Impressions" value={gscOverview.data?.totalImpressions?.toLocaleString() ?? '—'} icon={<Globe size={14} />} />
+              </motion.div>
+              <motion.div variants={fadeInUp}>
+                <KpiCard title="Avg CTR" value={gscOverview.data?.avgCtr ? `${gscOverview.data.avgCtr.toFixed(2)}%` : '—'} icon={<TrendingUp size={14} />} />
+              </motion.div>
+              <motion.div variants={fadeInUp}>
+                <KpiCard title="Avg Position" value={gscOverview.data?.avgPosition ? gscOverview.data.avgPosition.toFixed(1) : '—'} icon={<BarChart3 size={14} />} />
+              </motion.div>
+            </GridLayout>
+          </motion.div>
+
+          {/* Top Queries */}
+          <GlassCard>
+            <h3 style={{ margin: '0 0 var(--space-sm)', fontSize: 14, color: 'var(--text-primary)' }}>Top Search Queries (28 days)</h3>
+            {gscQueries.isLoading ? (
+              <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Loading...</p>
+            ) : gscQueries.data?.rows?.length ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 70px 90px 60px 60px', padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  <span>Query</span><span style={{ textAlign: 'right' }}>Clicks</span><span style={{ textAlign: 'right' }}>Impressions</span><span style={{ textAlign: 'right' }}>CTR</span><span style={{ textAlign: 'right' }}>Pos</span>
+                </div>
+                {gscQueries.data.rows.slice(0, 15).map((q: Record<string, unknown>, i: number) => (
+                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 70px 90px 60px 60px', padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
+                    <span style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{q.query as string}</span>
+                    <span style={{ color: 'var(--cyan)', textAlign: 'right', fontWeight: 600 }}>{Number(q.clicks || 0).toLocaleString()}</span>
+                    <span style={{ color: 'var(--text-secondary)', textAlign: 'right' }}>{Number(q.impressions || 0).toLocaleString()}</span>
+                    <span style={{ color: 'var(--text-muted)', textAlign: 'right' }}>{(Number(q.ctr || 0) * 100).toFixed(1)}%</span>
+                    <span style={{ color: 'var(--text-muted)', textAlign: 'right' }}>{Number(q.position || 0).toFixed(1)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>No Search Console data. Connect in Settings &gt; Integrations.</p>
+            )}
+          </GlassCard>
+        </div>
+      )}
+
       {/* ── Add Campaign Form ── */}
+      {growthTab === 'campaigns' && <>
+
+      {/* ── Add Campaign Form (campaigns tab only) ── */}
       {showAdd && (
         <GlassCard className="gv-add-form">
           <input
@@ -791,6 +920,8 @@ export default function GrowthView() {
           .gv-chart-widget { min-height: 320px; }
         }
       `}</style>
+
+      </>}
     </PageShell>
   );
 }

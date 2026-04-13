@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, Plus, Search, FileText, Send, Loader2, Trash2, BookOpen, Database, Sparkles, Filter } from 'lucide-react';
-import { PageShell, PageHeader, Button, EmptyState, KpiCard, GridLayout, GlassCard, Badge } from '../components/ui';
+import { Brain, Plus, Search, FileText, Send, Loader2, Trash2, BookOpen, Database, Sparkles, Filter, BarChart3, TrendingUp, Users, Globe } from 'lucide-react';
+import { PageShell, PageHeader, Button, EmptyState, KpiCard, GridLayout, GlassCard, Badge, Tabs } from '../components/ui';
 import { timeAgo } from '../lib/utils';
 import { useNavigation } from '../stores/navigation';
 import Markdown from '../components/Markdown';
 import { apiPost } from '../lib/api/client';
 import { staggerContainer, fadeInUp } from '../lib/animations';
+import { useAnalyticsOverview, useAnalyticsRealtime, useAnalyticsTopPages, useAnalyticsTrafficSources, useAnalyticsInsights } from '../hooks/use-google-analytics';
 
 interface Doc {
   id: string;
@@ -96,6 +97,20 @@ export default function IntelligenceView() {
   const typeCounts = docs.reduce<Record<string, number>>((acc, d) => { acc[d.doc_type] = (acc[d.doc_type] || 0) + 1; return acc; }, {});
   const ventureCount = new Set(docs.map(d => d.venture_id)).size;
 
+  // Analytics data
+  const [intelTab, setIntelTab] = useState('knowledge');
+  const analyticsOverview = useAnalyticsOverview();
+  const analyticsRealtime = useAnalyticsRealtime();
+  const analyticsTopPages = useAnalyticsTopPages();
+  const analyticsTraffic = useAnalyticsTrafficSources();
+  const analyticsInsights = useAnalyticsInsights();
+
+  const INTEL_TABS = [
+    { id: 'knowledge', label: 'Knowledge Base' },
+    { id: 'analytics', label: 'Analytics' },
+    { id: 'ai-insights', label: 'AI Insights' },
+  ];
+
   return (
     <PageShell>
       <PageHeader icon={<Brain size={20} />} title="Intelligence Hub" count={docs.length} loading={loading} onRefresh={loadDocs}>
@@ -116,7 +131,123 @@ export default function IntelligenceView() {
         </div>
       </PageHeader>
 
-      <div className="intel-body">
+      <Tabs tabs={INTEL_TABS} active={intelTab} onChange={setIntelTab} />
+
+      {/* ══════════ Analytics Tab ══════════ */}
+      {intelTab === 'analytics' && (
+        <div className="intel-body">
+          <motion.div variants={staggerContainer} initial="hidden" animate="show">
+            <GridLayout cols={4} gap="md">
+              <motion.div variants={fadeInUp}>
+                <KpiCard icon={<Users size={16} />} title="Active Users" value={analyticsRealtime.data?.activeUsers?.toString() ?? '—'} trend="live" />
+              </motion.div>
+              <motion.div variants={fadeInUp}>
+                <KpiCard icon={<BarChart3 size={16} />} title="Sessions (30d)" value={analyticsOverview.data?.sessions?.toLocaleString() ?? '—'} />
+              </motion.div>
+              <motion.div variants={fadeInUp}>
+                <KpiCard icon={<Globe size={16} />} title="Page Views (30d)" value={analyticsOverview.data?.pageViews?.toLocaleString() ?? '—'} />
+              </motion.div>
+              <motion.div variants={fadeInUp}>
+                <KpiCard icon={<TrendingUp size={16} />} title="Bounce Rate" value={analyticsOverview.data?.bounceRate ? `${analyticsOverview.data.bounceRate.toFixed(1)}%` : '—'} />
+              </motion.div>
+            </GridLayout>
+          </motion.div>
+
+          {/* Top Pages */}
+          <GlassCard style={{ marginTop: 'var(--space-md)' }}>
+            <h3 style={{ margin: '0 0 var(--space-sm)', fontSize: 14, color: 'var(--text-primary)' }}>Top Pages (30 days)</h3>
+            {analyticsTopPages.isLoading ? (
+              <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Loading...</p>
+            ) : analyticsTopPages.data?.rows?.length ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {analyticsTopPages.data.rows.slice(0, 10).map((row, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
+                    <span style={{ color: 'var(--text-primary)' }}>{row.dimensions?.[0] || 'Unknown'}</span>
+                    <span style={{ color: 'var(--cyan)', fontWeight: 600 }}>{Number(row.metrics?.[0] || 0).toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>No analytics data. Connect Google Analytics in Settings &gt; Integrations.</p>
+            )}
+          </GlassCard>
+
+          {/* Traffic Sources */}
+          <GlassCard style={{ marginTop: 'var(--space-md)' }}>
+            <h3 style={{ margin: '0 0 var(--space-sm)', fontSize: 14, color: 'var(--text-primary)' }}>Traffic Sources (30 days)</h3>
+            {analyticsTraffic.data?.rows?.length ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {analyticsTraffic.data.rows.slice(0, 8).map((row, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
+                    <span style={{ color: 'var(--text-primary)' }}>{row.dimensions?.[0] || 'Direct'}</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>{Number(row.metrics?.[0] || 0).toLocaleString()} sessions</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Connect Google Analytics to see traffic sources.</p>
+            )}
+          </GlassCard>
+
+          {/* Realtime */}
+          {analyticsRealtime.data?.topPages?.length ? (
+            <GlassCard style={{ marginTop: 'var(--space-md)' }}>
+              <h3 style={{ margin: '0 0 var(--space-sm)', fontSize: 14, color: 'var(--text-primary)' }}>
+                <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#10B981', marginRight: 8 }} />
+                Live Now — {analyticsRealtime.data.activeUsers} active users
+              </h3>
+              {analyticsRealtime.data.topPages.slice(0, 5).map((p, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 12, color: 'var(--text-secondary)' }}>
+                  <span>{p.page}</span>
+                  <span style={{ color: 'var(--cyan)' }}>{p.users} users</span>
+                </div>
+              ))}
+            </GlassCard>
+          ) : null}
+        </div>
+      )}
+
+      {/* ══════════ AI Insights Tab ══════════ */}
+      {intelTab === 'ai-insights' && (
+        <div className="intel-body">
+          <GlassCard>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--space-md)' }}>
+              <Sparkles size={16} style={{ color: 'var(--purple)' }} />
+              <h3 style={{ margin: 0, fontSize: 16, color: 'var(--text-primary)' }}>NAOS Analytics Intelligence</h3>
+            </div>
+            {analyticsInsights.isLoading ? (
+              <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>NAOS is analyzing your analytics data...</p>
+            ) : analyticsInsights.data ? (
+              <div>
+                <p style={{ color: 'var(--text-primary)', fontSize: 14, lineHeight: 1.6, marginBottom: 'var(--space-md)' }}>
+                  {analyticsInsights.data.narrative}
+                </p>
+                {analyticsInsights.data.highlights?.length > 0 && (
+                  <div style={{ marginBottom: 'var(--space-md)' }}>
+                    <h4 style={{ fontSize: 12, color: '#10B981', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 var(--space-xs)' }}>Highlights</h4>
+                    {analyticsInsights.data.highlights.map((h: string, i: number) => (
+                      <p key={i} style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '4px 0', paddingLeft: 12, borderLeft: '2px solid #10B981' }}>{h}</p>
+                    ))}
+                  </div>
+                )}
+                {analyticsInsights.data.alerts?.length > 0 && (
+                  <div>
+                    <h4 style={{ fontSize: 12, color: 'var(--warning)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 var(--space-xs)' }}>Alerts</h4>
+                    {analyticsInsights.data.alerts.map((a: string, i: number) => (
+                      <p key={i} style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '4px 0', paddingLeft: 12, borderLeft: '2px solid var(--warning)' }}>{a}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Connect Google Analytics to get AI-powered insights.</p>
+            )}
+          </GlassCard>
+        </div>
+      )}
+
+      {/* ══════════ Knowledge Base Tab ══════════ */}
+      {intelTab === 'knowledge' && <div className="intel-body">
         {/* KPI Stats */}
         <motion.div variants={staggerContainer} initial="hidden" animate="show">
           <GridLayout cols={4} gap="md">
@@ -246,7 +377,7 @@ export default function IntelligenceView() {
             />
           )}
         </motion.div>
-      </div>
+      </div>}
 
       <style>{`
         .intel-body { flex:1; overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column; gap:16px; }
