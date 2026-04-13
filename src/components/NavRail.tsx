@@ -1,73 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useWorkspaceStore } from '../stores/workspace';
 import {
-  LayoutGrid, PieChart, Bot, Brain, Landmark, Activity,
-  Wrench, Radio, Settings, ChevronLeft, ChevronRight, ChevronDown,
-  CheckSquare, Users, Hammer, BookOpen, Monitor, Sparkles,
-  Wand2, Swords, TrendingUp, FileText, Plus, Package,
-  Database, GitBranch, Radar, MessageSquare, FolderOpen, Archive, Megaphone,
-  Cpu, Grid3x3, AudioLines, MonitorSmartphone,
-  ShoppingCart, BarChart3, CreditCard, Receipt, Tag, Banknote, FileBarChart, BookMarked, Shield,
-  Truck, Star, Gift, Users2, Layers, Percent, SlidersHorizontal,
+  Settings, ChevronLeft, ChevronRight, ChevronDown,
 } from 'lucide-react';
 import { useNavigation, type ViewId } from '../stores/navigation';
 import { useVentureContextStore } from '../stores/venture-context';
 import { ventures } from '../lib/ventures';
 import { cn } from '../lib/utils';
+import { getViewIcon } from '../lib/view-meta';
 
-// ── Icon map ──
-const VIEW_ICONS: Record<string, React.FC<{ size: number }>> = {
-  'command-center': LayoutGrid, portfolio: PieChart, chat: Bot,
-  intelligence: Brain, treasury: Landmark, signals: Radio,
-  engineering: Wrench, ops: Activity, forge: Hammer, sessions: Monitor, 'war-room': Swords,
-  crm: Users, growth: TrendingUp, 'comms-hub': MessageSquare,
-  tasks: CheckSquare, docs: BookOpen,
-  team: Users,
-  'ai-studio': Sparkles, 'prompt-composer': Wand2,
-  'kit-store': Package,
-  'control-room': Radar,
-  'device-hub': Cpu,
-  'stream-deck': Grid3x3,
-  'audio-router': AudioLines,
-  'connected-sessions': MonitorSmartphone,
-  memory: Database,
-  pipeline: GitBranch,
-  settings: Settings,
-  'commerce-overview': ShoppingCart,
-  'commerce-products': Tag,
-  'commerce-subscriptions': CreditCard,
-  'commerce-invoices': Receipt,
-  'commerce-orders': Package,
-  'commerce-credits': CreditCard,
-  'commerce-loans': Banknote,
-  'commerce-tax': Receipt,
-  'commerce-customers': Users2,
-  'commerce-inventory': Layers,
-  'commerce-fulfillment': Truck,
-  'commerce-discounts': Percent,
-  'commerce-reviews': Star,
-  'commerce-gift-cards': Gift,
-  'commerce-analytics': BarChart3,
-  'commerce-shop-settings': SlidersHorizontal,
-  'venture-commerce': ShoppingCart,
-  'venture-products': Tag,
-  'venture-subscriptions': CreditCard,
-  'financials-dashboard': BarChart3,
-  'financials-statements': FileBarChart,
-  'financials-cost-intelligence': TrendingUp,
-  'financials-ledger': BookMarked,
-  'financials-reporting': FileBarChart,
-  'venture-financials': BarChart3,
-  'creator-hub': Sparkles,
-  'creator-royalties': CreditCard,
-  'creator-escrow': Landmark,
-  'venture-dashboard': LayoutGrid, 'venture-profile': FileText,
-  'venture-engineering': Wrench, 'venture-growth': TrendingUp,
-  'venture-operations': Activity, 'venture-docs': BookOpen,
-  'venture-forge': Hammer, 'venture-tasks': CheckSquare,
-  'venture-settings': Settings, 'venture-onboarding': Plus,
-  files: FolderOpen, 'venture-workspace': Archive, 'ad-studio': Megaphone, 'naos-command': Shield,
-};
+// Icons now sourced from shared view-meta.ts
 
 // ── Section definitions ──
 interface NavSection { label: string; key: string; items: { id: ViewId; label: string; badge?: string }[] }
@@ -136,6 +78,8 @@ const globalSections: NavSection[] = [
       { id: 'prompt-composer', label: 'Prompt Composer' },
       { id: 'kit-store', label: 'Kit Store' },
       { id: 'control-room', label: 'Control Room' },
+      { id: 'browser', label: 'Browser' },
+      { id: 'youtube-player', label: 'YouTube' },
     ],
   },
   {
@@ -250,7 +194,7 @@ export default function NavRail() {
                 </button>
               )}
               {!isCollapsed && section.items.map((item) => {
-                const Icon = VIEW_ICONS[item.id] || Activity;
+                const Icon = getViewIcon(item.id);
                 const isActive = activeView === item.id;
                 return (
                   <button
@@ -296,246 +240,7 @@ export default function NavRail() {
         </button>
       </div>
 
-      <style>{`
-        .rail {
-          height: 100%;
-          display: flex;
-          flex-direction: column;
-          background: linear-gradient(180deg, rgba(6, 12, 24, 0.99), rgba(4, 8, 18, 0.98));
-          border-right: 1px solid rgba(0, 240, 255, 0.06);
-          flex-shrink: 0;
-          transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-          overflow: hidden;
-          user-select: none;
-          position: relative;
-          backdrop-filter: blur(16px);
-        }
-        /* Right edge glow — animated gradient */
-        .rail::after {
-          content: "";
-          position: absolute;
-          top: 0;
-          right: 0;
-          width: 1px;
-          height: 100%;
-          background: linear-gradient(
-            180deg,
-            rgba(0, 240, 255, 0.25) 0%,
-            rgba(0, 240, 255, 0.08) 20%,
-            transparent 40%,
-            transparent 60%,
-            rgba(139, 92, 246, 0.08) 80%,
-            rgba(139, 92, 246, 0.2) 100%
-          );
-          pointer-events: none;
-        }
-        /* Scanline texture overlay */
-        .rail::before {
-          content: "";
-          position: absolute;
-          inset: 0;
-          background: repeating-linear-gradient(
-            0deg,
-            transparent,
-            transparent 2px,
-            rgba(0, 240, 255, 0.008) 2px,
-            rgba(0, 240, 255, 0.008) 4px
-          );
-          pointer-events: none;
-          z-index: 0;
-        }
-
-        .rail-nav {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-          overflow-y: auto;
-          overflow-x: hidden;
-          padding: 6px 0;
-          position: relative;
-          z-index: 1;
-          scrollbar-width: thin;
-          scrollbar-color: rgba(0,240,255,0.1) transparent;
-        }
-        .rail-nav::-webkit-scrollbar { width: 3px; }
-        .rail-nav::-webkit-scrollbar-track { background: transparent; }
-        .rail-nav::-webkit-scrollbar-thumb { background: rgba(0,240,255,0.15); border-radius: 3px; }
-
-        .rail-section {
-          display: flex;
-          flex-direction: column;
-        }
-
-        .rail-section + .rail-section {
-          margin-top: 4px;
-          padding-top: 4px;
-          position: relative;
-        }
-        .rail-section + .rail-section::before {
-          content: "";
-          position: absolute;
-          top: 0;
-          left: 16px;
-          right: 16px;
-          height: 1px;
-          background: linear-gradient(90deg, transparent, rgba(0,240,255,0.1), transparent);
-        }
-
-        .rail-section-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 6px 14px 4px;
-          cursor: pointer;
-          transition: color 0.15s;
-          background: none;
-          border: none;
-        }
-        .rail-section-header:hover { color: var(--text-secondary); }
-        .rail-section-header:hover .rail-section-label { color: var(--cyan-dim); }
-
-        .rail-section-label {
-          font-size: 9px;
-          font-weight: 700;
-          color: var(--text-muted);
-          text-transform: uppercase;
-          letter-spacing: 1.5px;
-          transition: color 0.15s;
-        }
-
-        .rail-section-chevron {
-          color: var(--text-muted);
-          transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .rail-section-chevron.collapsed {
-          transform: rotate(-90deg);
-        }
-
-        .rail-btn {
-          position: relative;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 7px 16px;
-          color: var(--text-muted);
-          transition: all 0.15s ease;
-          white-space: nowrap;
-          min-height: 34px;
-          font-size: 12px;
-          border-radius: 0;
-          background: none;
-          border: none;
-          cursor: pointer;
-        }
-
-        .rail-btn:hover {
-          color: var(--text-primary);
-          background: linear-gradient(90deg, rgba(0,240,255,0.04), transparent);
-        }
-        .rail-btn:hover::before {
-          content: "";
-          position: absolute;
-          left: 0;
-          top: 50%;
-          transform: translateY(-50%);
-          width: 2px;
-          height: 12px;
-          background: rgba(0,240,255,0.3);
-          border-radius: 0 2px 2px 0;
-        }
-
-        .rail-btn.active {
-          color: var(--cyan);
-          background: linear-gradient(90deg, rgba(0,240,255,0.06), transparent);
-          text-shadow: 0 0 10px rgba(0,240,255,0.2);
-        }
-        .rail-btn.split-active {
-          color: var(--purple);
-          background: linear-gradient(90deg, rgba(139,92,246,0.06), transparent);
-          text-shadow: 0 0 10px rgba(139,92,246,0.2);
-        }
-
-        /* Active indicator — animated glow bar */
-        .rail-indicator {
-          position: absolute;
-          left: 0;
-          top: 50%;
-          transform: translateY(-50%);
-          width: 3px;
-          height: 20px;
-          background: var(--cyan);
-          border-radius: 0 3px 3px 0;
-          box-shadow:
-            0 0 6px rgba(0, 240, 255, 0.6),
-            0 0 16px rgba(0, 240, 255, 0.25),
-            0 0 30px rgba(0, 240, 255, 0.1);
-          animation: rail-glow 2s ease-in-out infinite;
-        }
-        @keyframes rail-glow {
-          0%, 100% { box-shadow: 0 0 6px rgba(0,240,255,0.6), 0 0 16px rgba(0,240,255,0.25); }
-          50% { box-shadow: 0 0 8px rgba(0,240,255,0.8), 0 0 24px rgba(0,240,255,0.35), 0 0 40px rgba(0,240,255,0.12); }
-        }
-
-        .rail-text {
-          font-size: 12px;
-          font-weight: 500;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          flex: 1;
-          letter-spacing: 0.1px;
-        }
-
-        .rail-badge {
-          font-size: 8px;
-          font-weight: 700;
-          padding: 1px 6px;
-          border-radius: var(--radius-full);
-          background: rgba(0,240,255,0.08);
-          color: var(--cyan);
-          text-transform: uppercase;
-          letter-spacing: 0.3px;
-          border: 1px solid rgba(0,240,255,0.15);
-        }
-
-        .rail-bottom {
-          border-top: 1px solid rgba(0,240,255,0.06);
-          padding: 6px 0;
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-          position: relative;
-          z-index: 1;
-        }
-        .rail-bottom::before {
-          content: "";
-          position: absolute;
-          top: 0;
-          left: 16px;
-          right: 16px;
-          height: 1px;
-          background: linear-gradient(90deg, transparent, rgba(0,240,255,0.12), transparent);
-        }
-
-        .rail-toggle {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 6px;
-          margin: 0 8px;
-          border-radius: var(--radius-sm);
-          color: var(--text-muted);
-          transition: all 0.15s ease;
-          background: none;
-          border: none;
-          cursor: pointer;
-        }
-
-        .rail-toggle:hover {
-          background: rgba(0,240,255,0.04);
-          color: var(--cyan);
-        }
-      `}</style>
+      {/* NavRail CSS extracted to src/styles/shell.css */}
     </nav>
   );
 }

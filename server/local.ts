@@ -22,6 +22,9 @@ import { registerPipelineRoutes } from './pipeline-routes';
 import { registerDockerRoutes } from './docker-routes';
 import { registerMcpRoutes } from './mcp-routes';
 import { registerDeviceRoutes } from './device-routes';
+import { registerBrowserRoutes } from './browser-routes';
+import { registerYouTubeRoutes } from './youtube-routes';
+import { attachBrowserWebSocket } from './browser-ws';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "3100");
@@ -397,14 +400,21 @@ app.post('/local/exec', (req, res) => {
 registerDockerRoutes(app);
 registerMcpRoutes(app);
 registerDeviceRoutes(app);
+registerBrowserRoutes(app);
+registerYouTubeRoutes(app);
 
 // ── Start ──
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`\n  🖥️  MCV Local Server running on http://localhost:${PORT}`);
   console.log(`  📂 Filesystem access enabled`);
   console.log(`  👤 User: ${os.userInfo().username}`);
   console.log(`  💻 ${os.cpus().length} CPUs | ${Math.round(os.totalmem() / 1e9)}GB RAM`);
   console.log(`  📡 Endpoints: /local/health, /local/drives, /local/ls, /local/read, /local/write, /local/search, /local/exec`);
   console.log(`  🔗 Pipeline:  /local/pipeline, /local/pipeline/read, /local/pipeline/git-log`);
-  console.log(`  🔌 MCP Proxy: /mcp/spawn, /mcp/message/:id, /mcp/kill/:id, /mcp/status\n`);
+  console.log(`  🔌 MCP Proxy: /mcp/spawn, /mcp/message/:id, /mcp/kill/:id, /mcp/status`);
+  console.log(`  🌐 Browser:   /local/browser/session, /local/browser/navigate, ws://stream`);
+  console.log(`  🎬 YouTube:   /local/youtube/transcript, /local/youtube/info\n`);
 });
+
+// Attach WebSocket handler for browser frame streaming
+attachBrowserWebSocket(server);

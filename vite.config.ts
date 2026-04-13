@@ -10,6 +10,10 @@ export default defineConfig({
   server: {
     proxy: {
       // Proxy local server API in dev mode
+      '/local/browser/stream': {
+        target: 'ws://localhost:3100',
+        ws: true,
+      },
       '/local': {
         target: 'http://localhost:3100',
         changeOrigin: true,

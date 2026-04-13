@@ -12,9 +12,10 @@ import { useCommandStore } from './stores/command';
 import { useLayoutStore } from './stores/layout';
 import { getVenture, ventures } from './lib/ventures';
 // UserButton removed — unused
-import { Search, Settings, Bot, Columns2 } from 'lucide-react';
+import { Search, Settings, Bot } from 'lucide-react';
+import LayoutPicker from './components/LayoutPicker';
 import WorkspaceRenderer, { setViewPanelComponent } from './components/WorkspaceRenderer';
-import { useWorkspaceStore, LAYOUT_TEMPLATES, countPanels } from './stores/workspace';
+import { useWorkspaceStore } from './stores/workspace';
 import { usePresence } from './hooks/use-presence';
 import PresenceAvatar from './components/PresenceAvatar';
 import PresenceCard from './components/PresenceCard';
@@ -72,6 +73,9 @@ const StreamDeckView = lazy(() => import('./views/StreamDeckView'));
 const AudioRouterView = lazy(() => import('./views/AudioRouterView'));
 const AdStudioView = lazy(() => import('./views/AdStudioView'));
 const ConnectedSessionsView = lazy(() => import('./views/ConnectedSessionsView'));
+// Browser & YouTube
+const BrowserView = lazy(() => import('./views/BrowserView'));
+const YouTubePlayerView = lazy(() => import('./views/YouTubePlayerView'));
 // Commerce + Financials views
 const CommerceOverview = lazy(() => import('./views/CommerceOverview'));
 const CommerceProducts = lazy(() => import('./views/CommerceProducts'));
@@ -283,6 +287,11 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <PlaceholderView title="Escrow" description="Deal escrow, milestone-based releases, and disputes." />;
     case 'checkout':
       return <Checkout />;
+    // Browser & YouTube
+    case 'browser':
+      return <BrowserView />;
+    case 'youtube-player':
+      return <YouTubePlayerView />;
     default:
       return <AegisChat venture={venture} />;
   }
@@ -373,52 +382,7 @@ function Breadcrumbs() {
   );
 }
 
-function LayoutPicker() {
-  const { applyTemplate, activeTemplateId, layout } = useWorkspaceStore();
-  const [showMenu, setShowMenu] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const panelCount = countPanels(layout);
-
-  useEffect(() => {
-    if (!showMenu) return;
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setShowMenu(false);
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [showMenu]);
-
-  return (
-    <div className="layout-picker" ref={ref}>
-      <button
-        className="header-icon-btn"
-        onClick={() => setShowMenu(!showMenu)}
-        title="Layout"
-        style={panelCount > 1 ? { color: 'var(--cyan)' } : undefined}
-      >
-        <Columns2 size={15} />
-      </button>
-      {showMenu && (
-        <div className="layout-menu">
-          <div className="layout-menu-title">Layouts</div>
-          {LAYOUT_TEMPLATES.map(t => (
-            <button
-              key={t.id}
-              className={`layout-option ${activeTemplateId === t.id ? 'active' : ''}`}
-              onClick={() => { applyTemplate(t.id); setShowMenu(false); }}
-            >
-              <span className="layout-option-icon">{t.icon}</span>
-              <span className="layout-option-text">
-                <span className="layout-option-name">{t.name}</span>
-                <span className="layout-option-desc">{t.description}</span>
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+// LayoutPicker moved to src/components/LayoutPicker.tsx
 
 
 export default function App() {
@@ -603,271 +567,7 @@ export default function App() {
       <Toasts />
       <HITLModal />
 
-      <style>{`
-        .app-shell {
-          display: flex;
-          height: 100vh;
-          width: 100vw;
-          overflow: hidden;
-        }
-
-        .app-main-col {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          min-width: 0;
-          height: 100vh;
-          overflow: hidden;
-        }
-
-        /* ── Header ── */
-        .app-header {
-          height: 48px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 0 16px;
-          background: linear-gradient(180deg, rgba(11, 17, 33, 0.95), rgba(11, 17, 33, 0.85));
-          border-bottom: 1px solid var(--border);
-          flex-shrink: 0;
-          gap: 16px;
-          backdrop-filter: blur(12px);
-          position: relative;
-        }
-        .app-header::after {
-          content: "";
-          position: absolute;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          height: 1px;
-          background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.15), rgba(139, 92, 246, 0.1), transparent);
-        }
-
-        .header-left {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          flex-shrink: 0;
-        }
-
-        .header-brand {
-          display: flex;
-          align-items: baseline;
-          gap: 3px;
-        }
-
-        .header-logo {
-          font-family: var(--font-display);
-          font-size: 18px;
-          font-weight: 700;
-          color: var(--cyan);
-          letter-spacing: -0.5px;
-          text-shadow: 0 0 12px rgba(0, 240, 255, 0.4);
-        }
-
-        .header-logo-sub {
-          font-family: var(--font-display);
-          font-size: 11px;
-          font-weight: 600;
-          color: var(--text-muted);
-          letter-spacing: 3px;
-        }
-
-        .header-divider {
-          width: 1px;
-          height: 20px;
-          background: var(--border);
-        }
-
-        /* Breadcrumbs */
-        .breadcrumbs {
-          display: flex;
-          align-items: center;
-          gap: 0;
-          font-size: 11px;
-          white-space: nowrap;
-        }
-        .bc-sep {
-          margin: 0 6px;
-          color: var(--text-muted);
-          opacity: 0.4;
-        }
-        .bc-parent {
-          color: var(--text-muted);
-        }
-        .bc-active {
-          color: var(--text-secondary);
-          font-weight: 500;
-        }
-
-        /* Search bar */
-        .header-search {
-          flex: 1;
-          max-width: 420px;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 6px 14px;
-          background: var(--bg-input);
-          border: 1px solid var(--border);
-          border-radius: var(--radius-md);
-          color: var(--text-muted);
-          font-size: 12px;
-          transition: all 0.15s ease;
-          cursor: pointer;
-        }
-
-        .header-search:hover {
-          border-color: var(--border-active);
-          background: var(--bg-card);
-          box-shadow: 0 0 0 3px rgba(0, 240, 255, 0.04);
-        }
-
-        .header-search-text { flex: 1; }
-
-        .header-kbd {
-          font-size: 9px;
-          font-family: var(--font-mono);
-          background: var(--bg-surface);
-          border: 1px solid var(--border);
-          padding: 2px 6px;
-          border-radius: 3px;
-          color: var(--text-muted);
-        }
-
-        .header-right {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          flex-shrink: 0;
-        }
-
-        .header-icon-btn {
-          width: 32px;
-          height: 32px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: var(--radius-sm);
-          color: var(--text-muted);
-          transition: all 0.15s ease;
-        }
-        .header-icon-btn:hover {
-          background: var(--bg-card);
-          color: var(--text-primary);
-        }
-
-        /* ── Workspace ── */
-        .app-workspace {
-          flex: 1;
-          display: flex;
-          overflow: hidden;
-        }
-
-        .app-content {
-          flex: 1;
-          overflow: hidden;
-          min-width: 0;
-        }
-        .split-pane { flex: none; overflow: hidden; min-width: 0; min-height: 0; }
-
-        /* ── Split Container ── */
-        .split-container { display: flex; flex: 1; overflow: hidden; }
-        .split-horizontal { flex-direction: row; }
-        .split-vertical { flex-direction: column; }
-
-        /* ── Split Divider ── */
-        .split-divider {
-          flex-shrink: 0;
-          background: var(--border);
-          position: relative;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: background 0.15s;
-          z-index: 2;
-        }
-        .split-divider.split-h { width: 6px; cursor: col-resize; }
-        .split-divider.split-v { height: 6px; cursor: row-resize; }
-        .split-divider:hover, .split-divider.active { background: var(--cyan); }
-        .split-divider-line {
-          background: var(--text-muted);
-          border-radius: 1px;
-          opacity: 0.3;
-        }
-        .split-h .split-divider-line { width: 2px; height: 32px; }
-        .split-v .split-divider-line { height: 2px; width: 32px; }
-        .split-divider:hover .split-divider-line,
-        .split-divider.active .split-divider-line { opacity: 0; }
-        .split-divider-actions {
-          position: absolute;
-          top: 50%; left: 50%;
-          transform: translate(-50%, -50%);
-          display: flex;
-          gap: 4px;
-          opacity: 0;
-          pointer-events: none;
-          transition: opacity 0.15s;
-        }
-        .split-h .split-divider-actions { flex-direction: column; }
-        .split-v .split-divider-actions { flex-direction: row; }
-        .split-divider:hover .split-divider-actions { opacity: 1; pointer-events: all; }
-        .split-action-btn {
-          width: 20px; height: 20px;
-          border-radius: 50%;
-          background: var(--bg-surface);
-          border: 1px solid var(--cyan);
-          color: var(--cyan);
-          font-size: 10px;
-          display: flex; align-items: center; justify-content: center;
-          cursor: pointer;
-        }
-        .split-action-btn:hover {
-          background: var(--cyan);
-          color: var(--bg-deep);
-        }
-
-        .view-loader {
-          width: 24px; height: 24px;
-          border: 2px solid var(--border);
-          border-top-color: var(--cyan);
-          border-radius: 50%;
-          animation: viewSpin 0.6s linear infinite;
-        }
-        @keyframes viewSpin { to { transform: rotate(360deg); } }
-
-        /* ── Layout Picker ── */
-        .layout-picker { position: relative; }
-        .layout-menu {
-          position: absolute; top: calc(100% + 8px); right: 0;
-          width: 200px; padding: 6px 0;
-          background: var(--bg-card); border: 1px solid var(--border);
-          border-radius: var(--radius-md);
-          box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-          z-index: 100;
-          animation: fadeIn 0.12s ease;
-        }
-        .layout-menu-title {
-          font-size: 9px; font-weight: 600; text-transform: uppercase;
-          letter-spacing: 0.5px; color: var(--text-muted);
-          padding: 6px 12px 4px; font-family: var(--font-display);
-        }
-        .layout-menu-sep { height: 1px; background: var(--border); margin: 4px 0; }
-        .layout-option {
-          display: flex; align-items: center; gap: 8px;
-          width: 100%; padding: 6px 12px;
-          font-size: 11px; color: var(--text-secondary);
-          transition: all 0.1s; text-align: left;
-        }
-        .layout-option:hover { background: var(--bg-elevated); color: var(--text-primary); }
-        .layout-option.active { color: var(--cyan); background: rgba(0,240,255,0.05); }
-        .layout-option-icon { width: 18px; text-align: center; font-size: 14px; flex-shrink: 0; }
-        .layout-option-text { display: flex; flex-direction: column; }
-        .layout-option-name { font-weight: 500; }
-        .layout-option-desc { font-size: 9px; color: var(--text-muted); }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
-      `}</style>
+      {/* Shell CSS extracted to src/styles/shell.css */}
     </div>
   );
 }

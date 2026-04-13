@@ -7,6 +7,7 @@ import { AuthProvider } from './lib/auth';
 import App from './App';
 import './styles/design-system.css';
 import './styles/components.css';
+import './styles/shell.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

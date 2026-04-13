@@ -97,7 +97,10 @@ export type ViewId =
   // Checkout view
   | 'checkout'
   // NAOS Command
-  | 'naos-command';
+  | 'naos-command'
+  // Browser & YouTube
+  | 'browser'
+  | 'youtube-player';
 
 export type ContextMode = 'global' | 'venture';
 
@@ -171,6 +174,8 @@ const VIEW_LABELS: Record<string, string> = {
   'venture-financials': 'Financials',
   'creator-hub': 'Creator Hub', 'creator-royalties': 'Royalties', 'creator-escrow': 'Escrow',
   'naos-command': 'NAOS Command',
+  browser: 'Browser',
+  'youtube-player': 'YouTube',
 };
 
 export const useNavigation = create<NavigationState>()(

@@ -99,6 +99,7 @@ import { manifest as financeManifest, handlers as financeHandlers } from './buil
 import { manifest as creatorManifest, handlers as creatorHandlers } from './builtin/creator-kit';
 import { manifest as complianceManifest, handlers as complianceHandlers } from './builtin/compliance-kit';
 import { manifest as platformManifest, handlers as platformHandlers } from './builtin/platform-kit';
+import { manifest as browserManifest, handlers as browserHandlers } from './builtin/browser-kit';
 
 // ---------------------------------------------------------------------------
 // Local Kit Registry
@@ -196,6 +197,8 @@ const builtinKits: KitInstance[] = [
   kit(creatorManifest, creatorHandlers),
   kit(complianceManifest, complianceHandlers),
   kit(platformManifest, platformHandlers),
+  // Browser & YouTube intelligence
+  kit(browserManifest, browserHandlers),
 ];
 
 /** Returns all built-in kit instances */
