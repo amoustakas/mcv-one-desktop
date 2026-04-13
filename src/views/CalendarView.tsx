@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Calendar, ChevronLeft, ChevronRight, Plus, Clock, MapPin,
-  Users, RefreshCw, X, Video, AlertTriangle,
+  Users, RefreshCw, X, Video, AlertTriangle, Bot, Sparkles,
+  Zap,
 } from 'lucide-react';
 import {
   PageHeader, Button, GlassCard, Badge, Input, Skeleton, EmptyState,
@@ -80,6 +81,9 @@ function CreateEventModal({ onClose, onSubmit, defaultDate }: {
   const [location, setLocation] = useState('');
   const [attendees, setAttendees] = useState('');
   const [creating, setCreating] = useState(false);
+  const [addMeet, setAddMeet] = useState(false);
+  const [aiSuggesting, setAiSuggesting] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
 
   const handleSubmit = async () => {
     if (!summary || !start || !end) return;
@@ -91,11 +95,32 @@ function CreateEventModal({ onClose, onSubmit, defaultDate }: {
         end: new Date(end).toISOString(),
         location: location || undefined,
         attendees: attendees ? attendees.split(',').map(e => e.trim()).filter(Boolean) : undefined,
+        addMeet,
       });
       onClose();
     } finally {
       setCreating(false);
     }
+  };
+
+  const handleAiSchedule = async () => {
+    setAiSuggesting(true);
+    try {
+      // Use Gemini to suggest optimal meeting time
+      const res = await fetch('/api/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'gemini-generate',
+          prompt: `Given a meeting titled "${summary || 'Meeting'}"${attendees ? ` with ${attendees}` : ''}, suggest the best time to schedule it this week. Consider typical work hours (9am-5pm EST). Respond with just a specific date and time range, like "Wednesday April 16 at 2:00 PM - 3:00 PM". Be concise.`,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAiSuggestion(data.content || null);
+      }
+    } catch { /* ignore */ }
+    finally { setAiSuggesting(false); }
   };
 
   return (
@@ -117,6 +142,10 @@ function CreateEventModal({ onClose, onSubmit, defaultDate }: {
           </div>
           <Input placeholder="Location (optional)" value={location} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLocation(e.target.value)} />
           <Input placeholder="Attendees (comma-separated emails)" value={attendees} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAttendees(e.target.value)} />
+          <label className="cal-meet-toggle">
+            <input type="checkbox" checked={addMeet} onChange={e => setAddMeet(e.target.checked)} />
+            <Video size={14} /> Add Google Meet link
+          </label>
           <textarea
             className="cal-textarea"
             placeholder="Description (optional)"
@@ -124,11 +153,19 @@ function CreateEventModal({ onClose, onSubmit, defaultDate }: {
             onChange={e => setDescription(e.target.value)}
             rows={3}
           />
+          {aiSuggestion && (
+            <div className="cal-ai-suggestion">
+              <Sparkles size={12} /> <span>NAOS suggests: {aiSuggestion}</span>
+            </div>
+          )}
         </div>
         <div className="cal-modal-actions">
           <Button onClick={handleSubmit} disabled={creating || !summary}>
             {creating ? 'Creating...' : 'Create Event'}
           </Button>
+          <button className="cal-ai-schedule-btn" onClick={handleAiSchedule} disabled={aiSuggesting}>
+            <Bot size={14} /> {aiSuggesting ? 'Thinking...' : 'AI Suggest Time'}
+          </button>
         </div>
       </GlassCard>
     </div>
@@ -378,8 +415,13 @@ export default function CalendarView() {
   const goToday = () => setCurrentDate(new Date());
 
   // Actions
-  const handleCreateEvent = async (data: { summary: string; description?: string; start: string; end: string; location?: string; attendees?: string[] }) => {
-    await calApi('create-event', data, 'POST');
+  const handleCreateEvent = async (data: { summary: string; description?: string; start: string; end: string; location?: string; attendees?: string[]; addMeet?: boolean }) => {
+    const payload: Record<string, unknown> = { ...data };
+    if (data.addMeet) {
+      payload.conferenceData = { createRequest: { requestId: crypto.randomUUID(), conferenceSolutionKey: { type: 'hangoutsMeet' } } };
+      payload.conferenceDataVersion = 1;
+    }
+    await calApi('create-event', payload, 'POST');
     addToast({ type: 'success', message: `Event created: ${data.summary}` });
     loadEvents();
   };
@@ -630,6 +672,27 @@ export default function CalendarView() {
         .cal-attendee { display: flex; align-items: center; gap: var(--space-sm); font-size: 12px; color: var(--text-secondary); padding: 2px 0; }
         .cal-event-detail-actions { margin-top: var(--space-md); display: flex; gap: var(--space-sm); }
         .danger-btn { background: rgba(239, 68, 68, 0.1) !important; color: var(--danger, #ef4444) !important; border-color: rgba(239, 68, 68, 0.2) !important; }
+
+        /* Meet toggle */
+        .cal-meet-toggle {
+          display: flex; align-items: center; gap: var(--space-sm); font-size: 13px; color: var(--text-secondary); cursor: pointer;
+        }
+        .cal-meet-toggle input { accent-color: var(--cyan); }
+
+        /* AI schedule */
+        .cal-ai-schedule-btn {
+          display: flex; align-items: center; gap: 4px; padding: 6px 12px;
+          border: 1px solid rgba(139, 92, 246, 0.3); background: rgba(139, 92, 246, 0.06);
+          color: var(--purple, #8B5CF6); cursor: pointer; border-radius: var(--radius-sm);
+          font-size: 12px; transition: var(--transition-fast);
+        }
+        .cal-ai-schedule-btn:hover { background: rgba(139, 92, 246, 0.12); }
+        .cal-ai-schedule-btn:disabled { opacity: 0.5; cursor: default; }
+        .cal-ai-suggestion {
+          display: flex; align-items: center; gap: 6px; padding: var(--space-sm);
+          background: rgba(139, 92, 246, 0.06); border: 1px solid rgba(139, 92, 246, 0.15);
+          border-radius: var(--radius-sm); font-size: 12px; color: var(--purple, #8B5CF6);
+        }
       `}</style>
     </div>
   );
