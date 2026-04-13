@@ -40,6 +40,7 @@ import { manifest as gaManifest, handlers as gaHandlers } from './builtin/google
 import { manifest as gscManifest, handlers as gscHandlers } from './builtin/google-search-console-kit';
 import { manifest as gtasksManifest, handlers as gtasksHandlers } from './builtin/google-tasks-kit';
 import { manifest as mcpGoogleManifest, handlers as mcpGoogleHandlers } from './builtin/mcp-google-bridge';
+import { manifest as automationManifest, handlers as automationHandlers } from './builtin/automation-kit';
 import { manifest as deepgramManifest, handlers as deepgramHandlers } from './builtin/deepgram-kit';
 import { manifest as whatsappManifest, handlers as whatsappHandlers } from './builtin/whatsapp-kit';
 import { manifest as messengerManifest, handlers as messengerHandlers } from './builtin/messenger-kit';
@@ -145,6 +146,7 @@ const builtinKits: KitInstance[] = [
   kit(gscManifest, gscHandlers),
   kit(gtasksManifest, gtasksHandlers),
   kit(mcpGoogleManifest, mcpGoogleHandlers),
+  kit(automationManifest, automationHandlers),
   kit(deepgramManifest, deepgramHandlers),
   kit(whatsappManifest, whatsappHandlers),
   kit(messengerManifest, messengerHandlers),
