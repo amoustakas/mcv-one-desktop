@@ -89,6 +89,12 @@ const GoogleTasksView = lazy(() => import('./views/GoogleTasksView'));
 const CreatorHubView = lazy(() => import('./views/CreatorHubView'));
 const ComplianceHubView = lazy(() => import('./views/ComplianceHubView'));
 const ContactCenterView = lazy(() => import('./views/ContactCenterView'));
+const CommerceInvoicesView = lazy(() => import('./views/CommerceInvoicesView'));
+const CommerceLoansView = lazy(() => import('./views/CommerceLoansView'));
+const CommerceCreditsView = lazy(() => import('./views/CommerceCreditsView'));
+const FinancialsReportingView = lazy(() => import('./views/FinancialsReportingView'));
+const VentureOperationsView = lazy(() => import('./views/VentureOperationsView'));
+const VentureSettingsView = lazy(() => import('./views/VentureSettingsView'));
 // Commerce + Financials views
 const CommerceOverview = lazy(() => import('./views/CommerceOverview'));
 const CommerceProducts = lazy(() => import('./views/CommerceProducts'));
@@ -222,7 +228,7 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
     case 'venture-growth':
       return <GrowthView />;
     case 'venture-operations':
-      return <PlaceholderView title={`${venture.name} — Operations`} description="CRM, workflows, and support center. Connect Twilio for voice/SMS." />;
+      return <VentureOperationsView />;
     case 'venture-docs':
       return <DocsHub />;
     case 'venture-forge':
@@ -232,7 +238,7 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
     case 'venture-profile':
       return <VentureProfile venture={venture} />;
     case 'venture-settings':
-      return <PlaceholderView title={`${venture.name} — Settings`} description="Venture configuration." />;
+      return <VentureSettingsView />;
     case 'venture-onboarding':
       return <VentureOnboarding />;
     case 'venture-workspace':
@@ -247,7 +253,7 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
     case 'commerce-subscriptions':
       return <CommerceSubscriptions />;
     case 'commerce-invoices':
-      return <PlaceholderView title="Invoices" description="Invoice management — AR tracking, send & collect." />;
+      return <CommerceInvoicesView />;
     case 'commerce-orders':
       return <CommerceOrders />;
     case 'commerce-customers':
@@ -267,9 +273,9 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
     case 'commerce-shop-settings':
       return <CommerceShopSettings />;
     case 'commerce-credits':
-      return <PlaceholderView title="Credits & Wallets" description="Credit ledgers, wallet balances, and grant management." />;
+      return <CommerceCreditsView />;
     case 'commerce-loans':
-      return <PlaceholderView title="Loans" description="Loan origination, disbursement, and repayment tracking." />;
+      return <CommerceLoansView />;
     case 'commerce-tax':
       return <ComplianceHubView />;
     case 'venture-commerce':
@@ -288,7 +294,7 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
     case 'financials-ledger':
       return <FinancialsLedger />;
     case 'financials-reporting':
-      return <PlaceholderView title="Reporting" description="Custom financial reports, exports, and scheduled delivery." />;
+      return <FinancialsReportingView />;
     case 'venture-financials':
       return <FinancialsDashboard />;
     // Creator views

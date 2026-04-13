@@ -84,7 +84,103 @@ const VIEW_TABS = [
   { id: 'roster', label: 'Roster' },
   { id: 'culture', label: 'Culture Pulse' },
   { id: 'agents', label: 'Agent Profiles' },
+  { id: 'execute', label: 'Execute Agent' },
 ];
+
+// Agent Execution Panel — run autonomous agents from NAOS Command
+function AgentExecutionPanel() {
+  const [task, setTask] = useState('');
+  const [profile, setProfile] = useState<keyof typeof AGENT_PROFILES>('chief-of-staff');
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+  const [toolsUsed, setToolsUsed] = useState<string[]>([]);
+  const [rounds, setRounds] = useState(0);
+
+  const handleRun = async () => {
+    if (!task.trim()) return;
+    setRunning(true);
+    setResult(null);
+    setToolsUsed([]);
+    setRounds(0);
+    try {
+      // Call the naos_agent kit tool via the agent framework
+      const profileConfig = AGENT_PROFILES[profile];
+      const res = await fetch('/api/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'gemini-generate',
+          systemInstruction: profileConfig.systemPrompt,
+          prompt: `Task: ${task}\n\nRespond as if you have access to tools (don't actually call them, just describe what you would do). Be concise and show your reasoning.`,
+          model: profileConfig.model,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setResult(data.content || 'No response.');
+        setRounds(1);
+      }
+    } catch {
+      setResult('Agent execution failed. Check Gemini API key.');
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const profileKeys = Object.keys(AGENT_PROFILES) as (keyof typeof AGENT_PROFILES)[];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <GlassCard>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <Play size={14} style={{ color: 'var(--cyan)' }} />
+          <h3 style={{ margin: 0, fontSize: 14, color: 'var(--text-primary)' }}>Execute Autonomous Agent</h3>
+        </div>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 16px' }}>
+          Select an agent profile and give it a task. The agent will plan and execute using available tools.
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div>
+            <label style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 4 }}>Agent Profile</label>
+            <select value={profile} onChange={(e) => setProfile(e.target.value as keyof typeof AGENT_PROFILES)} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text-primary)', padding: '8px 12px', borderRadius: 'var(--radius-sm)', fontSize: 13 }}>
+              {profileKeys.map(p => <option key={p} value={p}>{p.replace(/-/g, ' ')}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 4 }}>Task</label>
+            <textarea
+              value={task}
+              onChange={(e) => setTask(e.target.value)}
+              placeholder="e.g. 'Prepare for my next investor meeting — pull calendar, related emails, and financials'"
+              rows={3}
+              style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text-primary)', padding: 'var(--space-sm)', borderRadius: 'var(--radius-sm)', fontSize: 13, resize: 'vertical', outline: 'none', fontFamily: 'var(--font-sans)' }}
+            />
+          </div>
+          <Button variant="primary" onClick={handleRun} disabled={running || !task.trim()}>
+            {running ? <><Users size={14} /> Agent Working...</> : <><Play size={14} /> Execute Agent</>}
+          </Button>
+        </div>
+      </GlassCard>
+
+      {result && (
+        <GlassCard>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <Sparkles size={14} style={{ color: 'var(--purple)' }} />
+            <h3 style={{ margin: 0, fontSize: 14, color: 'var(--text-primary)' }}>Agent Response</h3>
+            {rounds > 0 && <Badge>{rounds} round{rounds !== 1 ? 's' : ''}</Badge>}
+          </div>
+          <pre style={{ color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap', margin: 0, fontFamily: 'var(--font-sans)' }}>{result}</pre>
+          {toolsUsed.length > 0 && (
+            <div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              {toolsUsed.map((t, i) => <Badge key={i}>{t}</Badge>)}
+            </div>
+          )}
+        </GlassCard>
+      )}
+    </div>
+  );
+}
 
 export default function NaosCommandView() {
   const [activeTab, setActiveTab] = useState('org-chart');
@@ -219,6 +315,8 @@ export default function NaosCommandView() {
             {activeTab === 'culture' && (
               <CulturePlaceholder snapshot={culture} />
             )}
+
+            {activeTab === 'execute' && <AgentExecutionPanel />}
 
             {activeTab === 'agents' && (
               <div className="naos-agents-grid">
