@@ -116,11 +116,48 @@ const geminiSearch: KitToolHandler = async (input, ctx) => {
   return { success: true, data, displayMarkdown: md };
 };
 
+// Video generation via Veo
+const geminiVideoGen: KitToolHandler = async (input, ctx) => {
+  const data = await postJson('/api/google', {
+    action: 'veo-generate', prompt: input.prompt,
+    aspectRatio: input.aspectRatio || '16:9', duration: input.duration,
+  }, ctx);
+  return { success: true, data, displayMarkdown: `## Video Generation\n\n*Prompt: "${(input.prompt as string).slice(0, 80)}"*\n\nVideo generation ${data.status || 'submitted'}. ${data.videoUrl ? `[Download](${data.videoUrl})` : 'Check progress in Video Studio.'}` };
+};
+
+// Image editing via Imagen
+const geminiImageEdit: KitToolHandler = async (input, ctx) => {
+  const data = await postJson('/api/google', {
+    action: 'imagen-generate', prompt: input.prompt,
+    referenceImage: input.imageBase64, editMode: input.editMode || 'inpaint',
+  }, ctx);
+  return { success: true, data, displayMarkdown: `## Image Edit\n\n*${input.editMode || 'inpaint'}*: "${(input.prompt as string).slice(0, 80)}"\n\n${data.images?.length ? `${data.images.length} image(s) generated.` : 'Edit completed.'}` };
+};
+
+// Product mockup via Imagen
+const geminiMockup: KitToolHandler = async (input, ctx) => {
+  const data = await postJson('/api/google', {
+    action: 'imagen-generate',
+    prompt: `Professional product mockup: ${input.prompt}. Lifestyle photography, clean background, commercial quality.`,
+    aspectRatio: input.aspectRatio || '4:3',
+  }, ctx);
+  return { success: true, data, displayMarkdown: `## Product Mockup\n\n${data.images?.length ? `${data.images.length} mockup(s) generated.` : 'Mockup generation completed.'}` };
+};
+
+// Context cache for long documents
+const geminiContextCache: KitToolHandler = async (input, ctx) => {
+  const data = await postJson('/api/google-cache', {
+    action: input.action || 'create',
+    content: input.content, cacheId: input.cacheId, ttl: input.ttl,
+  }, ctx);
+  return { success: true, data, displayMarkdown: `## Context Cache\n\nAction: ${input.action || 'create'}\n${data.cacheId ? `Cache ID: \`${data.cacheId}\`` : ''}\n${data.tokenCount ? `Tokens: ${data.tokenCount.toLocaleString()}` : ''}` };
+};
+
 export const manifest: KitManifest = {
   id: 'gemini-intelligence',
   name: 'Gemini Intelligence',
-  version: '3.0.0',
-  description: 'Google Gemini — text generation, vision, image generation, structured output, embeddings, code execution, search grounding, summarization, and Google Places/Geocoding.',
+  version: '4.0.0',
+  description: 'Google Gemini — text generation, vision, image/video generation, image editing, mockups, structured output, embeddings, code execution, search grounding, summarization, context caching, and Google Places/Geocoding.',
   author: 'MCV',
   capabilities: ['network', 'llm'],
   runtime: 'inline',
@@ -219,6 +256,57 @@ export const manifest: KitManifest = {
         required: ['text'],
       },
     },
+    {
+      name: 'gemini_video_gen',
+      description: 'Generate video using Google Veo. Text-to-video, or extend/remix existing video.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          prompt: { type: 'string', description: 'Video description prompt' },
+          aspectRatio: { type: 'string', description: '16:9 or 9:16' },
+          duration: { type: 'number', description: 'Duration in seconds (5-60)' },
+        },
+        required: ['prompt'],
+      },
+    },
+    {
+      name: 'gemini_image_edit',
+      description: 'Edit an image using Imagen. Inpaint, outpaint, or style transfer.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          prompt: { type: 'string', description: 'Edit instructions' },
+          imageBase64: { type: 'string', description: 'Base64-encoded source image' },
+          editMode: { type: 'string', description: 'inpaint | outpaint | style-transfer' },
+        },
+        required: ['prompt'],
+      },
+    },
+    {
+      name: 'gemini_mockup',
+      description: 'Generate a product mockup using Imagen. Commercial-quality lifestyle photography.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          prompt: { type: 'string', description: 'Product description for mockup' },
+          aspectRatio: { type: 'string', description: '4:3, 16:9, 1:1' },
+        },
+        required: ['prompt'],
+      },
+    },
+    {
+      name: 'gemini_context_cache',
+      description: 'Create or retrieve a Gemini context cache for long documents. Reduces cost for repeated queries on the same content.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          action: { type: 'string', description: 'create | get | delete' },
+          content: { type: 'string', description: 'Document content to cache (for create)' },
+          cacheId: { type: 'string', description: 'Cache ID (for get/delete)' },
+          ttl: { type: 'number', description: 'Cache TTL in seconds (default: 3600)' },
+        },
+      },
+    },
   ],
 };
 
@@ -233,4 +321,8 @@ export const handlers: Record<string, KitToolHandler> = {
   gemini_vision: geminiVision,
   gemini_structured: geminiStructured,
   gemini_embeddings: geminiEmbeddings,
+  gemini_video_gen: geminiVideoGen,
+  gemini_image_edit: geminiImageEdit,
+  gemini_mockup: geminiMockup,
+  gemini_context_cache: geminiContextCache,
 };
