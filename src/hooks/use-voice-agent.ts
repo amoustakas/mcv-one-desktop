@@ -3,6 +3,7 @@ import { useToast } from '../components/Toasts';
 import { getBuiltinKits, executeKitTool } from '../lib/kits/loader';
 import type { KitExecutionContext, KitToolSchema } from '../lib/kits/types';
 import { getToolsForVenture } from '../lib/kits/loader';
+import { useVoiceSession } from '../stores/voice-session';
 
 // ---------------------------------------------------------------------------
 // Voice Agent Hook
@@ -61,11 +62,14 @@ export function useVoiceAgent(config: VoiceAgentConfig = {}): VoiceAgentReturn {
   const audioContextRef = useRef<AudioContext | null>(null);
   const recorderRef = useRef<MediaStreamAudioSourceNode | null>(null);
 
-  const voice = config.voice || 'Kore';
+  const voiceStore = useVoiceSession();
+  const voice = config.voice || voiceStore.selectedVoice || 'Kore';
   const ventureId = config.ventureId || 'mcv';
 
   const updateState = useCallback((s: VoiceState) => {
     setState(s);
+    voiceStore.setConnected(s === 'listening' || s === 'thinking' || s === 'speaking');
+    voiceStore.setRecording(s === 'listening');
     config.onStateChange?.(s);
   }, [config.onStateChange]);
 
@@ -150,6 +154,7 @@ export function useVoiceAgent(config: VoiceAgentConfig = {}): VoiceAgentReturn {
           for (const fc of calls) {
             config.onToolCall?.(fc.name, fc.args || {});
             addToast({ type: 'info', message: `Running: ${fc.name}` });
+            voiceStore.addToolCall({ id: fc.id || fc.name, name: fc.name, args: fc.args || {}, status: 'executing', timestamp: new Date() });
 
             const kits = getBuiltinKits();
             const ctx: KitExecutionContext = {
@@ -160,6 +165,7 @@ export function useVoiceAgent(config: VoiceAgentConfig = {}): VoiceAgentReturn {
             };
 
             const result = await executeKitTool(kits, fc.name, fc.args || {}, ctx);
+            voiceStore.updateToolCall(fc.id || fc.name, { status: result.success ? 'done' : 'error', result: result.data });
 
             responses.push({
               id: fc.id,
@@ -184,6 +190,9 @@ export function useVoiceAgent(config: VoiceAgentConfig = {}): VoiceAgentReturn {
           const text = data.serverContent.inputTranscription.text || '';
           const isFinal = data.serverContent.inputTranscription.finished || false;
           setTranscript(text);
+          if (isFinal && text) {
+            voiceStore.addTranscript({ text, isInput: true, timestamp: new Date() });
+          }
           config.onTranscription?.(text, isFinal);
         }
 
@@ -191,6 +200,9 @@ export function useVoiceAgent(config: VoiceAgentConfig = {}): VoiceAgentReturn {
         if (data.serverContent?.outputTranscription) {
           const text = data.serverContent.outputTranscription.text || '';
           setLastResponse(prev => prev + text);
+          if (text) {
+            voiceStore.addTranscript({ text, isInput: false, timestamp: new Date() });
+          }
         }
       };
 
@@ -216,6 +228,7 @@ export function useVoiceAgent(config: VoiceAgentConfig = {}): VoiceAgentReturn {
     stopMicCapture();
     updateState('idle');
     setTranscript('');
+    voiceStore.reset();
   }, []);
 
   const sendText = useCallback((text: string) => {

@@ -12,7 +12,7 @@ import { useCommandStore } from './stores/command';
 import { useLayoutStore } from './stores/layout';
 import { getVenture, ventures } from './lib/ventures';
 // UserButton removed — unused
-import { Search, Settings, Bot } from 'lucide-react';
+import { Search, Settings, Bot, Brain } from 'lucide-react';
 import LayoutPicker from './components/LayoutPicker';
 import WorkspaceRenderer, { setViewPanelComponent } from './components/WorkspaceRenderer';
 import { useWorkspaceStore } from './stores/workspace';
@@ -32,6 +32,10 @@ import { useRealtimeSync } from './hooks/use-realtime';
 import { useDeviceNotifications } from './hooks/use-device-notifications';
 import { useDeviceProfileSync } from './hooks/use-device-profile-sync';
 import { useDeviceEvents } from './hooks/use-device-events';
+// Google Workspace background intelligence
+import { useGoogleNotifications } from './hooks/use-google-notifications';
+import { useProactiveIntelligence } from './hooks/use-proactive-intelligence';
+import ContextSidebar from './components/ContextSidebar';
 import { useInstanceRegistration } from './hooks/use-instance-registration';
 
 // Lazy-loaded views (code splitting)
@@ -439,7 +443,11 @@ export default function App() {
   useDeviceEvents();        // SSE connection to local server for real-time device events
   useDeviceNotifications(); // Toast notifications for device connect/disconnect/error
   useDeviceProfileSync();   // Auto-activate device profiles on venture switch
+  useGoogleNotifications(); // Gmail unread count + Calendar event reminders
+  useProactiveIntelligence(); // Background monitoring: email age, meeting prep, overdue tasks
   const [presenceCardOpen, setPresenceCardOpen] = useState(false);
+  const [contextSidebarOpen, setContextSidebarOpen] = useState(false);
+  const [contextEntity, setContextEntity] = useState<{ type: string; id: string; name: string } | null>(null);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -546,6 +554,21 @@ export default function App() {
           <div className="header-right">
             <LayoutPicker />
             <NotificationCenter />
+            <button
+              className="header-icon-btn"
+              onClick={() => {
+                if (!contextSidebarOpen) {
+                  // Auto-detect context from current view
+                  const viewLabels: Record<string, string> = { gmail: 'Email', calendar: 'Schedule', drive: 'Documents', tasks: 'Tasks' };
+                  setContextEntity({ type: 'view', id: navActiveView, name: viewLabels[navActiveView] || navActiveView });
+                }
+                setContextSidebarOpen(!contextSidebarOpen);
+              }}
+              title="Context Intelligence (Ctrl+I)"
+              style={contextSidebarOpen ? { color: 'var(--purple)' } : undefined}
+            >
+              <Brain size={15} />
+            </button>
             <button className="header-icon-btn" onClick={() => setView('settings')} title="Settings">
               <Settings size={15} />
             </button>
@@ -568,6 +591,15 @@ export default function App() {
 
           {/* Chat Dock */}
           {chatDocked && <ChatDock />}
+
+          {/* Context Intelligence Sidebar */}
+          {contextSidebarOpen && (
+            <ContextSidebar
+              entity={contextEntity}
+              visible={contextSidebarOpen}
+              onClose={() => setContextSidebarOpen(false)}
+            />
+          )}
         </div>
 
         {/* Status Bar inside main column */}

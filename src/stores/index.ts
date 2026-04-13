@@ -10,3 +10,8 @@ export { useChatStore } from './chat';
 export { useAgentsStore, type AgentTask, type AgentStatus } from './agents';
 export { useFilesStore } from './files';
 export { useMcpStore } from './mcp';
+export { useGoogleWorkspaceStore, type VentureGoogleMapping, type AlertRule, type AutomationRule, type ContextItem } from './google-workspace';
+export { usePresenceStore } from './presence';
+export { useCommerceStore } from './commerce';
+export { useVoiceSessionStore } from './voice-session';
+export { useIntegrationsStore } from './integrations';
