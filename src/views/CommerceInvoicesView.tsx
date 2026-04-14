@@ -1,4 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
+import { lazyRetry } from '../lib/lazy-retry';
 import { motion } from 'framer-motion';
 import { Receipt, Plus, Send, DollarSign, AlertTriangle, Loader2, CheckCircle2 } from 'lucide-react';
 import { PageShell, PageHeader, KpiCard, GridLayout, GlassCard, Button, Badge, Tabs, EmptyState } from '../components/ui';
@@ -6,7 +7,7 @@ import { useCommerceStore } from '../stores/commerce';
 import { useNavigation } from '../stores/navigation';
 import { staggerContainer, fadeInUp } from '../lib/animations';
 import { useToast } from '../components/Toasts';
-const InvoiceDetailDialog = lazy(() => import('../components/commerce/InvoiceDetailDialog'));
+const InvoiceDetailDialog = lazyRetry(() => import('../components/commerce/InvoiceDetailDialog'));
 
 export default function CommerceInvoicesView() {
   const { addToast } = useToast();

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { lazyRetry } from '../lib/lazy-retry';
 import { motion } from 'framer-motion';
 import { Sparkles, TrendingUp, Users, DollarSign, Award, Plus, Loader2, RefreshCw } from 'lucide-react';
 import { PageShell, PageHeader, KpiCard, GridLayout, GlassCard, Button, Badge, Tabs, EmptyState } from '../components/ui';
@@ -7,8 +8,8 @@ import { useCreatorStore } from '../stores/creator';
 import { useNavigation } from '../stores/navigation';
 import { staggerContainer, fadeInUp } from '../lib/animations';
 
-const RoyaltyAgreementDetailDialog = lazy(() => import('../components/creator/RoyaltyAgreementDetailDialog'));
-const EscrowDetailDialog = lazy(() => import('../components/creator/EscrowDetailDialog'));
+const RoyaltyAgreementDetailDialog = lazyRetry(() => import('../components/creator/RoyaltyAgreementDetailDialog'));
+const EscrowDetailDialog = lazyRetry(() => import('../components/creator/EscrowDetailDialog'));
 type RoyaltyLikeProp = Parameters<typeof import('../components/creator/RoyaltyAgreementDetailDialog').default>[0]['agreement'];
 type EscrowLikeProp = Parameters<typeof import('../components/creator/EscrowDetailDialog').default>[0]['escrow'];
 

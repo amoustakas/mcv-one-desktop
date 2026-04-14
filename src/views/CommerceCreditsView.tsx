@@ -4,8 +4,9 @@ import { PageShell, PageHeader, KpiCard, GridLayout, GlassCard, Button, Badge, T
 import { useNavigation } from '../stores/navigation';
 import { staggerContainer, fadeInUp } from '../lib/animations';
 import { useState, useEffect, lazy, Suspense } from 'react';
+import { lazyRetry } from '../lib/lazy-retry';
 import { useToast } from '../components/Toasts';
-const CreditDetailDialog = lazy(() => import('../components/commerce/CreditDetailDialog'));
+const CreditDetailDialog = lazyRetry(() => import('../components/commerce/CreditDetailDialog'));
 
 interface CreditLedger {
   id: string;

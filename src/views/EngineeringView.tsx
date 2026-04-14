@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
+import { lazyRetry } from '../lib/lazy-retry';
 import { motion } from 'framer-motion';
 import {
   Wrench, GitBranch, GitPullRequest, GitCommit, ExternalLink,
@@ -14,8 +15,8 @@ import {
   DataTable, Pagination, Tabs,
 } from '../components/ui';
 import { lazy, Suspense } from 'react';
-const RepoExplorer = lazy(() => import('../components/github/RepoExplorer'));
-const PRReviewPanel = lazy(() => import('../components/github/PRReviewPanel'));
+const RepoExplorer = lazyRetry(() => import('../components/github/RepoExplorer'));
+const PRReviewPanel = lazyRetry(() => import('../components/github/PRReviewPanel'));
 import type { ColumnDef, SortState } from '../components/ui/DataTable';
 import { SparkLine, McvAreaChart } from '../components/charts';
 import { cn, timeAgo } from '../lib/utils';

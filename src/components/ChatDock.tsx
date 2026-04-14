@@ -1,10 +1,11 @@
 import { useState, lazy, Suspense } from 'react';
+import { lazyRetry } from '../lib/lazy-retry';
 import { MessageSquare, Minimize2, Maximize2 } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
 import { getVenture, ventures } from '../lib/ventures';
 import { Badge } from './ui';
 import { cn } from '../lib/utils';
-const AegisChat = lazy(() => import('./AegisChat'));
+const AegisChat = lazyRetry(() => import('./AegisChat'));
 
 export default function ChatDock() {
   const { chatVenture, toggleChatDock } = useNavigation();

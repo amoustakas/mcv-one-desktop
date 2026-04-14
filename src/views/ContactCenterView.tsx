@@ -1,11 +1,12 @@
 import { useState, useMemo, lazy, Suspense } from 'react';
+import { lazyRetry } from '../lib/lazy-retry';
 import { motion } from 'framer-motion';
 import {
   Phone, MessageSquare, PhoneOutgoing, PhoneIncoming, Send,
   Loader2, DollarSign, Search, Users,
 } from 'lucide-react';
 
-const ConversationDetailDialog = lazy(() => import('../components/contact-center/ConversationDetailDialog'));
+const ConversationDetailDialog = lazyRetry(() => import('../components/contact-center/ConversationDetailDialog'));
 type ConversationProp = Parameters<typeof import('../components/contact-center/ConversationDetailDialog').default>[0]['conversation'];
 type ThreadMessageProp = NonNullable<ConversationProp>['messages'][number];
 import {

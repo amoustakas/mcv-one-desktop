@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { lazyRetry } from '../lib/lazy-retry';
 import { motion } from 'framer-motion';
 import { Shield, AlertTriangle, TrendingDown, Globe, DollarSign, Loader2, RefreshCw, Bell } from 'lucide-react';
 import { PageShell, PageHeader, KpiCard, GridLayout, GlassCard, Badge, Tabs, EmptyState } from '../components/ui';
@@ -10,9 +11,9 @@ import type { FraudRuleLike } from '../components/compliance/FraudRuleDetailDial
 import { Button } from '../components/ui';
 import { Plus } from 'lucide-react';
 
-const FraudRuleDetailDialog = lazy(() => import('../components/compliance/FraudRuleDetailDialog'));
-const NexusAlertDetailDialog = lazy(() => import('../components/compliance/NexusAlertDetailDialog'));
-const DunningCampaignDetailDialog = lazy(() => import('../components/compliance/DunningCampaignDetailDialog'));
+const FraudRuleDetailDialog = lazyRetry(() => import('../components/compliance/FraudRuleDetailDialog'));
+const NexusAlertDetailDialog = lazyRetry(() => import('../components/compliance/NexusAlertDetailDialog'));
+const DunningCampaignDetailDialog = lazyRetry(() => import('../components/compliance/DunningCampaignDetailDialog'));
 type NexusAlertProp = Parameters<typeof import('../components/compliance/NexusAlertDetailDialog').default>[0]['alert'];
 type DunningCampaignProp = Parameters<typeof import('../components/compliance/DunningCampaignDetailDialog').default>[0]['campaign'];
 
