@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getServiceClient, requireAuth } from './_supabase.js';
 import { embedMany, embedOne } from './_embeddings.js';
+import { indexContent } from './_rag-index.js';
 
 // ---------------------------------------------------------------------------
 // RAG Ingest API — chunks text, embeds (gemini-embedding-001 w/ fallback),
@@ -251,6 +252,60 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .order('chunk_index', { ascending: true });
         if (error) throw error;
         return res.json({ chunks: data || [] });
+      }
+
+      // ── One-shot backfill: index every row of a source table ──
+      case 'backfill-docs':
+      case 'backfill-memory': {
+        const { venture_id, limit = 500, corpus_id } = req.body;
+        const table = action === 'backfill-docs' ? 'documents' : 'project_memory';
+        const source = action === 'backfill-docs' ? 'docs' : 'memory';
+
+        let query = supabase.from(table).select('*').limit(limit);
+        if (venture_id) query = query.eq('venture_id', venture_id);
+        const { data: rows, error } = await query;
+        if (error) throw error;
+
+        let indexed = 0, skipped = 0, failed = 0, totalChunks = 0;
+        for (const row of rows || []) {
+          const r = row as Record<string, unknown>;
+          // Extract content per table shape
+          const id = String(r.id);
+          const content = table === 'documents'
+            ? String(r.content || '')
+            : [String(r.key || ''), JSON.stringify(r.value || {})].filter(Boolean).join('\n');
+          const title = table === 'documents' ? String(r.title || '') : String(r.key || '');
+          const docType = table === 'documents' ? String(r.doc_type || 'note') : String(r.memory_type || 'memory');
+
+          try {
+            const result = await indexContent({
+              id, title, content,
+              ventureId: (r.venture_id as string) || null,
+              source,
+              userId: ctx.userId,
+              metadata: { doc_type: docType, backfill: true, corpus_id: corpus_id || null },
+            });
+            if (result.skipped) skipped++;
+            else { indexed++; totalChunks += result.chunkCount; }
+          } catch (err) {
+            failed++;
+            // eslint-disable-next-line no-console
+            console.error(`[backfill ${source}]`, id, err instanceof Error ? err.message : err);
+          }
+
+          // If a corpus_id was supplied, tag the new chunks with it.
+          if (corpus_id) {
+            await supabase.from('storage_chunks').update({ corpus_id }).eq('file_id', id);
+          }
+        }
+
+        if (corpus_id && indexed > 0) {
+          await supabase.from('storage_rag_corpora')
+            .update({ file_count: indexed, last_indexed_at: new Date().toISOString() })
+            .eq('id', corpus_id);
+        }
+
+        return res.json({ success: true, source, indexed, skipped, failed, chunks: totalChunks });
       }
 
       case 'embed-query': {

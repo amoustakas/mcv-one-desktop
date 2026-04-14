@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { indexContent } from './_rag-index.js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 async function requireAuth(req: VercelRequest, res: VercelResponse): Promise<string | null> {
@@ -60,6 +61,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!id) return res.status(400).json({ error: 'id query param required' });
       const { error } = await supabase.from('project_memory').delete().eq('id', id);
       if (error) throw error;
+      // Cascade: drop any chunks we auto-indexed for this memory.
+      await supabase.from('storage_chunks').delete().eq('file_id', id);
       return res.json({ success: true });
     }
 
@@ -158,6 +161,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .select()
         .single();
       if (error) throw error;
+
+      // Fire-and-forget auto-index. Serialize JSON value + key as the content.
+      const textForIndex = [key, typeof value === 'string' ? value : JSON.stringify(value ?? {})]
+        .filter(Boolean).join('\n');
+      void indexContent({
+        id: data.id, title: key, content: textForIndex,
+        ventureId: ventureId || null, source: 'memory', userId,
+        metadata: { memory_type: type },
+      }).catch(err => {
+        // eslint-disable-next-line no-console
+        console.error('[memory auto-index]', data.id, err instanceof Error ? err.message : err);
+      });
+
       return res.json({ memory: mapMemory(data) });
     }
 

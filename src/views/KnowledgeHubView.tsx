@@ -301,6 +301,28 @@ export default function KnowledgeHubView() {
     }
   }, [ingestCorpusId, ingestText, effectiveVentureId, addToast, loadCorpora]);
 
+  const handleBackfill = useCallback(async (source: 'docs' | 'memory') => {
+    try {
+      addToast({ type: 'info', message: `Backfilling ${source}... this may take a minute` });
+      const res = await fetch('/api/rag-ingest', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: source === 'docs' ? 'backfill-docs' : 'backfill-memory',
+          venture_id: effectiveVentureId,
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
+      addToast({
+        type: 'success',
+        message: `Indexed ${body.indexed} ${source} \u2192 ${body.chunks} chunks (skipped ${body.skipped}, failed ${body.failed})`,
+      });
+    } catch (err) {
+      console.error('[backfill]', err);
+      addToast({ type: 'error', message: err instanceof Error ? err.message : 'Backfill failed' });
+    }
+  }, [effectiveVentureId, addToast]);
+
   const handleReindexCorpus = useCallback(async (corpusId: string) => {
     try {
       addToast({ type: 'info', message: 'Reindexing — this may take a moment...' });
@@ -638,6 +660,14 @@ export default function KnowledgeHubView() {
                 />
                 <Button onClick={handleCreateCorpus} disabled={!newCorpusName.trim()}>
                   <Plus size={14} /> Create
+                </Button>
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                <Button onClick={() => handleBackfill('docs')} title="Chunk + embed every document for the current venture scope">
+                  <RefreshCw size={14} /> Backfill all Docs
+                </Button>
+                <Button onClick={() => handleBackfill('memory')} title="Chunk + embed every memory entry for the current venture scope">
+                  <RefreshCw size={14} /> Backfill all Memories
                 </Button>
               </div>
             </GlassCard>
