@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Award, Users, Percent, Calendar, Plus, Trash2, Save, TrendingUp, Package } from 'lucide-react';
-import { Dialog, DialogActions, Button, Badge, SectionCard, FormField, Input, Switch, DatePicker } from '../ui';
+import { Dialog, DialogActions, Button, Badge, SectionCard, FormField, Input, Switch, DatePicker, ChipInput } from '../ui';
 import { formatCurrency, timeAgo } from '../../lib/utils';
 
 export interface RoyaltySplit {
@@ -41,6 +41,7 @@ export interface RoyaltyAgreementLike {
   splits?: RoyaltySplit[];
   distributions?: RoyaltyDistribution[];
   notes?: string;
+  tags?: string[];
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -190,6 +191,15 @@ export default function RoyaltyAgreementDetailDialog({
                   value={draft.termination_date?.slice(0, 10) || null}
                   onChange={(v) => update('termination_date', v || undefined)}
                   placeholder="No expiry"
+                />
+              </FormField>
+              <FormField label="Tags" hint="Categorize for search and reporting — press Enter or comma to add">
+                <ChipInput
+                  value={draft.tags || []}
+                  onChange={(v) => update('tags', v)}
+                  placeholder="Add tag…"
+                  normalize={(s) => s.toLowerCase()}
+                  max={12}
                 />
               </FormField>
             </div>

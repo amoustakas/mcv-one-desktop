@@ -33,3 +33,6 @@ export { default as SectionCard } from './SectionCard';
 export { default as Toolbar, ToolbarSeparator } from './Toolbar';
 export { default as Sheet } from './Sheet';
 export { default as DatePicker } from './DatePicker';
+export { default as BulkActionBar } from './BulkActionBar';
+export type { BulkAction } from './BulkActionBar';
+export { default as ChipInput } from './ChipInput';
