@@ -6,6 +6,7 @@ import { useCommerceStore } from '../stores/commerce';
 import { useNavigation } from '../stores/navigation';
 import { staggerContainer, fadeInUp } from '../lib/animations';
 import { useToast } from '../components/Toasts';
+import InvoiceDetailDialog from '../components/commerce/InvoiceDetailDialog';
 
 export default function CommerceInvoicesView() {
   const { addToast } = useToast();
@@ -14,6 +15,11 @@ export default function CommerceInvoicesView() {
 
   const { invoices, invoicesLoading, fetchInvoices, sendInvoice, recordInvoicePayment } = useCommerceStore();
   const [tab, setTab] = useState('all');
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+
+  const selectedInvoice = selectedInvoiceId
+    ? (invoices.find((i) => String((i as unknown as Record<string, unknown>).id) === selectedInvoiceId) as unknown as Parameters<typeof InvoiceDetailDialog>[0]['invoice']) || null
+    : null;
 
   useEffect(() => {
     fetchInvoices(ventureId).catch(() => {});
@@ -95,13 +101,22 @@ export default function CommerceInvoicesView() {
                 const inv = i as unknown as Record<string, unknown>;
                 const status = String(inv.status || 'draft');
                 return (
-                  <div key={String(inv.id)} style={{ display: 'grid', gridTemplateColumns: '120px 1fr 100px 120px 100px 120px', padding: '10px 0', borderBottom: '1px solid var(--border)', fontSize: 13, gap: 8, alignItems: 'center' }}>
+                  <div
+                    key={String(inv.id)}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedInvoiceId(String(inv.id))}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedInvoiceId(String(inv.id)); } }}
+                    style={{ display: 'grid', gridTemplateColumns: '120px 1fr 100px 120px 100px 120px', padding: '10px 0', borderBottom: '1px solid var(--border)', fontSize: 13, gap: 8, alignItems: 'center', cursor: 'pointer', transition: 'background-color 150ms ease' }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--bg-hover)'; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent'; }}
+                  >
                     <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: 11 }}>{String(inv.invoice_number || inv.number || inv.id).slice(0, 12)}</span>
                     <span style={{ color: 'var(--text-primary)' }}>{String(inv.customer_name || inv.customer_id || '—')}</span>
                     <span style={{ color: 'var(--cyan)', textAlign: 'right', fontWeight: 600 }}>${Number(inv.amount || inv.total || 0).toLocaleString()}</span>
                     <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>{inv.due_date ? new Date(String(inv.due_date)).toLocaleDateString() : '—'}</span>
                     <Badge color={status === 'paid' ? '#10B981' : status === 'overdue' ? '#ef4444' : status === 'sent' ? '#F59E0B' : '#6B7280'}>{status}</Badge>
-                    <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                    <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }} onClick={(e) => e.stopPropagation()}>
                       {status === 'draft' && <button title="Send" style={{ background: 'transparent', border: 'none', color: 'var(--cyan)', cursor: 'pointer' }} onClick={() => handleSend(String(inv.id))}><Send size={12} /></button>}
                       {status === 'sent' && <button title="Mark paid" style={{ background: 'transparent', border: 'none', color: '#10B981', cursor: 'pointer' }} onClick={() => handleMarkPaid(String(inv.id), Number(inv.amount || 0))}><CheckCircle2 size={12} /></button>}
                     </div>
@@ -112,6 +127,15 @@ export default function CommerceInvoicesView() {
           )}
         </GlassCard>
       </div>
+
+      <InvoiceDetailDialog
+        open={!!selectedInvoiceId}
+        onClose={() => setSelectedInvoiceId(null)}
+        invoice={selectedInvoice}
+        onSend={async (id) => { await handleSend(id); setSelectedInvoiceId(null); }}
+        onMarkPaid={async (id, amount) => { await handleMarkPaid(id, amount); setSelectedInvoiceId(null); }}
+        onDownload={(id) => addToast({ type: 'info', message: `PDF export queued for ${id.slice(0, 8)} (server-side rendering pending)` })}
+      />
     </PageShell>
   );
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import AnimatedBackground from './components/AnimatedBackground';
 import NavRail from './components/NavRail';
+import MobileBottomNav from './components/MobileBottomNav';
 import ChatDock from './components/ChatDock';
 import StatusBar from './components/StatusBar';
 import CommandPalette from './components/CommandPalette';
@@ -547,8 +548,9 @@ export default function App() {
     <div className="app-shell">
       <AnimatedBackground />
 
-      {/* Nav Rail */}
+      {/* Nav Rail (hidden on phone — bottom nav takes over) */}
       {!sidebarCollapsed && <NavRail />}
+      <MobileBottomNav />
 
       {/* Main Column */}
       <div className="app-main-col">
