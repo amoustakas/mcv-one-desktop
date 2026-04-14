@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Download, FolderInput, Trash2, Lock, ExternalLink,
-  Sparkles, Link2, Tag, Clock, Eye,
+  Sparkles, Link2, Tag, Clock, Eye, Loader2, BookOpen,
   File, Image, Film, Music, FileText, Code, Database,
 } from 'lucide-react';
+import { useToast } from '../Toasts';
 import { slideInRight } from '../../lib/animations';
 import StorageProviderBadge from './StorageProviderBadge';
 import StatusBadge from './StatusBadge';
@@ -69,6 +70,34 @@ interface Props {
 export default function FilePreviewPanel({ file, onClose, onDownload, onDelete, onMove, onAiAnalyze }: Props) {
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
   const [loadingAudit, setLoadingAudit] = useState(false);
+  const [indexingRag, setIndexingRag] = useState(false);
+  const { addToast } = useToast();
+
+  async function handleIndexForRag() {
+    if (!file || indexingRag) return;
+    setIndexingRag(true);
+    try {
+      // Drive files use the dedicated ingest-drive-file path (download + export).
+      // Everything else goes through ingest-file (metadata + any cached content).
+      const isDrive = file.provider === 'gdrive';
+      const body = isDrive
+        ? { action: 'ingest-drive-file', drive_file_id: file.path, file_id: file.id, venture_id: file.ventureId }
+        : { action: 'ingest-file', file_id: file.id, venture_id: file.ventureId };
+      const res = await fetch('/api/rag-ingest', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+      addToast({ type: 'success', message: `Indexed ${data.chunk_count} chunks` });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[index-for-rag]', err);
+      addToast({ type: 'error', message: err instanceof Error ? err.message : 'Indexing failed' });
+    } finally {
+      setIndexingRag(false);
+    }
+  }
 
   useEffect(() => {
     if (!file) return;
@@ -272,6 +301,20 @@ export default function FilePreviewPanel({ file, onClose, onDownload, onDelete, 
             </button>
           </div>
           <div className="preview-actions" style={{ borderTop: 'none', paddingTop: 0 }}>
+            <button
+              onClick={handleIndexForRag}
+              disabled={indexingRag}
+              title={file.provider === 'gdrive' ? 'Download from Drive, chunk, embed, index for RAG' : 'Chunk + embed + index this file for semantic retrieval'}
+              style={{
+                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                padding: '8px 12px', borderRadius: 'var(--radius-md)', fontSize: 11, fontWeight: 500,
+                background: 'rgba(139,92,246,0.08)', color: 'var(--purple)', border: '1px solid rgba(139,92,246,0.2)',
+                cursor: indexingRag ? 'not-allowed' : 'pointer', opacity: indexingRag ? 0.6 : 1,
+              }}
+            >
+              {indexingRag ? <Loader2 size={13} className="mcv-spin" /> : <BookOpen size={13} />}
+              {indexingRag ? 'Indexing...' : 'Index for RAG'}
+            </button>
             <button
               onClick={() => onMove?.(file)}
               style={{
