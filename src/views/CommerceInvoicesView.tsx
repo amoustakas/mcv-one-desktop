@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { Receipt, Plus, Send, DollarSign, AlertTriangle, Loader2, CheckCircle2 } from 'lucide-react';
 import { PageShell, PageHeader, KpiCard, GridLayout, GlassCard, Button, Badge, Tabs, EmptyState } from '../components/ui';
@@ -6,7 +6,7 @@ import { useCommerceStore } from '../stores/commerce';
 import { useNavigation } from '../stores/navigation';
 import { staggerContainer, fadeInUp } from '../lib/animations';
 import { useToast } from '../components/Toasts';
-import InvoiceDetailDialog from '../components/commerce/InvoiceDetailDialog';
+const InvoiceDetailDialog = lazy(() => import('../components/commerce/InvoiceDetailDialog'));
 
 export default function CommerceInvoicesView() {
   const { addToast } = useToast();
@@ -128,14 +128,18 @@ export default function CommerceInvoicesView() {
         </GlassCard>
       </div>
 
-      <InvoiceDetailDialog
-        open={!!selectedInvoiceId}
-        onClose={() => setSelectedInvoiceId(null)}
-        invoice={selectedInvoice}
-        onSend={async (id) => { await handleSend(id); setSelectedInvoiceId(null); }}
-        onMarkPaid={async (id, amount) => { await handleMarkPaid(id, amount); setSelectedInvoiceId(null); }}
-        onDownload={(id) => addToast({ type: 'info', message: `PDF export queued for ${id.slice(0, 8)} (server-side rendering pending)` })}
-      />
+      <Suspense fallback={null}>
+        {selectedInvoiceId && (
+          <InvoiceDetailDialog
+            open={!!selectedInvoiceId}
+            onClose={() => setSelectedInvoiceId(null)}
+            invoice={selectedInvoice}
+            onSend={async (id) => { await handleSend(id); setSelectedInvoiceId(null); }}
+            onMarkPaid={async (id, amount) => { await handleMarkPaid(id, amount); setSelectedInvoiceId(null); }}
+            onDownload={(id) => addToast({ type: 'info', message: `PDF export queued for ${id.slice(0, 8)} (server-side rendering pending)` })}
+          />
+        )}
+      </Suspense>
     </PageShell>
   );
 }

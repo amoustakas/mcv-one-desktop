@@ -3,9 +3,9 @@ import { CreditCard, Plus, Wallet, TrendingUp, Gift, Loader2 } from 'lucide-reac
 import { PageShell, PageHeader, KpiCard, GridLayout, GlassCard, Button, Badge, Tabs, EmptyState } from '../components/ui';
 import { useNavigation } from '../stores/navigation';
 import { staggerContainer, fadeInUp } from '../lib/animations';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { useToast } from '../components/Toasts';
-import CreditDetailDialog from '../components/commerce/CreditDetailDialog';
+const CreditDetailDialog = lazy(() => import('../components/commerce/CreditDetailDialog'));
 
 interface CreditLedger {
   id: string;
@@ -187,35 +187,39 @@ export default function CommerceCreditsView() {
         </GlassCard>
       </div>
 
-      <CreditDetailDialog
-        open={!!selectedLedgerId}
-        onClose={() => setSelectedLedgerId(null)}
-        wallet={
-          selectedLedger
-            ? {
-                id: selectedLedger.id,
-                wallet_id: selectedLedger.id,
-                owner_name: selectedLedger.customer_name,
-                owner_id: selectedLedger.customer_id,
-                balance: selectedLedger.balance,
-                status: selectedLedger.status,
-                currency: selectedLedger.currency,
-                ledger: selectedLedgerEntries,
+      <Suspense fallback={null}>
+        {selectedLedgerId && (
+          <CreditDetailDialog
+            open={!!selectedLedgerId}
+            onClose={() => setSelectedLedgerId(null)}
+            wallet={
+              selectedLedger
+                ? {
+                    id: selectedLedger.id,
+                    wallet_id: selectedLedger.id,
+                    owner_name: selectedLedger.customer_name,
+                    owner_id: selectedLedger.customer_id,
+                    balance: selectedLedger.balance,
+                    status: selectedLedger.status,
+                    currency: selectedLedger.currency,
+                    ledger: selectedLedgerEntries,
+                  }
+                : null
+            }
+            onIssue={async (id, amount, memo) => {
+              const ok = await grantCredit(ventureId, selectedLedger?.customer_id || '', amount, memo || '');
+              if (ok) {
+                addToast({ type: 'success', message: `$${amount} granted` });
+                fetchCredits(ventureId).then(setLedgers);
+                fetchCreditTransactions(ventureId).then(setTransactions);
+              } else {
+                addToast({ type: 'error', message: 'Failed to grant credit' });
               }
-            : null
-        }
-        onIssue={async (id, amount, memo) => {
-          const ok = await grantCredit(ventureId, selectedLedger?.customer_id || '', amount, memo || '');
-          if (ok) {
-            addToast({ type: 'success', message: `$${amount} granted` });
-            fetchCredits(ventureId).then(setLedgers);
-            fetchCreditTransactions(ventureId).then(setTransactions);
-          } else {
-            addToast({ type: 'error', message: 'Failed to grant credit' });
-          }
-          void id;
-        }}
-      />
+              void id;
+            }}
+          />
+        )}
+      </Suspense>
     </PageShell>
   );
 }

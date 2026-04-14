@@ -6,10 +6,11 @@ import { useComplianceStore } from '../stores/compliance';
 import { useNavigation } from '../stores/navigation';
 import { staggerContainer, fadeInUp } from '../lib/animations';
 import { lazy, Suspense } from 'react';
-import FraudRuleDetailDialog, { type FraudRuleLike } from '../components/compliance/FraudRuleDetailDialog';
+import type { FraudRuleLike } from '../components/compliance/FraudRuleDetailDialog';
 import { Button } from '../components/ui';
 import { Plus } from 'lucide-react';
 
+const FraudRuleDetailDialog = lazy(() => import('../components/compliance/FraudRuleDetailDialog'));
 const NexusAlertDetailDialog = lazy(() => import('../components/compliance/NexusAlertDetailDialog'));
 type NexusAlertProp = Parameters<typeof import('../components/compliance/NexusAlertDetailDialog').default>[0]['alert'];
 
@@ -264,25 +265,25 @@ export default function ComplianceHubView() {
         )}
       </div>
 
-      <FraudRuleDetailDialog
-        open={!!selectedRuleId}
-        onClose={() => setSelectedRuleId(null)}
-        rule={selectedRule || (selectedRuleId ? { id: selectedRuleId, name: 'New Rule', enabled: true, risk_score: 50, action: 'flag', trigger_type: 'velocity' } : null)}
-        onSave={(updated) => {
-          // Save handler — wire to compliance store when API endpoint lands
-          console.log('Save fraud rule', updated);
-          setSelectedRuleId(null);
-        }}
-        onToggle={(id, enabled) => {
-          console.log('Toggle fraud rule', id, enabled);
-        }}
-        onDelete={(id) => {
-          console.log('Delete fraud rule', id);
-          setSelectedRuleId(null);
-        }}
-      />
-
       <Suspense fallback={null}>
+        {selectedRuleId && (
+          <FraudRuleDetailDialog
+            open={!!selectedRuleId}
+            onClose={() => setSelectedRuleId(null)}
+            rule={selectedRule || { id: selectedRuleId, name: 'New Rule', enabled: true, risk_score: 50, action: 'flag', trigger_type: 'velocity' }}
+            onSave={(updated) => {
+              console.log('Save fraud rule', updated);
+              setSelectedRuleId(null);
+            }}
+            onToggle={(id, enabled) => {
+              console.log('Toggle fraud rule', id, enabled);
+            }}
+            onDelete={(id) => {
+              console.log('Delete fraud rule', id);
+              setSelectedRuleId(null);
+            }}
+          />
+        )}
         {selectedNexusId && (
           <NexusAlertDetailDialog
             open={!!selectedNexusId}

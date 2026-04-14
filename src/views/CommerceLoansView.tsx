@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { Banknote, Plus, TrendingUp, DollarSign, Loader2, CheckCircle2 } from 'lucide-react';
 import { PageShell, PageHeader, KpiCard, GridLayout, GlassCard, Button, Badge, Tabs, EmptyState } from '../components/ui';
@@ -6,7 +6,7 @@ import { useCommerceStore } from '../stores/commerce';
 import { useNavigation } from '../stores/navigation';
 import { staggerContainer, fadeInUp } from '../lib/animations';
 import { useToast } from '../components/Toasts';
-import LoanDetailDialog from '../components/commerce/LoanDetailDialog';
+const LoanDetailDialog = lazy(() => import('../components/commerce/LoanDetailDialog'));
 
 export default function CommerceLoansView() {
   const { addToast } = useToast();
@@ -126,20 +126,24 @@ export default function CommerceLoansView() {
         </GlassCard>
       </div>
 
-      <LoanDetailDialog
-        open={!!selectedLoanId}
-        onClose={() => setSelectedLoanId(null)}
-        loan={selectedLoan}
-        onDisburse={async (id) => { await handleDisburse(id); setSelectedLoanId(null); }}
-        onRepay={async (id, amount) => {
-          try {
-            await recordRepayment(ventureId, id, amount);
-            addToast({ type: 'success', message: `Repayment of $${amount} recorded` });
-          } catch (err) {
-            addToast({ type: 'error', message: err instanceof Error ? err.message : 'Failed' });
-          }
-        }}
-      />
+      <Suspense fallback={null}>
+        {selectedLoanId && (
+          <LoanDetailDialog
+            open={!!selectedLoanId}
+            onClose={() => setSelectedLoanId(null)}
+            loan={selectedLoan}
+            onDisburse={async (id) => { await handleDisburse(id); setSelectedLoanId(null); }}
+            onRepay={async (id, amount) => {
+              try {
+                await recordRepayment(ventureId, id, amount);
+                addToast({ type: 'success', message: `Repayment of $${amount} recorded` });
+              } catch (err) {
+                addToast({ type: 'error', message: err instanceof Error ? err.message : 'Failed' });
+              }
+            }}
+          />
+        )}
+      </Suspense>
     </PageShell>
   );
 }
