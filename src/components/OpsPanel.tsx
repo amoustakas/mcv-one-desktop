@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Activity, Cpu, Database, GitBranch, Globe, Shield, Wifi, Zap, RefreshCw, ExternalLink, Cloud, Server, Radio, CheckCircle2 } from 'lucide-react';
 import { InfraOverviewBar, DockerStatsWidget } from './docker';
+import OpsHealthWidget from './ops/OpsHealthWidget';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useGithubRepos, useGithubCommits } from '../hooks/use-github';
@@ -111,6 +112,10 @@ export default function OpsPanel() {
       <div className="ops-grid">
         {/* Left: Systems + DB */}
         <div className="ops-col">
+          <div className="ops-section">
+            <h2 className="ops-section-title"><Activity size={11} /> Live Ops</h2>
+            <OpsHealthWidget />
+          </div>
           <div className="ops-section">
             <h2 className="ops-section-title"><Shield size={11} /> Service Health</h2>
             <div className="ops-systems">
