@@ -1,6 +1,45 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getServiceClient } from './_supabase.js';
+import { embedOne } from './_embeddings.js';
+
+// Pre-fetch RAG context for the latest user message and return a block to
+// prepend to the system prompt. Returns '' on any failure so chat never breaks.
+async function buildRagContextBlock(opts: {
+  query: string;
+  ventureId?: string;
+  topK?: number;
+  threshold?: number;
+}): Promise<string> {
+  try {
+    if (!opts.query || opts.query.trim().length < 4) return '';
+    const supabase = getServiceClient();
+    const queryEmbed = await embedOne(opts.query, 'RETRIEVAL_QUERY');
+    const { data: matches, error } = await supabase.rpc('match_chunks', {
+      query_embedding: queryEmbed,
+      match_threshold: opts.threshold ?? 0.6,
+      match_count: opts.topK ?? 4,
+      filter_venture: opts.ventureId || null,
+      filter_corpus: null,
+    });
+    if (error || !matches || matches.length === 0) return '';
+
+    const fileIds = Array.from(new Set(matches.map((m: { file_id: string | null }) => m.file_id).filter(Boolean)));
+    const { data: files } = fileIds.length
+      ? await supabase.from('storage_files').select('id, name').in('id', fileIds as string[])
+      : { data: [] };
+    const fileMap = new Map((files || []).map(f => [f.id, f.name]));
+
+    const lines = matches.map((m: { id: string; file_id: string | null; content: string; similarity: number; metadata: Record<string, unknown> }, i: number) => {
+      const source = (m.file_id && fileMap.get(m.file_id)) || (m.metadata?.title as string) || (m.metadata?.source as string) || 'knowledge';
+      return `[${i + 1}] (${source}, similarity ${m.similarity.toFixed(2)})\n${m.content.slice(0, 600)}`;
+    });
+
+    return `\n\n### RETRIEVED CONTEXT (MCV knowledge base)\nThe following chunks were pre-retrieved from the venture's docs/memory/files based on the user's latest message. Cite as [1], [2] etc when you use them. If they aren't relevant, ignore and rely on your knowledge.\n\n${lines.join('\n\n')}\n\n### END CONTEXT\n`;
+  } catch {
+    return '';
+  }
+}
 
 async function requireAuth(req: VercelRequest, res: VercelResponse): Promise<string | null> {
   const secretKey = process.env.CLERK_SECRET_KEY;
@@ -77,7 +116,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { messages, systemPrompt, stream, tools, model, max_tokens, naos } = req.body as {
+  const { messages, systemPrompt, stream, tools, model, max_tokens, naos, preRag } = req.body as {
     messages: Array<{ role: string; content: unknown }>;
     systemPrompt?: string;
     stream?: boolean;
@@ -85,6 +124,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     model?: string;
     max_tokens?: number;
     naos?: { agent_codename?: string; venture_id?: string };
+    preRag?: { enabled?: boolean; venture_id?: string; top_k?: number; threshold?: number };
   };
 
   if (!messages || !Array.isArray(messages)) {
@@ -95,11 +135,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
   }
 
+  // Optional: pre-fetch RAG context and prepend it to the system prompt so
+  // Aegis has grounded facts without needing a separate tool-use round trip.
+  let effectiveSystem = systemPrompt || 'You are a helpful assistant.';
+  if (preRag?.enabled) {
+    const lastUser = [...messages].reverse().find(m => m.role === 'user');
+    const queryText = typeof lastUser?.content === 'string'
+      ? lastUser.content
+      : Array.isArray(lastUser?.content)
+        ? lastUser.content.filter((b: { type?: string; text?: string }) => b.type === 'text').map((b: { text?: string }) => b.text || '').join(' ')
+        : '';
+    const contextBlock = await buildRagContextBlock({
+      query: queryText,
+      ventureId: preRag.venture_id || naos?.venture_id,
+      topK: preRag.top_k ?? 4,
+      threshold: preRag.threshold,
+    });
+    if (contextBlock) effectiveSystem += contextBlock;
+  }
+
   // Build params shared between streaming and non-streaming
   const params: Anthropic.MessageCreateParams = {
     model: model || 'claude-sonnet-4-20250514',
     max_tokens: max_tokens || 4096,
-    system: systemPrompt || 'You are a helpful assistant.',
+    system: effectiveSystem,
     messages: messages.map((m: { role: string; content: unknown }) => ({
       role: m.role as 'user' | 'assistant',
       content: m.content,
