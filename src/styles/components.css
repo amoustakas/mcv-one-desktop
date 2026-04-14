@@ -228,12 +228,19 @@
   display: flex;
   flex-direction: column;
 }
+/* Scrolling shell: the shell itself is the scroll container.
+   Earlier we tried to target `> :last-child` as the scroll area, but many
+   views end with an inline <style> tag (51 at last count) — which is a
+   display:none node that still wins :last-child, silently disabling scroll
+   for half the app. Making the shell scroll directly is order-agnostic
+   and safe for both bare content and sticky-header patterns (use
+   position:sticky on the header in those cases). */
 .mcv-page-shell-scroll {
-  overflow: hidden;
-}
-.mcv-page-shell-scroll > :last-child {
-  flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
+  /* Firefox scrollbar theming — webkit styling is in design-system.css */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 240, 255, 0.18) transparent;
 }
 
 /* ── Grid Layout ── */

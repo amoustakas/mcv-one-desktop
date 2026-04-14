@@ -283,14 +283,27 @@ body::after {
   color: var(--cyan);
 }
 
-::-webkit-scrollbar { width: 5px; }
+/* Scrollbars — cyan-tinted to match the design system, visible enough
+   to signal scrollability without dominating the chrome. Sizes are set
+   for both axes so horizontal scroll on strips/tables reads consistently. */
+::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 240, 255, 0.12);
+  background: rgba(0, 240, 255, 0.14);
   border-radius: var(--radius-full);
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 240, 255, 0.25);
+  background: rgba(0, 240, 255, 0.28);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-corner { background: transparent; }
+
+/* Firefox — thin bars with the same cyan accent. `thin` renders ~8px. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 240, 255, 0.14) transparent;
 }
 
 /* ═══════════════════════════════════════════ */

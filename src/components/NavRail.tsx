@@ -196,7 +196,19 @@ export default function NavRail() {
   const splitPanelWith = useWorkspaceStore(s => s.splitPanelWith);
   const wsLayout = useWorkspaceStore(s => s.layout);
   const activePanelId = useWorkspaceStore(s => s.activePanelId);
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  // Collapse the noisy sections by default — keep only the sections Tony
+  // uses every session expanded (Command, Ventures, Suites, Intelligence,
+  // Operations). Everything else starts collapsed but is one click away.
+  // State persists within session; user overrides always take precedence.
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => ({
+    eng: true,
+    devices: true,
+    growth: true,
+    google: true,
+    tools: true,
+    commerce: true,
+    financials: true,
+  }));
   const setActiveVenture = useVentureContextStore((s) => s.setActiveVenture);
 
   // Sync active venture from navigation store into venture context store
