@@ -1,4 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createClient } from '@supabase/supabase-js';
+import { encryptToken, decryptToken } from './_oauth-helper.js';
+
+const _supabase = createClient(
+  process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '',
+);
 
 async function requireAuth(req: VercelRequest, res: VercelResponse): Promise<string | null> {
   const secretKey = process.env.CLERK_SECRET_KEY;
@@ -71,10 +78,147 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       // ── Exchange public token for access token ──
+      // Accepts optional { venture_id, institution_id, institution_name } to
+      // persist the item row in plaid_items (encrypted access_token).
       case 'exchange-token': {
-        const { public_token } = req.body;
+        const { public_token, venture_id, institution_id, institution_name, persist = true } = req.body;
         if (!public_token) return res.status(400).json({ error: 'public_token required' });
-        return res.json(await plaidFetch('/item/public_token/exchange', { public_token }));
+        const exchange = await plaidFetch('/item/public_token/exchange', { public_token });
+
+        if (persist && exchange.access_token) {
+          try {
+            // Also pull accounts to store the account list alongside.
+            const accountsRes = await plaidFetch('/accounts/get', { access_token: exchange.access_token });
+            const encrypted = encryptToken(exchange.access_token);
+            await _supabase.from('plaid_items').upsert({
+              user_id: userId,
+              venture_id: venture_id || null,
+              item_id: exchange.item_id,
+              institution_id: institution_id || null,
+              institution_name: institution_name || null,
+              access_token_encrypted: encrypted,
+              accounts: accountsRes.accounts || [],
+              status: 'active',
+            }, { onConflict: 'item_id' });
+          } catch {
+            // Non-fatal — client still receives the access_token so it can
+            // retry persistence via a separate call if needed.
+          }
+        }
+
+        return res.json(exchange);
+      }
+
+      // ── List persisted Plaid items for the current user ──
+      case 'list-items': {
+        const { venture_id } = req.body;
+        let q = _supabase.from('plaid_items')
+          .select('id, item_id, institution_name, accounts, status, venture_id, created_at, last_sync_at')
+          .eq('user_id', userId);
+        if (venture_id) q = q.eq('venture_id', venture_id);
+        const { data, error } = await q.order('created_at', { ascending: false });
+        if (error) throw error;
+        return res.json({ items: data || [] });
+      }
+
+      // ── Remove a linked item (revoke) ──
+      case 'remove-item': {
+        const { plaid_item_id } = req.body;
+        if (!plaid_item_id) return res.status(400).json({ error: 'plaid_item_id required' });
+        const { data: row } = await _supabase.from('plaid_items')
+          .select('access_token_encrypted').eq('id', plaid_item_id).eq('user_id', userId).maybeSingle();
+        if (row?.access_token_encrypted) {
+          try { await plaidFetch('/item/remove', { access_token: decryptToken(row.access_token_encrypted) }); } catch { /* best-effort */ }
+        }
+        await _supabase.from('plaid_items').update({ status: 'revoked' }).eq('id', plaid_item_id).eq('user_id', userId);
+        return res.json({ success: true });
+      }
+
+      // ── ACH Transfer: authorize (required before create) ──
+      // Body: { plaid_item_id, account_id, type: 'debit'|'credit', amount_cents, description, user: { legal_name, email_address?, ... } }
+      case 'transfer-authorize': {
+        const { plaid_item_id, account_id, type, amount_cents, description, user } = req.body;
+        if (!plaid_item_id || !account_id || !type || !amount_cents) {
+          return res.status(400).json({ error: 'plaid_item_id, account_id, type, amount_cents required' });
+        }
+        const { data: item } = await _supabase.from('plaid_items')
+          .select('access_token_encrypted, venture_id')
+          .eq('id', plaid_item_id).eq('user_id', userId).maybeSingle();
+        if (!item) return res.status(404).json({ error: 'plaid item not found' });
+
+        const access_token = decryptToken(item.access_token_encrypted);
+        const amountStr = (amount_cents / 100).toFixed(2);
+        const authRes = await plaidFetch('/transfer/authorization/create', {
+          access_token, account_id, type, network: 'ach',
+          amount: amountStr,
+          ach_class: 'ppd',
+          user: user || { legal_name: 'MCV User' },
+        });
+
+        // Persist authorization
+        await _supabase.from('plaid_transfers').insert({
+          user_id: userId,
+          venture_id: item.venture_id,
+          plaid_item_id,
+          authorization_id: authRes.authorization?.id,
+          account_id,
+          type,
+          amount_cents,
+          description: description || null,
+          user_info: user || null,
+          status: authRes.authorization?.decision === 'approved' ? 'pending' : 'failed',
+          failure_reason: authRes.authorization?.decision_rationale?.description || null,
+          authorized_at: authRes.authorization?.created ? new Date(authRes.authorization.created).toISOString() : null,
+        });
+
+        return res.json(authRes);
+      }
+
+      // ── ACH Transfer: create (after authorization approved) ──
+      case 'transfer-create': {
+        const { plaid_item_id, authorization_id, account_id, description } = req.body;
+        if (!plaid_item_id || !authorization_id || !account_id) {
+          return res.status(400).json({ error: 'plaid_item_id, authorization_id, account_id required' });
+        }
+        const { data: item } = await _supabase.from('plaid_items')
+          .select('access_token_encrypted').eq('id', plaid_item_id).eq('user_id', userId).maybeSingle();
+        if (!item) return res.status(404).json({ error: 'plaid item not found' });
+
+        const access_token = decryptToken(item.access_token_encrypted);
+        const transferRes = await plaidFetch('/transfer/create', {
+          access_token, account_id, authorization_id,
+          description: (description || 'MCV transfer').slice(0, 15),
+        });
+
+        await _supabase.from('plaid_transfers').update({
+          transfer_id: transferRes.transfer?.id,
+          status: mapPlaidStatus(transferRes.transfer?.status),
+        }).eq('authorization_id', authorization_id).eq('user_id', userId);
+
+        return res.json(transferRes);
+      }
+
+      // ── ACH Transfer: status ──
+      case 'transfer-get': {
+        const { transfer_id } = req.body;
+        if (!transfer_id) return res.status(400).json({ error: 'transfer_id required' });
+        const transferRes = await plaidFetch('/transfer/get', { transfer_id });
+        await _supabase.from('plaid_transfers').update({
+          status: mapPlaidStatus(transferRes.transfer?.status),
+          failure_reason: transferRes.transfer?.failure_reason?.description || null,
+        }).eq('transfer_id', transfer_id).eq('user_id', userId);
+        return res.json(transferRes);
+      }
+
+      // ── List local transfers (from our audit table) ──
+      case 'list-transfers': {
+        const { venture_id, limit = 50 } = req.body;
+        let q = _supabase.from('plaid_transfers')
+          .select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(limit);
+        if (venture_id) q = q.eq('venture_id', venture_id);
+        const { data, error } = await q;
+        if (error) throw error;
+        return res.json({ transfers: data || [] });
       }
 
       // ── Accounts ──
@@ -171,5 +315,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     return res.status(500).json({ error: message });
+  }
+}
+
+function mapPlaidStatus(plaidStatus?: string): string {
+  switch (plaidStatus) {
+    case 'pending': return 'pending';
+    case 'posted': return 'posted';
+    case 'settled': return 'settled';
+    case 'cancelled': return 'cancelled';
+    case 'failed': return 'failed';
+    case 'returned': return 'returned';
+    default: return 'pending';
   }
 }
