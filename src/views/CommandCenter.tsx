@@ -21,6 +21,8 @@ import {
   AgentActivityFeed,
   QuickActionsPalette,
   TopCustomersCard,
+  CashflowMicroPanel,
+  OrderStatusGrid,
   type AttentionItem,
   type VentureRollup,
 } from '../components/command-center';
@@ -190,6 +192,12 @@ export default function CommandCenter() {
         <VentureRollupGrid rollups={ventureRollups} revenueTrends={revenueTrends} />
       </div>
 
+      {/* Cashflow + Order Pipeline — fed by /api/commerce-metrics */}
+      <div className="cc-row cc-row-split">
+        <CashflowMicroPanel ventureMetrics={ventureMetrics} />
+        <OrderStatusGrid ventureMetrics={ventureMetrics} />
+      </div>
+
       {/* Main grid: Agent Activity + Quick Actions + Live Feeds */}
       <div className="cc-main">
         <div className="cc-col">
@@ -292,6 +300,8 @@ export default function CommandCenter() {
         .cc-sec-sub { font-size:9px; color:var(--text-muted); font-family:var(--font-mono); margin-left:auto; font-weight:400; text-transform:none; letter-spacing:0; }
 
         .cc-row { padding: 0 24px; margin-bottom: 14px; }
+        .cc-row-split { display: grid; grid-template-columns: minmax(360px, 1fr) minmax(420px, 1.2fr); gap: 16px; }
+        @media (max-width: 1200px) { .cc-row-split { grid-template-columns: 1fr; } }
         .cc-kpi-wrap { padding: 0 24px; margin-bottom: 14px; }
 
         .cc-brief { margin:0 24px 14px; padding:14px 18px; }
