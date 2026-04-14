@@ -450,6 +450,137 @@ function makePlaceholderHandler(toolName: string, dept: Department): KitToolHand
 }
 
 // =============================================================================
+// AI-backed handler factory — calls Claude with the dept personality as the
+// system prompt, passes a tool-specific user prompt, returns formatted output.
+// Each spec is a pure function over (input) → user prompt so individual tools
+// stay easy to tune without touching the plumbing.
+// =============================================================================
+
+interface AiHandlerSpec {
+  dept: Department;
+  toolName: string;
+  buildPrompt: (input: Record<string, unknown>) => string;
+  maxTokens?: number;
+  /** Optional override — defaults to dept personality */
+  system?: string;
+  /** Claude model to use (lets Legal lean heavier than Ops) */
+  model?: string;
+}
+
+function makeAiHandler(spec: AiHandlerSpec): KitToolHandler {
+  const deptConfig = DEPARTMENTS.find(d => d.id === spec.dept)!;
+  const system = spec.system ?? deptConfig.personality;
+
+  return async (input, ctx) => {
+    const prompt = spec.buildPrompt(input);
+    try {
+      const res = await ctx.fetch('/api/claude', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'chat',
+          model: spec.model ?? 'claude-sonnet-4-5-20250929',
+          max_tokens: spec.maxTokens ?? 4096,
+          system,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `Claude API error: ${res.status}` }));
+        return {
+          success: false,
+          error: err.error || `Claude API ${res.status}`,
+          displayMarkdown: `**${spec.toolName}** failed: ${err.error || res.statusText}`,
+        };
+      }
+
+      const data = await res.json() as { content?: Array<{ type: string; text?: string }>; usage?: unknown };
+      const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text || '').join('\n').trim();
+
+      return {
+        success: true,
+        data: { tool: spec.toolName, department: spec.dept, response: text, usage: data.usage, input },
+        displayMarkdown: text || `**${spec.toolName}** — empty response`,
+      };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'unknown error';
+      return {
+        success: false,
+        error: msg,
+        displayMarkdown: `**${spec.toolName}** failed: ${msg}`,
+      };
+    }
+  };
+}
+
+// Per-tool prompt specs. Add new ones here as each department gets its real AI.
+const AI_HANDLERS: Record<string, AiHandlerSpec> = {
+  redline_contract: {
+    dept: 'legal',
+    toolName: 'redline_contract',
+    maxTokens: 6000,
+    buildPrompt: (input) => {
+      const contract = (input.contract_markdown as string) || '';
+      const venture = (input.venture as string) || 'the venture';
+      const counterparty = (input.counterparty as string) || 'the counterparty';
+      return `Redline this contract between **${venture}** and **${counterparty}**.
+
+Return a structured response with these sections:
+1. **Top risks** — 3–5 clauses that could bite us, ranked by severity
+2. **Missing protections** — standard clauses that should be present but aren't
+3. **Suggested edits** — specific language changes with before/after
+4. **Overall posture** — one paragraph on whether to sign, negotiate, or walk
+
+Flag anything on indemnification, IP assignment, termination, liability caps, warranty disclaimers, or exclusivity. Be plain-spoken. End with a one-line recommendation.
+
+---CONTRACT---
+${contract.slice(0, 60000)}`;
+    },
+  },
+
+  generate_nda: {
+    dept: 'legal',
+    toolName: 'generate_nda',
+    maxTokens: 4000,
+    buildPrompt: (input) => {
+      const venture = (input.venture as string) || 'the venture';
+      const counterparty = (input.counterparty as string) || '[counterparty]';
+      const purpose = (input.purpose as string) || 'a potential business engagement';
+      const termMonths = (input.term_months as number) ?? 24;
+      return `Draft a mutual NDA between **${venture}** and **${counterparty}**.
+
+Context:
+- Purpose: ${purpose}
+- Term: ${termMonths} months
+- Effective: ${new Date().toISOString().slice(0, 10)}
+
+Structure: Parties, Definition of Confidential Information, Permitted Use, Exclusions, Term, Return/Destruction, Remedies, Governing Law (Delaware by default), Entire Agreement, Signatures.
+
+Use plain modern legalese. Return markdown ready to paste into the Docs tab.`;
+    },
+  },
+
+  check_ip_assignment: {
+    dept: 'legal',
+    toolName: 'check_ip_assignment',
+    maxTokens: 2000,
+    buildPrompt: (input) => {
+      const venture = (input.venture as string) || 'the venture';
+      return `For **${venture}**, identify what a comprehensive IP assignment audit would check.
+
+Return:
+1. The roles/contributors that need signed IP assignments (founders, employees, contractors, advisors, open-source contributors)
+2. Red-flag gaps that commonly show up in early-stage ventures
+3. The 3 questions legal should ask the venture lead immediately
+4. A checklist of documents to gather
+
+Keep it under 600 words. Be specific and actionable.`;
+    },
+  },
+};
+
+// =============================================================================
 // Build manifests + handlers
 // =============================================================================
 
@@ -458,8 +589,16 @@ export const departmentKits: Record<Department, { manifest: KitManifest; handler
     const sharedHandlers = makeSharedHandlers(dept.id);
     const sharedTools = makeSharedTools(dept.id);
 
+    // Prefer real AI handlers where a spec exists; fall back to placeholder
+    // so the full schema stays discoverable and tools come online one by one.
     const specializedHandlers: Record<string, KitToolHandler> = Object.fromEntries(
-      dept.specializedTools.map(t => [t.name, makePlaceholderHandler(t.name, dept.id)])
+      dept.specializedTools.map(t => {
+        const aiSpec = AI_HANDLERS[t.name];
+        if (aiSpec && aiSpec.dept === dept.id) {
+          return [t.name, makeAiHandler(aiSpec)];
+        }
+        return [t.name, makePlaceholderHandler(t.name, dept.id)];
+      })
     );
 
     const manifest: KitManifest = {
