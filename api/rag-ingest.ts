@@ -1,20 +1,15 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getServiceClient, requireAuth } from './_supabase.js';
+import { embedMany, embedOne } from './_embeddings.js';
 
 // ---------------------------------------------------------------------------
-// RAG Ingest API — chunks text, embeds with Gemini text-embedding-004,
+// RAG Ingest API — chunks text, embeds (gemini-embedding-001 w/ fallback),
 // stores in storage_chunks with vector(768) for semantic retrieval.
 // Actions: ingest-text, ingest-file, ingest-drive-file, reindex-corpus,
 //          delete-chunks, list-chunks
 // ---------------------------------------------------------------------------
 
-const EMBED_MODEL = 'text-embedding-004';
-const EMBED_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta';
 const CHARS_PER_TOKEN = 4;
-
-function getGoogleKey(): string {
-  return process.env.GOOGLE_AI_KEY || process.env.VITE_GOOGLE_AI_KEY || '';
-}
 
 // ── Chunking (duplicated server-side — keeps API self-contained) ──
 function splitSentences(text: string): string[] {
@@ -54,55 +49,9 @@ function chunkText(text: string, maxTokens = 512, overlap = 50): { index: number
   return chunks;
 }
 
-// ── Embedding via Gemini ──
-async function embedBatch(texts: string[], taskType = 'RETRIEVAL_DOCUMENT'): Promise<number[][]> {
-  if (texts.length === 0) return [];
-  const key = getGoogleKey();
-  if (!key) throw new Error('GOOGLE_AI_KEY not configured');
-  const results: number[][] = [];
-  for (let offset = 0; offset < texts.length; offset += 100) {
-    const slice = texts.slice(offset, offset + 100);
-    const body = {
-      requests: slice.map(text => ({
-        model: `models/${EMBED_MODEL}`,
-        content: { parts: [{ text }] },
-        taskType,
-      })),
-    };
-    const res = await fetch(`${EMBED_ENDPOINT}/models/${EMBED_MODEL}:batchEmbedContents?key=${key}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error?.message || `Embed failed: ${res.status}`);
-    }
-    const data = await res.json();
-    for (const e of (data.embeddings || [])) results.push(e.values);
-  }
-  return results;
-}
-
-async function embedSingle(text: string, taskType = 'RETRIEVAL_QUERY'): Promise<number[]> {
-  const key = getGoogleKey();
-  if (!key) throw new Error('GOOGLE_AI_KEY not configured');
-  const res = await fetch(`${EMBED_ENDPOINT}/models/${EMBED_MODEL}:embedContent?key=${key}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: `models/${EMBED_MODEL}`,
-      content: { parts: [{ text }] },
-      taskType,
-    }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error?.message || `Embed failed: ${res.status}`);
-  }
-  const data = await res.json();
-  return data.embedding?.values || [];
-}
+// ── Embedding via shared helper (handles model fallback) ──
+const embedBatch = (texts: string[]) => embedMany(texts, 'RETRIEVAL_DOCUMENT');
+const embedSingle = (text: string) => embedOne(text, 'RETRIEVAL_QUERY');
 
 // ── Drive file fetch (google-drive.ts proxy) ──
 async function fetchDriveFileText(driveFileId: string, userId: string): Promise<string> {

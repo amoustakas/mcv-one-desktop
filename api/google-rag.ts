@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getServiceClient, requireAuth } from './_supabase.js';
+import { embedOne } from './_embeddings.js';
 
 // ---------------------------------------------------------------------------
 // Google RAG API — real semantic retrieval via pgvector + Gemini synthesis.
@@ -12,28 +13,10 @@ import { getServiceClient, requireAuth } from './_supabase.js';
 // ---------------------------------------------------------------------------
 
 const GOOGLE_AI_KEY = process.env.GOOGLE_AI_KEY || process.env.VITE_GOOGLE_AI_KEY || '';
-const EMBED_MODEL = 'text-embedding-004';
 const GEN_MODEL = 'gemini-1.5-pro';
 const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta';
 
-async function embedQuery(query: string): Promise<number[]> {
-  if (!GOOGLE_AI_KEY) throw new Error('GOOGLE_AI_KEY not configured');
-  const res = await fetch(`${ENDPOINT}/models/${EMBED_MODEL}:embedContent?key=${GOOGLE_AI_KEY}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: `models/${EMBED_MODEL}`,
-      content: { parts: [{ text: query }] },
-      taskType: 'RETRIEVAL_QUERY',
-    }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error?.message || `Embed query failed: ${res.status}`);
-  }
-  const data = await res.json();
-  return data.embedding?.values || [];
-}
+const embedQuery = (query: string) => embedOne(query, 'RETRIEVAL_QUERY');
 
 async function generateGrounded(query: string, chunks: Array<{ content: string; source?: string }>): Promise<string> {
   if (!GOOGLE_AI_KEY) throw new Error('GOOGLE_AI_KEY not configured');

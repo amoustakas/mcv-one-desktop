@@ -1,32 +1,17 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getServiceClient, requireAuth } from './_supabase.js';
+import { embedOne } from './_embeddings.js';
 
 // ---------------------------------------------------------------------------
 // Storage Meta API — Versions, Compartments, Legal Hold, RAG Chunks
 // Complements /api/storage (files) and /api/storage-audit (audit log).
 // Chunks now live in storage_chunks with pgvector embeddings; search-chunks
-// delegates to /api/rag-ingest for a query embedding + match_chunks RPC.
+// uses the shared embed helper + match_chunks RPC.
 // ---------------------------------------------------------------------------
 
-const GOOGLE_AI_KEY = process.env.GOOGLE_AI_KEY || process.env.VITE_GOOGLE_AI_KEY || '';
-const EMBED_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent';
-
 async function embedQuery(query: string): Promise<number[] | null> {
-  if (!GOOGLE_AI_KEY) return null;
-  try {
-    const r = await fetch(`${EMBED_ENDPOINT}?key=${GOOGLE_AI_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'models/text-embedding-004',
-        content: { parts: [{ text: query }] },
-        taskType: 'RETRIEVAL_QUERY',
-      }),
-    });
-    if (!r.ok) return null;
-    const d = await r.json();
-    return d.embedding?.values || null;
-  } catch { return null; }
+  try { return await embedOne(query, 'RETRIEVAL_QUERY'); }
+  catch { return null; }
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
