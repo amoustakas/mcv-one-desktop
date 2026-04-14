@@ -40,6 +40,9 @@ import { useGoogleNotifications } from './hooks/use-google-notifications';
 import { useProactiveIntelligence } from './hooks/use-proactive-intelligence';
 import ContextSidebar from './components/ContextSidebar';
 import { useInstanceRegistration } from './hooks/use-instance-registration';
+import { useWhiteLabel } from './hooks/use-white-label';
+import { useClerkVentureSync } from './hooks/use-clerk-venture-sync';
+import { ventures as builtinVentures } from './lib/ventures';
 
 // Lazy-loaded views (code splitting)
 const AegisChat = lazyRetry(() => import('./components/AegisChat'));
@@ -512,6 +515,8 @@ export default function App() {
   useDeviceProfileSync();   // Auto-activate device profiles on venture switch
   useGoogleNotifications(); // Gmail unread count + Calendar event reminders
   useProactiveIntelligence(); // Background monitoring: email age, meeting prep, overdue tasks
+  useWhiteLabel(builtinVentures); // Apply per-venture brand tokens when on custom domains
+  useClerkVentureSync();    // Flip Clerk active org to match activeVenture when venture has clerk_org_id
   const [presenceCardOpen, setPresenceCardOpen] = useState(false);
   const [contextSidebarOpen, setContextSidebarOpen] = useState(false);
   const [contextEntity, setContextEntity] = useState<{ type: string; id: string; name: string } | null>(null);
