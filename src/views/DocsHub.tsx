@@ -1,6 +1,7 @@
 import { useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Plus, Search, RefreshCw, FileText, Folder, Edit3, Save, X, ExternalLink, Trash2, Upload, Brain, ChevronRight, ChevronDown, Clock, Tag, Hash, Link2, History, FolderOpen, SortAsc, SortDesc, AlertCircle, Database, Star } from 'lucide-react';
+import { BookOpen, Plus, Search, RefreshCw, FileText, Folder, Edit3, Save, X, ExternalLink, Trash2, Upload, Brain, ChevronRight, ChevronDown, Clock, Tag, Hash, Link2, History, FolderOpen, SortAsc, SortDesc, AlertCircle, Database, Star, Sparkles, Loader2 } from 'lucide-react';
+import { useToast } from '../components/Toasts';
 import { useNavigation } from '../stores/navigation';
 import Markdown from '../components/Markdown';
 import { useDocuments, useDocument, useCreateDocument, useUpdateDocument, useDeleteDocument } from '../hooks/use-docs';
@@ -115,6 +116,8 @@ export default function DocsHub() {
   // Data — via TanStack Query hooks
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [selectedDoc, setSelectedDoc] = useState<Doc | null>(null);
+  const [indexingRag, setIndexingRag] = useState(false);
+  const { addToast } = useToast();
 
   // Editing
   const [editing, setEditing] = useState(false);
@@ -284,6 +287,31 @@ export default function DocsHub() {
         setEditing(false);
       }
     } catch { /* silent */ }
+  }
+
+  async function handleIndexForRag() {
+    if (!selectedDoc || indexingRag) return;
+    const content = selectedDoc.content || fetchedDoc?.content;
+    if (!content || content.trim().length < 20) {
+      addToast({ type: 'warning', message: 'Document has no content to index' });
+      return;
+    }
+    setIndexingRag(true);
+    try {
+      const res = await apiPost<{ success: boolean; chunk_count: number }>('/api/rag-ingest', {
+        action: 'ingest-text',
+        text: content,
+        file_id: selectedDoc.id,
+        venture_id: selectedDoc.venture_id,
+        metadata: { source: 'docs-hub', title: selectedDoc.title, doc_type: selectedDoc.doc_type },
+      });
+      addToast({ type: 'success', message: `Indexed ${res.chunk_count} chunks for RAG` });
+    } catch (err) {
+      console.error('[rag-ingest]', err);
+      addToast({ type: 'error', message: err instanceof Error ? err.message : 'Indexing failed' });
+    } finally {
+      setIndexingRag(false);
+    }
   }
 
   async function handleAskAI() {
@@ -585,6 +613,16 @@ export default function DocsHub() {
                       </>
                     ) : (
                       <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          icon={indexingRag ? <Loader2 size={12} className="dh-spin" /> : <Sparkles size={12} />}
+                          onClick={handleIndexForRag}
+                          disabled={indexingRag}
+                          title="Chunk + embed + index this document for semantic retrieval"
+                        >
+                          {indexingRag ? 'Indexing...' : 'Index for RAG'}
+                        </Button>
                         <Button variant="ghost" size="sm" icon={<Edit3 size={12} />} onClick={handleStartEdit}>Edit</Button>
                         <Button variant="ghost" size="sm" onClick={() => { setSelectedDoc(null); setEditing(false); }} title="Close"><X size={14} /></Button>
                       </>
