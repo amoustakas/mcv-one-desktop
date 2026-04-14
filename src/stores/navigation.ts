@@ -117,6 +117,8 @@ export type ViewId =
   // Epic pipeline (NAOS-driven build flywheel)
   | 'epics'
   | 'venture-epics'
+  // Per-venture integrations panel (Stripe Connect, Plaid, R2, Comms, etc.)
+  | 'venture-integrations'
   // Departmental Command Suites (global toolbox + dedicated per-department surfaces)
   | 'suite-command-bridge'
   | 'suite-creative-studio'

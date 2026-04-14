@@ -174,6 +174,7 @@ const ventureSections: NavSection[] = [
       { id: 'venture-growth', label: 'Growth' },
       { id: 'venture-tasks', label: 'Tasks' },
       { id: 'venture-epics', label: 'Epics' },
+      { id: 'venture-integrations', label: 'Integrations' },
       { id: 'venture-operations', label: 'Operations' },
     ],
   },

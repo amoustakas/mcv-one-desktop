@@ -54,6 +54,7 @@ const GrowthView = lazyRetry(() => import('./views/GrowthView'));
 const TasksView = lazyRetry(() => import('./views/TasksView'));
 const EpicBoardView = lazyRetry(() => import('./views/EpicBoardView'));
 const SuiteView = lazyRetry(() => import('./views/suites/SuiteView'));
+const VentureIntegrationsView = lazyRetry(() => import('./views/VentureIntegrationsView'));
 const CRMView = lazyRetry(() => import('./views/CRMView'));
 const ForgeView = lazyRetry(() => import('./views/ForgeView'));
 const DocsHub = lazyRetry(() => import('./views/DocsHub'));
@@ -269,6 +270,8 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <TasksView />;
     case 'venture-epics':
       return <EpicBoardView />;
+    case 'venture-integrations':
+      return <VentureIntegrationsView />;
     case 'venture-profile':
       return <VentureProfile venture={venture} />;
     case 'venture-settings':
