@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useWorkspaceStore } from '../stores/workspace';
+import { useClerk, useUser } from '@clerk/clerk-react';
 import {
-  Settings, ChevronLeft, ChevronRight, ChevronDown,
+  Settings, ChevronLeft, ChevronRight, ChevronDown, LogOut,
 } from 'lucide-react';
 import { useNavigation, type ViewId } from '../stores/navigation';
 import { useVentureContextStore } from '../stores/venture-context';
@@ -245,12 +246,13 @@ export default function NavRail() {
         })}
       </div>
 
-      {/* Bottom: Settings + Expand toggle */}
+      {/* Bottom: Settings + Sign Out + Expand toggle */}
       <div className="rail-bottom">
         <button className={cn('rail-btn', activeView === 'settings' && 'active')} onClick={() => setView('settings')} title="Settings">
           <Settings size={16} />
           {expanded && <span className="rail-text">Settings</span>}
         </button>
+        <SignOutButton expanded={expanded} />
         <button className="rail-toggle" onClick={() => setExpanded((e) => !e)} title={expanded ? 'Collapse' : 'Expand'}>
           {expanded ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
         </button>
@@ -258,5 +260,35 @@ export default function NavRail() {
 
       {/* NavRail CSS extracted to src/styles/shell.css */}
     </nav>
+  );
+}
+
+// ── Sign-out button ──────────────────────────────────────────────
+// Shows name/email when expanded, always shows the logout icon.
+function SignOutButton({ expanded }: { expanded: boolean }) {
+  const clerk = useClerk();
+  const { user, isLoaded } = useUser();
+  if (!isLoaded) return null;
+  const label = user?.primaryEmailAddress?.emailAddress
+    || user?.fullName
+    || user?.firstName
+    || 'Sign out';
+  const handle = async () => {
+    if (!confirm('Sign out of MCV One?')) return;
+    try { await clerk.signOut(); } catch { /* best effort */ }
+  };
+  return (
+    <button
+      className="rail-btn"
+      onClick={handle}
+      title={`Sign out${user ? ` (${label})` : ''}`}
+    >
+      <LogOut size={16} />
+      {expanded && (
+        <span className="rail-text" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          Sign out
+        </span>
+      )}
+    </button>
   );
 }

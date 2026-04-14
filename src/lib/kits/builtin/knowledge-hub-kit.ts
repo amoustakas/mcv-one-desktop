@@ -314,7 +314,26 @@ export const manifest: KitManifest = {
   capabilities: ['network', 'supabase', 'storage', 'llm'],
   runtime: 'inline',
   ventureScope: '*',
-  instructions: `Use knowledge_search for any cross-system search — it queries Memory, Documents, Files, RAG, and Drive in parallel and unifies results. Use knowledge_ingest to save content to the appropriate system (defaults to document). Use knowledge_remember for quick factoid saves. Use knowledge_venture_summary to see the full knowledge state for a venture.`,
+  instructions: `You have direct access to Tony's organizational knowledge base (MCV One + 7 ventures).
+
+WHEN TO CALL:
+- Any question referencing "my docs", "our docs", "the spec", a venture name (BetEdge, FutureState, WarForge, MCV GG, EdgeIQ, ARQ Labs), a project codename, a person, or requests starting with "what does the ... say about" / "find me" / "what did we decide about" / "summarize our":
+  -> call knowledge_synthesize FIRST. It retrieves the most-relevant chunks via pgvector cosine similarity and returns a Gemini-grounded answer with [1][2] citations. This is almost always the best tool for business-knowledge questions.
+
+- For broad cross-system exploration (scan Memory + Docs + Files + RAG + Drive in parallel without synthesis): knowledge_search.
+
+- For raw ranked chunks without synthesis (when you want to render them yourself or pick the most relevant manually): knowledge_semantic_search.
+
+- To save a new fact/insight the user just told you: knowledge_remember (short) or knowledge_ingest (longer content; specify target=memory|document|rag).
+
+- To index new text into the semantic corpus (one-time content without a file): knowledge_index_file with the content.
+
+- To show the state of the knowledge base: knowledge_venture_summary.
+
+HEURISTICS:
+- Prefer knowledge_synthesize over knowledge_search when the user wants an answer (not a list).
+- Always pass venture_id when it's obvious from context.
+- If the answer looks generic/web-sourced, cite that you didn't find corpus matches — don't fabricate citations.`,
   tools: [
     {
       name: 'knowledge_search',
