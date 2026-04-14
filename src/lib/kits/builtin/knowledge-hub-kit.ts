@@ -215,6 +215,62 @@ const ventureKnowledgeSummary: KitToolHandler = async (input, ctx) => {
   };
 };
 
+// ─── Semantic chunk search via storage-meta ──────────────────────
+const semanticSearch: KitToolHandler = async (input, ctx) => {
+  const query = input.query as string;
+  const corpusId = input.corpus_id as string | undefined;
+  const ventureId = (input.venture_id as string) || ctx.ventureId;
+  const limit = (input.limit as number) || 10;
+  if (!query) return { success: false, error: 'query required' };
+
+  const data = await postJson('/api/storage-meta', {
+    action: 'search-chunks', query, corpus_id: corpusId, venture_id: ventureId, limit,
+  }, ctx);
+
+  const matches = data.matches || [];
+  const md: string[] = [`## Semantic Search: "${query}"\n`, `Found ${data.total || matches.length} matches\n`];
+  for (const m of matches.slice(0, 5)) {
+    md.push(`- *${m.file_id.slice(0, 16)}...* (score: ${m.score.toFixed(2)}): ${m.chunk_text.slice(0, 200)}`);
+  }
+
+  return { success: true, data: matches, displayMarkdown: md.join('\n') };
+};
+
+// ─── Index file chunks for RAG ───────────────────────────────────
+const indexFileChunks: KitToolHandler = async (input, ctx) => {
+  const fileId = input.file_id as string;
+  const content = input.content as string;
+  const corpusId = input.corpus_id as string | undefined;
+  const chunkSize = (input.chunk_size as number) || 500;
+
+  if (!fileId || !content) return { success: false, error: 'file_id + content required' };
+
+  // Simple sentence-aware chunker (token-aware would use tiktoken)
+  const chunks: Array<{ text: string; index: number }> = [];
+  const sentences = content.match(/[^.!?]+[.!?]+\s*/g) || [content];
+  let current = '';
+  let index = 0;
+  for (const s of sentences) {
+    if ((current + s).length > chunkSize && current) {
+      chunks.push({ text: current.trim(), index: index++ });
+      current = s;
+    } else {
+      current += s;
+    }
+  }
+  if (current.trim()) chunks.push({ text: current.trim(), index });
+
+  const data = await postJson('/api/storage-meta', {
+    action: 'chunk-file', file_id: fileId, corpus_id: corpusId, chunks,
+  }, ctx);
+
+  return {
+    success: true,
+    data: { chunk_count: data.chunk_count },
+    displayMarkdown: `Indexed **${data.chunk_count}** chunks from file${corpusId ? ` to corpus \`${corpusId}\`` : ''}.`,
+  };
+};
+
 // ─── Remember — shortcut to save an insight/fact ──────────────────
 const rememberFact: KitToolHandler = async (input, ctx) => {
   const fact = input.fact as string;
@@ -300,6 +356,34 @@ export const manifest: KitManifest = {
         },
       },
     },
+    {
+      name: 'knowledge_semantic_search',
+      description: 'Semantic chunk search across indexed file content. Returns ranked matches with scores.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Search query' },
+          corpus_id: { type: 'string', description: 'Specific corpus to search (optional)' },
+          venture_id: { type: 'string', description: 'Venture scope' },
+          limit: { type: 'number', description: 'Max results (default: 10)' },
+        },
+        required: ['query'],
+      },
+    },
+    {
+      name: 'knowledge_index_file',
+      description: 'Index a file\'s content as chunks for semantic retrieval. Auto-chunks at sentence boundaries.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          file_id: { type: 'string', description: 'File ID to index' },
+          content: { type: 'string', description: 'Text content to chunk' },
+          corpus_id: { type: 'string', description: 'Corpus to add chunks to (optional)' },
+          chunk_size: { type: 'number', description: 'Max chunk size in chars (default: 500)' },
+        },
+        required: ['file_id', 'content'],
+      },
+    },
   ],
 };
 
@@ -308,4 +392,6 @@ export const handlers: Record<string, KitToolHandler> = {
   knowledge_ingest: ingestToKnowledge,
   knowledge_remember: rememberFact,
   knowledge_venture_summary: ventureKnowledgeSummary,
+  knowledge_semantic_search: semanticSearch,
+  knowledge_index_file: indexFileChunks,
 };

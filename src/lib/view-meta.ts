@@ -56,6 +56,7 @@ export const VIEW_ICONS: Record<string, LucideIcon> = {
   sheets: Table, 'google-docs': FileEdit, 'google-tasks': ListTodo,
   'contact-center': Phone, 'compliance-hub': Shield,
   'knowledge-hub': Brain,
+  'audit-log': Shield,
 };
 
 // ── Label map ──
@@ -97,6 +98,7 @@ export const VIEW_LABELS: Record<string, string> = {
   sheets: 'Sheets', 'google-docs': 'Docs', 'google-tasks': 'Tasks',
   'contact-center': 'Contact Center', 'compliance-hub': 'Compliance',
   'knowledge-hub': 'Knowledge Hub',
+  'audit-log': 'Audit Log',
 };
 
 // ── View categories for color accents ──
@@ -117,7 +119,7 @@ const CATEGORY_MAP: Record<ViewCategory, ViewId[]> = {
   ],
   growth: ['crm', 'growth', 'comms-hub', 'ad-studio', 'venture-growth', 'contact-center'],
   intelligence: ['intelligence', 'treasury', 'signals', 'memory', 'portfolio', 'knowledge-hub'],
-  operations: ['tasks', 'docs', 'files', 'team', 'pipeline', 'venture-tasks', 'venture-docs', 'venture-operations', 'venture-workspace', 'settings', 'venture-settings', 'venture-onboarding', 'venture-profile', 'venture-dashboard', 'gmail', 'calendar', 'drive', 'sheets', 'google-docs', 'google-tasks'],
+  operations: ['tasks', 'docs', 'files', 'team', 'pipeline', 'venture-tasks', 'venture-docs', 'venture-operations', 'venture-workspace', 'settings', 'venture-settings', 'venture-onboarding', 'venture-profile', 'venture-dashboard', 'gmail', 'calendar', 'drive', 'sheets', 'google-docs', 'google-tasks', 'audit-log'],
   devices: ['device-hub', 'stream-deck', 'audio-router', 'connected-sessions'],
 };
 

@@ -71,6 +71,7 @@ const globalSections: NavSection[] = [
       { id: 'files', label: 'Files' },
       { id: 'team', label: 'Team' },
       { id: 'pipeline', label: 'Pipeline' },
+      { id: 'audit-log', label: 'Audit Log' },
     ],
   },
   {

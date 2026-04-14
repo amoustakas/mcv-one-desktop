@@ -112,7 +112,8 @@ export type ViewId =
   | 'contact-center'
   | 'compliance-hub'
   // Knowledge Hub
-  | 'knowledge-hub';
+  | 'knowledge-hub'
+  | 'audit-log';
 
 export type ContextMode = 'global' | 'venture';
 
@@ -192,6 +193,7 @@ const VIEW_LABELS: Record<string, string> = {
   sheets: 'Sheets', 'google-docs': 'Docs', 'google-tasks': 'Tasks',
   'contact-center': 'Contact Center', 'compliance-hub': 'Compliance',
   'knowledge-hub': 'Knowledge Hub',
+  'audit-log': 'Audit Log',
 };
 
 export const useNavigation = create<NavigationState>()(
