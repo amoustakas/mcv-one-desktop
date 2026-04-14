@@ -23,6 +23,7 @@ import {
   TopCustomersCard,
   CashflowMicroPanel,
   OrderStatusGrid,
+  CohortGrid,
   type AttentionItem,
   type VentureRollup,
 } from '../components/command-center';
@@ -196,6 +197,11 @@ export default function CommandCenter() {
       <div className="cc-row cc-row-split">
         <CashflowMicroPanel ventureMetrics={ventureMetrics} />
         <OrderStatusGrid ventureMetrics={ventureMetrics} />
+      </div>
+
+      {/* Customer Cohort Grid — heatmap by signup month */}
+      <div className="cc-row">
+        <CohortGrid />
       </div>
 
       {/* Main grid: Agent Activity + Quick Actions + Live Feeds */}

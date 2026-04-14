@@ -9,3 +9,4 @@ export { default as QuickActionsPalette } from './QuickActionsPalette';
 export { default as TopCustomersCard } from './TopCustomersCard';
 export { default as CashflowMicroPanel } from './CashflowMicroPanel';
 export { default as OrderStatusGrid } from './OrderStatusGrid';
+export { default as CohortGrid } from './CohortGrid';

@@ -18,7 +18,9 @@ import {
   usePipelineStats,
 } from '../hooks/use-crm';
 import type { Contact } from '../lib/schemas/crm';
-import { PageHeader, Button, GlassCard, Badge, StatCard, Tabs, EmptyState, GridLayout } from '../components/ui';
+import { PageHeader, Button, GlassCard, Badge, StatCard, Tabs, EmptyState, GridLayout, BulkActionBar } from '../components/ui';
+import type { BulkAction } from '../components/ui';
+import { Tag as TagIcon, ArrowRightCircle } from 'lucide-react';
 import { timeAgo, formatMoney, formatDate } from '../lib/utils';
 import ContextCommsMenu from '../components/ContextCommsMenu';
 
@@ -273,7 +275,22 @@ export default function CRMView() {
   const { data: pipelineData = [] } = usePipelineStats(ventureFilter || undefined);
 
   const createContactMut = useCreateContact();
+  const updateContactMut = useUpdateContact();
   const deleteContactMut = useDeleteContact();
+  const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
+
+  const toggleContactSelected = (id: string) => {
+    setSelectedContactIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const promptBulkTag = (): string | null => {
+    const t = window.prompt('Tag to add to selected contacts:');
+    return t?.trim() || null;
+  };
+  const promptBulkType = (): string | null => {
+    const t = window.prompt('New type for selected contacts (lead/prospect/client/partner/investor/vendor):');
+    return t?.trim().toLowerCase() || null;
+  };
   const createDealMut = useCreateDeal();
   const updateDealMut = useUpdateDeal();
   const deleteDealMut = useDeleteDeal();
@@ -299,6 +316,82 @@ export default function CRMView() {
     if (selectedContact?.id === id) setSelectedContact(null);
     toast('info', 'Contact deleted');
   }
+
+  const contactBulkActions: BulkAction[] = [
+    {
+      id: 'tag',
+      label: 'Add Tag',
+      icon: <TagIcon size={12} />,
+      onRun: async (ids) => {
+        const tag = promptBulkTag();
+        if (!tag) return;
+        for (const id of ids) {
+          const c = contacts.find((x: Contact) => x.id === id);
+          if (!c) continue;
+          const tags = Array.from(new Set([...(c.tags || []), tag]));
+          try { await updateContactMut.mutateAsync({ id, tags }); } catch { /* skip */ }
+        }
+        toast('success', `Tagged ${ids.length} contact${ids.length === 1 ? '' : 's'} with "${tag}"`);
+      },
+    },
+    {
+      id: 'change-type',
+      label: 'Change Type',
+      icon: <ArrowRightCircle size={12} />,
+      onRun: async (ids) => {
+        const type = promptBulkType();
+        if (!type) return;
+        const valid = ['lead', 'prospect', 'client', 'partner', 'investor', 'vendor'];
+        if (!valid.includes(type)) {
+          toast('error', `Invalid type. Must be one of: ${valid.join(', ')}`);
+          return;
+        }
+        for (const id of ids) {
+          try { await updateContactMut.mutateAsync({ id, type: type as Contact['type'] }); } catch { /* skip */ }
+        }
+        toast('success', `Updated ${ids.length} contact${ids.length === 1 ? '' : 's'} to ${type}`);
+      },
+    },
+    {
+      id: 'export',
+      label: 'Export CSV',
+      icon: <FileText size={12} />,
+      onRun: (ids) => {
+        const rows = contacts
+          .filter((c: Contact) => ids.includes(c.id))
+          .map((c: Contact) =>
+            [c.name, c.email || '', c.company || '', c.role || '', c.type, c.phone || '', (c.tags || []).join('; ')]
+              .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+              .join(','),
+          );
+        const csv = ['"Name","Email","Company","Role","Type","Phone","Tags"', ...rows].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `contacts-export-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast('success', `Exported ${ids.length} contacts to CSV`);
+      },
+    },
+    {
+      id: 'delete',
+      label: 'Delete',
+      icon: <Trash2 size={12} />,
+      danger: true,
+      confirm: true,
+      onRun: async (ids) => {
+        for (const id of ids) {
+          try { await deleteContactMut.mutateAsync(id); } catch { /* skip */ }
+        }
+        if (selectedContact && ids.includes(selectedContact.id)) setSelectedContact(null);
+        toast('info', `Deleted ${ids.length} contact${ids.length === 1 ? '' : 's'}`);
+      },
+    },
+  ];
 
   function handleUpdateDealStage(dealId: string, newStage: string) {
     updateDealMut.mutate({ id: dealId, stage: newStage });
@@ -441,6 +534,19 @@ export default function CRMView() {
           {tab === 'contacts' && (
             <div className="crm-table">
               <div className="crm-table-header">
+                <span className="crm-col-check">
+                  <input
+                    type="checkbox"
+                    checked={filteredContacts.length > 0 && selectedContactIds.length === filteredContacts.length}
+                    ref={(el) => { if (el) el.indeterminate = selectedContactIds.length > 0 && selectedContactIds.length < filteredContacts.length; }}
+                    onChange={(e) => {
+                      if (e.target.checked) setSelectedContactIds(filteredContacts.map((c: Contact) => c.id));
+                      else setSelectedContactIds([]);
+                    }}
+                    aria-label="Select all visible contacts"
+                    style={{ accentColor: 'var(--cyan)' }}
+                  />
+                </span>
                 <span>Name</span><span>Company</span><span>Type</span><span>Email</span><span>Tags</span><span>Last Contact</span><span></span>
               </div>
               <motion.div variants={staggerContainer} initial="hidden" animate="show">
@@ -448,11 +554,20 @@ export default function CRMView() {
                   <motion.div
                     key={c.id}
                     variants={fadeInUp}
-                    className={`crm-table-row crm-row-hoverlift ${selectedContact?.id === c.id ? 'selected' : ''}`}
+                    className={`crm-table-row crm-row-hoverlift ${selectedContact?.id === c.id ? 'selected' : ''} ${selectedContactIds.includes(c.id) ? 'crm-row-bulk-selected' : ''}`}
                     onClick={() => setSelectedContact(c)}
                     whileHover={{ y: -2, boxShadow: '0 4px 20px rgba(0,245,255,0.08)' }}
                     transition={{ duration: 0.15 }}
                   >
+                    <span className="crm-col-check" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedContactIds.includes(c.id)}
+                        onChange={() => toggleContactSelected(c.id)}
+                        aria-label={`Select ${c.name}`}
+                        style={{ accentColor: 'var(--cyan)' }}
+                      />
+                    </span>
                     <span className="crm-name">
                       <span className="crm-avatar-sm" style={{ background: TYPE_COLORS[c.type] || '#6B7280' }}>{c.name.charAt(0).toUpperCase()}</span>
                       {c.name}{c.role && <span className="crm-role">{c.role}</span>}
@@ -471,6 +586,16 @@ export default function CRMView() {
                 ))}
               </motion.div>
               {filteredContacts.length === 0 && !loading && <EmptyState icon={<Users size={20} />} title="No contacts match your search." />}
+
+              <BulkActionBar
+                selectedIds={selectedContactIds}
+                onClear={() => setSelectedContactIds([])}
+                actions={contactBulkActions}
+                totalCount={filteredContacts.length}
+                onSelectAll={() => setSelectedContactIds(filteredContacts.map((c: Contact) => c.id))}
+                placement="floating"
+                label={(n) => `${n} contact${n === 1 ? '' : 's'} selected`}
+              />
             </div>
           )}
 
@@ -684,10 +809,13 @@ export default function CRMView() {
 
         /* Contact Table */
         .crm-table { overflow-y:auto; height:100%; }
-        .crm-table-header { display:grid; grid-template-columns:1.5fr 1fr 80px 1.2fr 100px 80px 30px; gap:8px; padding:6px 12px; font-size:10px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--border); position:sticky; top:0; background:var(--bg-deep); z-index:1; }
-        .crm-table-row { display:grid; grid-template-columns:1.5fr 1fr 80px 1.2fr 100px 80px 30px; gap:8px; padding:8px 12px; border-bottom:1px solid var(--border); align-items:center; font-size:12px; transition:background 0.1s; cursor:pointer; }
+        .crm-table-header { display:grid; grid-template-columns:24px 1.5fr 1fr 80px 1.2fr 100px 80px 30px; gap:8px; padding:6px 12px; font-size:10px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--border); position:sticky; top:0; background:var(--bg-deep); z-index:1; align-items:center; }
+        .crm-table-row { display:grid; grid-template-columns:24px 1.5fr 1fr 80px 1.2fr 100px 80px 30px; gap:8px; padding:8px 12px; border-bottom:1px solid var(--border); align-items:center; font-size:12px; transition:background 0.1s; cursor:pointer; }
         .crm-table-row:hover { background:var(--bg-card); }
         .crm-table-row.selected { background:rgba(0,240,255,0.05); border-left:2px solid var(--cyan); }
+        .crm-row-bulk-selected { background: rgba(0, 240, 255, 0.06) !important; box-shadow: inset 0 0 0 1px rgba(0, 240, 255, 0.25); }
+        .crm-col-check { display: inline-flex; align-items: center; justify-content: center; }
+        .crm-col-check input { cursor: pointer; }
         .crm-name { font-weight:500; display:flex; align-items:center; gap:8px; }
         .crm-avatar-sm { width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:var(--bg-deep); flex-shrink:0; }
         .crm-role { font-size:10px; color:var(--text-muted); margin-left:4px; }

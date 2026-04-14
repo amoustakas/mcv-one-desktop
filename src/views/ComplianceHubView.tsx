@@ -337,6 +337,18 @@ export default function ComplianceHubView() {
             onToggle={(id, enabled) => { console.log('Toggle dunning', id, enabled); }}
             onPauseInvocation={(cid, iid) => { console.log('Pause invocation', cid, iid); }}
             onResumeInvocation={(cid, iid) => { console.log('Resume invocation', cid, iid); }}
+            onRunNow={async (cid) => {
+              try {
+                const res = await fetch('/api/dunning-cron/run', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ campaign_id: cid }),
+                });
+                if (!res.ok) throw new Error(await res.text());
+              } catch (err) {
+                console.warn('Run Now stub — wire when /api/dunning-cron/run lands:', err);
+              }
+            }}
           />
         )}
       </Suspense>

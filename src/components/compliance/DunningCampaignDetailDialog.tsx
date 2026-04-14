@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { TrendingDown, Mail, MessageSquare, Phone, Clock, Plus, Trash2, Save, Play, Pause, ArrowDown } from 'lucide-react';
+import { TrendingDown, Mail, MessageSquare, Phone, Clock, Plus, Trash2, Save, Play, Pause, ArrowDown, Zap, RefreshCw } from 'lucide-react';
 import { Dialog, DialogActions, Button, Badge, SectionCard, FormField, Input, Select, Switch, Tooltip, Slider } from '../ui';
 import { formatCurrency, timeAgo } from '../../lib/utils';
 
@@ -46,6 +46,12 @@ export interface DunningCampaignLike {
   };
   created_at?: string;
   updated_at?: string;
+  // Cron-driven executor status (populated by /api/dunning-cron)
+  last_run_at?: string;
+  last_run_status?: 'success' | 'partial' | 'error';
+  last_run_invocations_processed?: number;
+  next_run_at?: string;
+  cron_schedule?: string; // e.g. '0 */6 * * *' (every 6h)
 }
 
 const CHANNEL_META: Record<DunningChannel, { label: string; icon: React.ElementType; color: string }> = {
@@ -71,6 +77,7 @@ export default function DunningCampaignDetailDialog({
   onToggle,
   onPauseInvocation,
   onResumeInvocation,
+  onRunNow,
 }: {
   open: boolean;
   onClose: () => void;
@@ -79,8 +86,10 @@ export default function DunningCampaignDetailDialog({
   onToggle?: (id: string, enabled: boolean) => void | Promise<void>;
   onPauseInvocation?: (campaignId: string, invocationId: string) => void | Promise<void>;
   onResumeInvocation?: (campaignId: string, invocationId: string) => void | Promise<void>;
+  onRunNow?: (campaignId: string) => void | Promise<void>;
 }) {
   const [draft, setDraft] = useState<DunningCampaignLike | null>(campaign);
+  const [running, setRunning] = useState(false);
 
   useMemo(() => setDraft(campaign), [campaign]);
 
@@ -360,6 +369,89 @@ export default function DunningCampaignDetailDialog({
             />
           </SectionCard>
 
+          <SectionCard
+            title="Cron Executor"
+            icon={<Zap size={14} />}
+            description={draft.cron_schedule ? `Schedule: ${draft.cron_schedule}` : 'Server-side cron processes due invocations'}
+            padding="md"
+          >
+            <dl className="dn-stats">
+              <div>
+                <dt>Last run</dt>
+                <dd>
+                  {draft.last_run_at ? (
+                    <Tooltip content={new Date(draft.last_run_at).toLocaleString()}>
+                      <span style={{
+                        color:
+                          draft.last_run_status === 'success' ? 'var(--success)' :
+                          draft.last_run_status === 'error' ? 'var(--error)' :
+                          draft.last_run_status === 'partial' ? 'var(--warning)' :
+                          'var(--text-primary)'
+                      }}>
+                        {timeAgo(draft.last_run_at)}
+                      </span>
+                    </Tooltip>
+                  ) : (
+                    <span style={{ color: 'var(--text-muted)' }}>Never</span>
+                  )}
+                </dd>
+              </div>
+              {draft.last_run_status && (
+                <div>
+                  <dt>Last status</dt>
+                  <dd>
+                    <Badge
+                      size="sm"
+                      color={
+                        draft.last_run_status === 'success' ? '#10B981' :
+                        draft.last_run_status === 'error' ? '#EF4444' :
+                        '#F59E0B'
+                      }
+                    >
+                      {draft.last_run_status}
+                    </Badge>
+                  </dd>
+                </div>
+              )}
+              {draft.last_run_invocations_processed !== undefined && (
+                <div>
+                  <dt>Invocations processed</dt>
+                  <dd>{draft.last_run_invocations_processed.toLocaleString()}</dd>
+                </div>
+              )}
+              <div>
+                <dt>Next run</dt>
+                <dd>
+                  {draft.next_run_at ? (
+                    <Tooltip content={new Date(draft.next_run_at).toLocaleString()}>
+                      <span style={{ color: 'var(--cyan)' }}>{timeAgo(draft.next_run_at)}</span>
+                    </Tooltip>
+                  ) : enabled ? (
+                    <span style={{ color: 'var(--text-muted)' }}>Pending schedule</span>
+                  ) : (
+                    <span style={{ color: 'var(--text-muted)' }}>Paused</span>
+                  )}
+                </dd>
+              </div>
+            </dl>
+            {onRunNow && (
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<RefreshCw size={12} className={running ? 'mcv-spin' : undefined} />}
+                onClick={async () => {
+                  if (!onRunNow) return;
+                  setRunning(true);
+                  try { await onRunNow(draft.id); } finally { setRunning(false); }
+                }}
+                disabled={running || !enabled}
+                className="dn-run-now"
+              >
+                {running ? 'Running…' : 'Run Now'}
+              </Button>
+            )}
+          </SectionCard>
+
           {stats && (
             <SectionCard title="Performance" icon={<TrendingDown size={14} />} padding="md">
               <dl className="dn-stats">
@@ -446,6 +538,7 @@ export default function DunningCampaignDetailDialog({
         .dn-stats > div { display: flex; justify-content: space-between; gap: 8px; }
         .dn-stats dt { color: var(--text-muted); }
         .dn-stats dd { color: var(--text-primary); font-family: var(--font-mono); font-weight: 600; }
+        .dn-run-now { width: 100%; margin-top: 10px; }
       `}</style>
     </Dialog>
   );

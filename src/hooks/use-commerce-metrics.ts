@@ -117,6 +117,42 @@ export interface CommerceTimeseriesResponse {
   series: TimeseriesPoint[];
 }
 
+// ─── Cohort ───────────────────────────────────────────────────
+
+export interface CohortBucket {
+  cohort: string; // YYYY-MM
+  count: number;
+  revenue: number;
+  avg_ltv: number;
+  total_orders: number;
+}
+
+export interface CohortResponse {
+  venture_id: string;
+  cohorts: CohortBucket[];
+}
+
+const cohortKey = (ventureId: string | 'all') => ['commerce-metrics', 'cohort', ventureId] as const;
+
+/**
+ * Fetch the customer cohort grid (signup-month buckets with count, revenue,
+ * avg LTV, total orders). Single global query — most users want the
+ * portfolio view, and per-venture cohorts can be slow with many ventures.
+ */
+export function useCommerceCohorts(ventureId: string | 'all' = 'all') {
+  return useQuery({
+    queryKey: cohortKey(ventureId),
+    queryFn: async () => {
+      const params = new URLSearchParams({ action: 'cohort' });
+      if (ventureId !== 'all') params.set('venture_id', ventureId);
+      return apiGet<CohortResponse>(`${METRICS_BASE}?${params}`);
+    },
+    staleTime: 10 * 60_000,
+    refetchInterval: 30 * 60_000,
+    retry: 1,
+  });
+}
+
 /**
  * Fetch daily revenue/orders timeseries for every venture in parallel.
  * Used by VentureRollupGrid to render a 30-day revenue sparkline per
