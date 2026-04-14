@@ -60,12 +60,11 @@ export default function VentureDocsPanel({ venture }: { venture: Venture }) {
   async function refresh() {
     setLoading(true);
     try {
-      const [docsData, tplData] = await Promise.all([
-        apiPost<{ docs: VentureDoc[] }>('/api/ventures', { action: 'list-docs', venture_id: venture.id }),
-        apiPost<{ templates: DocTemplate[] }>('/api/doc-templates', { action: 'list' }).catch(() => ({ templates: [] })),
-      ]);
+      const docsData = await apiPost<{ docs: VentureDoc[] }>('/api/ventures', { action: 'list-docs', venture_id: venture.id });
       setDocs(docsData.docs || []);
-      setTemplates(tplData.templates || []);
+      // Templates are loaded on-demand via apply — listing the registry here
+      // was generating a 404 on /api/doc-templates which doesn't exist yet.
+      setTemplates([]);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load docs');
