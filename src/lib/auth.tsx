@@ -1,6 +1,7 @@
 import { ClerkProvider, SignIn, useAuth, useUser, UserButton } from '@clerk/clerk-react';
 import { type ReactNode, useState, useEffect } from 'react';
 import { setAuthTokenGetter } from './api';
+import { useKitStore } from '../stores/kits';
 
 const CLERK_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || '';
 
@@ -28,6 +29,19 @@ function AuthGate({ children }: { children: ReactNode }) {
       setAuthTokenGetter(() => getToken());
     }
   }, [isSignedIn, getToken]);
+
+  // Hydrate Kit enable/disable preferences from Supabase once signed in.
+  // Store's syncFromSupabase is a no-op if the user has no saved prefs yet.
+  useEffect(() => {
+    if (isSignedIn) {
+      // Tiny delay lets the token getter get registered first, so the
+      // /api/user-kits call goes through with the Bearer token attached.
+      const t = setTimeout(() => {
+        void useKitStore.getState().syncFromSupabase();
+      }, 100);
+      return () => clearTimeout(t);
+    }
+  }, [isSignedIn]);
 
   // Sync Clerk user to Supabase team_members
   useEffect(() => {

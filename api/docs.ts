@@ -1,6 +1,83 @@
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { embedMany } from './_embeddings.js';
+
+// ---------------------------------------------------------------------------
+// Auto-index helper — chunks doc content, embeds, upserts into storage_chunks.
+// Called fire-and-forget after create/update so the response stays fast.
+// Skips docs shorter than 50 chars to avoid embedding trivial notes.
+// ---------------------------------------------------------------------------
+const CHARS_PER_TOKEN = 4;
+const AUTO_INDEX_MIN_CHARS = 50;
+
+function chunkForIndex(text: string, maxTokens = 512, overlap = 50): { text: string; tokenCount: number }[] {
+  const maxChars = maxTokens * CHARS_PER_TOKEN;
+  const clean = text.replace(/\r\n/g, '\n').trim();
+  if (!clean) return [];
+  const sentences = clean.match(/[^.!?\n]+[.!?\n]+\s*/g) || [clean];
+  const chunks: { text: string; tokenCount: number }[] = [];
+  let buf = '';
+  const flush = () => {
+    const t = buf.trim();
+    if (!t) return;
+    chunks.push({ text: t, tokenCount: Math.ceil(t.length / CHARS_PER_TOKEN) });
+    buf = overlap > 0 ? t.slice(-overlap * CHARS_PER_TOKEN) + ' ' : '';
+  };
+  for (const s of sentences) {
+    if (s.length > maxChars) {
+      if (buf.trim()) flush();
+      for (let i = 0; i < s.length; i += (maxChars - overlap * CHARS_PER_TOKEN)) {
+        const slice = s.slice(i, i + maxChars).trim();
+        if (slice) chunks.push({ text: slice, tokenCount: Math.ceil(slice.length / CHARS_PER_TOKEN) });
+      }
+      buf = '';
+      continue;
+    }
+    if ((buf.length + s.length) > maxChars && buf.trim()) flush();
+    buf += s;
+  }
+  if (buf.trim()) flush();
+  return chunks;
+}
+
+async function autoIndexDoc(doc: {
+  id: string; title: string; content?: string | null;
+  venture_id?: string; doc_type?: string;
+}) {
+  const content = doc.content || '';
+  if (content.trim().length < AUTO_INDEX_MIN_CHARS) return;
+  try {
+    const chunks = chunkForIndex(content);
+    if (chunks.length === 0) return;
+    const embeddings = await embedMany(chunks.map(c => c.text), 'RETRIEVAL_DOCUMENT');
+    // Clear previous chunks for this doc, then insert fresh.
+    await supabase.from('storage_chunks').delete().eq('file_id', doc.id);
+    const rows = chunks.map((c, i) => ({
+      file_id: doc.id,
+      venture_id: doc.venture_id ?? null,
+      corpus_id: null,
+      chunk_index: i,
+      content: c.text,
+      embedding: embeddings[i],
+      token_count: c.tokenCount,
+      metadata: { source: 'docs', title: doc.title, doc_type: doc.doc_type || 'note' },
+    }));
+    // Insert in batches of 100 to stay under PostgREST payload limits.
+    for (let i = 0; i < rows.length; i += 100) {
+      await supabase.from('storage_chunks').insert(rows.slice(i, i + 100));
+    }
+    await supabase.from('storage_audit_log').insert({
+      user_id: 'system', file_id: doc.id, venture_id: doc.venture_id ?? null,
+      action: 'rag_auto_index', details: { chunks: chunks.length, doc_type: doc.doc_type },
+    });
+  } catch (err) {
+    // Never fail the user request because indexing hit a snag. Log to console
+    // for Vercel runtime logs so we can diagnose later.
+    // eslint-disable-next-line no-console
+    console.error('[docs auto-index]', doc.id, err instanceof Error ? err.message : err);
+  }
+}
 
 async function requireAuth(req: VercelRequest, res: VercelResponse): Promise<string | null> {
   const secretKey = process.env.CLERK_SECRET_KEY;
@@ -80,6 +157,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .single();
 
         if (error) throw error;
+        // Fire-and-forget auto-index so the response isn't blocked by embeds.
+        void autoIndexDoc({
+          id: data.id, title: data.title, content: data.content,
+          venture_id: data.venture_id, doc_type: data.doc_type,
+        });
         return res.json({ document: data });
       }
 
@@ -96,6 +178,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .single();
 
         if (error) throw error;
+        // Re-index if content was part of the update (title/content changes only).
+        if ('content' in updates || 'title' in updates) {
+          void autoIndexDoc({
+            id: data.id, title: data.title, content: data.content,
+            venture_id: data.venture_id, doc_type: data.doc_type,
+          });
+        }
         return res.json({ document: data });
       }
 
@@ -105,6 +194,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { id: deleteId } = req.body;
         const { error } = await supabase.from('documents').delete().eq('id', deleteId);
         if (error) throw error;
+        // Cascade: drop any chunks we auto-indexed for this doc.
+        await supabase.from('storage_chunks').delete().eq('file_id', deleteId);
         return res.json({ success: true });
       }
 
