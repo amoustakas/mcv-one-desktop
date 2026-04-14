@@ -1,0 +1,28 @@
+{
+  "name": "@mcv/naos-sdk",
+  "version": "0.1.0",
+  "description": "NAOS Living Agent Civilization primitives — agent identity, personality matrices, emotional state, authority tiers, cultural/resonance math, prompt compilation, built-in C-suite roster. Pure domain logic. No Supabase/Clerk/Zustand — app wires those in at the edges.",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": { "types": "./src/index.ts", "default": "./src/index.ts" },
+    "./types": { "types": "./src/types.ts", "default": "./src/types.ts" },
+    "./genesis": { "types": "./src/genesis.ts", "default": "./src/genesis.ts" },
+    "./evolution": { "types": "./src/evolution.ts", "default": "./src/evolution.ts" },
+    "./prediction": { "types": "./src/prediction.ts", "default": "./src/prediction.ts" },
+    "./authority": { "types": "./src/authority.ts", "default": "./src/authority.ts" },
+    "./resonance": { "types": "./src/resonance.ts", "default": "./src/resonance.ts" },
+    "./culture": { "types": "./src/culture.ts", "default": "./src/culture.ts" },
+    "./prompt-compiler": { "types": "./src/prompt-compiler.ts", "default": "./src/prompt-compiler.ts" },
+    "./registry": { "types": "./src/registry.ts", "default": "./src/registry.ts" },
+    "./seed-csuite": { "types": "./src/seed-csuite.ts", "default": "./src/seed-csuite.ts" },
+    "./agents": { "types": "./src/agents/index.ts", "default": "./src/agents/index.ts" }
+  },
+  "files": ["src"],
+  "scripts": {
+    "lint": "echo 'no lint yet'",
+    "test": "echo 'no tests yet'"
+  }
+}
