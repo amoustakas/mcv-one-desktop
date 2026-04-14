@@ -32,9 +32,9 @@ export default function CreatorHubView() {
     { id: 'transactions', label: 'Transactions', count: transactions.length },
   ];
 
-  const activeRoyalties = royaltyAgreements.filter(r => (r as Record<string, unknown>).status === 'active').length;
-  const activeEscrows = escrowAgreements.filter(e => (e as Record<string, unknown>).status === 'active').length;
-  const totalPaidOut = transactions.reduce((sum, t) => sum + (Number((t as Record<string, unknown>).amount) || 0), 0);
+  const activeRoyalties = royaltyAgreements.filter(r => (r as unknown as Record<string, unknown>).status === 'active').length;
+  const activeEscrows = escrowAgreements.filter(e => (e as unknown as Record<string, unknown>).status === 'active').length;
+  const totalPaidOut = transactions.reduce((sum, t) => sum + (Number((t as unknown as Record<string, unknown>).amount) || 0), 0);
 
   const handleRefresh = () => {
     fetchRoyaltyAgreements(ventureId);
@@ -79,7 +79,7 @@ export default function CreatorHubView() {
             <GlassCard>
               <h3 style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--text-primary)' }}>Recent Royalty Distributions</h3>
               {royaltyAgreements.slice(0, 5).map((r) => {
-                const agreement = r as Record<string, unknown>;
+                const agreement = r as unknown as Record<string, unknown>;
                 return (
                   <div key={String(agreement.id)} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
                     <span style={{ color: 'var(--text-primary)' }}>{String(agreement.product_name || agreement.title || 'Royalty Agreement')}</span>
@@ -95,7 +95,7 @@ export default function CreatorHubView() {
             <GlassCard>
               <h3 style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--text-primary)' }}>Active Escrow Agreements</h3>
               {escrowAgreements.slice(0, 5).map((e) => {
-                const escrow = e as Record<string, unknown>;
+                const escrow = e as unknown as Record<string, unknown>;
                 return (
                   <div key={String(escrow.id)} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
                     <div>
@@ -125,7 +125,7 @@ export default function CreatorHubView() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {royaltyAgreements.map((r) => {
-                  const agreement = r as Record<string, unknown>;
+                  const agreement = r as unknown as Record<string, unknown>;
                   return (
                     <div key={String(agreement.id)} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 100px 80px', padding: '10px 0', borderBottom: '1px solid var(--border)', fontSize: 13, gap: 8, alignItems: 'center' }}>
                       <span style={{ color: 'var(--text-primary)' }}>{String(agreement.product_name || agreement.title || 'Agreement')}</span>
@@ -152,7 +152,7 @@ export default function CreatorHubView() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {escrowAgreements.map((e) => {
-                  const escrow = e as Record<string, unknown>;
+                  const escrow = e as unknown as Record<string, unknown>;
                   return (
                     <div key={String(escrow.id)} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 120px 80px', padding: '10px 0', borderBottom: '1px solid var(--border)', fontSize: 13, gap: 8, alignItems: 'center' }}>
                       <span style={{ color: 'var(--text-primary)' }}>{String(escrow.title || escrow.deal_name || 'Escrow')}</span>
@@ -179,7 +179,7 @@ export default function CreatorHubView() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {transactions.slice(0, 50).map((t) => {
-                  const txn = t as Record<string, unknown>;
+                  const txn = t as unknown as Record<string, unknown>;
                   return (
                     <div key={String(txn.id)} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 120px 100px', padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: 13, gap: 8, alignItems: 'center' }}>
                       <span style={{ color: 'var(--text-primary)' }}>{String(txn.description || txn.type || 'Transaction')}</span>

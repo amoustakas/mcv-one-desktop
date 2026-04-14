@@ -506,7 +506,7 @@ export default function KnowledgeHubView() {
                     {(results.rag as Record<string, unknown>[]).slice(0, 5).map((r, i) => (
                       <div key={i} style={{ padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: 12 }}>
                         <span style={{ color: 'var(--text-primary)' }}>{String(r.name || r.title || 'Source')}</span>
-                        {r.uri && <span style={{ color: 'var(--text-muted)', marginLeft: 8 }}>— {String(r.uri).slice(0, 60)}</span>}
+                        {Boolean(r.uri) && <span style={{ color: 'var(--text-muted)', marginLeft: 8 }}>— {String(r.uri).slice(0, 60)}</span>}
                       </div>
                     ))}
                   </GlassCard>
@@ -520,7 +520,7 @@ export default function KnowledgeHubView() {
                     {(results.drive as Record<string, unknown>[]).slice(0, 5).map((f, i) => (
                       <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: 12 }}>
                         <span style={{ color: 'var(--text-primary)' }}>{String(f.name)}</span>
-                        {f.webViewLink && (
+                        {Boolean(f.webViewLink) && (
                           <a href={String(f.webViewLink)} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--cyan)' }}>
                             <ExternalLink size={11} />
                           </a>

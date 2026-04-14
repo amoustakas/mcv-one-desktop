@@ -424,7 +424,7 @@ export default function GrowthView() {
               <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Loading campaigns...</p>
             ) : adsCampaigns.data?.campaigns?.length ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {adsCampaigns.data.campaigns.map((c: Record<string, unknown>, i: number) => (
+                {(adsCampaigns.data.campaigns as unknown as Array<Record<string, unknown>>).map((c, i: number) => (
                   <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 80px 80px 80px 60px', padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: 13, gap: 8, alignItems: 'center' }}>
                     <span style={{ color: 'var(--text-primary)' }}>{c.name as string}</span>
                     <Badge>{c.status as string}</Badge>
@@ -484,7 +484,7 @@ export default function GrowthView() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 70px 90px 60px 60px', padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                   <span>Query</span><span style={{ textAlign: 'right' }}>Clicks</span><span style={{ textAlign: 'right' }}>Impressions</span><span style={{ textAlign: 'right' }}>CTR</span><span style={{ textAlign: 'right' }}>Pos</span>
                 </div>
-                {gscQueries.data.rows.slice(0, 15).map((q: Record<string, unknown>, i: number) => (
+                {(gscQueries.data.rows as unknown as Array<Record<string, unknown>>).slice(0, 15).map((q, i: number) => (
                   <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 70px 90px 60px 60px', padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
                     <span style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{q.query as string}</span>
                     <span style={{ color: 'var(--cyan)', textAlign: 'right', fontWeight: 600 }}>{Number(q.clicks || 0).toLocaleString()}</span>

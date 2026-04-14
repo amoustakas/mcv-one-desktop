@@ -38,8 +38,8 @@ export default function ComplianceHubView() {
     fetchNexusAlerts(ventureId);
   };
 
-  const activeFraudRules = fraudRules.filter(r => (r as Record<string, unknown>).enabled !== false).length;
-  const criticalAlerts = nexusAlerts.filter(a => (a as Record<string, unknown>).severity === 'critical').length;
+  const activeFraudRules = fraudRules.filter(r => (r as unknown as Record<string, unknown>).enabled !== false).length;
+  const criticalAlerts = nexusAlerts.filter(a => (a as unknown as Record<string, unknown>).severity === 'critical').length;
   const dunningRecovered = dunningStats ? (dunningStats as unknown as Record<string, number>).recovered_revenue || 0 : 0;
   const dunningAtRisk = dunningStats ? (dunningStats as unknown as Record<string, number>).at_risk_revenue || 0 : 0;
 
@@ -81,7 +81,7 @@ export default function ComplianceHubView() {
                 <h3 style={{ margin: 0, fontSize: 14, color: 'var(--text-primary)' }}>Top Nexus Alerts</h3>
               </div>
               {nexusAlerts.slice(0, 5).map((a) => {
-                const alert = a as Record<string, unknown>;
+                const alert = a as unknown as Record<string, unknown>;
                 const severity = String(alert.severity || 'info');
                 const severityColor = severity === 'critical' ? '#ef4444' : severity === 'warning' ? '#F59E0B' : 'var(--cyan)';
                 return (
@@ -141,7 +141,7 @@ export default function ComplianceHubView() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {fraudRules.map((r) => {
-                  const rule = r as Record<string, unknown>;
+                  const rule = r as unknown as Record<string, unknown>;
                   return (
                     <div key={String(rule.id)} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 100px 80px', padding: '10px 0', borderBottom: '1px solid var(--border)', fontSize: 13, gap: 8, alignItems: 'center' }}>
                       <div>
@@ -172,7 +172,7 @@ export default function ComplianceHubView() {
               <EmptyState icon={<TrendingDown size={32} />} title="No dunning data" description="Automated recovery campaigns for failed payments." />
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
-                {Object.entries(dunningStats as unknown as Record<string, unknown>).map(([key, value]) => (
+                {Object.entries(dunningStats as unknown as unknown as Record<string, unknown>).map(([key, value]) => (
                   <div key={key} style={{ padding: 12, background: 'var(--bg-elevated)', borderRadius: 8 }}>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                       {key.replace(/_/g, ' ')}
@@ -199,7 +199,7 @@ export default function ComplianceHubView() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {nexusAlerts.map((a) => {
-                  const alert = a as Record<string, unknown>;
+                  const alert = a as unknown as Record<string, unknown>;
                   const severity = String(alert.severity || 'info');
                   return (
                     <div key={String(alert.id)} style={{ display: 'grid', gridTemplateColumns: '120px 2fr 120px 80px', padding: '10px 0', borderBottom: '1px solid var(--border)', fontSize: 13, gap: 8, alignItems: 'center' }}>

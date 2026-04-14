@@ -120,7 +120,7 @@ function ContactInput({ value, onChange, placeholder }: {
 }) {
   const [suggestions, setSuggestions] = useState<ContactSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value;

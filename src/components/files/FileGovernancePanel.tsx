@@ -125,7 +125,7 @@ export default function FileGovernancePanel({ fileId, fileName, currentCertifica
                           <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>v{String(version.version_number)}</div>
                           <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                             {version.created_at ? new Date(String(version.created_at)).toLocaleString() : '—'}
-                            {version.change_summary && ` — ${version.change_summary}`}
+                            {version.change_summary ? ` — ${String(version.change_summary)}` : ''}
                           </div>
                         </div>
                         <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
@@ -244,7 +244,7 @@ export default function FileGovernancePanel({ fileId, fileName, currentCertifica
                             {entry.timestamp ? new Date(String(entry.timestamp)).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''}
                           </span>
                         </div>
-                        {entry.details && Object.keys(entry.details as Record<string, unknown>).length > 0 && (
+                        {Boolean(entry.details && Object.keys(entry.details as Record<string, unknown>).length > 0) && (
                           <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
                             {JSON.stringify(entry.details).slice(0, 80)}
                           </div>

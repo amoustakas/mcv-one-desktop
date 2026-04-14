@@ -128,8 +128,8 @@ export function compileVoicePrompt(
     'Avoid markdown, bullet points, or code blocks — speak in natural sentences.',
     'When reporting data (emails, events, tasks), summarize the key points verbally rather than listing everything.',
     'If you need to convey a list, say "First... Second... Third..." rather than bullet formatting.',
-    personality.verbosity === 'concise' ? 'Keep voice responses under 30 seconds of speech.' : '',
-    personality.verbosity === 'verbose' ? 'You can be more expansive in voice — users appreciate conversational depth.' : '',
+    personality.verbosity === 'terse' ? 'Keep voice responses under 30 seconds of speech.' : '',
+    personality.verbosity === 'detailed' ? 'You can be more expansive in voice — users appreciate conversational depth.' : '',
   ];
 
   return base + '\n\n' + voiceAdditions.filter(Boolean).join('\n');

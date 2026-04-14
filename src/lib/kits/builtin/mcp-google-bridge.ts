@@ -136,7 +136,7 @@ const scheduleAndNotify: KitToolHandler = async (input, ctx) => {
   if (eventData.hangoutLink) md.push(`Meet link: ${eventData.hangoutLink}`);
 
   // Send notification email if requested
-  if (input.notifyEmail && input.attendees?.length) {
+  if (input.notifyEmail && Array.isArray(input.attendees) && input.attendees.length > 0) {
     for (const email of input.attendees as string[]) {
       try {
         await apiCall('/api/gmail', {

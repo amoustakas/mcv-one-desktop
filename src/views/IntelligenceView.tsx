@@ -139,7 +139,7 @@ export default function IntelligenceView() {
           <motion.div variants={staggerContainer} initial="hidden" animate="show">
             <GridLayout cols={4} gap="md">
               <motion.div variants={fadeInUp}>
-                <KpiCard icon={<Users size={16} />} title="Active Users" value={analyticsRealtime.data?.activeUsers?.toString() ?? '—'} trend="live" />
+                <KpiCard icon={<Users size={16} />} title="Active Users" value={analyticsRealtime.data?.activeUsers?.toString() ?? '—'} trend="up" />
               </motion.div>
               <motion.div variants={fadeInUp}>
                 <KpiCard icon={<BarChart3 size={16} />} title="Sessions (30d)" value={analyticsOverview.data?.sessions?.toLocaleString() ?? '—'} />

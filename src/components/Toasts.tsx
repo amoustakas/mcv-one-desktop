@@ -45,7 +45,13 @@ export function useToast() {
     (type: ToastType, message: string, description?: string) => add(type, message, description),
     [add],
   );
-  return { toast };
+  // Object-form compat: many call sites use `addToast({ type, message })`.
+  const addToast = useCallback(
+    (input: { type: ToastType; message: string; description?: string }) =>
+      add(input.type, input.message, input.description),
+    [add],
+  );
+  return { toast, addToast };
 }
 
 /* ─── Helpers ────────────────────────────────────────────────────── */

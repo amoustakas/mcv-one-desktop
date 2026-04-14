@@ -95,8 +95,9 @@ function CreateEventModal({ onClose, onSubmit, defaultDate }: {
         end: new Date(end).toISOString(),
         location: location || undefined,
         attendees: attendees ? attendees.split(',').map(e => e.trim()).filter(Boolean) : undefined,
-        addMeet,
-      });
+        ...(addMeet ? { addMeet: true } : {}),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
       onClose();
     } finally {
       setCreating(false);

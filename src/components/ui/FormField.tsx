@@ -24,7 +24,7 @@ export default function FormField({
   orientation = 'vertical',
 }: FormFieldProps) {
   return (
-    <div className={cn('mcv-field', `mcv-field-${orientation}`, error && 'mcv-field-has-error', className)}>
+    <div className={cn('mcv-field', `mcv-field-${orientation}`, error ? 'mcv-field-has-error' : null, className)}>
       {label && (
         <label className="mcv-field-label" htmlFor={htmlFor}>
           {label}

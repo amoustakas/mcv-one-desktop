@@ -31,15 +31,15 @@ export function useVentureScope(override?: { scope?: ScopeMode; ventureId?: stri
     return { ventureId: override.ventureId, mode: 'current-venture', includeGlobal: false };
   }
 
-  const scope = override?.scope || (mode === 'venture' ? 'current-venture' : 'all-ventures');
+  const scope: ScopeMode = override?.scope || (mode === 'venture' ? 'current-venture' : 'all-ventures');
 
   switch (scope) {
     case 'current-venture':
-      return { ventureId: activeVenture || undefined, mode, includeGlobal: true };
+      return { ventureId: activeVenture || undefined, mode: scope, includeGlobal: true };
     case 'all-ventures':
-      return { ventureId: undefined, mode, includeGlobal: true };
+      return { ventureId: undefined, mode: scope, includeGlobal: true };
     case 'global-only':
-      return { ventureId: 'mcv', mode, includeGlobal: false };
+      return { ventureId: 'mcv', mode: scope, includeGlobal: false };
   }
 }
 

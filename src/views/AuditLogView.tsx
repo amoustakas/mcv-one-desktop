@@ -150,7 +150,7 @@ export default function AuditLogView() {
                         <span style={{ color: 'var(--text-muted)', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {details ? JSON.stringify(details).slice(0, 60) : ''}
                         </span>
-                        {e.venture_id && <Badge>{String(e.venture_id)}</Badge>}
+                        {Boolean(e.venture_id) && <Badge>{String(e.venture_id)}</Badge>}
                       </div>
                     );
                   })}

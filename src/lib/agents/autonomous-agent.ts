@@ -237,9 +237,9 @@ export async function runAutonomousAgent(
 
   // Extract final text response
   const lastModelMessage = history.filter(h => h.role === 'model').pop();
-  const finalText = lastModelMessage?.parts
-    ?.filter((p: Record<string, unknown>) => p.text)
-    .map((p: { text: string }) => p.text)
+  const finalText = (lastModelMessage?.parts as Array<{ text?: string }> | undefined)
+    ?.filter((p) => Boolean(p.text))
+    .map((p) => p.text || '')
     .join('') || 'Agent completed without a text response.';
 
   return {

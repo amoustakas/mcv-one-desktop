@@ -1,4 +1,4 @@
-import type { ReactNode, CSSProperties } from 'react';
+import type { ReactNode, CSSProperties, MouseEvent } from 'react';
 import { cn } from '../../lib/utils';
 
 interface GlassCardProps {
@@ -7,7 +7,7 @@ interface GlassCardProps {
   style?: CSSProperties;
   variant?: 'default' | 'neural' | 'elevated';
   glow?: boolean;
-  onClick?: () => void;
+  onClick?: (e: MouseEvent<HTMLDivElement>) => void;
 }
 
 export default function GlassCard({ children, className, style, variant = 'default', glow, onClick }: GlassCardProps) {
