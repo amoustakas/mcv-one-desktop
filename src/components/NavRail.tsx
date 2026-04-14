@@ -26,6 +26,14 @@ const globalSections: NavSection[] = [
     ],
   },
   {
+    label: 'Ventures', key: 'ventures',
+    items: [
+      { id: 'ventures-index', label: 'All Ventures', badge: 'NEW' },
+      { id: 'department-portfolio', label: 'Departments', badge: 'NEW' },
+      { id: 'venture-onboarding', label: 'New Venture' },
+    ],
+  },
+  {
     label: 'Suites', key: 'suites',
     items: [
       { id: 'suite-command-bridge', label: 'Command Bridge' },
@@ -154,6 +162,8 @@ const ventureSections: NavSection[] = [
   {
     label: 'Venture', key: 'venture-core',
     items: [
+      { id: 'venture-detail', label: 'Workspace', badge: 'NEW' },
+      { id: 'venture-wizard', label: 'Quest Wizard', badge: 'NEW' },
       { id: 'venture-dashboard', label: 'Dashboard' },
       { id: 'venture-profile', label: 'Profile & Assets' },
       { id: 'chat', label: 'Aegis AI' },
