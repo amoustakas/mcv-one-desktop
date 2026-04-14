@@ -6,6 +6,7 @@ import { useToast } from '../components/Toasts';
 import { PageHeader, PageShell, Button, GlassCard, Badge } from '../components/ui';
 import { staggerContainer, fadeInUp } from '../lib/animations';
 import { apiPost } from '../lib/api/client';
+import EpicDetailModal from '../components/epics/EpicDetailModal';
 
 type EpicStatus = 'draft' | 'proposed' | 'approved' | 'in-progress' | 'blocked' | 'review' | 'done' | 'cancelled';
 type EpicPriority = 'critical' | 'high' | 'medium' | 'low';
@@ -59,6 +60,7 @@ export default function EpicBoardView() {
   const [epics, setEpics] = useState<Epic[]>([]);
   const [loading, setLoading] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
+  const [selectedEpicId, setSelectedEpicId] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState('');
   const [newSummary, setNewSummary] = useState('');
   const [newSuite, setNewSuite] = useState('');
@@ -183,7 +185,7 @@ export default function EpicBoardView() {
             <motion.div className="eb-col-cards" variants={staggerContainer} initial="hidden" animate="show">
               {(grouped[col] || []).map(e => (
                 <motion.div key={e.id} variants={fadeInUp}>
-                  <div className="eb-card">
+                  <div className="eb-card" onClick={() => setSelectedEpicId(e.id)} role="button" tabIndex={0} onKeyDown={(ev) => { if (ev.key === 'Enter') setSelectedEpicId(e.id); }}>
                     <div className="eb-card-stripe" style={{ background: PRIO_COLOR[e.priority] }} />
                     <div className="eb-card-top">
                       {PRIO_ICON[e.priority]}
@@ -198,7 +200,7 @@ export default function EpicBoardView() {
                       <div className="eb-progress-bar" style={{ width: `${e.progress_pct || 0}%`, background: STATUS_COLOR[e.status] }} />
                       <span className="eb-progress-label">{e.progress_pct || 0}%</span>
                     </div>
-                    <div className="eb-card-actions">
+                    <div className="eb-card-actions" onClick={(ev) => ev.stopPropagation()}>
                       {COLUMNS.indexOf(e.status) > 0 && (
                         <button className="eb-move eb-move-back" onClick={() => moveStatus(e, -1)}>← Back</button>
                       )}
@@ -245,6 +247,12 @@ export default function EpicBoardView() {
         </div>
       )}
 
+      <EpicDetailModal
+        epicId={selectedEpicId}
+        onClose={() => setSelectedEpicId(null)}
+        onChange={() => void load()}
+      />
+
       <style>{`
         .eb-add { display:flex; gap:8px; padding:10px 20px; margin:0 20px; align-items:center; flex-wrap:wrap; }
         .eb-add .mcv-input { min-width:160px; }
@@ -259,8 +267,9 @@ export default function EpicBoardView() {
 
         .eb-col-cards { flex:1; overflow-y:auto; padding:8px; display:flex; flex-direction:column; gap:8px; }
 
-        .eb-card { position:relative; padding:12px 12px 12px 16px; display:flex; flex-direction:column; gap:6px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); transition:all 0.2s; overflow:hidden; }
+        .eb-card { position:relative; padding:12px 12px 12px 16px; display:flex; flex-direction:column; gap:6px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); transition:all 0.2s; overflow:hidden; cursor: pointer; }
         .eb-card:hover { border-color:var(--border-active); transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,0.25); }
+        .eb-card:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
         .eb-card-stripe { position:absolute; top:0; left:0; width:3px; height:100%; border-radius:3px 0 0 3px; }
 
         .eb-card-top { display:flex; align-items:center; gap:6px; }
