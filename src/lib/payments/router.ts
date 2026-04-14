@@ -16,6 +16,7 @@ import type {
 import { stripeProcessor } from './processors/stripe';
 import { creditsProcessor } from './processors/credits';
 import { solanaProcessor } from './processors/solana';
+import { plaidProcessor } from './processors/plaid';
 
 // ── ROUTING WEIGHTS ──────────────────────────────────────────────────────────
 // Must sum to 1.0
@@ -34,6 +35,7 @@ const SPEED_SCORES: Record<string, number> = {
   platform_credits: 1.00,  // instant in-app ledger debit
   solana:           0.95,  // ~400 ms on-chain confirmation
   stripe:           0.50,  // 2–3 business day bank settlement
+  plaid:            0.40,  // 3–5 business day standard ACH (next-day with same-day ACH)
 };
 
 // ── RELIABILITY SCORES (0–1) ─────────────────────────────────────────────────
@@ -41,6 +43,7 @@ const SPEED_SCORES: Record<string, number> = {
 const RELIABILITY_SCORES: Record<string, number> = {
   platform_credits: 1.00,
   stripe:           0.95,
+  plaid:            0.92,  // mature ACH rails, some return risk
   solana:           0.70,  // stub — real value from health metrics in future
 };
 
@@ -49,6 +52,7 @@ const RELIABILITY_SCORES: Record<string, number> = {
 
 const COMPLIANCE_SCORES: Record<string, number> = {
   stripe:           1.00,  // full KYC/AML, PCI-DSS Level 1
+  plaid:            0.98,  // full KYC via Plaid Identity, NACHA-compliant
   platform_credits: 0.90,  // internal — inherits platform compliance
   solana:           0.60,  // permissionless chain, minimal built-in compliance
 };
@@ -75,6 +79,7 @@ export class PaymentRouter {
     this.register(stripeProcessor);
     this.register(creditsProcessor);
     this.register(solanaProcessor);
+    this.register(plaidProcessor);
   }
 
   /** Register a processor. Later registrations with the same ID overwrite. */
