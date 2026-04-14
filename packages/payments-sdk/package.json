@@ -1,0 +1,28 @@
+{
+  "name": "@mcv/payments-sdk",
+  "version": "0.1.0",
+  "description": "MCV unified payment rails — router + 4 processors (Stripe + Plaid ACH + Solana Pay + Platform Credits). Smart routing by cost/speed/reliability/compliance. Consumer apps proxy /api/stripe, /api/plaid, /api/solana-refund to MCV Desktop or implement equivalents.",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": { "types": "./src/index.ts", "default": "./src/index.ts" },
+    "./router": { "types": "./src/router.ts", "default": "./src/router.ts" },
+    "./types": { "types": "./src/types.ts", "default": "./src/types.ts" },
+    "./processors/stripe": { "types": "./src/processors/stripe.ts", "default": "./src/processors/stripe.ts" },
+    "./processors/plaid": { "types": "./src/processors/plaid.ts", "default": "./src/processors/plaid.ts" },
+    "./processors/solana": { "types": "./src/processors/solana.ts", "default": "./src/processors/solana.ts" }
+  },
+  "files": ["src"],
+  "dependencies": {
+    "@solana/pay": "^0.2.6",
+    "@solana/web3.js": "^1.98.4",
+    "bignumber.js": "^10.0.2",
+    "zod": "^4.3.6"
+  },
+  "scripts": {
+    "lint": "echo 'no lint yet'",
+    "test": "echo 'no tests yet'"
+  }
+}
