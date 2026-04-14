@@ -16,6 +16,28 @@ import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+
+// Load .env.local into process.env before any handler module imports run —
+// otherwise createClient(SUPABASE_URL, …) throws at module load time for
+// every api/*.ts handler that pulls from process.env.
+(function loadEnvLocal() {
+  for (const name of ['.env.local', '.env']) {
+    const full = path.resolve(process.cwd(), name);
+    if (!fs.existsSync(full)) continue;
+    const text = fs.readFileSync(full, 'utf8');
+    for (const line of text.split(/\r?\n/)) {
+      const m = line.match(/^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.*)\s*$/i);
+      if (!m) continue;
+      const [, key, rawVal] = m;
+      if (process.env[key]) continue;
+      let val = rawVal;
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        val = val.slice(1, -1);
+      }
+      process.env[key] = val;
+    }
+  }
+})();
 import { execFile } from 'child_process';
 import chokidar from 'chokidar';
 import { registerPipelineRoutes } from './pipeline-routes';
@@ -25,6 +47,7 @@ import { registerDeviceRoutes } from './device-routes';
 import { registerBrowserRoutes } from './browser-routes';
 import { registerYouTubeRoutes } from './youtube-routes';
 import { attachBrowserWebSocket } from './browser-ws';
+import { registerApiRoutes } from './api-routes';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "3100");
@@ -402,6 +425,10 @@ registerMcpRoutes(app);
 registerDeviceRoutes(app);
 registerBrowserRoutes(app);
 registerYouTubeRoutes(app);
+
+// Vercel-style /api/* handlers (loaded dynamically from the api/ directory
+// so local dev matches production routing without needing Vercel CLI).
+registerApiRoutes(app).catch((e) => console.error('[api-routes] failed:', e));
 
 // ── Start ──
 const server = app.listen(PORT, () => {
