@@ -1,0 +1,26 @@
+{
+  "name": "@mcv/voice-sdk",
+  "version": "0.1.0",
+  "description": "MCV voice stack — router + Gemini Live adapter types + Deepgram/ElevenLabs helpers. Dual-stack voice selection for any MCV venture app.",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./router": {
+      "types": "./src/router.ts",
+      "default": "./src/router.ts"
+    }
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "lint": "echo 'no lint yet'",
+    "test": "echo 'no tests yet'"
+  }
+}
