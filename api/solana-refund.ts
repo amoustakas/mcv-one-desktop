@@ -16,6 +16,7 @@ import {
   getMint,
 } from '@solana/spl-token';
 import bs58 from 'bs58';
+import { emitPaymentEvent } from './_payment-events.js';
 
 // ---------------------------------------------------------------------------
 // /api/solana-refund — server-side Solana refund with treasury signer.
@@ -88,17 +89,7 @@ function getMintFor(currency: string): PublicKey | null {
   throw new Error(`Unsupported currency: ${currency}`);
 }
 
-async function logEvent(venture_id: string, data: Record<string, unknown>) {
-  try {
-    await supabase.from('payment_events').insert({
-      venture_id,
-      event_type: 'solana_refund',
-      payload: data,
-    });
-  } catch {
-    // best-effort
-  }
-}
+// logEvent replaced by the shared emitPaymentEvent helper. See imports.
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const userId = await requireAuth(req, res); if (!userId) return;
@@ -170,14 +161,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, finality);
     }
 
-    await logEvent(venture_id, {
-      original_payment_id,
-      original_signature,
-      refund_signature: signature,
-      recipient: recipient_wallet,
-      amount,
-      currency,
-      treasury: treasury.publicKey.toBase58(),
+    await emitPaymentEvent({
+      event_type: 'refund.succeeded',
+      processor: 'solana',
+      venture_id,
+      actor: userId,
+      payment_id: original_payment_id ?? null,
+      external_id: signature,
+      external_signature: signature,
+      amount_cents: Math.round(amount * 100),
+      currency: currency.toUpperCase(),
+      status: 'succeeded',
+      payload: {
+        original_signature,
+        recipient: recipient_wallet,
+        treasury: treasury.publicKey.toBase58(),
+      },
     });
 
     return res.json({
@@ -189,13 +188,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Refund failed';
-    await logEvent(venture_id, {
-      original_payment_id,
-      original_signature,
-      error: msg,
-      recipient: recipient_wallet,
-      amount,
-      currency,
+    await emitPaymentEvent({
+      event_type: 'refund.failed',
+      processor: 'solana',
+      venture_id,
+      actor: userId,
+      payment_id: original_payment_id ?? null,
+      amount_cents: Math.round(amount * 100),
+      currency: currency.toUpperCase(),
+      status: 'failed',
+      error_message: msg,
+      payload: {
+        original_signature,
+        recipient: recipient_wallet,
+      },
     });
     return res.status(500).json({ error: msg });
   }
