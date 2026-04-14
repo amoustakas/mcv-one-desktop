@@ -169,25 +169,59 @@ export const solanaProcessor: PaymentProcessor = {
   },
 
   // ── refundPayment ──
-  // On-chain Solana refunds require a treasury signer and network access that
-  // belongs on a server endpoint (api/solana-refund.ts), not in the browser.
-  // Return a structured error so the router falls back or escalates.
-  async refundPayment(paymentId: string, _amount?: number): Promise<RefundResult> {
+  // Proxies to /api/solana-refund which holds the treasury signer.
+  // Caller must pass a recipient_wallet via the optional third arg (since the
+  // original payer wallet isn't stored on the processor). For the router/UI
+  // integration, the caller should resolve this from the payment record.
+  async refundPayment(paymentId: string, amount?: number, extra?: { recipient_wallet?: string; venture_id?: string; currency?: string; original_signature?: string }): Promise<RefundResult> {
     const record = referenceStore.get(paymentId);
-    if (!record) {
+    const recipient_wallet = extra?.recipient_wallet;
+    const venture_id = extra?.venture_id || 'mcv';
+    const currency = extra?.currency || 'USDC';
+    const refundAmount = amount ?? (record ? Number(record.amount.toString()) : 0);
+
+    if (!recipient_wallet) {
       return {
         success: false,
         refundId: '',
         amount: 0,
-        error: `Unknown Solana payment: ${paymentId}. Refund must be processed via server endpoint with treasury signer.`,
+        error: 'refundPayment requires recipient_wallet in extra param (the original payer).',
       };
     }
-    return {
-      success: false,
-      refundId: '',
-      amount: 0,
-      error: 'Solana refunds require a server-side treasury signer. Route to /api/solana-refund.',
-    };
+    if (refundAmount <= 0) {
+      return { success: false, refundId: '', amount: 0, error: 'refund amount must be positive' };
+    }
+
+    try {
+      const res = await fetch('/api/solana-refund', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          venture_id,
+          recipient_wallet,
+          amount: refundAmount,
+          currency,
+          original_payment_id: paymentId,
+          original_signature: extra?.original_signature,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { success: false, refundId: '', amount: 0, error: data.error || `Refund failed: ${res.status}` };
+      }
+      return {
+        success: true,
+        refundId: data.refund_signature,
+        amount: refundAmount,
+      };
+    } catch (e) {
+      return {
+        success: false,
+        refundId: '',
+        amount: 0,
+        error: e instanceof Error ? e.message : 'Refund request failed',
+      };
+    }
   },
 
   // ── getStatus ──

@@ -109,6 +109,7 @@ import { manifest as complianceManifest, handlers as complianceHandlers } from '
 import { manifest as platformManifest, handlers as platformHandlers } from './builtin/platform-kit';
 import { manifest as browserManifest, handlers as browserHandlers } from './builtin/browser-kit';
 import { manifest as epicManifest, handlers as epicHandlers } from './builtin/epic-kit';
+import { manifest as stripeConnectManifest, handlers as stripeConnectHandlers } from './builtin/stripe-connect-kit';
 
 // ---------------------------------------------------------------------------
 // Local Kit Registry
@@ -218,6 +219,8 @@ const builtinKits: KitInstance[] = [
   kit(browserManifest, browserHandlers),
   // Task/Epic pipeline (NAOS-driven flywheel)
   kit(epicManifest, epicHandlers),
+  // Stripe Connect (marketplace payouts per venture)
+  kit(stripeConnectManifest, stripeConnectHandlers),
 ];
 
 /** Returns all built-in kit instances */

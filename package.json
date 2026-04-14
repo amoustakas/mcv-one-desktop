@@ -35,6 +35,7 @@
     "@types/three": "^0.183.1",
     "@workflow/ai": "^4.1.0-beta.60",
     "bignumber.js": "^10.0.2",
+    "bs58": "^6.0.0",
     "d3": "^7.9.0",
     "date-fns": "^4.1.0",
     "decimal.js": "^10.6.0",
