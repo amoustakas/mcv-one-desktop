@@ -856,7 +856,10 @@
 .mcv-modal-lg { max-width: 800px; }
 .mcv-modal-xl { max-width: 1080px; }
 .mcv-modal-full { max-width: calc(100vw - var(--space-2xl)); max-height: calc(100vh - var(--space-2xl)); }
-.mcv-modal-content { overflow-y: auto; display: flex; flex-direction: column; flex: 1; min-height: 0; }
+/* Content area is a flex column that *clips* — any scroll must come from a
+   child (e.g. .mcv-dialog-body has its own overflow-y:auto). This keeps
+   dialog headers/footers pinned while the body scrolls between them. */
+.mcv-modal-content { overflow: hidden; display: flex; flex-direction: column; flex: 1; min-height: 0; }
 
 .mcv-dialog-header {
   display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-md);
@@ -895,13 +898,19 @@
 }
 
 /* ── Popover ── */
+/* Capped max-height so long dropdowns (Select with 50+ options, filter
+   lists, combobox results) scroll inside the popover instead of getting
+   their tail clipped. Fixed-size popovers (DatePicker calendar etc.) stay
+   below the cap and render unclipped. */
 .mcv-popover {
   position: fixed; z-index: var(--z-popover);
   background: var(--bg-elevated);
   border: 1px solid var(--border-active);
   border-radius: var(--radius-md);
   box-shadow: var(--elev-4);
-  overflow: hidden;
+  max-height: min(400px, calc(100vh - 16px));
+  overflow-y: auto;
+  overflow-x: hidden;
   animation: fadeIn var(--motion-duration-fast) var(--motion-ease-out);
   min-width: 180px;
 }
