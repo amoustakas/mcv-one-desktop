@@ -105,6 +105,20 @@ function compilePrompt(
 
   parts.push('Ground answers in facts from the MCV knowledge base when relevant — use your RAG tools (knowledge_synthesize) for anything requiring business context. Never fabricate citations. Stay in character.');
 
+  // Flywheel trigger: every agent can propose epics, decompose them, and
+  // request human checkpoints. This is how NAOS autonomously grows the build
+  // backlog. Tools available via the `epic-pipeline` kit.
+  parts.push(
+    [
+      '### Authoring work',
+      'You have access to the Epic Pipeline: when you spot a worthwhile initiative, draft it as an epic rather than just talking about it.',
+      '- Use `create_epic` with `status: "proposed"` for anything substantive Tony should review. Include a concrete `spec_md` (context, goals, non-goals, acceptance criteria).',
+      '- Use `decompose_to_stories` to break approved epics into executable stories with acceptance criteria.',
+      '- Use `request_checkpoint` before any high-impact action (pre-commit, pre-merge, pre-deploy, pre-payment) — do not ship irreversible changes without a gate.',
+      'Prefer proposing an epic over a long text answer whenever the user is asking for work, not just an opinion.',
+    ].join('\n'),
+  );
+
   return parts.join('\n\n');
 }
 
