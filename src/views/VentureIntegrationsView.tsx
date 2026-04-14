@@ -11,6 +11,30 @@ import { useToast } from '../components/Toasts';
 import { apiPost } from '../lib/api/client';
 import { useCoreTriangleHealth } from '../hooks/use-core-triangle';
 import { fadeInUp } from '../lib/animations';
+import PlaidLinkButton from '../components/plaid/PlaidLinkButton';
+
+interface PlaidItemRow {
+  id: string;
+  item_id: string;
+  institution_name: string | null;
+  accounts: Array<{ account_id?: string; name?: string; subtype?: string; mask?: string }>;
+  status: string;
+  venture_id: string | null;
+  last_sync_at: string | null;
+}
+
+interface PlaidTransferRow {
+  id: string;
+  transfer_id: string | null;
+  authorization_id: string | null;
+  type: 'debit' | 'credit' | null;
+  amount_cents: number;
+  currency: string;
+  status: string;
+  description: string | null;
+  failure_reason: string | null;
+  created_at: string;
+}
 
 interface StripeConnectAccount {
   id: string;
@@ -38,6 +62,10 @@ export default function VentureIntegrationsView() {
   const [loadingStripe, setLoadingStripe] = useState(false);
   const [feeBps, setFeeBps] = useState(1000);
 
+  const [plaidItems, setPlaidItems] = useState<PlaidItemRow[]>([]);
+  const [plaidTransfers, setPlaidTransfers] = useState<PlaidTransferRow[]>([]);
+  const [loadingPlaid, setLoadingPlaid] = useState(false);
+
   const loadStripe = useCallback(async () => {
     if (!ventureId) return;
     setLoadingStripe(true);
@@ -56,6 +84,36 @@ export default function VentureIntegrationsView() {
   }, [ventureId, toast]);
 
   useEffect(() => { void loadStripe(); }, [loadStripe]);
+
+  const loadPlaid = useCallback(async () => {
+    if (!ventureId) return;
+    setLoadingPlaid(true);
+    try {
+      const [itemsRes, transfersRes] = await Promise.all([
+        apiPost<{ items: PlaidItemRow[] }>('/api/plaid', { action: 'list-items', venture_id: ventureId }),
+        apiPost<{ transfers: PlaidTransferRow[] }>('/api/plaid', { action: 'list-transfers', venture_id: ventureId, limit: 10 }),
+      ]);
+      setPlaidItems(itemsRes.items || []);
+      setPlaidTransfers(transfersRes.transfers || []);
+    } catch (e) {
+      // Non-fatal — Plaid may not be configured yet
+      if (import.meta.env.DEV) console.warn('[plaid] load failed:', e);
+    } finally {
+      setLoadingPlaid(false);
+    }
+  }, [ventureId]);
+
+  useEffect(() => { void loadPlaid(); }, [loadPlaid]);
+
+  async function removePlaidItem(plaid_item_id: string) {
+    try {
+      await apiPost('/api/plaid', { action: 'remove-item', plaid_item_id });
+      toast('success', 'Bank unlinked');
+      await loadPlaid();
+    } catch (e) {
+      toast('error', e instanceof Error ? e.message : 'Unlink failed');
+    }
+  }
 
   async function createAccount() {
     try {
@@ -255,19 +313,79 @@ export default function VentureIntegrationsView() {
 
         {/* ── Placeholders for future integrations ── */}
         <motion.div variants={fadeInUp} initial="hidden" animate="show">
-          <GlassCard className="vi-card vi-card-stub">
+          <GlassCard className="vi-card">
             <div className="vi-card-header">
               <div className="vi-card-icon" style={{ color: '#00F5FF' }}><Banknote size={18} /></div>
               <div className="vi-card-title">
                 <h3>Plaid (ACH)</h3>
-                <p>Bank link, ACH transfers, credit lines</p>
+                <p>Bank linking, ACH debits/credits, credit-line rails</p>
               </div>
-              <Badge size="sm">Planned</Badge>
+              <Badge size="sm">{plaidItems.length} linked</Badge>
             </div>
-            <div className="vi-stub-body">
-              Pending Phase 2.3. Spec'd in epics. Will enable venture-level bank linking
-              + ACH payments + credit-line origination for FutureState RWA.
-            </div>
+
+            {loadingPlaid && plaidItems.length === 0 && (
+              <div className="vi-loading">Loading linked accounts…</div>
+            )}
+
+            {plaidItems.length === 0 && !loadingPlaid && (
+              <div className="vi-empty">
+                <p>No bank accounts linked for this venture yet.</p>
+                <PlaidLinkButton ventureId={ventureId} onLinked={() => void loadPlaid()} size="sm" />
+              </div>
+            )}
+
+            {plaidItems.length > 0 && (
+              <>
+                <div className="vi-plaid-list">
+                  {plaidItems.map((item) => (
+                    <div key={item.id} className="vi-plaid-item">
+                      <div className="vi-plaid-item-head">
+                        <strong>{item.institution_name || 'Unknown bank'}</strong>
+                        <Badge size="sm">{item.status}</Badge>
+                      </div>
+                      <div className="vi-plaid-accounts">
+                        {item.accounts.slice(0, 3).map((acct, i) => (
+                          <span key={i} className="vi-plaid-acct">
+                            {acct.name || 'Account'} {acct.mask ? `··${acct.mask}` : ''}
+                          </span>
+                        ))}
+                        {item.accounts.length > 3 && <span className="vi-plaid-acct">+{item.accounts.length - 3} more</span>}
+                      </div>
+                      <div className="vi-plaid-item-actions">
+                        <button
+                          className="vi-plaid-unlink"
+                          onClick={() => removePlaidItem(item.id)}
+                          aria-label="Unlink"
+                        >Unlink</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="vi-actions">
+                  <PlaidLinkButton
+                    ventureId={ventureId}
+                    variant="secondary"
+                    size="sm"
+                    label="Link another bank"
+                    onLinked={() => void loadPlaid()}
+                  />
+                </div>
+              </>
+            )}
+
+            {plaidTransfers.length > 0 && (
+              <div className="vi-plaid-transfers">
+                <div className="vi-plaid-transfers-head">Recent transfers</div>
+                {plaidTransfers.slice(0, 5).map((t) => (
+                  <div key={t.id} className="vi-plaid-transfer">
+                    <span className={`vi-plaid-transfer-type vi-plaid-transfer-${t.type}`}>{t.type === 'debit' ? '↓' : '↑'}</span>
+                    <span className="vi-plaid-transfer-amount">${(t.amount_cents / 100).toFixed(2)}</span>
+                    <Badge size="sm">{t.status}</Badge>
+                    <span className="vi-plaid-transfer-date">{t.created_at.slice(0, 10)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </GlassCard>
         </motion.div>
 
@@ -354,6 +472,24 @@ export default function VentureIntegrationsView() {
 
         .vi-card-stub { opacity: 0.78; }
         .vi-stub-body { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+
+        .vi-plaid-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+        .vi-plaid-item { padding: 10px 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); display: flex; flex-direction: column; gap: 6px; }
+        .vi-plaid-item-head { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--text-primary); }
+        .vi-plaid-accounts { display: flex; gap: 6px; flex-wrap: wrap; font-size: 10px; color: var(--text-muted); }
+        .vi-plaid-acct { padding: 1px 6px; background: var(--bg-elevated); border-radius: var(--radius-sm); font-family: var(--font-mono); }
+        .vi-plaid-item-actions { display: flex; justify-content: flex-end; }
+        .vi-plaid-unlink { background: none; border: none; font-size: 10px; color: var(--text-muted); cursor: pointer; padding: 2px 6px; }
+        .vi-plaid-unlink:hover { color: var(--error); }
+
+        .vi-plaid-transfers { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); display: flex; flex-direction: column; gap: 4px; }
+        .vi-plaid-transfers-head { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); }
+        .vi-plaid-transfer { display: flex; align-items: center; gap: 8px; font-size: 11px; padding: 3px 0; }
+        .vi-plaid-transfer-type { font-family: var(--font-mono); font-weight: 700; width: 12px; text-align: center; }
+        .vi-plaid-transfer-debit { color: var(--error); }
+        .vi-plaid-transfer-credit { color: var(--success); }
+        .vi-plaid-transfer-amount { font-family: var(--font-mono); font-weight: 600; }
+        .vi-plaid-transfer-date { margin-left: auto; font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); }
 
         .vi-core-status { display: flex; align-items: center; gap: 16px; padding: 10px 20px; border-top: 1px solid var(--border); background: var(--bg-surface); font-size: 11px; color: var(--text-muted); }
         .vi-core-label { display: flex; align-items: center; gap: 6px; text-transform: uppercase; letter-spacing: 0.5px; font-size: 10px; font-weight: 600; }
