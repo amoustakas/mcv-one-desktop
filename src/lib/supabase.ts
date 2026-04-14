@@ -1,4 +1,16 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+
+// ---------------------------------------------------------------------------
+// Browser-side Supabase client.
+//   - `supabase` (anon client) — legacy singleton; RLS policies referencing
+//     auth.uid() will NOT trigger. Kept for backward compatibility.
+//   - `getAuthedClient(getToken)` — returns a client whose requests include
+//     a Clerk-issued Supabase JWT so RLS + auth.jwt() claims work.
+//     Set up a JWT template named "supabase" in Clerk signed with the
+//     Supabase JWT secret. Usage:
+//       const { getToken } = useAuth();
+//       const sb = await getAuthedClient(() => getToken({ template: 'supabase' }));
+// ---------------------------------------------------------------------------
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
@@ -6,6 +18,24 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 export const supabase = supabaseUrl
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
+
+// Cache per-token clients so we don't construct a new one on every query.
+const _authedCache = new Map<string, SupabaseClient>();
+
+export async function getAuthedClient(
+  getToken: () => Promise<string | null | undefined>,
+): Promise<SupabaseClient | null> {
+  if (!supabaseUrl) return null;
+  const token = await getToken();
+  if (!token) return supabase; // fall back to anon if user not signed in
+  const cached = _authedCache.get(token);
+  if (cached) return cached;
+  const client = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
+  _authedCache.set(token, client);
+  return client;
+}
 
 export interface DbConversation {
   id: string;
@@ -67,7 +97,6 @@ export async function saveMessage(
     .insert(row)
     .select()
     .single();
-  // bump conversation updated_at
   await supabase
     .from('conversations')
     .update({ updated_at: new Date().toISOString() })

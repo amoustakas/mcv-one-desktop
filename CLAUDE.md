@@ -16,6 +16,17 @@ Build and deploy MCV One Desktop v0.1:
 5. PWA manifest (installable on Android)
 6. Capacitor Android scaffold (APK-ready)
 
+## INSTALLED AGENT SKILLS
+- `.agents/skills/supabase/` — Full Supabase agent skill (migrations, RLS, edge functions, auth)
+- `.agents/skills/supabase-postgres-best-practices/` — Postgres query/schema/performance best practices
+- Both are symlinked into Claude Code for auto-load. Use these over guessing when working with Supabase.
+
+## SUPABASE PROJECT
+- **Active project**: `kovsdngjojzfebrxulyj` (MCV Desktop, us-west-2, Postgres 17)
+- **pgvector**: enabled (0.8.0). `storage_chunks` table uses `vector(768)` for `text-embedding-004` embeddings.
+- **RPC**: `match_chunks(query_embedding, match_threshold, match_count, filter_venture, filter_corpus)` for semantic retrieval.
+- **Clerk JWT bridge**: see `docs/supabase-auth.md`. Use `getAuthedClient` in browser, `getServiceClient`/`getUserClient` in API routes.
+
 ## ECOSYSTEM CONTEXT
 - **Company**: EdgeIQ Holdings / MCV Global Consortium
 - **Founder/CEO**: Tony (also known as "T")

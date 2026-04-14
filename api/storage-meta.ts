@@ -1,36 +1,42 @@
-import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { getServiceClient, requireAuth } from './_supabase';
 
 // ---------------------------------------------------------------------------
 // Storage Meta API — Versions, Compartments, Legal Hold, RAG Chunks
-// Complements /api/storage (files) and /api/storage-audit (audit log)
+// Complements /api/storage (files) and /api/storage-audit (audit log).
+// Chunks now live in storage_chunks with pgvector embeddings; search-chunks
+// delegates to /api/rag-ingest for a query embedding + match_chunks RPC.
 // ---------------------------------------------------------------------------
 
-async function requireAuth(req: VercelRequest, res: VercelResponse): Promise<string | null> {
-  const secretKey = process.env.CLERK_SECRET_KEY;
-  if (!secretKey) return 'no-secret';
-  const authHeader = req.headers.authorization;
-  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : (req.cookies?.__session || null);
-  if (!token) { res.status(401).json({ error: 'Authentication required' }); return null; }
+const GOOGLE_AI_KEY = process.env.GOOGLE_AI_KEY || process.env.VITE_GOOGLE_AI_KEY || '';
+const EMBED_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent';
+
+async function embedQuery(query: string): Promise<number[] | null> {
+  if (!GOOGLE_AI_KEY) return null;
   try {
-    const { verifyToken } = await import('@clerk/backend');
-    const payload = await verifyToken(token, { secretKey });
-    return payload.sub;
-  } catch { res.status(401).json({ error: 'Invalid session' }); return null; }
-}
-
-const supabase = createClient(
-  process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '',
-);
-
-async function logAudit(entry: Record<string, unknown>) {
-  try { await supabase.from('storage_audit_log').insert(entry); } catch { /* non-fatal */ }
+    const r = await fetch(`${EMBED_ENDPOINT}?key=${GOOGLE_AI_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'models/text-embedding-004',
+        content: { parts: [{ text: query }] },
+        taskType: 'RETRIEVAL_QUERY',
+      }),
+    });
+    if (!r.ok) return null;
+    const d = await r.json();
+    return d.embedding?.values || null;
+  } catch { return null; }
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const userId = await requireAuth(req, res);
-  if (!userId) return;
+  const ctx = await requireAuth(req, res);
+  if (!ctx) return;
+  const userId = ctx.userId;
+  const supabase = getServiceClient();
+  const logAudit = async (entry: Record<string, unknown>) => {
+    try { await supabase.from('storage_audit_log').insert(entry); } catch { /* non-fatal */ }
+  };
   const action = req.body?.action || req.query.action;
 
   try {
@@ -129,22 +135,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.json({ files: data || [] });
       }
 
-      // ── RAG Chunks (lightweight, no pgvector — stored as JSON for now) ──
+      // ── RAG Chunks: pgvector-backed storage_chunks table ──
+      // Accepts pre-computed chunks { text, embedding?, token_count? }.
+      // If no embedding supplied, chunks are stored without vectors (lexical
+      // fallback). For full semantic indexing, prefer /api/rag-ingest.
       case 'chunk-file': {
-        const { file_id, corpus_id, chunks } = req.body;
+        const { file_id, corpus_id, venture_id, chunks } = req.body;
         if (!file_id || !Array.isArray(chunks)) return res.status(400).json({ error: 'file_id + chunks[] required' });
 
-        // Store chunks in storage_ai_analysis as analysis_type = 'rag_chunks'
-        const { error } = await supabase.from('storage_ai_analysis').insert({
-          file_id,
-          analysis_type: 'rag_chunks',
-          result_json: { corpus_id, chunks, chunk_count: chunks.length },
-          model_used: 'chunker',
-          tokens_used: chunks.reduce((sum: number, c: { text: string }) => sum + Math.ceil((c.text || '').length / 4), 0),
-        });
+        // Replace existing chunks for this file (idempotent re-index)
+        await supabase.from('storage_chunks').delete().eq('file_id', file_id);
+
+        const rows = chunks.map((c: { text: string; embedding?: number[]; token_count?: number; metadata?: Record<string, unknown> }, i: number) => ({
+          file_id, venture_id: venture_id ?? null, corpus_id: corpus_id ?? null,
+          chunk_index: i, content: String(c.text || ''),
+          embedding: c.embedding || null,
+          token_count: c.token_count ?? Math.ceil((c.text || '').length / 4),
+          metadata: c.metadata || {},
+        }));
+        const { error } = await supabase.from('storage_chunks').insert(rows);
         if (error) throw error;
 
-        // Update corpus file count
         if (corpus_id) {
           const { data: corpus } = await supabase.from('storage_rag_corpora').select('file_count').eq('id', corpus_id).single();
           await supabase.from('storage_rag_corpora')
@@ -152,45 +163,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             .eq('id', corpus_id);
         }
 
-        await logAudit({ user_id: userId, file_id, action: 'rag_index', details: { corpus_id, chunk_count: chunks.length } });
+        await logAudit({ user_id: userId, file_id, venture_id, action: 'rag_index', details: { corpus_id, chunk_count: chunks.length } });
         return res.json({ success: true, chunk_count: chunks.length });
       }
 
       case 'search-chunks': {
-        const { query, corpus_id, venture_id, limit = 10 } = req.body;
+        const { query, corpus_id, venture_id, limit = 10, threshold = 0.6 } = req.body;
         if (!query) return res.status(400).json({ error: 'query required' });
 
-        // Simple text search over chunks (pgvector-ready — placeholder for semantic)
-        let q = supabase
-          .from('storage_ai_analysis')
-          .select('file_id, result_json, created_at')
-          .eq('analysis_type', 'rag_chunks')
-          .order('created_at', { ascending: false })
-          .limit(50);
-        const { data, error } = await q;
-        if (error) throw error;
+        const queryEmbed = await embedQuery(String(query));
 
-        // Client-side text matching (in production: pgvector cosine similarity)
-        const queryLower = String(query).toLowerCase();
-        const matches: Array<{ file_id: string; chunk_text: string; chunk_index: number; score: number }> = [];
-
-        for (const row of data || []) {
-          const rj = row.result_json as { chunks?: Array<{ text: string }>; corpus_id?: string };
-          if (corpus_id && rj.corpus_id !== corpus_id) continue;
-          for (let i = 0; i < (rj.chunks || []).length; i++) {
-            const chunk = rj.chunks![i];
-            const text = String(chunk.text || '');
-            const textLower = text.toLowerCase();
-            if (textLower.includes(queryLower)) {
-              const score = textLower.indexOf(queryLower) === 0 ? 1.0 : 0.8;
-              matches.push({ file_id: row.file_id, chunk_text: text, chunk_index: i, score });
-            }
-          }
+        // Vector path — preferred
+        if (queryEmbed) {
+          const { data, error } = await supabase.rpc('match_chunks', {
+            query_embedding: queryEmbed,
+            match_threshold: threshold,
+            match_count: limit,
+            filter_venture: venture_id || null,
+            filter_corpus: corpus_id || null,
+          });
+          if (error) throw error;
+          const matches = (data || []).map((m: { id: string; file_id: string; chunk_index: number; content: string; similarity: number }) => ({
+            file_id: m.file_id, chunk_text: m.content, chunk_index: m.chunk_index, score: m.similarity,
+          }));
+          await logAudit({ user_id: userId, action: 'rag_query', details: { query, matches: matches.length, mode: 'vector' } });
+          return res.json({ matches, total: matches.length, mode: 'vector' });
         }
 
-        matches.sort((a, b) => b.score - a.score);
-        await logAudit({ user_id: userId, action: 'rag_query', details: { query, matches: matches.length } });
-        return res.json({ matches: matches.slice(0, limit), total: matches.length });
+        // Lexical fallback — used when Google AI key is absent (dev / offline).
+        let q = supabase.from('storage_chunks').select('file_id, chunk_index, content').limit(200);
+        if (corpus_id) q = q.eq('corpus_id', corpus_id);
+        if (venture_id) q = q.eq('venture_id', venture_id);
+        const { data, error } = await q;
+        if (error) throw error;
+        const queryLower = String(query).toLowerCase();
+        const matches = (data || [])
+          .filter(r => String(r.content).toLowerCase().includes(queryLower))
+          .slice(0, limit)
+          .map(r => ({ file_id: r.file_id, chunk_text: r.content, chunk_index: r.chunk_index, score: 0.5 }));
+        await logAudit({ user_id: userId, action: 'rag_query', details: { query, matches: matches.length, mode: 'lexical' } });
+        return res.json({ matches, total: matches.length, mode: 'lexical' });
       }
 
       default:

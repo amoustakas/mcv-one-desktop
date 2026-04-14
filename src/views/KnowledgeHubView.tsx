@@ -1,9 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Brain, Search, FileText, Database, HardDrive, Sparkles, Globe,
-  Loader2, Plus, Filter, RefreshCw, ChevronRight, ExternalLink,
-  Layers, Clock, Network,
+  Brain, Search, FileText, Database, HardDrive, Sparkles,
+  Loader2, Plus, Filter, ExternalLink,
+  Layers, Network, Trash2, RefreshCw, BookOpen,
 } from 'lucide-react';
 import { PageShell, PageHeader, KpiCard, GridLayout, GlassCard, Button, Badge, Tabs, EmptyState, Input } from '../components/ui';
 import { useNavigation } from '../stores/navigation';
@@ -44,6 +44,14 @@ export default function KnowledgeHubView() {
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<SearchResults>({});
+  const [searchMode, setSearchMode] = useState<'unified' | 'synthesize'>('unified');
+  const [synthAnswer, setSynthAnswer] = useState<{ answer: string; citations: Array<{ n: number; source: string }> } | null>(null);
+
+  // Corpora tab state
+  interface Corpus { corpus_id?: string; id?: string; corpus_name?: string; name?: string; venture_id?: string; file_count?: number; chunk_count?: number; last_indexed_at?: string | null }
+  const [corpora, setCorpora] = useState<Corpus[]>([]);
+  const [corporaLoading, setCorporaLoading] = useState(false);
+  const [newCorpusName, setNewCorpusName] = useState('');
 
   // Overview stats per venture
   const [stats, setStats] = useState<VentureKnowledgeStats[]>([]);
@@ -63,11 +71,32 @@ export default function KnowledgeHubView() {
     ? activeVenture || undefined
     : scopeOverride === 'all' ? undefined : scopeOverride;
 
-  // Unified search
+  // Unified search (or synthesize when searchMode === 'synthesize')
   const handleSearch = useCallback(async () => {
     if (!query.trim()) return;
     setSearching(true);
     setResults({});
+    setSynthAnswer(null);
+
+    // Synthesize mode: vector retrieval + Gemini answer with citations
+    if (searchMode === 'synthesize') {
+      try {
+        const res = await fetch('/api/google-rag', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'synthesize', query, venture_id: effectiveVentureId, top_k: 8 }),
+        });
+        if (!res.ok) throw new Error(`Synthesize failed: ${res.status}`);
+        const data = await res.json();
+        setSynthAnswer({ answer: data.answer || '', citations: data.citations || [] });
+        addToast({ type: 'success', message: `${(data.citations || []).length} citations` });
+      } catch (err) {
+        addToast({ type: 'error', message: err instanceof Error ? err.message : 'Synthesize failed' });
+      } finally {
+        setSearching(false);
+      }
+      return;
+    }
+
     try {
       const res = await fetch('/api/kit-execute', {
         method: 'POST',
@@ -189,6 +218,73 @@ export default function KnowledgeHubView() {
     if (tab === 'overview') loadStats();
   }, [tab, loadStats]);
 
+  // ── Corpora management ──
+  const loadCorpora = useCallback(async () => {
+    setCorporaLoading(true);
+    try {
+      const res = await fetch('/api/google-rag', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'list_corpora', venture_id: effectiveVentureId }),
+      });
+      if (!res.ok) throw new Error('Failed to load corpora');
+      const data = await res.json();
+      setCorpora(data.corpora || []);
+    } catch (err) {
+      addToast({ type: 'error', message: err instanceof Error ? err.message : 'Load failed' });
+    } finally {
+      setCorporaLoading(false);
+    }
+  }, [effectiveVentureId, addToast]);
+
+  useEffect(() => { if (tab === 'rag') loadCorpora(); }, [tab, loadCorpora]);
+
+  const handleCreateCorpus = useCallback(async () => {
+    if (!newCorpusName.trim()) return;
+    try {
+      const res = await fetch('/api/google-rag', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create_corpus', name: newCorpusName, venture_id: effectiveVentureId }),
+      });
+      if (!res.ok) throw new Error('Create failed');
+      setNewCorpusName('');
+      addToast({ type: 'success', message: 'Corpus created' });
+      loadCorpora();
+    } catch (err) {
+      addToast({ type: 'error', message: err instanceof Error ? err.message : 'Create failed' });
+    }
+  }, [newCorpusName, effectiveVentureId, addToast, loadCorpora]);
+
+  const handleDeleteCorpus = useCallback(async (corpusId: string) => {
+    if (!confirm('Delete corpus and all its chunks?')) return;
+    try {
+      const res = await fetch('/api/google-rag', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete_corpus', corpus_id: corpusId }),
+      });
+      if (!res.ok) throw new Error('Delete failed');
+      addToast({ type: 'success', message: 'Corpus deleted' });
+      loadCorpora();
+    } catch (err) {
+      addToast({ type: 'error', message: err instanceof Error ? err.message : 'Delete failed' });
+    }
+  }, [addToast, loadCorpora]);
+
+  const handleReindexCorpus = useCallback(async (corpusId: string) => {
+    try {
+      addToast({ type: 'info', message: 'Reindexing — this may take a moment...' });
+      const res = await fetch('/api/rag-ingest', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reindex-corpus', corpus_id: corpusId }),
+      });
+      if (!res.ok) throw new Error('Reindex failed');
+      const data = await res.json();
+      addToast({ type: 'success', message: `Reindexed ${data.files} files → ${data.chunks} chunks` });
+      loadCorpora();
+    } catch (err) {
+      addToast({ type: 'error', message: err instanceof Error ? err.message : 'Reindex failed' });
+    }
+  }, [addToast, loadCorpora]);
+
   const TABS = [
     { id: 'overview', label: 'Overview' },
     { id: 'search', label: 'Unified Search' },
@@ -274,20 +370,61 @@ export default function KnowledgeHubView() {
                 <Search size={14} style={{ color: 'var(--cyan)' }} /> Search Across All Knowledge
               </h3>
               <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 12px' }}>
-                Searches Memory, Documents, Files, RAG, and Google Drive in parallel. Scoped to: <strong style={{ color: 'var(--cyan)' }}>{effectiveVentureId || 'All Ventures'}</strong>
+                {searchMode === 'synthesize'
+                  ? <>Gemini-grounded answer with citations from indexed chunks. Scoped to: <strong style={{ color: 'var(--cyan)' }}>{effectiveVentureId || 'All Ventures'}</strong></>
+                  : <>Searches Memory, Documents, Files, RAG, and Google Drive in parallel. Scoped to: <strong style={{ color: 'var(--cyan)' }}>{effectiveVentureId || 'All Ventures'}</strong></>}
               </p>
+              <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                <button
+                  onClick={() => setSearchMode('unified')}
+                  style={{
+                    padding: '4px 10px', fontSize: 11, border: `1px solid ${searchMode === 'unified' ? 'var(--cyan)' : 'var(--border)'}`,
+                    background: searchMode === 'unified' ? 'rgba(0,240,255,0.1)' : 'transparent',
+                    color: searchMode === 'unified' ? 'var(--cyan)' : 'var(--text-muted)',
+                    borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                  }}>Unified</button>
+                <button
+                  onClick={() => setSearchMode('synthesize')}
+                  style={{
+                    padding: '4px 10px', fontSize: 11, border: `1px solid ${searchMode === 'synthesize' ? 'var(--purple)' : 'var(--border)'}`,
+                    background: searchMode === 'synthesize' ? 'rgba(139,92,246,0.1)' : 'transparent',
+                    color: searchMode === 'synthesize' ? 'var(--purple)' : 'var(--text-muted)',
+                    borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                  }}>Synthesize (RAG)</button>
+              </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <Input
-                  placeholder="Ask anything... e.g. 'Q2 revenue targets' or 'BetEdge contract terms'"
+                  placeholder={searchMode === 'synthesize' ? 'Ask a question — I will cite sources...' : "Ask anything... e.g. 'Q2 revenue targets'"}
                   value={query}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)}
                   onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && handleSearch()}
                 />
                 <Button onClick={handleSearch} disabled={searching || !query.trim()}>
-                  {searching ? <Loader2 size={14} className="mcv-spin" /> : <Search size={14} />} Search
+                  {searching ? <Loader2 size={14} className="mcv-spin" /> : <Search size={14} />} {searchMode === 'synthesize' ? 'Ask' : 'Search'}
                 </Button>
               </div>
             </GlassCard>
+
+            {synthAnswer && (
+              <GlassCard>
+                <h4 style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Sparkles size={12} style={{ color: 'var(--purple)' }} /> Answer
+                </h4>
+                <div style={{ fontSize: 13, lineHeight: 1.7, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
+                  {synthAnswer.answer}
+                </div>
+                {synthAnswer.citations.length > 0 && (
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Citations</div>
+                    {synthAnswer.citations.map(c => (
+                      <div key={c.n} style={{ fontSize: 12, padding: '4px 0', color: 'var(--text-secondary)' }}>
+                        <strong style={{ color: 'var(--cyan)' }}>[{c.n}]</strong> {c.source}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </GlassCard>
+            )}
 
             {/* Results */}
             {Object.keys(results).length > 0 && (
@@ -452,12 +589,75 @@ export default function KnowledgeHubView() {
         )}
 
         {tab === 'rag' && (
-          <GlassCard>
-            <h3 style={{ margin: '0 0 12px', fontSize: 14 }}>RAG Corpora</h3>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-              Vector corpora for semantic retrieval. Create via "Ingest" tab with target = RAG.
-            </p>
-          </GlassCard>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <GlassCard>
+              <h3 style={{ margin: '0 0 8px', fontSize: 14, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <BookOpen size={14} style={{ color: 'var(--purple)' }} /> RAG Corpora — pgvector (768-dim)
+              </h3>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 12px' }}>
+                Vector corpora for semantic retrieval. Chunks are embedded with <code>text-embedding-004</code> and stored in <code>storage_chunks</code>.
+              </p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Input
+                  placeholder="New corpus name (e.g. BetEdge Research Vault)"
+                  value={newCorpusName}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCorpusName(e.target.value)}
+                  onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && handleCreateCorpus()}
+                />
+                <Button onClick={handleCreateCorpus} disabled={!newCorpusName.trim()}>
+                  <Plus size={14} /> Create
+                </Button>
+              </div>
+            </GlassCard>
+
+            <GlassCard>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <h4 style={{ margin: 0, fontSize: 13, color: 'var(--text-primary)' }}>
+                  {corpora.length} corpora {effectiveVentureId ? `in ${effectiveVentureId}` : 'across all ventures'}
+                </h4>
+                <button onClick={loadCorpora} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                  <RefreshCw size={12} />
+                </button>
+              </div>
+              {corporaLoading ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: 12 }}>
+                  <Loader2 size={14} className="mcv-spin" /> Loading corpora...
+                </div>
+              ) : corpora.length === 0 ? (
+                <EmptyState icon={<BookOpen size={32} />} title="No corpora yet" description="Create your first corpus above." />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {corpora.map((c) => {
+                    const cid = (c.corpus_id || c.id) as string;
+                    const cname = c.corpus_name || c.name || 'Untitled';
+                    return (
+                      <div key={cid} style={{ padding: 12, background: 'var(--bg-elevated)', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>{cname}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                            {c.venture_id || 'global'} · {c.file_count ?? 0} files · {c.chunk_count ?? 0} chunks
+                            {c.last_indexed_at && ` · indexed ${new Date(c.last_indexed_at).toLocaleDateString()}`}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          <button
+                            onClick={() => handleReindexCorpus(cid)}
+                            title="Reindex all files"
+                            style={{ padding: 6, background: 'transparent', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--cyan)', cursor: 'pointer' }}
+                          ><RefreshCw size={12} /></button>
+                          <button
+                            onClick={() => handleDeleteCorpus(cid)}
+                            title="Delete corpus + all chunks"
+                            style={{ padding: 6, background: 'transparent', border: '1px solid var(--border)', borderRadius: 4, color: '#ef4444', cursor: 'pointer' }}
+                          ><Trash2 size={12} /></button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </GlassCard>
+          </div>
         )}
       </div>
     </PageShell>
