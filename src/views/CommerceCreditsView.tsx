@@ -5,6 +5,7 @@ import { useNavigation } from '../stores/navigation';
 import { staggerContainer, fadeInUp } from '../lib/animations';
 import { useState, useEffect } from 'react';
 import { useToast } from '../components/Toasts';
+import CreditDetailDialog from '../components/commerce/CreditDetailDialog';
 
 interface CreditLedger {
   id: string;
@@ -63,6 +64,20 @@ export default function CommerceCreditsView() {
   const [loading, setLoading] = useState(true);
   const [ledgers, setLedgers] = useState<CreditLedger[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [selectedLedgerId, setSelectedLedgerId] = useState<string | null>(null);
+
+  const selectedLedger = selectedLedgerId ? ledgers.find((l) => l.id === selectedLedgerId) : null;
+  const selectedLedgerEntries = selectedLedgerId
+    ? transactions
+        .filter((t) => t.ledger_id === selectedLedgerId)
+        .map((t) => ({
+          id: t.id,
+          type: (t.type === 'grant' ? 'issue' : t.type === 'debit' ? 'redeem' : t.type === 'expire' ? 'revoke' : 'adjustment') as 'issue' | 'redeem' | 'revoke' | 'adjustment' | 'transfer_in' | 'transfer_out',
+          amount: t.amount,
+          created_at: t.created_at,
+          memo: t.note,
+        }))
+    : [];
 
   useEffect(() => {
     let mounted = true;
@@ -133,7 +148,16 @@ export default function CommerceCreditsView() {
                   <span>Customer</span><span>Ledger</span><span style={{ textAlign: 'right' }}>Balance</span><span>Last Activity</span><span>Status</span>
                 </div>
                 {ledgers.map((l) => (
-                  <div key={l.id} style={{ display: 'grid', gridTemplateColumns: '1fr 100px 100px 140px 80px', padding: '10px 0', borderBottom: '1px solid var(--border)', fontSize: 13, gap: 8, alignItems: 'center' }}>
+                  <div
+                    key={l.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedLedgerId(l.id)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedLedgerId(l.id); } }}
+                    style={{ display: 'grid', gridTemplateColumns: '1fr 100px 100px 140px 80px', padding: '10px 0', borderBottom: '1px solid var(--border)', fontSize: 13, gap: 8, alignItems: 'center', cursor: 'pointer', transition: 'background-color 150ms ease' }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--bg-hover)'; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent'; }}
+                  >
                     <span style={{ color: 'var(--text-primary)' }}>{l.customer_name || l.customer_id}</span>
                     <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: 11 }}>{l.id.slice(0, 10)}</span>
                     <span style={{ color: 'var(--cyan)', textAlign: 'right', fontWeight: 600 }}>${l.balance.toLocaleString()} {l.currency}</span>
@@ -162,6 +186,36 @@ export default function CommerceCreditsView() {
           )}
         </GlassCard>
       </div>
+
+      <CreditDetailDialog
+        open={!!selectedLedgerId}
+        onClose={() => setSelectedLedgerId(null)}
+        wallet={
+          selectedLedger
+            ? {
+                id: selectedLedger.id,
+                wallet_id: selectedLedger.id,
+                owner_name: selectedLedger.customer_name,
+                owner_id: selectedLedger.customer_id,
+                balance: selectedLedger.balance,
+                status: selectedLedger.status,
+                currency: selectedLedger.currency,
+                ledger: selectedLedgerEntries,
+              }
+            : null
+        }
+        onIssue={async (id, amount, memo) => {
+          const ok = await grantCredit(ventureId, selectedLedger?.customer_id || '', amount, memo || '');
+          if (ok) {
+            addToast({ type: 'success', message: `$${amount} granted` });
+            fetchCredits(ventureId).then(setLedgers);
+            fetchCreditTransactions(ventureId).then(setTransactions);
+          } else {
+            addToast({ type: 'error', message: 'Failed to grant credit' });
+          }
+          void id;
+        }}
+      />
     </PageShell>
   );
 }

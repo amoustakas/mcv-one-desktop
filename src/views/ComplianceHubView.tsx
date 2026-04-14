@@ -5,6 +5,9 @@ import { PageShell, PageHeader, KpiCard, GridLayout, GlassCard, Badge, Tabs, Emp
 import { useComplianceStore } from '../stores/compliance';
 import { useNavigation } from '../stores/navigation';
 import { staggerContainer, fadeInUp } from '../lib/animations';
+import FraudRuleDetailDialog, { type FraudRuleLike } from '../components/compliance/FraudRuleDetailDialog';
+import { Button } from '../components/ui';
+import { Plus } from 'lucide-react';
 
 export default function ComplianceHubView() {
   const { activeVenture, mode } = useNavigation();
@@ -18,6 +21,11 @@ export default function ComplianceHubView() {
   } = useComplianceStore();
 
   const [tab, setTab] = useState('overview');
+  const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
+
+  const selectedRule = selectedRuleId
+    ? (fraudRules.find((r) => String((r as unknown as Record<string, unknown>).id) === selectedRuleId) as unknown as FraudRuleLike) || null
+    : null;
 
   useEffect(() => {
     fetchFraudRules(ventureId);
@@ -50,7 +58,21 @@ export default function ComplianceHubView() {
         icon={<Shield size={20} />}
         loading={fraudRulesLoading || dunningStatsLoading || nexusAlertsLoading}
         onRefresh={handleRefresh}
-      />
+      >
+        {tab === 'fraud' && (
+          <Button
+            variant="primary"
+            size="sm"
+            icon={<Plus size={13} />}
+            onClick={() => {
+              const newId = `rule_${Date.now()}`;
+              setSelectedRuleId(newId);
+            }}
+          >
+            New Rule
+          </Button>
+        )}
+      </PageHeader>
 
       {/* KPI Strip */}
       <motion.div variants={staggerContainer} initial="hidden" animate="show" style={{ marginTop: 12 }}>
@@ -143,7 +165,16 @@ export default function ComplianceHubView() {
                 {fraudRules.map((r) => {
                   const rule = r as unknown as Record<string, unknown>;
                   return (
-                    <div key={String(rule.id)} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 100px 80px', padding: '10px 0', borderBottom: '1px solid var(--border)', fontSize: 13, gap: 8, alignItems: 'center' }}>
+                    <div
+                      key={String(rule.id)}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setSelectedRuleId(String(rule.id))}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedRuleId(String(rule.id)); } }}
+                      style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 100px 80px', padding: '10px 0', borderBottom: '1px solid var(--border)', fontSize: 13, gap: 8, alignItems: 'center', cursor: 'pointer', transition: 'background-color 150ms ease' }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--bg-hover)'; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent'; }}
+                    >
                       <div>
                         <div style={{ color: 'var(--text-primary)' }}>{String(rule.name || 'Rule')}</div>
                         <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{String(rule.description || rule.type || '')}</div>
@@ -215,6 +246,24 @@ export default function ComplianceHubView() {
           </GlassCard>
         )}
       </div>
+
+      <FraudRuleDetailDialog
+        open={!!selectedRuleId}
+        onClose={() => setSelectedRuleId(null)}
+        rule={selectedRule || (selectedRuleId ? { id: selectedRuleId, name: 'New Rule', enabled: true, risk_score: 50, action: 'flag', trigger_type: 'velocity' } : null)}
+        onSave={(updated) => {
+          // Save handler — wire to compliance store when API endpoint lands
+          console.log('Save fraud rule', updated);
+          setSelectedRuleId(null);
+        }}
+        onToggle={(id, enabled) => {
+          console.log('Toggle fraud rule', id, enabled);
+        }}
+        onDelete={(id) => {
+          console.log('Delete fraud rule', id);
+          setSelectedRuleId(null);
+        }}
+      />
     </PageShell>
   );
 }
