@@ -89,6 +89,9 @@ export const stripeProcessor: PaymentProcessor = {
         currency: req.currency.toLowerCase(),
         customer: req.customerId ?? undefined,
         description: req.description || `Payment for ${req.ventureId}`,
+        // Server-side looks up venture_stripe_accounts and auto-applies
+        // transfer_data[destination] + application_fee_amount for Connect.
+        venture_id: req.ventureId,
         metadata: { ventureId: req.ventureId, ...req.metadata },
       }) as Record<string, unknown>;
 

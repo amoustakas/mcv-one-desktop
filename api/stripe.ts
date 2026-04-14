@@ -1,5 +1,26 @@
 import { getProviderToken } from './_oauth-helper.js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createClient } from '@supabase/supabase-js';
+
+const _supabase = createClient(
+  process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '',
+);
+
+interface VentureConnectAccount {
+  stripe_account_id: string;
+  application_fee_bps: number;
+  charges_enabled: boolean;
+}
+
+async function getVentureConnectAccount(venture_id: string): Promise<VentureConnectAccount | null> {
+  const { data } = await _supabase
+    .from('venture_stripe_accounts')
+    .select('stripe_account_id, application_fee_bps, charges_enabled')
+    .eq('venture_id', venture_id)
+    .maybeSingle();
+  return data;
+}
 
 async function requireAuth(req: VercelRequest, res: VercelResponse): Promise<string | null> {
   const secretKey = process.env.CLERK_SECRET_KEY;
@@ -95,10 +116,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.json(await stripeFetch(`/payment_intents/${id}`, token));
       }
       case 'create-payment': {
-        const { amount, currency = 'usd', customer, description } = req.body;
+        const { amount, currency = 'usd', customer, description, venture_id, metadata } = req.body;
         if (!amount) return res.status(400).json({ error: 'amount required' });
+
+        const body: Record<string, unknown> = {
+          amount, currency, customer, description,
+          'payment_method_types[]': 'card',
+        };
+
+        // Pass-through metadata (accepts either nested or flat)
+        if (metadata && typeof metadata === 'object') {
+          for (const [k, v] of Object.entries(metadata)) {
+            body[`metadata[${k}]`] = v;
+          }
+        }
+        if (venture_id) body['metadata[venture_id]'] = venture_id;
+
+        // ── Stripe Connect marketplace routing ──
+        // If the venture has a connected account ready to accept charges,
+        // route this as a DESTINATION CHARGE: platform is source of record,
+        // venture receives the balance minus the platform fee.
+        if (venture_id) {
+          const vsa = await getVentureConnectAccount(venture_id);
+          if (vsa && vsa.charges_enabled) {
+            const applicationFee = Math.floor((amount * vsa.application_fee_bps) / 10000);
+            body['transfer_data[destination]'] = vsa.stripe_account_id;
+            if (applicationFee > 0) body['application_fee_amount'] = applicationFee;
+          }
+        }
+
         return res.json(await stripeFetch('/payment_intents', token, {
-          method: 'POST', body: { amount, currency, customer, description, 'payment_method_types[]': 'card' },
+          method: 'POST', body,
         }));
       }
 
