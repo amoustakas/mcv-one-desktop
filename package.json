@@ -36,6 +36,7 @@
     "@mcv/compliance-sdk": "*",
     "@mcv/core-triangle": "*",
     "@mcv/design-system": "*",
+    "@mcv/ledger-sdk": "*",
     "@mcv/mcp-sdk": "*",
     "@mcv/naos-sdk": "*",
     "@mcv/payments-sdk": "*",

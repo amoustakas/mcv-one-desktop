@@ -1,0 +1,28 @@
+{
+  "name": "@mcv/ledger-sdk",
+  "version": "0.1.0",
+  "description": "Double-entry ledger SDK — accounts, journal entries, trial balance, credit accounts, 50+ canonical chart-of-accounts entries. createLedgerEngine({supabase}) DI factory so any MCV venture can bind its own Supabase. Zero module-level singletons.",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".":                      { "types": "./src/index.ts",              "default": "./src/index.ts" },
+    "./types":                { "types": "./src/types.ts",              "default": "./src/types.ts" },
+    "./chart-of-accounts":    { "types": "./src/chart-of-accounts.ts",  "default": "./src/chart-of-accounts.ts" },
+    "./service":              { "types": "./src/service.ts",            "default": "./src/service.ts" },
+    "./credit-service":       { "types": "./src/credit-service.ts",     "default": "./src/credit-service.ts" },
+    "./engine":               { "types": "./src/engine.ts",             "default": "./src/engine.ts" }
+  },
+  "files": ["src"],
+  "dependencies": {
+    "zod": "^4.3.6"
+  },
+  "peerDependencies": {
+    "@supabase/supabase-js": "^2.0.0"
+  },
+  "scripts": {
+    "lint": "echo 'no lint yet'",
+    "test": "echo 'no tests yet'"
+  }
+}
