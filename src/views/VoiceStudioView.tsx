@@ -2,7 +2,7 @@
  * VoiceStudioView — Split panel voice experience.
  * Left: Voice Library carousel. Center: Conversation + orb. Right drawer: Bot Builder.
  */
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { Settings, Mic, Terminal, ChevronRight } from 'lucide-react';
 import VoiceCarousel from '../components/voice/VoiceCarousel';
 import ConversationPanel from '../components/voice/ConversationPanel';
@@ -14,24 +14,34 @@ import { VOICE_DATA } from '../lib/google/voice-constants';
 import type { BotConfig } from '../components/voice/BotBuilder';
 import type { ToolCallEntry } from '../components/voice/FunctionCallConsole';
 import type { LiveServerToolCall } from '@google/genai';
+import { useVoiceKitBridge, getAllVoiceTools } from '../hooks/use-voice-kit-bridge';
+import { useNavigation } from '../stores/navigation';
 
 const DEFAULT_BOT: BotConfig = {
   name: 'NAOS Voice',
-  systemPrompt: 'You are NAOS, an AI operations agent for MCV Global Consortium. You speak with authority, precision, and warmth. Help the user with anything they need.',
+  systemPrompt: 'You are NAOS, an AI operations agent for MCV Global Consortium. You speak with authority, precision, and warmth. You have access to the entire MCV kit ecosystem — Gmail, Calendar, Drive, Tasks, Analytics, Ads, and 90+ other tools. When the user asks you to do something, use the appropriate tool and report back what you found.',
   voiceName: 'Puck',
-  enableFunctionCalling: false,
+  enableFunctionCalling: true,
   toolDefinitions: '[]',
+  useAllKits: true,
 };
 
 export default function VoiceStudioView() {
+  const { activeVenture, mode } = useNavigation();
+  const ventureId = (mode === 'venture' ? activeVenture : null) || 'mcv';
+
   const [botConfig, setBotConfig] = useState<BotConfig>(DEFAULT_BOT);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [consoleOpen, setConsoleOpen] = useState(false);
   const [toolCalls, setToolCalls] = useState<ToolCallEntry[]>([]);
 
-  // Parse tools from config
+  // Parse tools from config — if useAllKits is on, load all 90+ kit tools.
+  // Otherwise use the manual JSON from botConfig.toolDefinitions.
   const parsedTools = useMemo(() => {
     if (!botConfig.enableFunctionCalling) return undefined;
+    if (botConfig.useAllKits) {
+      return getAllVoiceTools(ventureId);
+    }
     try {
       const defs = JSON.parse(botConfig.toolDefinitions);
       return Array.isArray(defs) && defs.length > 0
@@ -40,12 +50,27 @@ export default function VoiceStudioView() {
     } catch {
       return undefined;
     }
-  }, [botConfig.enableFunctionCalling, botConfig.toolDefinitions]);
+  }, [botConfig.enableFunctionCalling, botConfig.toolDefinitions, botConfig.useAllKits, ventureId]);
 
   const apiKey = import.meta.env.VITE_GOOGLE_AI_KEY || '';
 
+  // We need a reference to sendToolResponse before setting up the bridge.
+  // Hold it in a ref that gets populated after useLiveAudio returns.
+  const sendToolResponseRef = useRef<((id: string, name: string, response: unknown) => void) | null>(null);
+
+  // Create the kit bridge — executes tool calls via our kit system
+  // and sends results back to Live API for Gemini to continue.
+  const { handleToolCall: handleToolCallViaKits } = useVoiceKitBridge({
+    sendToolResponse: (id, name, response) => {
+      sendToolResponseRef.current?.(id, name, response);
+    },
+    ventureId,
+  });
+
   const handleToolCall = useCallback((call: LiveServerToolCall) => {
     const fns = call.functionCalls ?? [];
+
+    // Track all calls in the UI console
     for (const fn of fns) {
       setToolCalls(prev => [...prev, {
         id: fn.id ?? crypto.randomUUID(),
@@ -56,7 +81,12 @@ export default function VoiceStudioView() {
       }]);
     }
     setConsoleOpen(true);
-  }, []);
+
+    // Execute via the kit bridge when enabled (useAllKits mode)
+    if (botConfig.useAllKits) {
+      handleToolCallViaKits(call);
+    }
+  }, [botConfig.useAllKits, handleToolCallViaKits]);
 
   const liveAudio = useLiveAudio({
     apiKey,
@@ -65,6 +95,9 @@ export default function VoiceStudioView() {
     tools: parsedTools,
     onToolCall: handleToolCall,
   });
+
+  // Populate the ref so our bridge can call sendToolResponse
+  sendToolResponseRef.current = liveAudio.sendToolResponse;
 
   const handleToggleRecording = useCallback(() => {
     if (liveAudio.isRecording) {

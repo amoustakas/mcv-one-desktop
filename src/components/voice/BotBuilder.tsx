@@ -3,9 +3,10 @@
  * Name, system prompt, voice selector, function calling toggle, tool definitions.
  */
 import { useState, useCallback } from 'react';
-import { Bot, Sparkles, Save, RotateCcw, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Bot, Sparkles, Save, RotateCcw, ToggleLeft, ToggleRight, Zap } from 'lucide-react';
 import { VOICE_DATA } from '../../lib/google/voice-constants';
 import type { VoiceDefinition } from '../../lib/google/voice-constants';
+import { AGENT_PROFILES, type AgentProfile } from '../../lib/agents/autonomous-agent';
 
 export interface BotConfig {
   name: string;
@@ -13,6 +14,8 @@ export interface BotConfig {
   voiceName: string;
   enableFunctionCalling: boolean;
   toolDefinitions: string;
+  /** When true, bypass manual toolDefinitions and load ALL kit tools for voice agent */
+  useAllKits?: boolean;
 }
 
 interface BotBuilderProps {
@@ -60,6 +63,27 @@ export default function BotBuilder({ config, onChange, onSave, onReset }: BotBui
     onReset?.();
   }, [onChange, onReset]);
 
+  const handleLoadAgent = useCallback((profileKey: AgentProfile) => {
+    const profile = AGENT_PROFILES[profileKey];
+    const voiceMap: Record<AgentProfile, string> = {
+      'chief-of-staff': 'Charon',
+      'research-analyst': 'Puck',
+      'communications-manager': 'Kore',
+      'growth-strategist': 'Aoede',
+      'venture-operator': 'Fenrir',
+    };
+    onChange({
+      ...config,
+      name: profileKey.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+      systemPrompt: `${profile.systemPrompt}\n\nYou are speaking via voice. Keep responses natural and conversational. Avoid markdown, bullet points, or code blocks — speak in natural sentences. When reporting data, summarize key points verbally rather than listing everything.`,
+      voiceName: voiceMap[profileKey] || 'Puck',
+      enableFunctionCalling: true,
+      useAllKits: true,
+    });
+  }, [config, onChange]);
+
+  const profileKeys = Object.keys(AGENT_PROFILES) as AgentProfile[];
+
   return (
     <div className="bb-root">
       <div className="bb-header">
@@ -69,6 +93,30 @@ export default function BotBuilder({ config, onChange, onSave, onReset }: BotBui
       </div>
 
       <div className="bb-body">
+        {/* Load NAOS Agent Profile */}
+        <div className="bb-field">
+          <label className="bb-label">
+            <Zap size={11} style={{ color: 'var(--purple)' }} />
+            Load NAOS Agent
+          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+            {profileKeys.map(p => (
+              <button
+                key={p}
+                type="button"
+                className="bb-agent-btn"
+                onClick={() => handleLoadAgent(p)}
+                title={AGENT_PROFILES[p].systemPrompt.split('.')[0]}
+              >
+                {p.replace(/-/g, ' ')}
+              </button>
+            ))}
+          </div>
+          <p style={{ fontSize: 10, color: 'var(--text-muted)', margin: '4px 0 0' }}>
+            Auto-configures personality, voice, and kit access.
+          </p>
+        </div>
+
         {/* Name */}
         <div className="bb-field">
           <label className="bb-label">Name</label>
@@ -125,8 +173,31 @@ export default function BotBuilder({ config, onChange, onSave, onReset }: BotBui
           </button>
         </div>
 
-        {/* Tool Definitions */}
+        {/* Use All Kits Toggle */}
         {config.enableFunctionCalling && (
+          <div className="bb-field">
+            <label className="bb-label">Tool Source</label>
+            <button
+              className={`bb-toggle ${config.useAllKits ? 'bb-toggle--on' : ''}`}
+              onClick={() => update('useAllKits', !config.useAllKits)}
+              type="button"
+            >
+              {config.useAllKits
+                ? <ToggleRight size={20} className="bb-toggle-icon--on" />
+                : <ToggleLeft size={20} className="bb-toggle-icon--off" />
+              }
+              <span>{config.useAllKits ? 'All MCV Kits (90+ tools)' : 'Manual JSON'}</span>
+            </button>
+            <p style={{ fontSize: 10, color: 'var(--text-muted)', margin: '4px 0 0' }}>
+              {config.useAllKits
+                ? 'Voice agent has access to ALL kit tools: Gmail, Calendar, Drive, Tasks, Analytics, Ads, Creative AI, and more.'
+                : 'Provide tool definitions manually in JSON below.'}
+            </p>
+          </div>
+        )}
+
+        {/* Tool Definitions (manual JSON mode) */}
+        {config.enableFunctionCalling && !config.useAllKits && (
           <div className="bb-field">
             <label className="bb-label">
               Tool Definitions
@@ -360,6 +431,23 @@ export default function BotBuilder({ config, onChange, onSave, onReset }: BotBui
         .bb-btn--primary:hover {
           background: linear-gradient(135deg, rgba(0, 240, 255, 0.25), rgba(139, 92, 246, 0.25));
           box-shadow: 0 0 20px rgba(0, 240, 255, 0.1);
+        }
+
+        .bb-agent-btn {
+          padding: 6px 8px;
+          background: rgba(139, 92, 246, 0.06);
+          border: 1px solid rgba(139, 92, 246, 0.2);
+          border-radius: var(--radius-sm);
+          color: var(--purple, #8B5CF6);
+          font-size: 11px;
+          font-weight: 500;
+          text-transform: capitalize;
+          cursor: pointer;
+          transition: all var(--transition-fast);
+        }
+        .bb-agent-btn:hover {
+          background: rgba(139, 92, 246, 0.15);
+          border-color: rgba(139, 92, 246, 0.4);
         }
       `}</style>
     </div>
