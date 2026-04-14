@@ -15,8 +15,18 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 //       JWT signed with the Supabase JWT secret.
 // ---------------------------------------------------------------------------
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+// Resolve env from Vite (browser) OR process.env (Node, when imported by
+// api/*.ts handlers via server/api-routes.ts in local dev). import.meta.env
+// is undefined in Node so guard the access.
+const viteEnv: Record<string, string | undefined> = (() => {
+  try { return (import.meta as unknown as { env?: Record<string, string> }).env || {}; }
+  catch { return {}; }
+})();
+const nodeEnv: Record<string, string | undefined> =
+  typeof process !== 'undefined' && process.env ? process.env : {};
+
+const supabaseUrl = viteEnv.VITE_SUPABASE_URL || nodeEnv.VITE_SUPABASE_URL || nodeEnv.SUPABASE_URL || '';
+const supabaseAnonKey = viteEnv.VITE_SUPABASE_ANON_KEY || nodeEnv.VITE_SUPABASE_ANON_KEY || nodeEnv.SUPABASE_SERVICE_KEY || '';
 
 // Getter that returns the current Clerk JWT. Wired by auth.tsx on sign-in.
 let _tokenGetter: (() => Promise<string | null | undefined>) | null = null;

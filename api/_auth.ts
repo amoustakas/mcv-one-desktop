@@ -40,3 +40,22 @@ export async function requireAuth(req: VercelRequest, res: VercelResponse): Prom
     return null;
   }
 }
+
+/**
+ * withAuth — higher-order handler wrapper.
+ * Short-circuits with a 401 if auth fails; otherwise calls through to the
+ * inner handler with the authenticated user id available on (req as any).userId.
+ *
+ * Usage:
+ *   export default withAuth(async (req, res) => { ... })
+ */
+export function withAuth<T extends VercelRequest = VercelRequest>(
+  handler: (req: T & { userId?: string }, res: VercelResponse) => Promise<unknown> | unknown,
+) {
+  return async (req: T, res: VercelResponse) => {
+    const userId = await requireAuth(req, res);
+    if (!userId) return; // requireAuth already sent the 401
+    (req as T & { userId: string }).userId = userId;
+    return handler(req as T & { userId: string }, res);
+  };
+}
