@@ -1,4 +1,4 @@
-import { requireAuth } from './_auth';
+import { requireAuth } from './_auth.js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 // ---------------------------------------------------------------------------

@@ -3,7 +3,7 @@
 // Vercel serverless function
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { withAuth } from './_auth';
+import { withAuth } from './_auth.js';
 import { scoreTransaction, listFraudRules, createFraudRule } from '../src/lib/compliance/fraud-engine';
 import {
   getDunningStats,

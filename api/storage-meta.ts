@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getServiceClient, requireAuth } from './_supabase';
+import { getServiceClient, requireAuth } from './_supabase.js';
 
 // ---------------------------------------------------------------------------
 // Storage Meta API — Versions, Compartments, Legal Hold, RAG Chunks

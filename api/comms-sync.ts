@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { getProviderToken } from './_oauth-helper';
+import { getProviderToken } from './_oauth-helper.js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 async function requireAuth(req: VercelRequest, res: VercelResponse): Promise<string | null> {

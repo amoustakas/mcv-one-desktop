@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getProviderToken } from './_oauth-helper';
+import { getProviderToken } from './_oauth-helper.js';
 
 // ---------------------------------------------------------------------------
 // Shared Google API Helpers

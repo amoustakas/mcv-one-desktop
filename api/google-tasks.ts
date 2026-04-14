@@ -1,4 +1,4 @@
-import { getProviderToken } from './_oauth-helper';
+import { getProviderToken } from './_oauth-helper.js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const TASKS_API = 'https://tasks.googleapis.com/tasks/v1';
