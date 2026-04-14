@@ -4,8 +4,12 @@
     "api/veo.ts": { "maxDuration": 60 },
     "api/live-proxy.ts": { "maxDuration": 60 },
     "api/creative.ts": { "maxDuration": 30 },
-    "api/imagen-edit.ts": { "maxDuration": 30 }
+    "api/imagen-edit.ts": { "maxDuration": 30 },
+    "api/compliance-cron.ts": { "maxDuration": 60 }
   },
+  "crons": [
+    { "path": "/api/compliance-cron", "schedule": "0 * * * *" }
+  ],
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
