@@ -1,20 +1,28 @@
+import { useMemo } from 'react';
 import { GitBranch, Cloud, Zap, ExternalLink, CheckSquare, Users, BookOpen, MessageSquare, Activity, Shield, TrendingUp, Cpu, AlertTriangle, Brain, DollarSign, Bell, Monitor } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { InfraOverviewBar } from '../components/docker';
 import { useNavigation } from '../stores/navigation';
 import { useDeviceStore } from '../stores/devices';
-import { useTheme } from '../stores/theme';
 import { ventures } from '../lib/ventures';
 import { useGithubCommits } from '../hooks/use-github';
 import { useDeployments } from '../hooks/use-deployments';
 import { useActivities } from '../hooks/use-crm';
 import { useDashboardStats, useAttentionItems, useMorningBrief } from '../hooks/use-dashboard';
 import { useRoadmap } from '../hooks/use-orchestration';
-import { PageShell, PageHeader, StatCard, GlassCard, GridLayout, Badge, Button } from '../components/ui';
+import { PageShell, PageHeader, StatCard, GlassCard, GridLayout, Badge } from '../components/ui';
 import { timeAgo, formatMoney } from '../lib/utils';
 import Markdown from '../components/Markdown';
-
-const statusColors: Record<string, string> = { active: '#10B981', development: '#00F0FF', planned: '#8B5CF6', concept: '#6B7280' };
-const severityColors: Record<string, string> = { critical: '#EF4444', warning: '#F59E0B', info: '#00F0FF' };
+import {
+  SystemHealthCard,
+  AlertManagementPanel,
+  VentureRollupGrid,
+  AgentActivityFeed,
+  QuickActionsPalette,
+  type AttentionItem,
+  type VentureRollup,
+} from '../components/command-center';
+import { staggerContainer, staggerItem } from '../lib/motion/variants';
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -26,10 +34,9 @@ function getGreeting(): string {
 }
 
 export default function CommandCenter() {
-  const { switchToVenture, setView } = useNavigation();
-  const { applyVentureTheme } = useTheme();
+  const { setView } = useNavigation();
 
-  // Dashboard data via aggregation API
+  // Dashboard data
   const { data: dashboard, isLoading: statsLoading, refetch: refetchStats } = useDashboardStats();
   const { data: attentionItems = [], refetch: refetchAttention } = useAttentionItems();
   const { data: morningBrief, isLoading: briefLoading } = useMorningBrief();
@@ -41,34 +48,49 @@ export default function CommandCenter() {
 
   // Device Hub
   const deviceDevices = useDeviceStore(s => s.devices);
-  const deviceProfiles = useDeviceStore(s => s.profiles);
-  const activeProfileId = useDeviceStore(s => s.activeProfileId);
-  const deviceEventLog = useDeviceStore(s => s.eventLog);
   const deviceList = Object.values(deviceDevices);
   const deviceConnectedCount = deviceList.filter(d => d.status === 'connected').length;
-  const activeProfile = activeProfileId ? deviceProfiles[activeProfileId] : null;
 
-  // Orchestration: roadmap + sessions
+  // Orchestration
   const { data: roadmapData } = useRoadmap();
   const epics = roadmapData?.epics || [];
   const activeSessions = roadmapData?.sessions || [];
 
   const stats = dashboard?.stats;
-  const recentActivities = activities.slice(0, 6);
-  const recentDeploys = deploys.slice(0, 6);
+  const recentActivities = activities.slice(0, 5);
+  const recentDeploys = deploys.slice(0, 5);
 
-  function refetchAll() {
+  // Per-venture rollups — aggregate KPIs with current data. Real numbers come
+  // from an expanded dashboard API in a follow-up; for now, venture rollups
+  // synthesize from available stats.
+  const ventureRollups = useMemo<Record<string, VentureRollup>>(() => {
+    const rollups: Record<string, VentureRollup> = {};
+    const totalTasks = stats?.tasks.open ?? 0;
+    const totalPipeline = stats?.deals.pipelineValue ?? 0;
+    const ventureCount = ventures.length;
+    ventures.forEach((v) => {
+      // Even distribution as a baseline; replaced when per-venture API lands
+      rollups[v.id] = {
+        id: v.id,
+        openTasks: Math.round(totalTasks / ventureCount),
+        mrr: 0,
+        activeAlerts: attentionItems.filter((a: AttentionItem) => a.title.toLowerCase().includes(v.id)).length,
+        pipelineValue: Math.round(totalPipeline / ventureCount),
+      };
+    });
+    return rollups;
+  }, [stats, attentionItems]);
+
+  const refetchAll = () => {
     refetchStats();
     refetchAttention();
     refetchCommits();
     refetchDeploys();
     refetchActivities();
-  }
-
-  function enterVenture(slug: string) { switchToVenture(slug); applyVentureTheme(slug); }
+  };
 
   const activeVentures = ventures.filter(v => v.status === 'active' || v.status === 'development').length;
-  const criticalAttention = attentionItems.filter(i => i.severity === 'critical').length;
+  const criticalAttention = attentionItems.filter((i: AttentionItem) => i.severity === 'critical').length;
 
   return (
     <PageShell scroll>
@@ -91,6 +113,11 @@ export default function CommandCenter() {
       {/* Infrastructure Status Bar */}
       <InfraOverviewBar />
 
+      {/* Top row: System Health — always visible, quick glance */}
+      <div className="cc-row">
+        <SystemHealthCard />
+      </div>
+
       {/* Morning Brief */}
       {morningBrief && (
         <GlassCard variant="neural" className="cc-brief">
@@ -109,93 +136,54 @@ export default function CommandCenter() {
         </GlassCard>
       )}
 
-      {/* KPI Grid — Single-query aggregated stats */}
-      <GridLayout cols={4} gap="sm">
-        <StatCard icon={<Zap size={14} />} label="Ventures" value={ventures.length} color="#00F0FF" onClick={() => setView('portfolio')} />
-        <StatCard icon={<CheckSquare size={14} />} label="Active Tasks" value={stats?.tasks.open ?? '...'} color={stats?.tasks.overdue ? '#F59E0B' : undefined} onClick={() => setView('tasks')} />
-        <StatCard icon={<DollarSign size={14} />} label="Pipeline" value={stats ? formatMoney(stats.deals.pipelineValue) : '...'} onClick={() => setView('crm')} />
-        <StatCard icon={<Users size={14} />} label="Contacts" value={stats?.contacts.total ?? '...'} onClick={() => setView('crm')} />
-        <StatCard icon={<BookOpen size={14} />} label="Knowledge Base" value={stats?.docs.total ?? '...'} onClick={() => setView('docs')} />
-        <StatCard icon={<MessageSquare size={14} />} label="Conversations" value={stats?.conversations.total ?? '...'} onClick={() => setView('chat')} />
-        <StatCard icon={<Shield size={14} />} label="Won Revenue" value={stats ? formatMoney(stats.deals.wonValue) : '...'} color="#10B981" />
-        <StatCard icon={<Bell size={14} />} label="Unread" value={stats?.unreadNotifications ?? 0} color={stats?.unreadNotifications ? '#EF4444' : undefined} />
-        <StatCard icon={<Monitor size={14} />} label="Devices" value={deviceConnectedCount} color="#00F0FF" onClick={() => setView('device-hub')} />
-      </GridLayout>
+      {/* Alert Management — promoted, full-featured */}
+      {attentionItems.length > 0 && (
+        <div className="cc-row">
+          <AlertManagementPanel items={attentionItems as AttentionItem[]} />
+        </div>
+      )}
 
+      {/* KPI Grid with stagger motion */}
+      <motion.div variants={staggerContainer} initial="hidden" animate="show" className="cc-kpi-wrap">
+        <GridLayout cols={4} gap="sm">
+          <motion.div variants={staggerItem}><StatCard icon={<Zap size={14} />} label="Ventures" value={ventures.length} color="#00F0FF" onClick={() => setView('portfolio')} /></motion.div>
+          <motion.div variants={staggerItem}><StatCard icon={<CheckSquare size={14} />} label="Active Tasks" value={stats?.tasks.open ?? '...'} color={stats?.tasks.overdue ? '#F59E0B' : undefined} onClick={() => setView('tasks')} /></motion.div>
+          <motion.div variants={staggerItem}><StatCard icon={<DollarSign size={14} />} label="Pipeline" value={stats ? formatMoney(stats.deals.pipelineValue) : '...'} onClick={() => setView('crm')} /></motion.div>
+          <motion.div variants={staggerItem}><StatCard icon={<Users size={14} />} label="Contacts" value={stats?.contacts.total ?? '...'} onClick={() => setView('crm')} /></motion.div>
+          <motion.div variants={staggerItem}><StatCard icon={<BookOpen size={14} />} label="Knowledge Base" value={stats?.docs.total ?? '...'} onClick={() => setView('docs')} /></motion.div>
+          <motion.div variants={staggerItem}><StatCard icon={<MessageSquare size={14} />} label="Conversations" value={stats?.conversations.total ?? '...'} onClick={() => setView('chat')} /></motion.div>
+          <motion.div variants={staggerItem}><StatCard icon={<Shield size={14} />} label="Won Revenue" value={stats ? formatMoney(stats.deals.wonValue) : '...'} color="#10B981" /></motion.div>
+          <motion.div variants={staggerItem}><StatCard icon={<Bell size={14} />} label="Unread" value={stats?.unreadNotifications ?? 0} color={stats?.unreadNotifications ? '#EF4444' : undefined} /></motion.div>
+          <motion.div variants={staggerItem}><StatCard icon={<Monitor size={14} />} label="Devices" value={deviceConnectedCount} color="#00F0FF" onClick={() => setView('device-hub')} /></motion.div>
+        </GridLayout>
+      </motion.div>
+
+      {/* Venture Rollups — replaces the old flat venture card list */}
+      <div className="cc-row">
+        <VentureRollupGrid rollups={ventureRollups} />
+      </div>
+
+      {/* Main grid: Agent Activity + Quick Actions + Live Feeds */}
       <div className="cc-main">
-        {/* Left Column: Ventures + Attention */}
         <div className="cc-col">
-          {/* Attention Required */}
-          {attentionItems.length > 0 && (
+          <AgentActivityFeed />
+          <QuickActionsPalette />
+
+          {recentActivities.length > 0 && (
             <div className="cc-section">
-              <h2 className="cc-sec-title"><AlertTriangle size={12} /> Attention Required <span className="cc-sec-sub">{attentionItems.length} items</span></h2>
-              <div className="cc-attention">
-                {attentionItems.slice(0, 5).map(item => (
-                  <div key={item.id} className="cc-attn-item" onClick={() => setView(item.actionView as Parameters<typeof setView>[0])}>
-                    <span className="cc-attn-dot" style={{ background: severityColors[item.severity] }} />
-                    <div className="cc-attn-body">
-                      <span className="cc-attn-title">{item.title}</span>
-                      <span className="cc-attn-desc">{item.description}</span>
-                    </div>
-                    <Button variant="ghost" size="sm">{item.actionLabel}</Button>
+              <h2 className="cc-sec-title"><Activity size={12} /> Recent Activity</h2>
+              <div className="cc-activity-feed">
+                {recentActivities.map((a, i) => (
+                  <div key={i} className="cc-act-item">
+                    <span className="cc-act-type" style={{ color: a.type === 'call' ? '#10B981' : a.type === 'email' ? '#3B82F6' : a.type === 'meeting' ? '#8B5CF6' : '#F59E0B' }}>{a.type}</span>
+                    <span className="cc-act-title">{a.title}</span>
+                    {a.contacts?.name && <span className="cc-act-contact">{a.contacts.name}</span>}
+                    <span className="cc-act-time">{timeAgo(a.created_at)}</span>
                   </div>
                 ))}
               </div>
             </div>
           )}
-
-          {/* Ventures */}
-          <div className="cc-section">
-            <h2 className="cc-sec-title">Venture Health <span className="cc-sec-sub">{activeVentures} active</span></h2>
-            <div className="cc-ventures">
-              {ventures.map(v => (
-                <GlassCard key={v.id} variant="neural" className="cc-vc holo-hover" onClick={() => enterVenture(v.id)}>
-                  <div className="cc-vc-accent" style={{ background: `linear-gradient(90deg, transparent, ${v.color}40, transparent)` }} />
-                  <div className="cc-vc-head">
-                    <span className="cc-vc-icon" style={{ background: v.color }}>{v.icon}</span>
-                    <span className="cc-vc-status" style={{ color: statusColors[v.status] }}>
-                      <span className="cc-vc-dot pulse-dot active" style={{ background: statusColors[v.status], color: statusColors[v.status] }} />
-                      {v.status}
-                    </span>
-                  </div>
-                  <span className="cc-vc-name">{v.name}</span>
-                  <span className="cc-vc-tag">{v.tagline}</span>
-                </GlassCard>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Center: Activity Feed + Quick Actions */}
-        <div className="cc-col">
-          <div className="cc-section">
-            <h2 className="cc-sec-title"><Activity size={12} /> Recent Activity</h2>
-            <div className="cc-activity-feed">
-              {recentActivities.map((a, i) => (
-                <div key={i} className="cc-act-item">
-                  <span className="cc-act-type" style={{ color: a.type === 'call' ? '#10B981' : a.type === 'email' ? '#3B82F6' : a.type === 'meeting' ? '#8B5CF6' : '#F59E0B' }}>{a.type}</span>
-                  <span className="cc-act-title">{a.title}</span>
-                  {a.contacts?.name && <span className="cc-act-contact">{a.contacts.name}</span>}
-                  <span className="cc-act-time">{timeAgo(a.created_at)}</span>
-                </div>
-              ))}
-              {recentActivities.length === 0 && <p className="cc-empty-hint">No recent activity. Log interactions in the CRM.</p>}
-            </div>
-          </div>
-
-          <div className="cc-section">
-            <h2 className="cc-sec-title"><Cpu size={12} /> Quick Actions</h2>
-            <div className="cc-actions">
-              <button className="cc-action holo-hover" onClick={() => setView('chat')}>New Chat</button>
-              <button className="cc-action holo-hover" onClick={() => setView('docs')}>Docs Hub</button>
-              <button className="cc-action holo-hover" onClick={() => setView('tasks')}>Task Board</button>
-              <button className="cc-action holo-hover" onClick={() => setView('crm')}>CRM Pipeline</button>
-              <button className="cc-action holo-hover" onClick={() => setView('engineering')}>Engineering</button>
-              <button className="cc-action holo-hover" onClick={() => setView('war-room')}>War Room</button>
-              <button className="cc-action holo-hover" onClick={() => setView('ai-studio')}>AI Studio</button>
-              <button className="cc-action holo-hover" onClick={() => setView('treasury')}>Treasury</button>
-            </div>
-          </div>
         </div>
 
         {/* Right: Live Feeds */}
@@ -227,7 +215,6 @@ export default function CommandCenter() {
             </div>
           </GlassCard>
 
-          {/* Roadmap Progress */}
           <GlassCard className="cc-feed">
             <h2 className="cc-sec-title"><TrendingUp size={12} /> Roadmap <span className="cc-sec-sub">{epics.filter(e => e.status === 'done').length}/{epics.length} epics</span></h2>
             <div className="cc-roadmap">
@@ -243,7 +230,6 @@ export default function CommandCenter() {
             </div>
           </GlassCard>
 
-          {/* Active Sessions */}
           {activeSessions.length > 0 && (
             <GlassCard className="cc-feed">
               <h2 className="cc-sec-title"><Cpu size={12} /> Active Sessions <span className="cc-sec-sub">{activeSessions.length} live</span></h2>
@@ -261,33 +247,6 @@ export default function CommandCenter() {
               </div>
             </GlassCard>
           )}
-
-          {/* Workstation */}
-          <GlassCard className="cc-feed">
-            <h2 className="cc-sec-title"><Monitor size={12} /> Workstation <span className="cc-sec-sub">{deviceConnectedCount} connected</span></h2>
-            <div className="cc-workstation">
-              <div className="cc-ws-row">
-                <span className="cc-ws-label">Connected</span>
-                <span className="cc-ws-value">{deviceConnectedCount} device{deviceConnectedCount !== 1 ? 's' : ''}</span>
-              </div>
-              <div className="cc-ws-row">
-                <span className="cc-ws-label">Active profile</span>
-                <span className="cc-ws-value">{activeProfile?.name || 'None'}</span>
-              </div>
-              {deviceEventLog.length > 0 && (
-                <div className="cc-ws-events">
-                  <span className="cc-ws-events-title">Recent events</span>
-                  {deviceEventLog.slice(0, 3).map(ev => (
-                    <div key={ev.id} className="cc-ws-event-row">
-                      <span className="cc-ws-ev-type">{ev.type}</span>
-                      <span className="cc-ws-ev-device">{deviceDevices[ev.deviceId]?.name || ev.deviceId}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <button className="cc-ws-link holo-hover" onClick={() => setView('device-hub')}>Device Hub &rarr;</button>
-            </div>
-          </GlassCard>
         </div>
       </div>
 
@@ -299,8 +258,10 @@ export default function CommandCenter() {
         .cc-sub { font-size:11px; color:var(--text-muted); margin-top:2px; }
         .cc-sec-sub { font-size:9px; color:var(--text-muted); font-family:var(--font-mono); margin-left:auto; font-weight:400; text-transform:none; letter-spacing:0; }
 
-        /* Morning Brief */
-        .cc-brief { margin:0 24px; padding:14px 18px; }
+        .cc-row { padding: 0 24px; margin-bottom: 14px; }
+        .cc-kpi-wrap { padding: 0 24px; margin-bottom: 14px; }
+
+        .cc-brief { margin:0 24px 14px; padding:14px 18px; }
         .cc-brief-header { display:flex; align-items:center; gap:8px; margin-bottom:8px; color:var(--text-muted); }
         .cc-brief-title { font-family:var(--font-display); font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; }
         .cc-brief-loading { font-size:11px; color:var(--text-muted); font-style:italic; }
@@ -310,31 +271,11 @@ export default function CommandCenter() {
         .cc-brief-content li { margin:2px 0; }
         .cc-brief-content strong { color:var(--text-primary); }
 
-        /* Attention Items */
-        .cc-attention { display:flex; flex-direction:column; gap:4px; }
-        .cc-attn-item { display:flex; align-items:center; gap:10px; padding:8px 12px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-sm); cursor:pointer; transition:all 0.15s; }
-        .cc-attn-item:hover { border-color:var(--border-active); }
-        .cc-attn-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
-        .cc-attn-body { flex:1; min-width:0; }
-        .cc-attn-title { display:block; font-size:12px; font-weight:500; color:var(--text-primary); }
-        .cc-attn-desc { display:block; font-size:10px; color:var(--text-muted); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-
-        .cc-main { display:grid; grid-template-columns:1fr 1fr 380px; gap:16px; padding:0 24px 24px; flex:1; min-height:0; }
-        @media (max-width:1600px) { .cc-main { grid-template-columns:1fr 1fr; } }
-        .cc-col { display:flex; flex-direction:column; gap:12px; }
+        .cc-main { display:grid; grid-template-columns:1fr 400px; gap:16px; padding:0 24px 24px; flex:1; min-height:0; }
+        @media (max-width:1400px) { .cc-main { grid-template-columns:1fr; } }
+        .cc-col { display:flex; flex-direction:column; gap:14px; }
         .cc-section { }
         .cc-sec-title { font-family:var(--font-display); font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; display:flex; align-items:center; gap:6px; }
-
-        .cc-ventures { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:6px; }
-        .cc-vc { position:relative; overflow:hidden; padding:12px; text-align:left; display:flex; flex-direction:column; gap:2px; }
-        .cc-vc:hover { transform:translateY(-1px); box-shadow:0 4px 16px rgba(0,240,255,0.05); }
-        .cc-vc-accent { position:absolute; bottom:0; left:0; right:0; height:2px; }
-        .cc-vc-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
-        .cc-vc-icon { width:26px; height:26px; border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:11px; color:var(--bg-deep); }
-        .cc-vc-status { display:flex; align-items:center; gap:4px; font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; }
-        .cc-vc-dot { width:5px; height:5px; border-radius:50%; }
-        .cc-vc-name { font-size:13px; font-weight:600; }
-        .cc-vc-tag { font-size:10px; color:var(--text-muted); }
 
         .cc-activity-feed { display:flex; flex-direction:column; gap:2px; }
         .cc-act-item { display:flex; align-items:center; gap:8px; padding:6px 10px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-sm); font-size:11px; }
@@ -342,7 +283,6 @@ export default function CommandCenter() {
         .cc-act-title { flex:1; color:var(--text-secondary); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
         .cc-act-contact { font-size:10px; color:var(--text-muted); flex-shrink:0; }
         .cc-act-time { font-size:9px; color:var(--text-muted); font-family:var(--font-mono); flex-shrink:0; }
-        .cc-empty-hint { font-size:11px; color:var(--text-muted); text-align:center; padding:16px; }
 
         .cc-feed { overflow:hidden; }
         .cc-feed .cc-sec-title { padding:8px 12px; margin:0; border-bottom:1px solid var(--border); }
@@ -354,15 +294,6 @@ export default function CommandCenter() {
         .cc-sha { font-family:var(--font-mono); font-size:10px; color:var(--cyan); background:var(--bg-surface); padding:1px 5px; border-radius:3px; flex-shrink:0; }
         .cc-feed-msg { flex:1; color:var(--text-secondary); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
         .cc-feed-time { font-size:9px; color:var(--text-muted); font-family:var(--font-mono); flex-shrink:0; }
-
-        .cc-pipeline-snap { padding:8px 12px; display:flex; flex-direction:column; gap:6px; }
-        .cc-pipe-row { display:flex; justify-content:space-between; align-items:center; font-size:12px; }
-        .cc-pipe-label { color:var(--text-muted); }
-        .cc-pipe-value { font-family:var(--font-mono); font-weight:600; color:var(--text-primary); }
-
-        .cc-actions { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
-        .cc-action { padding:10px 12px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-secondary); font-size:11px; font-weight:500; transition:all 0.15s; position:relative; overflow:hidden; }
-        .cc-action:hover { color:var(--cyan); border-color:var(--border-active); box-shadow:0 0 12px rgba(0,240,255,0.06); }
 
         .cc-roadmap { padding:4px 12px; display:flex; flex-direction:column; gap:4px; }
         .cc-epic-row { display:flex; align-items:center; gap:8px; font-size:11px; padding:3px 0; }
@@ -379,18 +310,6 @@ export default function CommandCenter() {
         .cc-session-summary { display:block; font-size:10px; color:var(--text-muted); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
         .cc-session-time { font-size:9px; font-family:var(--font-mono); color:var(--text-muted); flex-shrink:0; }
         @keyframes mcv-pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-
-        .cc-workstation { padding:8px 12px; display:flex; flex-direction:column; gap:6px; }
-        .cc-ws-row { display:flex; justify-content:space-between; align-items:center; font-size:11px; }
-        .cc-ws-label { color:var(--text-muted); }
-        .cc-ws-value { font-family:var(--font-mono); font-weight:600; color:var(--text-primary); }
-        .cc-ws-events { margin-top:4px; display:flex; flex-direction:column; gap:3px; }
-        .cc-ws-events-title { font-size:9px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; font-family:var(--font-display); font-weight:600; }
-        .cc-ws-event-row { display:flex; align-items:center; gap:8px; font-size:10px; }
-        .cc-ws-ev-type { font-family:var(--font-mono); color:var(--cyan); font-size:9px; width:90px; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .cc-ws-ev-device { color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .cc-ws-link { margin-top:6px; padding:6px 10px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--cyan); font-size:11px; font-weight:500; transition:all 0.15s; text-align:left; }
-        .cc-ws-link:hover { border-color:var(--border-active); box-shadow:0 0 12px rgba(0,240,255,0.06); }
       `}</style>
     </PageShell>
   );
