@@ -18,24 +18,64 @@ import path from 'path';
 import os from 'os';
 
 // Load .env.local into process.env before any handler module imports run —
-// otherwise createClient(SUPABASE_URL, …) throws at module load time for
-// every api/*.ts handler that pulls from process.env.
+// otherwise createClient(SUPABASE_URL, …) fails with "Invalid API key" when
+// module-level captures land on empty strings.
+//
+// Behavior:
+//   - strip outer quotes (matches dotenv semantics; Node's --env-file keeps
+//     literal quotes in the value which breaks JWT-based keys)
+//   - OVERWRITE existing process.env entries (a wrapper that pre-loaded env
+//     with quotes must be superseded, not preserved)
+//   - trim trailing \r (Windows line endings leave a \r in the last value)
 (function loadEnvLocal() {
+  let totalLoaded = 0;
   for (const name of ['.env.local', '.env']) {
     const full = path.resolve(process.cwd(), name);
     if (!fs.existsSync(full)) continue;
     const text = fs.readFileSync(full, 'utf8');
+    let count = 0;
     for (const line of text.split(/\r?\n/)) {
       const m = line.match(/^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.*)\s*$/i);
       if (!m) continue;
       const [, key, rawVal] = m;
-      if (process.env[key]) continue;
-      let val = rawVal;
+      let val = rawVal.replace(/\r$/, '');
       if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
         val = val.slice(1, -1);
       }
       process.env[key] = val;
+      count++;
     }
+    console.log(`[env-loader] ${name}: loaded ${count} vars from ${full}`);
+    totalLoaded += count;
+  }
+  // Sanity check: log prefix of the Supabase service key so we can verify it isn't quoted
+  const k = process.env.SUPABASE_SERVICE_KEY || '';
+  console.log(`[env-loader] total=${totalLoaded} · SUPABASE_SERVICE_KEY: len=${k.length} starts="${k.slice(0, 6)}" ends="${k.slice(-4)}"`);
+})();
+
+// SYNC pre-flight: decode the service key's JWT payload to verify it actually
+// claims role=service_role. If not, fall back to anon_key before handlers
+// import. Runs synchronously so it lands BEFORE registerApiRoutes dynamically
+// imports every /api/* module.
+(function validateSupabaseServiceKey() {
+  const serviceKey = process.env.SUPABASE_SERVICE_KEY || '';
+  const anonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
+  if (!serviceKey) return;
+  try {
+    const parts = serviceKey.split('.');
+    if (parts.length !== 3) throw new Error('not a JWT');
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+    if (payload.role !== 'service_role') {
+      console.warn('\n  ⚠️  [supabase] SUPABASE_SERVICE_KEY does not claim role=service_role (got: ' + payload.role + ')');
+      console.warn('  ⚠️  Falling back to VITE_SUPABASE_ANON_KEY for dev. Writes via service client will fail.');
+      const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
+      console.warn('  ⚠️  Rotate at: https://supabase.com/dashboard/project/' +
+        (url.match(/\/\/([^.]+)\./)?.[1] || '<project>') + '/settings/api\n');
+      if (anonKey) process.env.SUPABASE_SERVICE_KEY = anonKey;
+    }
+  } catch (e) {
+    console.warn('[supabase] could not decode SUPABASE_SERVICE_KEY JWT:', e instanceof Error ? e.message : e);
+    if (anonKey) process.env.SUPABASE_SERVICE_KEY = anonKey;
   }
 })();
 import { execFile } from 'child_process';
