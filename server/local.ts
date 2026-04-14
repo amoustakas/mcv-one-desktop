@@ -55,15 +55,23 @@ const PORT = parseInt(process.env.PORT || "3100");
 app.use(cors({ origin: true }));
 app.use(express.json({ limit: '50mb' }));
 
-// Request logger for /api/* — surface every hit + response code so we can
-// see what the UI is actually doing without needing DevTools round-trips.
+// Request logger for /api/* — surface every hit + response code. On 4xx/5xx
+// we also capture the response body so the root cause is immediately visible.
 app.use((req, res, next) => {
   if (!req.url.startsWith('/api/')) return next();
   const start = Date.now();
+  const origJson = res.json.bind(res);
+  let captured: unknown = null;
+  res.json = ((body: unknown) => { captured = body; return origJson(body); }) as typeof res.json;
   res.on('finish', () => {
     const ms = Date.now() - start;
     const tag = res.statusCode >= 500 ? 'ERR' : res.statusCode >= 400 ? 'WARN' : 'OK';
-    console.log(`[api] ${tag} ${req.method} ${req.url} ${res.statusCode} ${ms}ms`);
+    let suffix = '';
+    if (res.statusCode >= 400 && captured && typeof captured === 'object') {
+      const msg = (captured as { error?: unknown }).error;
+      if (msg) suffix = ` — ${typeof msg === 'string' ? msg : JSON.stringify(msg).slice(0, 200)}`;
+    }
+    console.log(`[api] ${tag} ${req.method} ${req.url} ${res.statusCode} ${ms}ms${suffix}`);
   });
   next();
 });
