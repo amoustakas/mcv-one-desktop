@@ -30,6 +30,8 @@ export type ViewId =
   | 'team'
   | 'settings'
   // Venture views
+  | 'ventures-index'
+  | 'venture-detail'
   | 'venture-dashboard'
   | 'venture-profile'
   | 'venture-engineering'

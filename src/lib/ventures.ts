@@ -14,6 +14,39 @@ export interface VentureTeamMember {
   avatar?: string;
 }
 
+export interface VentureCustomDomain {
+  host: string;
+  status?: 'pending' | 'verifying' | 'verified' | 'failed';
+  verified_at?: string;
+  vercel_id?: string;
+}
+
+export interface VentureWhiteLabel {
+  clerkAppearance?: Record<string, unknown>;
+  brandName?: string;
+  logoUrl?: string;
+  faviconUrl?: string;
+  primaryColor?: string;
+  accentColor?: string;
+}
+
+export type VentureAssetKind = 'repo' | 'app' | 'domain' | 'doc' | 'integration' | 'social' | 'workspace';
+export type VentureTier = 1 | 2 | 3;
+
+export interface VentureAsset {
+  id: string;
+  venture_id: string;
+  kind: VentureAssetKind;
+  name: string;
+  url?: string;
+  meta: Record<string, unknown>;
+  tier: VentureTier;
+  discovered: boolean;
+  confirmed: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface Venture {
   id: string;
   name: string;
@@ -35,6 +68,14 @@ export interface Venture {
   category: string;
   competitors: string[];
   keyMetrics: Record<string, string>;
+  // Venture OS extensions (DB-backed; optional on legacy in-memory records)
+  tier?: VentureTier;
+  parentVentureId?: string;
+  clerkOrgId?: string;
+  customDomains?: VentureCustomDomain[];
+  whiteLabel?: VentureWhiteLabel;
+  docNamespace?: string;
+  questState?: Record<string, unknown>;
 }
 
 export const ventures: Venture[] = [

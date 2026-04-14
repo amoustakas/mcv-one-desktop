@@ -239,6 +239,19 @@ export const manifest: KitManifest = {
       },
     },
     {
+      name: 'claim_story',
+      description: 'Reserve a story for the current Claude Code session. Moves status to in-progress and stamps the session id into kit_invocations so concurrent sessions do not collide on the same work.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          story_id: { type: 'string', description: 'The story UUID to claim' },
+          session_id: { type: 'string', description: 'Claude Code session identifier (e.g. from useSessionStore)' },
+          note: { type: 'string', description: 'Optional free-text context on what this session will do' },
+        },
+        required: ['story_id', 'session_id'],
+      },
+    },
+    {
       name: 'request_checkpoint',
       description: 'Create an approval gate. Use before any irreversible or high-impact action (pre-commit, pre-merge, pre-deploy, pre-payment). Pauses execution until resolved.',
       input_schema: {
@@ -257,6 +270,48 @@ export const manifest: KitManifest = {
   ],
 };
 
+const claimStory: KitToolHandler = async (input, ctx) => {
+  const storyId = input.story_id as string;
+  const sessionId = input.session_id as string;
+  const note = input.note as string | undefined;
+
+  // Fetch current to check if already claimed
+  const current = await postJson('/api/epics', { action: 'get_story', id: storyId }, ctx).catch(() => null);
+  const existing = current?.story;
+  if (existing?.status === 'in-progress') {
+    const priorClaims = (existing.kit_invocations as Array<Record<string, unknown>> | undefined) || [];
+    const lastClaim = priorClaims.filter(k => k.type === 'session_claim').slice(-1)[0];
+    if (lastClaim && lastClaim.session_id !== sessionId) {
+      return {
+        success: false,
+        data: { conflict: true, claimed_by: lastClaim.session_id, claimed_at: lastClaim.at },
+        displayMarkdown: `**Story already claimed** by session \`${String(lastClaim.session_id).slice(0, 8)}\` at ${lastClaim.at}. Pick a different story.`,
+      };
+    }
+  }
+
+  const newInvocation = {
+    type: 'session_claim',
+    session_id: sessionId,
+    at: new Date().toISOString(),
+    note: note || null,
+  };
+  const kit_invocations = [...((existing?.kit_invocations as unknown[]) || []), newInvocation];
+
+  const data = await postJson('/api/epics', {
+    action: 'update_story',
+    id: storyId,
+    status: 'in-progress',
+    kit_invocations,
+  }, ctx);
+  const story = data.story as StoryRow;
+  return {
+    success: true,
+    data: story,
+    displayMarkdown: `**Claimed:** ${story.title}\n- Session: \`${sessionId.slice(0, 8)}\`\n- Status: \`in-progress\``,
+  };
+};
+
 export const handlers: Record<string, KitToolHandler> = {
   create_epic: createEpic,
   list_epics: listEpics,
@@ -264,5 +319,6 @@ export const handlers: Record<string, KitToolHandler> = {
   update_epic: updateEpic,
   decompose_to_stories: decomposeToStories,
   assign_agent_to_story: assignAgent,
+  claim_story: claimStory,
   request_checkpoint: requestCheckpoint,
 };

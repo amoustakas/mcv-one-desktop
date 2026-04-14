@@ -1,4 +1,15 @@
-import { ClerkProvider, SignIn, useAuth, useUser, UserButton } from '@clerk/clerk-react';
+import {
+  ClerkProvider,
+  SignIn,
+  useAuth,
+  useUser,
+  UserButton,
+  useOrganization,
+  useOrganizationList,
+  OrganizationSwitcher,
+  OrganizationProfile,
+  CreateOrganization,
+} from '@clerk/clerk-react';
 import { type ReactNode, useState, useEffect } from 'react';
 import { setAuthTokenGetter } from './api';
 import { setClerkTokenGetter } from './supabase';
@@ -139,4 +150,13 @@ function AuthGate({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-export { useAuth, useUser, UserButton };
+export {
+  useAuth,
+  useUser,
+  UserButton,
+  useOrganization,
+  useOrganizationList,
+  OrganizationSwitcher,
+  OrganizationProfile,
+  CreateOrganization,
+};

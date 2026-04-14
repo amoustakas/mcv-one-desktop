@@ -231,7 +231,7 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
 
         <style>{`
           .settings-overlay {
-            position: fixed; inset: 0; z-index: 100;
+            position: fixed; inset: 0; z-index: var(--z-overlay);
             background: rgba(0,0,0,0.6);
             display: flex; justify-content: flex-end;
           }

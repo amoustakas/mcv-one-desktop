@@ -5,10 +5,12 @@
     "api/live-proxy.ts": { "maxDuration": 60 },
     "api/creative.ts": { "maxDuration": 30 },
     "api/imagen-edit.ts": { "maxDuration": 30 },
-    "api/compliance-cron.ts": { "maxDuration": 60 }
+    "api/compliance-cron.ts": { "maxDuration": 60 },
+    "api/cron-asset-rediscovery.ts": { "maxDuration": 120 }
   },
   "crons": [
-    { "path": "/api/compliance-cron", "schedule": "0 * * * *" }
+    { "path": "/api/compliance-cron", "schedule": "0 * * * *" },
+    { "path": "/api/cron-asset-rediscovery", "schedule": "0 6 * * *" }
   ],
   "buildCommand": "npm run build",
   "outputDirectory": "dist",

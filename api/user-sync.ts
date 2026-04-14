@@ -71,6 +71,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           source: 'system',
         });
 
+        // Ensure the root EdgeIQ Holdings Clerk organization exists and this
+        // user is a member. Idempotent: looks up by slug before creating.
+        const secretKey = process.env.CLERK_SECRET_KEY;
+        if (secretKey) {
+          try {
+            const { createClerkClient } = await import('@clerk/backend');
+            const clerk = createClerkClient({ secretKey });
+            const rootSlug = 'edgeiq-holdings';
+            let rootOrgId: string | null = null;
+            try {
+              const list = await clerk.organizations.getOrganizationList({ query: rootSlug, limit: 10 });
+              const match = list.data.find(o => o.slug === rootSlug);
+              if (match) rootOrgId = match.id;
+            } catch { /* soft-fail: list may be unavailable */ }
+
+            if (!rootOrgId) {
+              const org = await clerk.organizations.createOrganization({
+                name: 'EdgeIQ Holdings',
+                slug: rootSlug,
+                createdBy: clerk_user_id,
+                publicMetadata: { role: 'root', venture_id: null },
+              });
+              rootOrgId = org.id;
+            } else {
+              // Ensure membership
+              try {
+                await clerk.organizations.createOrganizationMembership({
+                  organizationId: rootOrgId,
+                  userId: clerk_user_id,
+                  role: 'org:member',
+                });
+              } catch { /* already a member — fine */ }
+            }
+          } catch (e) {
+            console.error('root-org provisioning failed (non-fatal):', e);
+          }
+        }
+
         return res.json({ member: data, created: true });
       }
 
