@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Lock, Users, CheckCircle2, Circle, Unlock, AlertTriangle, Calendar, Clock, DollarSign, Save, Plus } from 'lucide-react';
-import { Dialog, DialogActions, Button, Badge, SectionCard, FormField, Input, Tooltip } from '../ui';
+import { Dialog, DialogActions, Button, Badge, SectionCard, FormField, Input, Tooltip, DatePicker } from '../ui';
 import { formatCurrency, timeAgo } from '../../lib/utils';
 
 export interface EscrowMilestone {
@@ -230,11 +230,11 @@ export default function EscrowDetailDialog({
                           </div>
                           <div className="esc-ms-meta-field">
                             <span>Due</span>
-                            <input
-                              className="esc-ms-date"
-                              type="date"
-                              value={m.due_date?.slice(0, 10) || ''}
-                              onChange={(e) => updateMilestone(m.id, { due_date: e.target.value })}
+                            <DatePicker
+                              size="sm"
+                              value={m.due_date?.slice(0, 10) || null}
+                              onChange={(v) => updateMilestone(m.id, { due_date: v || undefined })}
+                              ariaLabel="Milestone due date"
                             />
                           </div>
                           {m.released_at && (

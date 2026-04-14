@@ -12,7 +12,9 @@ import { Plus } from 'lucide-react';
 
 const FraudRuleDetailDialog = lazy(() => import('../components/compliance/FraudRuleDetailDialog'));
 const NexusAlertDetailDialog = lazy(() => import('../components/compliance/NexusAlertDetailDialog'));
+const DunningCampaignDetailDialog = lazy(() => import('../components/compliance/DunningCampaignDetailDialog'));
 type NexusAlertProp = Parameters<typeof import('../components/compliance/NexusAlertDetailDialog').default>[0]['alert'];
+type DunningCampaignProp = Parameters<typeof import('../components/compliance/DunningCampaignDetailDialog').default>[0]['campaign'];
 
 export default function ComplianceHubView() {
   const { activeVenture, mode } = useNavigation();
@@ -28,6 +30,7 @@ export default function ComplianceHubView() {
   const [tab, setTab] = useState('overview');
   const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
   const [selectedNexusId, setSelectedNexusId] = useState<string | null>(null);
+  const [dunningOpen, setDunningOpen] = useState(false);
 
   const selectedRule = selectedRuleId
     ? (fraudRules.find((r) => String((r as unknown as Record<string, unknown>).id) === selectedRuleId) as unknown as FraudRuleLike) || null
@@ -202,29 +205,37 @@ export default function ComplianceHubView() {
         )}
 
         {tab === 'dunning' && (
-          <GlassCard>
-            <h3 style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--text-primary)' }}>Dunning Campaigns</h3>
-            {dunningStatsLoading ? (
-              <div style={{ display: 'flex', gap: 8, color: 'var(--text-muted)', alignItems: 'center' }}>
-                <Loader2 size={14} className="mcv-spin" /> Loading...
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <GlassCard>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <h3 style={{ margin: 0, fontSize: 14, color: 'var(--text-primary)' }}>Primary Recovery Campaign</h3>
+                <Button size="sm" variant="primary" onClick={() => setDunningOpen(true)}>Configure Campaign</Button>
               </div>
-            ) : !dunningStats ? (
-              <EmptyState icon={<TrendingDown size={32} />} title="No dunning data" description="Automated recovery campaigns for failed payments." />
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
-                {Object.entries(dunningStats as unknown as unknown as Record<string, unknown>).map(([key, value]) => (
-                  <div key={key} style={{ padding: 12, background: 'var(--bg-elevated)', borderRadius: 8 }}>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                      {key.replace(/_/g, ' ')}
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 12px' }}>
+                Define escalation steps (email → SMS → voice), trigger windows, and write-off policies. Each overdue invoice automatically enters the campaign.
+              </p>
+              {dunningStatsLoading ? (
+                <div style={{ display: 'flex', gap: 8, color: 'var(--text-muted)', alignItems: 'center' }}>
+                  <Loader2 size={14} className="mcv-spin" /> Loading stats...
+                </div>
+              ) : !dunningStats ? (
+                <EmptyState icon={<TrendingDown size={32} />} title="No dunning data" description="Configure a campaign to start tracking automated recovery." />
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
+                  {Object.entries(dunningStats as unknown as unknown as Record<string, unknown>).map(([key, value]) => (
+                    <div key={key} style={{ padding: 12, background: 'var(--bg-elevated)', borderRadius: 8 }}>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                        {key.replace(/_/g, ' ')}
+                      </div>
+                      <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginTop: 4 }}>
+                        {typeof value === 'number' ? (key.includes('rate') ? `${value.toFixed(1)}%` : key.includes('revenue') ? `$${value.toLocaleString()}` : value.toLocaleString()) : String(value)}
+                      </div>
                     </div>
-                    <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginTop: 4 }}>
-                      {typeof value === 'number' ? (key.includes('rate') ? `${value.toFixed(1)}%` : key.includes('revenue') ? `$${value.toLocaleString()}` : value.toLocaleString()) : String(value)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </GlassCard>
+                  ))}
+                </div>
+              )}
+            </GlassCard>
+          </div>
         )}
 
         {tab === 'tax' && (
@@ -292,6 +303,39 @@ export default function ComplianceHubView() {
             onAcknowledge={(id) => { console.log('Acknowledge nexus', id); setSelectedNexusId(null); }}
             onMarkRegistered={(id) => { console.log('Mark nexus registered', id); setSelectedNexusId(null); }}
             onMarkExempt={(id) => { console.log('Mark nexus exempt', id); setSelectedNexusId(null); }}
+          />
+        )}
+        {dunningOpen && (
+          <DunningCampaignDetailDialog
+            open={dunningOpen}
+            onClose={() => setDunningOpen(false)}
+            campaign={{
+              id: 'primary-campaign',
+              name: 'Primary Recovery Campaign',
+              description: 'Standard escalation path for overdue invoices',
+              enabled: true,
+              trigger_days_overdue: 1,
+              escalation_threshold_days: 30,
+              auto_write_off_days: 0,
+              steps: [
+                { id: 'default_1', offset_days: 1, channel: 'email', subject: 'Friendly reminder — invoice due', include_pay_link: true },
+                { id: 'default_2', offset_days: 7, channel: 'email', subject: 'Second notice — please pay', include_pay_link: true },
+                { id: 'default_3', offset_days: 14, channel: 'sms', subject: 'Urgent: invoice overdue', include_pay_link: true },
+                { id: 'default_4', offset_days: 30, channel: 'voice', subject: 'Final notice before escalation', include_pay_link: false },
+              ],
+              stats: dunningStats ? {
+                active: Number((dunningStats as unknown as Record<string, unknown>).active_campaigns ?? 0),
+                recovered: Number((dunningStats as unknown as Record<string, unknown>).recovered_count ?? 0),
+                recovered_revenue: Number((dunningStats as unknown as Record<string, unknown>).recovered_revenue ?? 0),
+                at_risk_revenue: Number((dunningStats as unknown as Record<string, unknown>).at_risk_revenue ?? 0),
+                recovery_rate: Number((dunningStats as unknown as Record<string, unknown>).recovery_rate ?? 0),
+                avg_days_to_recover: Number((dunningStats as unknown as Record<string, unknown>).avg_days_to_recover ?? 0),
+              } : undefined,
+            } satisfies DunningCampaignProp}
+            onSave={(updated) => { console.log('Save dunning campaign', updated); setDunningOpen(false); }}
+            onToggle={(id, enabled) => { console.log('Toggle dunning', id, enabled); }}
+            onPauseInvocation={(cid, iid) => { console.log('Pause invocation', cid, iid); }}
+            onResumeInvocation={(cid, iid) => { console.log('Resume invocation', cid, iid); }}
           />
         )}
       </Suspense>

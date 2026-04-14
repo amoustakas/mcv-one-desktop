@@ -28,6 +28,8 @@ import {
 } from '../components/ui';
 import ActivityFeed from '../components/ActivityFeed';
 import type { ActivityItem } from '../components/ActivityFeed';
+import { motion } from 'framer-motion';
+import { staggerContainer, staggerItem } from '../lib/motion/variants';
 import SparkLine from '../components/charts/SparkLine';
 import McvDonutChart from '../components/charts/DonutChart';
 import McvBarChart from '../components/charts/BarChart';
@@ -377,43 +379,51 @@ export default function SignalsView() {
       </PageHeader>
 
       {/* ── KPI Strip ─────────────────────────────────────── */}
-      <div className="sig-kpi-strip">
+      <motion.div className="sig-kpi-strip" variants={staggerContainer} initial="hidden" animate="show">
         <GridLayout cols={4} gap="sm">
-          <KpiCard
-            title="Active PRs"
-            value={activePRs}
-            icon={<GitPullRequest size={14} />}
-            size="sm"
-            variant="glass"
-            isLoading={prsLoading}
-            sparklineData={commitSpark}
-          />
-          <KpiCard
-            title="Recent Deploys"
-            value={recentDeploys}
-            icon={<Cloud size={14} />}
-            size="sm"
-            variant="glass"
-            isLoading={deploysLoading}
-          />
-          <KpiCard
-            title="Open Tasks"
-            value={openTasks}
-            icon={<CheckSquare size={14} />}
-            size="sm"
-            variant="glass"
-            isLoading={tasksLoading}
-          />
-          <KpiCard
-            title="Active Campaigns"
-            value={activeCampaigns}
-            icon={<Megaphone size={14} />}
-            size="sm"
-            variant="glass"
-            isLoading={campaignsLoading}
-          />
+          <motion.div variants={staggerItem}>
+            <KpiCard
+              title="Active PRs"
+              value={activePRs}
+              icon={<GitPullRequest size={14} />}
+              size="sm"
+              variant="glass"
+              isLoading={prsLoading}
+              sparklineData={commitSpark}
+            />
+          </motion.div>
+          <motion.div variants={staggerItem}>
+            <KpiCard
+              title="Recent Deploys"
+              value={recentDeploys}
+              icon={<Cloud size={14} />}
+              size="sm"
+              variant="glass"
+              isLoading={deploysLoading}
+            />
+          </motion.div>
+          <motion.div variants={staggerItem}>
+            <KpiCard
+              title="Open Tasks"
+              value={openTasks}
+              icon={<CheckSquare size={14} />}
+              size="sm"
+              variant="glass"
+              isLoading={tasksLoading}
+            />
+          </motion.div>
+          <motion.div variants={staggerItem}>
+            <KpiCard
+              title="Active Campaigns"
+              value={activeCampaigns}
+              icon={<Megaphone size={14} />}
+              size="sm"
+              variant="glass"
+              isLoading={campaignsLoading}
+            />
+          </motion.div>
         </GridLayout>
-      </div>
+      </motion.div>
 
       {/* ── Main content: Feed + Charts ───────────────────── */}
       <div className="sig-content">

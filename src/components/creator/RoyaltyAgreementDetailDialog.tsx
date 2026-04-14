@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Award, Users, Percent, Calendar, Plus, Trash2, Save, TrendingUp, Package } from 'lucide-react';
-import { Dialog, DialogActions, Button, Badge, SectionCard, FormField, Input, Switch } from '../ui';
+import { Dialog, DialogActions, Button, Badge, SectionCard, FormField, Input, Switch, DatePicker } from '../ui';
 import { formatCurrency, timeAgo } from '../../lib/utils';
 
 export interface RoyaltySplit {
@@ -180,17 +180,16 @@ export default function RoyaltyAgreementDetailDialog({
                 />
               </FormField>
               <FormField label="Effective Date">
-                <Input
-                  type="date"
-                  value={draft.effective_date?.slice(0, 10) || ''}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => update('effective_date', e.target.value)}
+                <DatePicker
+                  value={draft.effective_date?.slice(0, 10) || null}
+                  onChange={(v) => update('effective_date', v || undefined)}
                 />
               </FormField>
               <FormField label="Termination Date" hint="Optional — blank = no expiry">
-                <Input
-                  type="date"
-                  value={draft.termination_date?.slice(0, 10) || ''}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => update('termination_date', e.target.value)}
+                <DatePicker
+                  value={draft.termination_date?.slice(0, 10) || null}
+                  onChange={(v) => update('termination_date', v || undefined)}
+                  placeholder="No expiry"
                 />
               </FormField>
             </div>

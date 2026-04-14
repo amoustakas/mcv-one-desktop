@@ -32,3 +32,4 @@ export { default as FormField } from './FormField';
 export { default as SectionCard } from './SectionCard';
 export { default as Toolbar, ToolbarSeparator } from './Toolbar';
 export { default as Sheet } from './Sheet';
+export { default as DatePicker } from './DatePicker';

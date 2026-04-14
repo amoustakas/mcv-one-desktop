@@ -1131,3 +1131,78 @@
 }
 .mcv-sheet-title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--text-primary); }
 .mcv-sheet-body { padding: var(--space-lg); overflow-y: auto; flex: 1; min-height: 0; }
+
+/* ── DatePicker ── */
+.mcv-datepicker {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+  background: var(--field-bg);
+  border: 1px solid var(--field-border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-size: var(--text-sm);
+  position: relative;
+}
+.mcv-datepicker:hover:not(.mcv-datepicker-disabled) {
+  border-color: var(--field-border-hover);
+  background: var(--field-bg-hover);
+}
+.mcv-datepicker:focus-within {
+  outline: none;
+  border-color: var(--field-border-focus);
+  box-shadow: var(--field-ring-focus);
+}
+.mcv-datepicker-sm { padding: 4px 10px; min-height: 28px; }
+.mcv-datepicker-md { padding: 6px 12px; min-height: 34px; }
+.mcv-datepicker-lg { padding: 8px 14px; min-height: 40px; }
+.mcv-datepicker-error {
+  border-color: var(--field-border-error);
+  box-shadow: var(--field-ring-error);
+}
+.mcv-datepicker-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--field-disabled-bg);
+}
+.mcv-datepicker-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  pointer-events: none;
+}
+.mcv-datepicker-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 0;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  color-scheme: dark;
+  min-width: 0;
+}
+.mcv-datepicker-input:focus { box-shadow: none; border: none; }
+.mcv-datepicker-empty .mcv-datepicker-input { color: var(--text-muted); }
+.mcv-datepicker-input::-webkit-calendar-picker-indicator {
+  filter: invert(0.6);
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity var(--transition-fast);
+}
+.mcv-datepicker:hover .mcv-datepicker-input::-webkit-calendar-picker-indicator { opacity: 1; }
+.mcv-datepicker-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+.mcv-datepicker-clear:hover { background: var(--bg-elevated); color: var(--text-primary); }
