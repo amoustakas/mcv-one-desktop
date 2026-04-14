@@ -32,6 +32,20 @@ All `public.*` tables have `USING (true) WITH CHECK (true)` permissive policies.
 
 ## Total surface
 
-99 tables across public schema. ~52 were added during 2026-04-13's session — prior state had ~33 tables and 7 entire subsystems (NAOS, Commerce, Financials, Payments, Creator, Compliance) were dead (API queries against non-existent tables).
+**115 tables + 3 views** across public schema. ~82 were added during 2026-04-13's session — prior state had ~33 tables and 7 entire subsystems (NAOS, Commerce, Financials, Payments, Creator, Compliance) were dead (API queries against non-existent tables).
+
+## Additional migrations applied same session
+
+| Name | Purpose |
+|---|---|
+| `user_kits_drop_kit_fk` | Kit preferences live independent of catalog |
+| `add_remaining_surface_tables` | 16 referenced-but-missing tables: api_keys, discount_usage, fulfillment_items, gift_card_transactions, google_api_telemetry, notification_queue, product_ratings, return_items, saved_payment_methods, screen_registry, split_payments, split_payment_items, subscription_plans, transactions, webhook_endpoints, webhook_deliveries |
+| NAOS seed expansion | 14 relationship edges, 11 interaction history rows, 1 culture snapshot |
+| Commerce seed spread | All 7 ventures have products + founding customer; mcv has full orders/invoices/payment_intent/transaction flow |
+| Realtime publication | Expanded from 12 -> 37 tables (NAOS agent state, storage chunks, orders, invoices, payments, fraud checks, nexus alerts, etc.) |
+
+## Zero-code auth wiring
+
+`src/lib/supabase.ts` uses supabase-js `accessToken` callback so every existing browser query transparently attaches the Clerk JWT. No call sites changed; all 9 consumer files (AegisChat, NotificationCenter, OpsPanel, StatusBar, use-presence, use-realtime, chat store, SessionsView, VentureProfile) are now RLS-aware without refactor.
 
 See individual `supabase/migration-*.sql` files in this repo for reference schemas. Live schemas applied may differ slightly (permissive RLS, `IF NOT EXISTS` guards, pinned `search_path` on functions).
