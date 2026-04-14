@@ -108,7 +108,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const chunks = (matches || []).map((m: { id: string; file_id: string | null; content: string; similarity: number; chunk_index: number; metadata: Record<string, unknown> }) => ({
           id: m.id,
           text: m.content,
-          source: (m.file_id && fileMap.get(m.file_id)?.name) || (m.metadata?.file_name as string) || 'unknown',
+          // Display name fallback chain: storage_files.name → metadata.title
+          // (set by venture-docs-embed) → metadata.file_name (legacy) →
+          // 'unknown'. Keeps venture_doc chunks citable alongside file chunks.
+          source:
+            (m.file_id && fileMap.get(m.file_id)?.name) ||
+            (m.metadata?.title as string) ||
+            (m.metadata?.file_name as string) ||
+            'unknown',
           file_id: m.file_id,
           chunk_index: m.chunk_index,
           score: m.similarity,
@@ -145,13 +152,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         const fileIds = Array.from(new Set(matches.map((m: { file_id: string | null }) => m.file_id).filter(Boolean)));
-        const { data: files } = await supabase.from('storage_files').select('id, name, path').in('id', fileIds as string[]);
+        // Guard: an all-venture_doc result set has no file_ids; skip the
+        // storage_files query rather than sending .in('id', []).
+        const { data: files } = fileIds.length
+          ? await supabase.from('storage_files').select('id, name, path').in('id', fileIds as string[])
+          : { data: [] };
         const fileMap = new Map((files || []).map(f => [f.id, f]));
 
         const chunks = matches.map((m: { id: string; file_id: string | null; content: string; similarity: number; chunk_index: number; metadata: Record<string, unknown> }) => ({
           id: m.id, file_id: m.file_id,
           content: m.content, score: m.similarity,
-          source: (m.file_id && fileMap.get(m.file_id)?.name) || (m.metadata?.file_name as string) || 'unknown',
+          // See retrieve action for fallback rationale — keeps venture_doc
+          // chunks identifiable by their doc title rather than 'unknown'.
+          source:
+            (m.file_id && fileMap.get(m.file_id)?.name) ||
+            (m.metadata?.title as string) ||
+            (m.metadata?.file_name as string) ||
+            'unknown',
         }));
 
         const answer = await generateGrounded(query, chunks);
