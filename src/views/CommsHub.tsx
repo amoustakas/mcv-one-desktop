@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageSquare, Hash, Gamepad2, Mail, Phone, Send,
   Inbox, Radio, BarChart3,

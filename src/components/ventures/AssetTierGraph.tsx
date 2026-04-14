@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, X, Globe, Github, Package, FileText, Link2, Hash, Box, Plus } from 'lucide-react';
+import { Check, X, Globe, Code, Package, FileText, Link2, Hash, Box, Plus } from 'lucide-react';
 import { GlassCard, Badge, Button, EmptyState } from '../ui';
 import { apiPost } from '../../lib/api/client';
 import type { Venture, VentureAsset, VentureAssetKind, VentureTier } from '../../lib/ventures';
 
 const KIND_ICON: Record<VentureAssetKind, typeof Globe> = {
-  repo: Github,
+  repo: Code,
   app: Package,
   domain: Globe,
   doc: FileText,

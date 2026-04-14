@@ -32,24 +32,34 @@ export interface CoreServiceConfig {
 
 export class CoreNotAvailableError extends Error {
   readonly isCoreNotAvailable = true;
-  constructor(public readonly service: 'identity' | 'fabric' | 'intelligence', cause?: unknown) {
+  readonly service: 'identity' | 'fabric' | 'intelligence';
+  constructor(service: 'identity' | 'fabric' | 'intelligence', cause?: unknown) {
     super(`Core Triangle service not available: ${service}`);
     this.name = 'CoreNotAvailableError';
+    this.service = service;
     (this as { cause?: unknown }).cause = cause;
   }
 }
 
 export class CoreApiError extends Error {
   readonly isCoreApiError = true;
+  readonly service: 'identity' | 'fabric' | 'intelligence';
+  readonly status: number;
+  readonly code: string | undefined;
+  readonly payload?: unknown;
   constructor(
-    public readonly service: 'identity' | 'fabric' | 'intelligence',
-    public readonly status: number,
-    public readonly code: string | undefined,
+    service: 'identity' | 'fabric' | 'intelligence',
+    status: number,
+    code: string | undefined,
     message: string,
-    public readonly payload?: unknown,
+    payload?: unknown,
   ) {
     super(message);
     this.name = 'CoreApiError';
+    this.service = service;
+    this.status = status;
+    this.code = code;
+    this.payload = payload;
   }
 }
 

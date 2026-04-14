@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Globe, Github, Twitter, MessageCircle, Send, Linkedin, Youtube, ExternalLink, Save } from 'lucide-react';
+import { Globe, Code, X as TwitterIcon, MessageCircle, Send, Briefcase, Play, ExternalLink, Save } from 'lucide-react';
 import { GlassCard, Button, Input } from '../ui';
 import { apiPost } from '../../lib/api/client';
 import type { Venture, VentureSocials } from '../../lib/ventures';
@@ -12,12 +12,12 @@ const FIELDS: Array<{
   color: string;
 }> = [
   { key: 'website',  label: 'Website',   icon: Globe,         placeholder: 'https://mcv.one',              color: '#00F0FF' },
-  { key: 'github',   label: 'GitHub',    icon: Github,        placeholder: 'https://github.com/org',       color: '#E8F0FE' },
-  { key: 'twitter',  label: 'X (Twitter)', icon: Twitter,     placeholder: 'https://x.com/handle',          color: '#E8F0FE' },
+  { key: 'github',   label: 'GitHub',    icon: Code,          placeholder: 'https://github.com/org',       color: '#E8F0FE' },
+  { key: 'twitter',  label: 'X (Twitter)', icon: TwitterIcon, placeholder: 'https://x.com/handle',         color: '#E8F0FE' },
   { key: 'discord',  label: 'Discord',   icon: MessageCircle, placeholder: 'https://discord.gg/invite',    color: '#5865F2' },
   { key: 'telegram', label: 'Telegram',  icon: Send,          placeholder: 'https://t.me/channel',          color: '#26A5E4' },
-  { key: 'linkedin', label: 'LinkedIn',  icon: Linkedin,      placeholder: 'https://linkedin.com/company',  color: '#0A66C2' },
-  { key: 'youtube',  label: 'YouTube',   icon: Youtube,       placeholder: 'https://youtube.com/@channel',  color: '#FF0000' },
+  { key: 'linkedin', label: 'LinkedIn',  icon: Briefcase,     placeholder: 'https://linkedin.com/company',  color: '#0A66C2' },
+  { key: 'youtube',  label: 'YouTube',   icon: Play,          placeholder: 'https://youtube.com/@channel',  color: '#FF0000' },
 ];
 
 export default function VentureSocialsPanel({ venture, onUpdated }: { venture: Venture; onUpdated?: (v: Venture) => void }) {

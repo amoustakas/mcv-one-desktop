@@ -126,7 +126,11 @@ export const solanaProcessor: PaymentProcessor = {
 
       const url = encodeURL({
         recipient,
-        amount,
+        // @solana/pay and bignumber.js have structurally-identical BigNumber
+        // types with a different private-field declaration, so the compiler
+        // rejects direct assignment. Cast is safe — same class, same API.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        amount: amount as any,
         splToken: splToken ?? undefined,
         reference,
         label: req.description?.slice(0, 60) || 'MCV Payment',
@@ -242,7 +246,8 @@ export const solanaProcessor: PaymentProcessor = {
         sigInfo.signature,
         {
           recipient: record.recipient,
-          amount: record.amount,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          amount: record.amount as any,
           splToken: record.splToken,
           reference: record.reference,
         },

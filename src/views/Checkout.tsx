@@ -30,7 +30,7 @@ export default function Checkout() {
   // Ensure cart exists for the active venture. Recreate if venture changes.
   useEffect(() => {
     if (cartLoading) return;
-    if (!cart || cart.venture_id !== ventureId) {
+    if (!cart || cart.ventureId !== ventureId) {
       createCart(ventureId).catch((err: unknown) => {
         toast('error', err instanceof Error ? err.message : 'Failed to open cart');
       });
