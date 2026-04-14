@@ -88,10 +88,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.json({ story: data });
       }
 
+      // Story read — used by claim_story to check for prior claims before
+      // reserving. Returns null if not found so callers branch cleanly.
+      case 'get_story': {
+        const id = (req.query.id || req.body?.id) as string;
+        if (!id) return res.status(400).json({ error: 'id required' });
+        const { data, error } = await supabase.from('stories').select('*').eq('id', id).maybeSingle();
+        if (error) throw error;
+        return res.json({ story: data });
+      }
+
       case 'update_story': {
         const { id, ...updates } = req.body;
         if (updates.status === 'done' && !updates.completed_at) updates.completed_at = new Date().toISOString();
         const { data, error } = await supabase.from('stories').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id).select().single();
+        if (error) throw error;
+        return res.json({ story: data });
+      }
+
+      // Counterpart to claim_story: releases a claim without finishing the
+      // work. Clears any session_claim invocations matching session_id and
+      // optionally moves status back to 'todo'. Safe to call even if no
+      // active claim exists for this session.
+      case 'release_story': {
+        const { id, session_id, reset_status = true } = req.body as { id: string; session_id: string; reset_status?: boolean };
+        if (!id || !session_id) return res.status(400).json({ error: 'id and session_id required' });
+        const { data: story } = await supabase.from('stories').select('kit_invocations, status').eq('id', id).maybeSingle();
+        if (!story) return res.status(404).json({ error: 'story not found' });
+        const prior = Array.isArray(story.kit_invocations) ? story.kit_invocations : [];
+        const kit_invocations = prior.filter((k: Record<string, unknown>) => !(k.type === 'session_claim' && k.session_id === session_id));
+        kit_invocations.push({ type: 'session_release', session_id, at: new Date().toISOString() });
+        const updates: Record<string, unknown> = { kit_invocations, updated_at: new Date().toISOString() };
+        if (reset_status && story.status === 'in-progress') updates.status = 'todo';
+        const { data, error } = await supabase.from('stories').update(updates).eq('id', id).select().single();
         if (error) throw error;
         return res.json({ story: data });
       }
