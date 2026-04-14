@@ -108,6 +108,7 @@ import { manifest as creatorManifest, handlers as creatorHandlers } from './buil
 import { manifest as complianceManifest, handlers as complianceHandlers } from './builtin/compliance-kit';
 import { manifest as platformManifest, handlers as platformHandlers } from './builtin/platform-kit';
 import { manifest as browserManifest, handlers as browserHandlers } from './builtin/browser-kit';
+import { manifest as epicManifest, handlers as epicHandlers } from './builtin/epic-kit';
 
 // ---------------------------------------------------------------------------
 // Local Kit Registry
@@ -215,6 +216,8 @@ const builtinKits: KitInstance[] = [
   kit(platformManifest, platformHandlers),
   // Browser & YouTube intelligence
   kit(browserManifest, browserHandlers),
+  // Task/Epic pipeline (NAOS-driven flywheel)
+  kit(epicManifest, epicHandlers),
 ];
 
 /** Returns all built-in kit instances */

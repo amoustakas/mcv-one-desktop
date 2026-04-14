@@ -113,7 +113,23 @@ export type ViewId =
   | 'compliance-hub'
   // Knowledge Hub
   | 'knowledge-hub'
-  | 'audit-log';
+  | 'audit-log'
+  // Epic pipeline (NAOS-driven build flywheel)
+  | 'epics'
+  | 'venture-epics'
+  // Departmental Command Suites (global toolbox + dedicated per-department surfaces)
+  | 'suite-command-bridge'
+  | 'suite-creative-studio'
+  | 'suite-developer-ops'
+  | 'suite-marketing-growth'
+  | 'suite-commerce-finance'
+  | 'suite-comms-hub'
+  | 'suite-knowledge-research'
+  | 'suite-voice-studio'
+  | 'suite-strategy-intelligence'
+  | 'suite-ops-infra'
+  | 'suite-ventures-workspace'
+  | 'suite-arcade-lab';
 
 export type ContextMode = 'global' | 'venture';
 

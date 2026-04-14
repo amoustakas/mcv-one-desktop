@@ -52,6 +52,8 @@ const EngineeringView = lazyRetry(() => import('./views/EngineeringView'));
 const SignalsView = lazyRetry(() => import('./views/SignalsView'));
 const GrowthView = lazyRetry(() => import('./views/GrowthView'));
 const TasksView = lazyRetry(() => import('./views/TasksView'));
+const EpicBoardView = lazyRetry(() => import('./views/EpicBoardView'));
+const SuiteView = lazyRetry(() => import('./views/suites/SuiteView'));
 const CRMView = lazyRetry(() => import('./views/CRMView'));
 const ForgeView = lazyRetry(() => import('./views/ForgeView'));
 const DocsHub = lazyRetry(() => import('./views/DocsHub'));
@@ -176,6 +178,32 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <SignalsView />;
     case 'tasks':
       return <TasksView />;
+    case 'epics':
+      return <EpicBoardView />;
+    case 'suite-command-bridge':
+      return <SuiteView suiteId="command-bridge" />;
+    case 'suite-creative-studio':
+      return <SuiteView suiteId="creative-studio" />;
+    case 'suite-developer-ops':
+      return <SuiteView suiteId="developer-ops" />;
+    case 'suite-marketing-growth':
+      return <SuiteView suiteId="marketing-growth" />;
+    case 'suite-commerce-finance':
+      return <SuiteView suiteId="commerce-finance" />;
+    case 'suite-comms-hub':
+      return <SuiteView suiteId="comms-hub" />;
+    case 'suite-knowledge-research':
+      return <SuiteView suiteId="knowledge-research" />;
+    case 'suite-voice-studio':
+      return <SuiteView suiteId="voice-studio" />;
+    case 'suite-strategy-intelligence':
+      return <SuiteView suiteId="strategy-intelligence" />;
+    case 'suite-ops-infra':
+      return <SuiteView suiteId="ops-infra" />;
+    case 'suite-ventures-workspace':
+      return <SuiteView suiteId="ventures-workspace" />;
+    case 'suite-arcade-lab':
+      return <SuiteView suiteId="arcade-lab" />;
     case 'crm':
       return <CRMView />;
     case 'comms-hub':
@@ -239,6 +267,8 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <ForgeView />;
     case 'venture-tasks':
       return <TasksView />;
+    case 'venture-epics':
+      return <EpicBoardView />;
     case 'venture-profile':
       return <VentureProfile venture={venture} />;
     case 'venture-settings':

@@ -26,6 +26,23 @@ const globalSections: NavSection[] = [
     ],
   },
   {
+    label: 'Suites', key: 'suites',
+    items: [
+      { id: 'suite-command-bridge', label: 'Command Bridge' },
+      { id: 'suite-creative-studio', label: 'Creative Studio' },
+      { id: 'suite-developer-ops', label: 'Developer Ops' },
+      { id: 'suite-marketing-growth', label: 'Marketing & Growth' },
+      { id: 'suite-commerce-finance', label: 'Commerce & Finance' },
+      { id: 'suite-comms-hub', label: 'Comms Hub' },
+      { id: 'suite-knowledge-research', label: 'Knowledge & Research' },
+      { id: 'suite-voice-studio', label: 'Voice Studio' },
+      { id: 'suite-strategy-intelligence', label: 'Strategy & Intelligence' },
+      { id: 'suite-ops-infra', label: 'Ops / Infra' },
+      { id: 'suite-ventures-workspace', label: 'Ventures Workspace' },
+      { id: 'suite-arcade-lab', label: 'Arcade / Lab' },
+    ],
+  },
+  {
     label: 'Intelligence', key: 'intel',
     items: [
       { id: 'intelligence', label: 'Knowledge Base' },
@@ -68,6 +85,7 @@ const globalSections: NavSection[] = [
     label: 'Operations', key: 'ops-section',
     items: [
       { id: 'tasks', label: 'Task Board' },
+      { id: 'epics', label: 'Epic Board' },
       { id: 'docs', label: 'Docs Hub' },
       { id: 'files', label: 'Files' },
       { id: 'team', label: 'Team' },
@@ -155,6 +173,7 @@ const ventureSections: NavSection[] = [
     items: [
       { id: 'venture-growth', label: 'Growth' },
       { id: 'venture-tasks', label: 'Tasks' },
+      { id: 'venture-epics', label: 'Epics' },
       { id: 'venture-operations', label: 'Operations' },
     ],
   },
