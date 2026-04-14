@@ -24,6 +24,27 @@ const CF_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN || '';
 const CF_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID || '';
 const CF_BASE = 'https://api.cloudflare.com/client/v4';
 
+// R2 S3-compatible credentials (separate from CF_API_TOKEN).
+// Generate at: Cloudflare Dashboard → R2 → Manage R2 API Tokens.
+const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID || '';
+const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY || '';
+const R2_ENDPOINT = CF_ACCOUNT_ID ? `https://${CF_ACCOUNT_ID}.r2.cloudflarestorage.com` : '';
+
+async function getR2Client() {
+  if (!R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY) {
+    throw new Error('R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY not configured');
+  }
+  const { S3Client } = await import('@aws-sdk/client-s3');
+  return new S3Client({
+    region: 'auto',
+    endpoint: R2_ENDPOINT,
+    credentials: {
+      accessKeyId: R2_ACCESS_KEY_ID,
+      secretAccessKey: R2_SECRET_ACCESS_KEY,
+    },
+  });
+}
+
 async function cfFetch(path: string, options: RequestInit = {}) {
   const url = `${CF_BASE}${path}`;
   const headers: Record<string, string> = {
@@ -242,15 +263,122 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       // ── R2 Object Operations ────────────────────────────────
+      // Direct upload via S3 client. For small files (<4MB) pass `body` as a
+      // base64-encoded string along with optional `content_type` and
+      // `metadata`. For large files prefer `r2-presigned-upload` and upload
+      // directly from the client.
       case 'r2-upload-object': {
-        const { bucket, key, metadata } = req.body;
+        const { bucket, key, body: bodyB64, content_type, metadata } = req.body;
         if (!bucket || !key) return res.status(400).json({ error: 'bucket and key required' });
-        // Note: actual binary upload requires direct S3-compatible client; this creates metadata placeholder
-        const data = await cfFetch(
-          `/accounts/${CF_ACCOUNT_ID}/r2/buckets/${bucket}/objects/${encodeURIComponent(key)}`,
-          { method: 'PUT', body: JSON.stringify(metadata || {}) },
-        );
-        return res.json({ success: true, object: data.result });
+        if (!bodyB64 || typeof bodyB64 !== 'string') {
+          return res.status(400).json({ error: 'body (base64 string) required. Use r2-presigned-upload for large files.' });
+        }
+        const client = await getR2Client();
+        const { PutObjectCommand } = await import('@aws-sdk/client-s3');
+        const buf = Buffer.from(bodyB64, 'base64');
+        const result = await client.send(new PutObjectCommand({
+          Bucket: bucket,
+          Key: key,
+          Body: buf,
+          ContentType: content_type || 'application/octet-stream',
+          Metadata: metadata || undefined,
+        }));
+        return res.json({
+          success: true,
+          object: {
+            bucket,
+            key,
+            size: buf.byteLength,
+            etag: result.ETag,
+            version_id: result.VersionId,
+          },
+        });
+      }
+
+      // Issue a presigned URL the client can PUT to directly (bypasses our
+      // serverless size limits and is far cheaper for large media).
+      case 'r2-presigned-upload': {
+        const { bucket, key, content_type, expires_in = 900 } = req.body;
+        if (!bucket || !key) return res.status(400).json({ error: 'bucket and key required' });
+        const client = await getR2Client();
+        const { PutObjectCommand } = await import('@aws-sdk/client-s3');
+        const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
+        const cmd = new PutObjectCommand({
+          Bucket: bucket,
+          Key: key,
+          ContentType: content_type || 'application/octet-stream',
+        });
+        const url = await getSignedUrl(client, cmd, { expiresIn: expires_in });
+        return res.json({
+          success: true,
+          url,
+          method: 'PUT',
+          expires_in,
+          headers: { 'Content-Type': content_type || 'application/octet-stream' },
+        });
+      }
+
+      // Download via presigned GET (for private buckets).
+      case 'r2-presigned-download': {
+        const { bucket, key, expires_in = 900 } = req.body;
+        if (!bucket || !key) return res.status(400).json({ error: 'bucket and key required' });
+        const client = await getR2Client();
+        const { GetObjectCommand } = await import('@aws-sdk/client-s3');
+        const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
+        const cmd = new GetObjectCommand({ Bucket: bucket, Key: key });
+        const url = await getSignedUrl(client, cmd, { expiresIn: expires_in });
+        return res.json({ success: true, url, expires_in });
+      }
+
+      // List objects in a bucket.
+      case 'r2-list-objects': {
+        const { bucket, prefix, max_keys = 1000, continuation_token } = req.body;
+        if (!bucket) return res.status(400).json({ error: 'bucket required' });
+        const client = await getR2Client();
+        const { ListObjectsV2Command } = await import('@aws-sdk/client-s3');
+        const out = await client.send(new ListObjectsV2Command({
+          Bucket: bucket,
+          Prefix: prefix,
+          MaxKeys: max_keys,
+          ContinuationToken: continuation_token,
+        }));
+        return res.json({
+          success: true,
+          objects: (out.Contents || []).map(o => ({
+            key: o.Key,
+            size: o.Size,
+            etag: o.ETag,
+            last_modified: o.LastModified?.toISOString(),
+          })),
+          is_truncated: out.IsTruncated,
+          next_continuation_token: out.NextContinuationToken,
+        });
+      }
+
+      // Head (metadata-only) check — useful before download.
+      case 'r2-head-object': {
+        const { bucket, key } = req.body;
+        if (!bucket || !key) return res.status(400).json({ error: 'bucket and key required' });
+        const client = await getR2Client();
+        const { HeadObjectCommand } = await import('@aws-sdk/client-s3');
+        try {
+          const out = await client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+          return res.json({
+            success: true,
+            object: {
+              key,
+              size: out.ContentLength,
+              etag: out.ETag,
+              content_type: out.ContentType,
+              last_modified: out.LastModified?.toISOString(),
+              metadata: out.Metadata,
+            },
+          });
+        } catch (e) {
+          const status = (e as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode;
+          if (status === 404) return res.json({ success: true, object: null });
+          throw e;
+        }
       }
 
       case 'r2-delete-object': {
