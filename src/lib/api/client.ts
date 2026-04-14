@@ -17,19 +17,33 @@ export async function apiPost<T>(
   endpoint: string,
   body: Record<string, unknown>,
 ): Promise<T> {
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  let res: Response;
+  try {
+    res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch (networkErr) {
+    // Network-level failure — dev server down, CORS, proxy misconfig, etc.
+    throw new ApiError(
+      `Network error calling ${endpoint}: ${networkErr instanceof Error ? networkErr.message : 'unknown'}`,
+      0,
+    );
+  }
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new ApiError(
-      data.error || `API error: ${res.status}`,
-      res.status,
-      data,
-    );
+    // Make common failure modes diagnosable instead of showing "unknown error"
+    let message = data.error || data.message;
+    if (!message) {
+      if (res.status === 401) message = 'Authentication required — sign in to continue';
+      else if (res.status === 403) message = 'Forbidden — your account lacks access to this resource';
+      else if (res.status === 404) message = `Endpoint ${endpoint} not found (is the dev server running on port 3100?)`;
+      else if (res.status >= 500) message = `Server error (${res.status}) — check the dev server terminal for details`;
+      else message = `API error ${res.status}`;
+    }
+    throw new ApiError(message, res.status, data);
   }
 
   return res.json();
