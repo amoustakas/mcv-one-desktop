@@ -15,7 +15,12 @@ function supabaseUrl(): string {
   return process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
 }
 function supabaseServiceKey(): string {
-  return process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  // Accept both legacy JWT (SUPABASE_SERVICE_KEY) and modern opaque
+  // (SUPABASE_SECRET_KEY starting with sb_secret_) shapes.
+  return process.env.SUPABASE_SERVICE_KEY
+    || process.env.SUPABASE_SERVICE_ROLE_KEY
+    || process.env.SUPABASE_SECRET_KEY
+    || '';
 }
 function supabaseAnonKey(): string {
   return process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';

@@ -53,14 +53,22 @@ import os from 'os';
   console.log(`[env-loader] total=${totalLoaded} · SUPABASE_SERVICE_KEY: len=${k.length} starts="${k.slice(0, 6)}" ends="${k.slice(-4)}"`);
 })();
 
-// SYNC pre-flight: decode the service key's JWT payload to verify it actually
-// claims role=service_role. If not, fall back to anon_key before handlers
-// import. Runs synchronously so it lands BEFORE registerApiRoutes dynamically
-// imports every /api/* module.
+// SYNC pre-flight: verify SUPABASE_SERVICE_KEY is shaped like a secret.
+// Supports both formats:
+//   - Legacy JWT service_role: payload.role === 'service_role'
+//   - Modern opaque: starts with sb_secret_
+// Falls back to anon_key with a loud warning if neither shape matches.
 (function validateSupabaseServiceKey() {
-  const serviceKey = process.env.SUPABASE_SERVICE_KEY || '';
+  const serviceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SECRET_KEY || '';
   const anonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
   if (!serviceKey) return;
+
+  // Modern opaque secret key format — no JWT, trust the prefix.
+  if (serviceKey.startsWith('sb_secret_')) {
+    console.log('[supabase] using modern sb_secret_* service key');
+    return;
+  }
+
   try {
     const parts = serviceKey.split('.');
     if (parts.length !== 3) throw new Error('not a JWT');
