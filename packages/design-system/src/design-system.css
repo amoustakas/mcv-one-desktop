@@ -1,0 +1,62 @@
+/* @mcv/design-system — CSS custom properties layer.
+ *
+ * Mirror of ./tokens.ts — values must stay in sync. The root MCV Desktop
+ * CSS (src/styles/design-system.css) currently holds the canonical set;
+ * this file is published so new venture apps can import it directly:
+ *
+ *   import '@mcv/design-system/css';
+ *
+ * On a later commit we swap the root app to consume this file instead.
+ */
+
+:root {
+  /* Primary palette */
+  --cyan: #00F0FF;
+  --cyan-dim: #00C4CC;
+  --cyan-glow: rgba(0, 240, 255, 0.15);
+  --cyan-intense: rgba(0, 240, 255, 0.35);
+  --purple: #8B5CF6;
+  --purple-dim: #7C3AED;
+  --purple-glow: rgba(139, 92, 246, 0.15);
+  --core-blue: #0072F5;
+  --gold: #F59E0B;
+
+  /* Backgrounds */
+  --bg-deep: #020408;
+  --bg-surface: #0B1121;
+  --bg-card: #0F1629;
+  --bg-elevated: #161D2E;
+  --bg-input: #0A1020;
+
+  /* Text */
+  --text-primary: #E8F0FE;
+  --text-secondary: #8899AA;
+  --text-muted: #5A6670;
+
+  /* Semantic */
+  --success: #10B981;
+  --warning: #F59E0B;
+  --error: #EF4444;
+  --info: #3B82F6;
+
+  /* Radii */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* Typography */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-display: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  /* Z-index stack */
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-backdrop: 900;
+  --z-modal: 1000;
+  --z-popover: 1100;
+  --z-toast: 1200;
+  --z-tooltip: 1300;
+}

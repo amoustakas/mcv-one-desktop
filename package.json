@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "dev": "vite",
     "dev:local": "concurrently \"vite\" \"npx tsx server/local.ts\"",
@@ -12,7 +15,10 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "turbo:build": "turbo run build",
+    "turbo:lint": "turbo run lint",
+    "turbo:typecheck": "turbo run typecheck"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",
@@ -27,6 +33,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@google/genai": "^1.48.0",
     "@google/generative-ai": "^0.24.1",
+    "@mcv/design-system": "*",
     "@solana/pay": "^0.2.6",
     "@solana/spl-token": "^0.4.14",
     "@solana/web3.js": "^1.98.4",
@@ -86,6 +93,7 @@
     "globals": "^17.4.0",
     "jsdom": "^29.0.2",
     "playwright": "^1.59.1",
+    "turbo": "^2.9.6",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.57.0",
     "vite": "^8.0.1",

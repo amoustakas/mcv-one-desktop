@@ -1,0 +1,27 @@
+{
+  "name": "@mcv/design-system",
+  "version": "0.1.0",
+  "description": "MCV One design tokens + CSS variables — shared across all MCV ventures (MCV Desktop, FutureState, BetEdge, mcv.gg, WarForge).",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./tokens": {
+      "types": "./src/tokens.ts",
+      "default": "./src/tokens.ts"
+    },
+    "./css": "./src/design-system.css"
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "lint": "echo 'no lint yet'",
+    "test": "echo 'no tests yet'"
+  }
+}
