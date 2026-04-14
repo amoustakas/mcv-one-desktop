@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { encryptToken, decryptToken } from './_oauth-helper.js';
+import { emitPaymentEvent } from './_payment-events.js';
 
 const _supabase = createClient(
   process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '',
@@ -194,6 +195,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           transfer_id: transferRes.transfer?.id,
           status: mapPlaidStatus(transferRes.transfer?.status),
         }).eq('authorization_id', authorization_id).eq('user_id', userId);
+
+        // Emit unified audit event (best-effort, uses venture from the
+        // updated plaid_transfers row).
+        const { data: xferRow } = await _supabase.from('plaid_transfers')
+          .select('venture_id, type, amount_cents, currency')
+          .eq('authorization_id', authorization_id).eq('user_id', userId)
+          .maybeSingle();
+        await emitPaymentEvent({
+          event_type: 'transfer.created',
+          processor: 'plaid',
+          venture_id: xferRow?.venture_id ?? null,
+          actor: userId,
+          external_id: transferRes.transfer?.id,
+          amount_cents: xferRow?.amount_cents ?? null,
+          currency: (xferRow?.currency ?? 'USD').toUpperCase(),
+          status: transferRes.transfer?.status ?? null,
+          payload: { authorization_id, account_id, type: xferRow?.type },
+        });
 
         return res.json(transferRes);
       }

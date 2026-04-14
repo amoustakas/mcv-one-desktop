@@ -1,6 +1,7 @@
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { emitPaymentEvent } from './_payment-events.js';
 
 // ---------------------------------------------------------------------------
 // Stripe Connect endpoint — Express accounts per venture.
@@ -211,6 +212,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           { stripeAccount: vsa.stripe_account_id },
         );
         await logEvent(venture_id, vsa.stripe_account_id, 'payout.created', { id: payout.id, amount: payout.amount });
+        await emitPaymentEvent({
+          event_type: 'payout.created',
+          processor: 'stripe',
+          venture_id,
+          actor: userId,
+          external_id: payout.id,
+          amount_cents: payout.amount,
+          currency: (payout.currency ?? 'usd').toUpperCase(),
+          status: payout.status ?? null,
+          payload: {
+            stripe_account_id: vsa.stripe_account_id,
+            arrival_date: payout.arrival_date,
+          },
+        });
         return res.json({ payout: { id: payout.id, amount: payout.amount / 100, currency: payout.currency, status: payout.status, arrival_date: payout.arrival_date } });
       }
 

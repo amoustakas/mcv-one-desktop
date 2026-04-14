@@ -1,6 +1,7 @@
 import { getProviderToken } from './_oauth-helper.js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { emitPaymentEvent } from './_payment-events.js';
 
 const _supabase = createClient(
   process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '',
@@ -145,9 +146,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
         }
 
-        return res.json(await stripeFetch('/payment_intents', token, {
+        const piResult = await stripeFetch('/payment_intents', token, {
           method: 'POST', body,
-        }));
+        });
+        await emitPaymentEvent({
+          event_type: 'charge.created',
+          processor: 'stripe',
+          venture_id: venture_id ?? null,
+          actor: userId,
+          external_id: piResult?.id ?? null,
+          amount_cents: amount,
+          currency: (currency as string).toUpperCase(),
+          status: piResult?.status ?? null,
+          payload: { destination: body['transfer_data[destination]'], application_fee_amount: body['application_fee_amount'] },
+        });
+        return res.json(piResult);
       }
 
       // ── Subscriptions ──
@@ -216,9 +229,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       case 'create-refund': {
         const { charge, amount, reason } = req.body;
         if (!charge) return res.status(400).json({ error: 'charge required' });
-        return res.json(await stripeFetch('/refunds', token, {
+        const refundResult = await stripeFetch('/refunds', token, {
           method: 'POST', body: { charge, amount, reason },
-        }));
+        });
+        await emitPaymentEvent({
+          event_type: 'refund.created',
+          processor: 'stripe',
+          actor: userId,
+          external_id: refundResult?.id ?? null,
+          amount_cents: refundResult?.amount ?? amount ?? null,
+          currency: (refundResult?.currency ?? 'USD').toUpperCase(),
+          status: refundResult?.status ?? null,
+          payload: { charge, reason },
+        });
+        return res.json(refundResult);
       }
 
       // ── Customer CRUD ──
