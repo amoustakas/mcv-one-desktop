@@ -119,7 +119,7 @@ export function handleGoogleError(err: unknown, res: VercelResponse) {
       action: err.recoverable ? 'reconnect' : undefined,
     });
   }
-  const message = err instanceof Error ? err.message : 'Unknown error';
+  const message = err instanceof Error ? err.message : (err && typeof err === 'object' && 'message' in err ? String((err as { message: unknown }).message) : JSON.stringify(err));
   return res.status(500).json({ error: message });
 }
 

@@ -254,6 +254,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('[seed-sample]', err);
-    return res.status(500).json({ error: err instanceof Error ? err.message : 'Unknown error' });
+    return res.status(500).json({ error: err instanceof Error ? err.message : (err && typeof err === 'object' && 'message' in err ? String((err as { message: unknown }).message) : JSON.stringify(err)) });
   }
 }
