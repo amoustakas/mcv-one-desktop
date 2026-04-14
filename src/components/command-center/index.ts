@@ -6,3 +6,4 @@ export type { VentureRollup } from './VentureRollupGrid';
 export { default as AgentActivityFeed, emitAgentEvent } from './AgentActivityFeed';
 export type { AgentEvent } from './AgentActivityFeed';
 export { default as QuickActionsPalette } from './QuickActionsPalette';
+export { default as TopCustomersCard } from './TopCustomersCard';

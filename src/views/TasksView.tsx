@@ -4,7 +4,8 @@ import { CheckSquare, Plus, Trash2, Clock, AlertTriangle, Circle, CheckCircle2, 
 import { useNavigation } from '../stores/navigation';
 import { useToast } from '../components/Toasts';
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from '../hooks/use-tasks';
-import { PageHeader, PageShell, Button, GlassCard, Badge } from '../components/ui';
+import { PageHeader, PageShell, Button, GlassCard, Badge, BulkActionBar } from '../components/ui';
+import type { BulkAction } from '../components/ui';
 import { staggerContainer, fadeInUp } from '../lib/animations';
 import type { Task } from '../lib/schemas/tasks';
 
@@ -20,6 +21,7 @@ export default function TasksView() {
   const [newTitle, setNewTitle] = useState('');
   const [newPriority, setNewPriority] = useState('medium');
   const [newVenture, setNewVenture] = useState('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const { mode, activeVenture } = useNavigation();
   const { toast } = useToast();
 
@@ -28,6 +30,59 @@ export default function TasksView() {
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const bulkActions: BulkAction[] = [
+    {
+      id: 'done',
+      label: 'Mark Done',
+      icon: <CheckCircle2 size={12} />,
+      onRun: async (ids) => {
+        for (const id of ids) {
+          try { await updateTask.mutateAsync({ id, status: 'done' }); } catch { /* skip */ }
+        }
+        toast('success', `Marked ${ids.length} task${ids.length === 1 ? '' : 's'} done`);
+      },
+    },
+    {
+      id: 'move-progress',
+      label: 'To In Progress',
+      icon: <Clock size={12} />,
+      onRun: async (ids) => {
+        for (const id of ids) {
+          try { await updateTask.mutateAsync({ id, status: 'in_progress' }); } catch { /* skip */ }
+        }
+        toast('success', `Moved ${ids.length} to In Progress`);
+      },
+    },
+    {
+      id: 'block',
+      label: 'Block',
+      icon: <Ban size={12} />,
+      onRun: async (ids) => {
+        for (const id of ids) {
+          try { await updateTask.mutateAsync({ id, status: 'blocked' }); } catch { /* skip */ }
+        }
+        toast('info', `Blocked ${ids.length}`);
+      },
+    },
+    {
+      id: 'delete',
+      label: 'Delete',
+      icon: <Trash2 size={12} />,
+      danger: true,
+      confirm: true,
+      onRun: async (ids) => {
+        for (const id of ids) {
+          try { await deleteTask.mutateAsync(id); } catch { /* skip */ }
+        }
+        toast('info', `Deleted ${ids.length}`);
+      },
+    },
+  ];
 
   async function handleCreate() {
     if (!newTitle.trim()) return;
@@ -92,11 +147,20 @@ export default function TasksView() {
               initial="hidden"
               animate="show"
             >
-              {(grouped[col] || []).map(t => (
+              {(grouped[col] || []).map(t => {
+                const isSelected = selectedIds.includes(t.id);
+                return (
                 <motion.div key={t.id} variants={fadeInUp}>
-                  <div className="tv-card">
+                  <div className={`tv-card ${isSelected ? 'tv-card-selected' : ''}`}>
                     <div className="tv-card-prio-stripe" style={{ background: PRIO_COLORS[t.priority] || 'var(--text-muted)' }} />
                     <div className="tv-card-top">
+                      <input
+                        type="checkbox"
+                        className="tv-card-checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelect(t.id)}
+                        aria-label={`Select task ${t.title}`}
+                      />
                       {PRIO_ICONS[t.priority]}
                       <span className="tv-card-title">{t.title}</span>
                       <button className="tv-card-del" onClick={() => deleteTask.mutate(t.id)}><Trash2 size={10} /></button>
@@ -119,11 +183,22 @@ export default function TasksView() {
                     </div>
                   </div>
                 </motion.div>
-              ))}
+                );
+              })}
             </motion.div>
           </div>
         ))}
       </div>
+
+      <BulkActionBar
+        selectedIds={selectedIds}
+        onClear={() => setSelectedIds([])}
+        actions={bulkActions}
+        totalCount={tasks.length}
+        onSelectAll={() => setSelectedIds(tasks.map((t: Task) => t.id))}
+        placement="floating"
+        label={(n) => `${n} task${n === 1 ? '' : 's'} selected`}
+      />
 
       {blocked.length > 0 && (
         <div className="tv-blocked">
@@ -156,6 +231,8 @@ export default function TasksView() {
 
         .tv-card-prio-stripe { position:absolute; top:0; left:0; width:3px; height:100%; border-radius:3px 0 0 3px; }
 
+        .tv-card-selected { border-color: var(--cyan) !important; background: rgba(0, 240, 255, 0.04); box-shadow: 0 0 0 1px var(--cyan) inset; }
+        .tv-card-checkbox { accent-color: var(--cyan); cursor: pointer; flex-shrink: 0; }
         .tv-card-top { display:flex; align-items:center; gap:6px; }
         .tv-card-title { flex:1; font-size:12px; font-weight:500; color:var(--text-primary); }
         .tv-card-del { opacity:0; color:var(--text-muted); padding:4px; border-radius:var(--radius-sm); transition:all 0.15s; cursor:pointer; background:none; border:none; }

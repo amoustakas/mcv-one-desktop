@@ -5,6 +5,7 @@ import { ventures } from '../../lib/ventures';
 import { staggerContainer, staggerItem } from '../../lib/motion/variants';
 import { useNavigation } from '../../stores/navigation';
 import { useTheme } from '../../stores/theme';
+import SparkLine from '../charts/SparkLine';
 
 const statusColors: Record<string, string> = {
   active: '#10B981',
@@ -23,9 +24,11 @@ export interface VentureRollup {
 
 interface Props {
   rollups?: Record<string, VentureRollup>;
+  /** Daily revenue arrays per venture (30 days) for sparkline rendering. */
+  revenueTrends?: Record<string, number[]>;
 }
 
-export default function VentureRollupGrid({ rollups = {} }: Props) {
+export default function VentureRollupGrid({ rollups = {}, revenueTrends = {} }: Props) {
   const switchToVenture = useNavigation((s) => s.switchToVenture);
   const applyVentureTheme = useTheme((s) => s.applyVentureTheme);
 
@@ -46,6 +49,15 @@ export default function VentureRollupGrid({ rollups = {} }: Props) {
       <motion.div className="vrg-grid" variants={staggerContainer} initial="hidden" animate="show">
         {ventures.map((v) => {
           const rollup = rollups[v.id];
+          const trend = revenueTrends[v.id];
+          const hasTrend = trend && trend.length > 0 && trend.some((p) => p > 0);
+          const firstHalf = hasTrend ? trend!.slice(0, Math.floor(trend!.length / 2)) : [];
+          const secondHalf = hasTrend ? trend!.slice(Math.floor(trend!.length / 2)) : [];
+          const firstAvg = firstHalf.length ? firstHalf.reduce((s, n) => s + n, 0) / firstHalf.length : 0;
+          const secondAvg = secondHalf.length ? secondHalf.reduce((s, n) => s + n, 0) / secondHalf.length : 0;
+          const deltaPct = firstAvg > 0 ? ((secondAvg - firstAvg) / firstAvg) * 100 : 0;
+          const trending = deltaPct >= 0 ? 'up' : 'down';
+
           return (
             <motion.div key={v.id} variants={staggerItem}>
               <GlassCard
@@ -62,6 +74,19 @@ export default function VentureRollupGrid({ rollups = {} }: Props) {
                   </div>
                   <Badge color={statusColors[v.status]} variant="outline" size="sm">{v.status}</Badge>
                 </div>
+
+                {hasTrend && (
+                  <div className="vrg-spark-row">
+                    <div className="vrg-spark-wrap">
+                      <SparkLine data={trend!} width={120} height={28} showArea />
+                    </div>
+                    <div className="vrg-spark-delta" style={{ color: trending === 'up' ? 'var(--success)' : 'var(--error)' }}>
+                      {trending === 'up' ? '↑' : '↓'} {Math.abs(deltaPct).toFixed(0)}%
+                      <span className="vrg-spark-label"> 30d rev</span>
+                    </div>
+                  </div>
+                )}
+
                 <div className="vrg-metrics">
                   <div className="vrg-metric">
                     <CheckSquare size={10} />
@@ -99,6 +124,10 @@ export default function VentureRollupGrid({ rollups = {} }: Props) {
         .vrg-metric { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-muted); }
         .vrg-m-v { color: var(--text-primary); font-weight: 600; font-family: var(--font-mono); }
         .vrg-m-l { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px; }
+        .vrg-spark-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 0; }
+        .vrg-spark-wrap { flex: 1; min-width: 0; display: flex; align-items: center; }
+        .vrg-spark-delta { font-size: 11px; font-weight: 600; font-family: var(--font-mono); white-space: nowrap; }
+        .vrg-spark-label { color: var(--text-muted); font-weight: 400; font-size: 9px; text-transform: uppercase; letter-spacing: 0.3px; }
       `}</style>
     </SectionCard>
   );

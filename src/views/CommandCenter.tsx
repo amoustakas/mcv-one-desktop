@@ -10,7 +10,7 @@ import { useDeployments } from '../hooks/use-deployments';
 import { useActivities } from '../hooks/use-crm';
 import { useDashboardStats, useAttentionItems, useMorningBrief } from '../hooks/use-dashboard';
 import { useRoadmap } from '../hooks/use-orchestration';
-import { useAllVentureMetrics } from '../hooks/use-commerce-metrics';
+import { useAllVentureMetrics, useAllVentureTimeseries } from '../hooks/use-commerce-metrics';
 import { PageShell, PageHeader, StatCard, GlassCard, GridLayout, Badge } from '../components/ui';
 import { timeAgo, formatMoney } from '../lib/utils';
 import Markdown from '../components/Markdown';
@@ -20,6 +20,7 @@ import {
   VentureRollupGrid,
   AgentActivityFeed,
   QuickActionsPalette,
+  TopCustomersCard,
   type AttentionItem,
   type VentureRollup,
 } from '../components/command-center';
@@ -64,6 +65,14 @@ export default function CommandCenter() {
   // Per-venture rollups — real data from /api/commerce-metrics per venture,
   // with a synthesized fallback for ventures whose query hasn't resolved yet.
   const { byVenture: ventureMetrics } = useAllVentureMetrics('30d');
+  const { byVenture: ventureTimeseries } = useAllVentureTimeseries('30d');
+  const revenueTrends = useMemo<Record<string, number[]>>(() => {
+    const out: Record<string, number[]> = {};
+    Object.entries(ventureTimeseries).forEach(([vid, ts]) => {
+      if (ts?.series) out[vid] = ts.series.map((p) => p.revenue);
+    });
+    return out;
+  }, [ventureTimeseries]);
   const ventureRollups = useMemo<Record<string, VentureRollup>>(() => {
     const rollups: Record<string, VentureRollup> = {};
     const totalTasks = stats?.tasks.open ?? 0;
@@ -178,7 +187,7 @@ export default function CommandCenter() {
 
       {/* Venture Rollups — replaces the old flat venture card list */}
       <div className="cc-row">
-        <VentureRollupGrid rollups={ventureRollups} />
+        <VentureRollupGrid rollups={ventureRollups} revenueTrends={revenueTrends} />
       </div>
 
       {/* Main grid: Agent Activity + Quick Actions + Live Feeds */}
@@ -186,6 +195,7 @@ export default function CommandCenter() {
         <div className="cc-col">
           <AgentActivityFeed />
           <QuickActionsPalette />
+          <TopCustomersCard ventureMetrics={ventureMetrics} />
 
           {recentActivities.length > 0 && (
             <div className="cc-section">
@@ -209,13 +219,18 @@ export default function CommandCenter() {
           <GlassCard className="cc-feed">
             <h2 className="cc-sec-title"><GitBranch size={12} /> Commits</h2>
             <div className="cc-feed-list">
-              {commits.slice(0, 8).map(c => (
-                <a key={c.sha} href={c.html_url} target="_blank" rel="noreferrer" className="cc-feed-item link">
-                  <code className="cc-sha">{c.sha.slice(0, 7)}</code>
-                  <span className="cc-feed-msg">{c.commit.message.split('\n')[0]}</span>
-                  <span className="cc-feed-time">{timeAgo(c.commit.author.date)}</span>
-                </a>
-              ))}
+              {commits.slice(0, 8).map(c => {
+                if (!c || !c.sha) return null;
+                const firstLine = (c.commit?.message || '(no message)').split('\n')[0];
+                const date = c.commit?.author?.date || '';
+                return (
+                  <a key={c.sha} href={c.html_url || '#'} target="_blank" rel="noreferrer" className="cc-feed-item link">
+                    <code className="cc-sha">{c.sha.slice(0, 7)}</code>
+                    <span className="cc-feed-msg">{firstLine}</span>
+                    <span className="cc-feed-time">{date ? timeAgo(date) : ''}</span>
+                  </a>
+                );
+              })}
             </div>
           </GlassCard>
 

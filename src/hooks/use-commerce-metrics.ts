@@ -102,3 +102,44 @@ export function useAllVentureMetrics(range = '30d') {
 
   return { byVenture, isLoading, isError, queries };
 }
+
+// ─── Timeseries ───────────────────────────────────────────────
+
+export interface TimeseriesPoint {
+  date: string;
+  revenue: number;
+  orders: number;
+}
+
+export interface CommerceTimeseriesResponse {
+  venture_id: string;
+  range_days: number;
+  series: TimeseriesPoint[];
+}
+
+/**
+ * Fetch daily revenue/orders timeseries for every venture in parallel.
+ * Used by VentureRollupGrid to render a 30-day revenue sparkline per
+ * venture. Longer staleTime than snapshot since the series changes less.
+ */
+export function useAllVentureTimeseries(range = '30d') {
+  const queries = useQueries({
+    queries: ventures.map((v) => ({
+      queryKey: commerceMetricsKeys.timeseries(v.id, range),
+      queryFn: async () => {
+        const params = new URLSearchParams({ action: 'timeseries', range, venture_id: v.id });
+        return apiGet<CommerceTimeseriesResponse>(`${METRICS_BASE}?${params}`);
+      },
+      staleTime: 5 * 60_000,
+      refetchInterval: 10 * 60_000,
+      retry: 1,
+    })),
+  });
+
+  const byVenture: Record<string, CommerceTimeseriesResponse | undefined> = {};
+  ventures.forEach((v, i) => {
+    byVenture[v.id] = queries[i]?.data;
+  });
+
+  return { byVenture };
+}
