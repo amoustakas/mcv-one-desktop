@@ -2,9 +2,15 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, TrendingUp, Users, DollarSign, Award, Plus, Loader2, RefreshCw } from 'lucide-react';
 import { PageShell, PageHeader, KpiCard, GridLayout, GlassCard, Button, Badge, Tabs, EmptyState } from '../components/ui';
+import { lazy, Suspense } from 'react';
 import { useCreatorStore } from '../stores/creator';
 import { useNavigation } from '../stores/navigation';
 import { staggerContainer, fadeInUp } from '../lib/animations';
+
+const RoyaltyAgreementDetailDialog = lazy(() => import('../components/creator/RoyaltyAgreementDetailDialog'));
+const EscrowDetailDialog = lazy(() => import('../components/creator/EscrowDetailDialog'));
+type RoyaltyLikeProp = Parameters<typeof import('../components/creator/RoyaltyAgreementDetailDialog').default>[0]['agreement'];
+type EscrowLikeProp = Parameters<typeof import('../components/creator/EscrowDetailDialog').default>[0]['escrow'];
 
 export default function CreatorHubView() {
   const { activeVenture, mode } = useNavigation();
@@ -18,6 +24,15 @@ export default function CreatorHubView() {
   } = useCreatorStore();
 
   const [tab, setTab] = useState('overview');
+  const [selectedRoyaltyId, setSelectedRoyaltyId] = useState<string | null>(null);
+  const [selectedEscrowId, setSelectedEscrowId] = useState<string | null>(null);
+
+  const selectedRoyalty = selectedRoyaltyId
+    ? (royaltyAgreements.find((r) => String((r as unknown as Record<string, unknown>).id) === selectedRoyaltyId) as unknown as RoyaltyLikeProp) || null
+    : null;
+  const selectedEscrow = selectedEscrowId
+    ? (escrowAgreements.find((e) => String((e as unknown as Record<string, unknown>).id) === selectedEscrowId) as unknown as EscrowLikeProp) || null
+    : null;
 
   useEffect(() => {
     fetchRoyaltyAgreements(ventureId);
@@ -127,7 +142,16 @@ export default function CreatorHubView() {
                 {royaltyAgreements.map((r) => {
                   const agreement = r as unknown as Record<string, unknown>;
                   return (
-                    <div key={String(agreement.id)} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 100px 80px', padding: '10px 0', borderBottom: '1px solid var(--border)', fontSize: 13, gap: 8, alignItems: 'center' }}>
+                    <div
+                      key={String(agreement.id)}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setSelectedRoyaltyId(String(agreement.id))}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedRoyaltyId(String(agreement.id)); } }}
+                      style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 100px 80px', padding: '10px 0', borderBottom: '1px solid var(--border)', fontSize: 13, gap: 8, alignItems: 'center', cursor: 'pointer', transition: 'background-color 150ms ease' }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--bg-hover)'; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent'; }}
+                    >
                       <span style={{ color: 'var(--text-primary)' }}>{String(agreement.product_name || agreement.title || 'Agreement')}</span>
                       <span style={{ color: 'var(--text-secondary)' }}>{String(agreement.creator_name || agreement.creator_id || 'Unknown')}</span>
                       <span style={{ color: 'var(--cyan)', textAlign: 'right' }}>{Number(agreement.rate || agreement.percent || 0)}%</span>
@@ -154,7 +178,16 @@ export default function CreatorHubView() {
                 {escrowAgreements.map((e) => {
                   const escrow = e as unknown as Record<string, unknown>;
                   return (
-                    <div key={String(escrow.id)} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 120px 80px', padding: '10px 0', borderBottom: '1px solid var(--border)', fontSize: 13, gap: 8, alignItems: 'center' }}>
+                    <div
+                      key={String(escrow.id)}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setSelectedEscrowId(String(escrow.id))}
+                      onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); setSelectedEscrowId(String(escrow.id)); } }}
+                      style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 120px 80px', padding: '10px 0', borderBottom: '1px solid var(--border)', fontSize: 13, gap: 8, alignItems: 'center', cursor: 'pointer', transition: 'background-color 150ms ease' }}
+                      onMouseEnter={(ev) => { (ev.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--bg-hover)'; }}
+                      onMouseLeave={(ev) => { (ev.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent'; }}
+                    >
                       <span style={{ color: 'var(--text-primary)' }}>{String(escrow.title || escrow.deal_name || 'Escrow')}</span>
                       <span style={{ color: 'var(--text-secondary)' }}>{String(escrow.counterparty_name || 'TBD')}</span>
                       <span style={{ color: 'var(--cyan)', textAlign: 'right' }}>${Number(escrow.amount || 0).toLocaleString()}</span>
@@ -196,6 +229,37 @@ export default function CreatorHubView() {
           </GlassCard>
         )}
       </div>
+
+      <Suspense fallback={null}>
+        {selectedRoyaltyId && (
+          <RoyaltyAgreementDetailDialog
+            open={!!selectedRoyaltyId}
+            onClose={() => setSelectedRoyaltyId(null)}
+            agreement={selectedRoyalty}
+            onSave={(updated) => {
+              console.log('Save royalty agreement', updated);
+              setSelectedRoyaltyId(null);
+            }}
+          />
+        )}
+        {selectedEscrowId && (
+          <EscrowDetailDialog
+            open={!!selectedEscrowId}
+            onClose={() => setSelectedEscrowId(null)}
+            escrow={selectedEscrow}
+            onRelease={(escrowId, milestoneId) => {
+              console.log('Release escrow milestone', escrowId, milestoneId);
+            }}
+            onDispute={(escrowId, milestoneId, reason) => {
+              console.log('Dispute escrow milestone', escrowId, milestoneId, reason);
+            }}
+            onSave={(updated) => {
+              console.log('Save escrow agreement', updated);
+              setSelectedEscrowId(null);
+            }}
+          />
+        )}
+      </Suspense>
     </PageShell>
   );
 }

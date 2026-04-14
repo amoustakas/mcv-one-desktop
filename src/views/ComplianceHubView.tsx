@@ -5,9 +5,13 @@ import { PageShell, PageHeader, KpiCard, GridLayout, GlassCard, Badge, Tabs, Emp
 import { useComplianceStore } from '../stores/compliance';
 import { useNavigation } from '../stores/navigation';
 import { staggerContainer, fadeInUp } from '../lib/animations';
+import { lazy, Suspense } from 'react';
 import FraudRuleDetailDialog, { type FraudRuleLike } from '../components/compliance/FraudRuleDetailDialog';
 import { Button } from '../components/ui';
 import { Plus } from 'lucide-react';
+
+const NexusAlertDetailDialog = lazy(() => import('../components/compliance/NexusAlertDetailDialog'));
+type NexusAlertProp = Parameters<typeof import('../components/compliance/NexusAlertDetailDialog').default>[0]['alert'];
 
 export default function ComplianceHubView() {
   const { activeVenture, mode } = useNavigation();
@@ -22,9 +26,13 @@ export default function ComplianceHubView() {
 
   const [tab, setTab] = useState('overview');
   const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
+  const [selectedNexusId, setSelectedNexusId] = useState<string | null>(null);
 
   const selectedRule = selectedRuleId
     ? (fraudRules.find((r) => String((r as unknown as Record<string, unknown>).id) === selectedRuleId) as unknown as FraudRuleLike) || null
+    : null;
+  const selectedNexus = selectedNexusId
+    ? (nexusAlerts.find((a) => String((a as unknown as Record<string, unknown>).id) === selectedNexusId) as unknown as NexusAlertProp) || null
     : null;
 
   useEffect(() => {
@@ -233,7 +241,16 @@ export default function ComplianceHubView() {
                   const alert = a as unknown as Record<string, unknown>;
                   const severity = String(alert.severity || 'info');
                   return (
-                    <div key={String(alert.id)} style={{ display: 'grid', gridTemplateColumns: '120px 2fr 120px 80px', padding: '10px 0', borderBottom: '1px solid var(--border)', fontSize: 13, gap: 8, alignItems: 'center' }}>
+                    <div
+                      key={String(alert.id)}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setSelectedNexusId(String(alert.id))}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedNexusId(String(alert.id)); } }}
+                      style={{ display: 'grid', gridTemplateColumns: '120px 2fr 120px 80px', padding: '10px 0', borderBottom: '1px solid var(--border)', fontSize: 13, gap: 8, alignItems: 'center', cursor: 'pointer', transition: 'background-color 150ms ease' }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--bg-hover)'; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent'; }}
+                    >
                       <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{String(alert.jurisdiction || alert.state || '—')}</span>
                       <span style={{ color: 'var(--text-secondary)' }}>{String(alert.message || 'Nexus threshold approaching')}</span>
                       <span style={{ color: 'var(--cyan)', textAlign: 'right' }}>${Number(alert.revenue_threshold || 0).toLocaleString()}</span>
@@ -264,6 +281,19 @@ export default function ComplianceHubView() {
           setSelectedRuleId(null);
         }}
       />
+
+      <Suspense fallback={null}>
+        {selectedNexusId && (
+          <NexusAlertDetailDialog
+            open={!!selectedNexusId}
+            onClose={() => setSelectedNexusId(null)}
+            alert={selectedNexus}
+            onAcknowledge={(id) => { console.log('Acknowledge nexus', id); setSelectedNexusId(null); }}
+            onMarkRegistered={(id) => { console.log('Mark nexus registered', id); setSelectedNexusId(null); }}
+            onMarkExempt={(id) => { console.log('Mark nexus exempt', id); setSelectedNexusId(null); }}
+          />
+        )}
+      </Suspense>
     </PageShell>
   );
 }
