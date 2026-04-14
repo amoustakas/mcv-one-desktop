@@ -1,16 +1,24 @@
 {
   "name": "@mcv/compliance-sdk",
-  "version": "0.1.0",
-  "description": "Compliance type system for MCV venture apps — fraud rules, dunning configs, tax breakdowns, price localization, nexus tracking. Types + schemas only; Supabase-bound runtime (evaluator / dunning executor / tax engine) stays in consuming apps for now.",
+  "version": "0.2.0",
+  "description": "Compliance SDK for MCV venture apps — fraud scoring, dunning/retry orchestration, multi-jurisdiction tax engine, PPP price localization, nexus tracking. Caller-injected Supabase client via createComplianceEngine({supabase}) factory. Pure fallbacks for offline/test mode.",
   "private": true,
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
     ".": { "types": "./src/index.ts", "default": "./src/index.ts" },
-    "./types": { "types": "./src/types.ts", "default": "./src/types.ts" }
+    "./types": { "types": "./src/types.ts", "default": "./src/types.ts" },
+    "./fraud": { "types": "./src/fraud.ts", "default": "./src/fraud.ts" },
+    "./dunning": { "types": "./src/dunning.ts", "default": "./src/dunning.ts" },
+    "./tax": { "types": "./src/tax.ts", "default": "./src/tax.ts" },
+    "./price": { "types": "./src/price.ts", "default": "./src/price.ts" },
+    "./engine": { "types": "./src/engine.ts", "default": "./src/engine.ts" }
   },
   "files": ["src"],
+  "peerDependencies": {
+    "@supabase/supabase-js": "^2.0.0"
+  },
   "scripts": {
     "lint": "echo 'no lint yet'",
     "test": "echo 'no tests yet'"
