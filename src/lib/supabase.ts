@@ -2,41 +2,69 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 // ---------------------------------------------------------------------------
 // Browser-side Supabase client.
-//   - `supabase` (anon client) — legacy singleton; RLS policies referencing
-//     auth.uid() will NOT trigger. Kept for backward compatibility.
-//   - `getAuthedClient(getToken)` — returns a client whose requests include
-//     a Clerk-issued token so RLS + auth.jwt() claims work. Works with EITHER
-//     integration path:
-//       (A) Native third-party (recommended): Clerk issues standard session
-//           tokens; Supabase validates them. Call `getToken()` with no args.
-//       (B) Legacy JWT template: Create a Clerk template named "supabase"
-//           signed with Supabase JWT secret. Call `getToken({ template: 'supabase' })`.
-//     Both attach `Authorization: Bearer <jwt>` the same way.
+//
+// Single shared singleton. Uses the `accessToken` callback (supabase-js 2.44+)
+// so every request transparently attaches the current Clerk session token —
+// no per-call plumbing, no dual clients. Auth hook calls `setClerkTokenGetter`
+// once after sign-in; the client reads through it on every request.
+//
+// Works with both Clerk integration paths:
+//   (A) Native third-party (recommended): `getToken()` with no args. Supabase
+//       validates the Clerk-issued JWT against Clerk's JWKS.
+//   (B) Legacy JWT template: `getToken({ template: 'supabase' })` returns a
+//       JWT signed with the Supabase JWT secret.
 // ---------------------------------------------------------------------------
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-export const supabase = supabaseUrl
-  ? createClient(supabaseUrl, supabaseAnonKey)
+// Getter that returns the current Clerk JWT. Wired by auth.tsx on sign-in.
+let _tokenGetter: (() => Promise<string | null | undefined>) | null = null;
+let _cachedToken: string | null = null;
+let _cachedTokenExpiresAt = 0;
+
+export function setClerkTokenGetter(getter: (() => Promise<string | null | undefined>) | null) {
+  _tokenGetter = getter;
+  _cachedToken = null;
+  _cachedTokenExpiresAt = 0;
+  // Push the new token into the realtime channel so WebSocket subscriptions
+  // authenticate correctly after sign-in.
+  if (supabase && getter) {
+    getter().then((t) => {
+      if (t) supabase.realtime.setAuth(t);
+    }).catch(() => { /* non-fatal */ });
+  }
+}
+
+// Cache the token for 50 seconds — shorter than Clerk's 60s rotation window.
+async function resolveToken(): Promise<string | null> {
+  if (!_tokenGetter) return null;
+  const now = Date.now();
+  if (_cachedToken && now < _cachedTokenExpiresAt) return _cachedToken;
+  try {
+    const t = await _tokenGetter();
+    _cachedToken = t || null;
+    _cachedTokenExpiresAt = now + 50_000;
+    return _cachedToken;
+  } catch {
+    return null;
+  }
+}
+
+export const supabase: SupabaseClient | null = supabaseUrl
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      // supabase-js v2.44+: callback returns a JWT to attach on every request.
+      // Returning null falls back to the anon key.
+      accessToken: async () => (await resolveToken()) || null,
+    })
   : null;
 
-// Cache per-token clients so we don't construct a new one on every query.
-const _authedCache = new Map<string, SupabaseClient>();
-
+// Kept for backwards compat; most call sites should just use `supabase`.
 export async function getAuthedClient(
-  getToken: () => Promise<string | null | undefined>,
+  _getToken?: () => Promise<string | null | undefined>,
 ): Promise<SupabaseClient | null> {
-  if (!supabaseUrl) return null;
-  const token = await getToken();
-  if (!token) return supabase; // fall back to anon if user not signed in
-  const cached = _authedCache.get(token);
-  if (cached) return cached;
-  const client = createClient(supabaseUrl, supabaseAnonKey, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
-  _authedCache.set(token, client);
-  return client;
+  return supabase;
 }
 
 export interface DbConversation {

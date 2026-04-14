@@ -1,6 +1,7 @@
 import { ClerkProvider, SignIn, useAuth, useUser, UserButton } from '@clerk/clerk-react';
 import { type ReactNode, useState, useEffect } from 'react';
 import { setAuthTokenGetter } from './api';
+import { setClerkTokenGetter } from './supabase';
 import { useKitStore } from '../stores/kits';
 
 const CLERK_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || '';
@@ -23,10 +24,14 @@ function AuthGate({ children }: { children: ReactNode }) {
   const { user } = useUser();
   const [showSignIn, setShowSignIn] = useState(false);
 
-  // Wire Clerk token into fetch helper for API auth
+  // Wire Clerk token into fetch helper for /api/* routes
+  // AND into the Supabase client so direct browser reads respect RLS.
   useEffect(() => {
     if (isSignedIn) {
       setAuthTokenGetter(() => getToken());
+      setClerkTokenGetter(() => getToken());
+    } else {
+      setClerkTokenGetter(null);
     }
   }, [isSignedIn, getToken]);
 
