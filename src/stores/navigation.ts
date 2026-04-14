@@ -32,6 +32,8 @@ export type ViewId =
   // Venture views
   | 'ventures-index'
   | 'venture-detail'
+  | 'venture-wizard'
+  | 'department-portfolio'
   | 'venture-dashboard'
   | 'venture-profile'
   | 'venture-engineering'

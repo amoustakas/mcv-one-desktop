@@ -69,6 +69,8 @@ const WarRoom = lazyRetry(() => import('./views/WarRoom'));
 const VentureProfile = lazyRetry(() => import('./views/VentureProfile'));
 const VentureDetailView = lazyRetry(() => import('./views/VentureDetailView'));
 const VenturesIndexView = lazyRetry(() => import('./views/VenturesIndexView'));
+const VentureWizardGamified = lazyRetry(() => import('./views/VentureWizardGamified'));
+const DepartmentPortfolioView = lazyRetry(() => import('./views/DepartmentPortfolioView'));
 const TeamView = lazyRetry(() => import('./views/TeamView'));
 const KitStoreView = lazyRetry(() => import('./views/KitStoreView'));
 const SettingsView = lazyRetry(() => import('./views/SettingsView'));
@@ -287,6 +289,10 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
         onSelect={(v) => { useNavigation.getState().switchToVenture(v.id); useNavigation.getState().setView('venture-detail'); }}
         onNew={() => useNavigation.getState().setView('venture-onboarding')}
       />;
+    case 'venture-wizard':
+      return <VentureWizardGamified />;
+    case 'department-portfolio':
+      return <DepartmentPortfolioView />;
     case 'venture-settings':
       return <VentureSettingsView />;
     case 'venture-onboarding':
@@ -412,6 +418,7 @@ const VIEW_LABELS: Record<string, string> = {
   growth: 'Growth Studio', tasks: 'Task Board', docs: 'Docs Hub',
   'ai-studio': 'AI Studio', 'prompt-composer': 'Prompt Composer', team: 'Team', settings: 'Settings',
   'ventures-index': 'Ventures', 'venture-detail': 'Venture',
+  'venture-wizard': 'Venture Wizard', 'department-portfolio': 'Departments',
   'venture-dashboard': 'Dashboard', 'venture-profile': 'Profile & Assets',
   'venture-engineering': 'Engineering', 'venture-growth': 'Growth',
   'venture-operations': 'Operations', 'venture-docs': 'Documents',
