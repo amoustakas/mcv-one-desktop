@@ -731,7 +731,11 @@ function AnalyticsTab() {
 
 function SocialTab() {
   const { socialPlatform, setSocialPlatform } = useCommsStore();
-  const { data: posts = [], isLoading } = useSocialFeed(socialPlatform);
+  const { data: posts = [], isLoading, refetch } = useSocialFeed(socialPlatform);
+  const { toast } = useToast();
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [postText, setPostText] = useState('');
+  const [posting, setPosting] = useState(false);
 
   const socialTabs = [
     { id: 'twitter' as const, label: 'X / Twitter' },
@@ -739,14 +743,95 @@ function SocialTab() {
     { id: 'youtube' as const, label: 'YouTube' },
   ];
 
+  const maxLength = socialPlatform === 'twitter' ? 280 : 3000;
+  const canPost = socialPlatform === 'twitter' || socialPlatform === 'linkedin';
+
+  async function handlePost() {
+    if (!postText.trim() || posting) return;
+    setPosting(true);
+    try {
+      if (socialPlatform === 'twitter') {
+        const res = await fetch('/api/twitter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'create-tweet', text: postText }),
+        });
+        if (!res.ok) throw new Error((await res.json()).error || `Twitter ${res.status}`);
+      } else if (socialPlatform === 'linkedin') {
+        const res = await fetch('/api/linkedin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'create-post', text: postText, visibility: 'PUBLIC' }),
+        });
+        if (!res.ok) throw new Error((await res.json()).error || `LinkedIn ${res.status}`);
+      }
+      toast('success', `Posted to ${socialPlatform}`);
+      setPostText('');
+      setComposerOpen(false);
+      setTimeout(() => void refetch(), 1200);
+    } catch (err) {
+      toast('error', err instanceof Error ? err.message : 'Post failed');
+    } finally {
+      setPosting(false);
+    }
+  }
+
   return (
     <div className="comms-social">
-      <Tabs
-        tabs={socialTabs.map((t) => ({ id: t.id, label: t.label }))}
-        active={socialPlatform}
-        onChange={(id) => setSocialPlatform(id as typeof socialPlatform)}
-        className="comms-social-tabs"
-      />
+      <div className="comms-social-header-row">
+        <Tabs
+          tabs={socialTabs.map((t) => ({ id: t.id, label: t.label }))}
+          active={socialPlatform}
+          onChange={(id) => { setSocialPlatform(id as typeof socialPlatform); setComposerOpen(false); }}
+          className="comms-social-tabs"
+        />
+        {canPost && (
+          <Button
+            variant={composerOpen ? 'ghost' : 'primary'}
+            size="sm"
+            icon={composerOpen ? undefined : <Send size={12} />}
+            onClick={() => setComposerOpen((v) => !v)}
+          >
+            {composerOpen ? 'Cancel' : 'New post'}
+          </Button>
+        )}
+      </div>
+
+      <AnimatePresence>
+        {composerOpen && canPost && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <GlassCard className="comms-social-composer">
+              <textarea
+                className="comms-textarea"
+                rows={socialPlatform === 'twitter' ? 3 : 6}
+                value={postText}
+                onChange={(e) => setPostText(e.target.value.slice(0, maxLength))}
+                placeholder={socialPlatform === 'twitter' ? "What's happening?" : 'Share an update…'}
+                autoFocus
+              />
+              <div className="comms-social-composer-footer">
+                <span className={`comms-social-counter ${postText.length > maxLength * 0.9 ? 'comms-social-counter-warn' : ''}`}>
+                  {postText.length} / {maxLength}
+                </span>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  icon={<Send size={12} />}
+                  onClick={handlePost}
+                  disabled={!postText.trim() || posting}
+                >
+                  {posting ? 'Posting…' : `Post to ${socialPlatform === 'twitter' ? 'X' : 'LinkedIn'}`}
+                </Button>
+              </div>
+            </GlassCard>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {posts.length === 0 && !isLoading && (
         <EmptyState icon={<Radio size={24} />} title={`No ${socialPlatform} posts`} description="Connect the platform and configure credentials to see posts." />
@@ -757,6 +842,14 @@ function SocialTab() {
           <SocialPostCard key={post.id} post={post} />
         ))}
       </div>
+
+      <style>{`
+        .comms-social-header-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 12px; margin-bottom: 8px; }
+        .comms-social-composer { margin: 0 12px 12px; padding: 12px; }
+        .comms-social-composer-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; gap: 8px; }
+        .comms-social-counter { font-size: 10px; font-family: var(--font-mono); color: var(--text-muted); }
+        .comms-social-counter-warn { color: var(--warning); font-weight: 600; }
+      `}</style>
     </div>
   );
 }
