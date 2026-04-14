@@ -1,4 +1,5 @@
 import type { KitManifest, KitToolHandler, KitExecutionContext } from '../types';
+import { inferRepoCandidates } from '../../ventures/asset-discovery';
 
 // ---------------------------------------------------------------------------
 // Helpers (mirror commands.ts patterns)
@@ -38,6 +39,56 @@ async function postJson(url: string, body: Record<string, unknown>, ctx: KitExec
 // ---------------------------------------------------------------------------
 // Tool Handlers
 // ---------------------------------------------------------------------------
+
+const discoverVentureAssets: KitToolHandler = async (input, ctx) => {
+  const ventureId = (input.venture as string) || ctx.ventureId;
+  const tokens = (input.tokens as string[]) || [ventureId];
+  const subBrandTlds = (input.sub_brand_tlds as string[]) || [];
+  const autoConfirm = !!input.auto_confirm;
+
+  // Pull repo list from GitHub kit's existing endpoint
+  const data = await fetchJson('/api/github?action=repos', ctx);
+  const repos: Array<{ name: string; html_url?: string }> = data.repos ?? [];
+
+  const candidates = inferRepoCandidates(
+    { id: ventureId, tokens, subBrandTlds, legacyMarkers: ['prototype', 'legacy', 'archive', 'deprecated'] },
+    repos.map(r => r.name)
+  );
+  if (candidates.length === 0) {
+    return { success: true, data: [], displayMarkdown: `No related repos found for \`${ventureId}\` across ${repos.length} scanned repos.` };
+  }
+
+  let created = 0;
+  for (const c of candidates) {
+    const matchRepo = repos.find(r => r.name === c.name);
+    try {
+      await postJson('/api/ventures', {
+        action: 'create-asset',
+        asset: {
+          venture_id: ventureId,
+          kind: c.kind,
+          name: c.name,
+          url: matchRepo?.html_url,
+          meta: c.meta || {},
+          tier: c.tier,
+          discovered: true,
+          confirmed: autoConfirm,
+        },
+      }, ctx);
+      created++;
+    } catch {
+      // Likely a duplicate — skip and continue
+    }
+  }
+
+  const tier2 = candidates.filter(c => c.tier === 2).map(c => c.name);
+  const tier3 = candidates.filter(c => c.tier === 3).map(c => c.name);
+  return {
+    success: true,
+    data: { candidates, created, scanned: repos.length },
+    displayMarkdown: `**Asset discovery for \`${ventureId}\`** — scanned ${repos.length} repos, created ${created} new ${autoConfirm ? 'confirmed' : 'suggestion'}(s).\n\n**Tier 2:** ${tier2.join(', ') || '_none_'}\n\n**Tier 3 (legacy):** ${tier3.join(', ') || '_none_'}\n\n${autoConfirm ? '' : 'Suggestions live on the Assets tab — tap ✓ to confirm each.'}`,
+  };
+};
 
 const listRepos: KitToolHandler = async (_input, ctx) => {
   const data = await fetchJson('/api/github?action=repos', ctx);
@@ -232,6 +283,19 @@ export const manifest: KitManifest = {
       description: 'Get a full system status overview including GitHub repos, recent commits, and Vercel deployments.',
       input_schema: { type: 'object', properties: {}, required: [] },
     },
+    {
+      name: 'discover_venture_assets',
+      description: 'Scan GitHub repos and suggest Tier 2/3 related assets for a venture using sibling-prefix inference. Creates venture_assets rows with discovered=true, confirmed=false so the user can confirm on the Assets tab.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          venture: { type: 'string', description: 'Venture id — defaults to current context' },
+          tokens: { type: 'array', items: { type: 'string' }, description: 'Additional brand tokens to match against repo prefixes (e.g. ["mcv","edgeiq"])' },
+          sub_brand_tlds: { type: 'array', items: { type: 'string' }, description: 'Sub-brand TLDs to emit as additional candidates (e.g. ["gg","dev","tech"])' },
+          auto_confirm: { type: 'boolean', description: 'If true, created assets are confirmed=true (skip user confirmation). Default false.' },
+        },
+      },
+    },
   ],
 };
 
@@ -385,6 +449,7 @@ export const handlers: Record<string, KitToolHandler> = {
   list_prs: listPrs,
   list_commits: listCommits,
   check_status: checkStatus,
+  discover_venture_assets: discoverVentureAssets,
   browse_repo_tree: browseRepoTree,
   read_repo_file: readRepoFile,
   get_pr_diff: getPrDiff,
