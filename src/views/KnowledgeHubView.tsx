@@ -52,6 +52,9 @@ export default function KnowledgeHubView() {
   const [corpora, setCorpora] = useState<Corpus[]>([]);
   const [corporaLoading, setCorporaLoading] = useState(false);
   const [newCorpusName, setNewCorpusName] = useState('');
+  const [ingestCorpusId, setIngestCorpusId] = useState<string>('');
+  const [ingestText, setIngestText] = useState('');
+  const [ingestingToCorpus, setIngestingToCorpus] = useState(false);
 
   // Overview stats per venture
   const [stats, setStats] = useState<VentureKnowledgeStats[]>([]);
@@ -268,6 +271,32 @@ export default function KnowledgeHubView() {
       addToast({ type: 'error', message: err instanceof Error ? err.message : 'Delete failed' });
     }
   }, [addToast, loadCorpora]);
+
+  const handleIngestToCorpus = useCallback(async () => {
+    if (!ingestCorpusId || !ingestText.trim()) return;
+    setIngestingToCorpus(true);
+    try {
+      const res = await fetch('/api/rag-ingest', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'ingest-text', text: ingestText,
+          corpus_id: ingestCorpusId, venture_id: effectiveVentureId,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Ingest failed: ${res.status}`);
+      }
+      const data = await res.json();
+      addToast({ type: 'success', message: `Embedded ${data.chunk_count} chunks` });
+      setIngestText('');
+      loadCorpora();
+    } catch (err) {
+      addToast({ type: 'error', message: err instanceof Error ? err.message : 'Ingest failed' });
+    } finally {
+      setIngestingToCorpus(false);
+    }
+  }, [ingestCorpusId, ingestText, effectiveVentureId, addToast, loadCorpora]);
 
   const handleReindexCorpus = useCallback(async (corpusId: string) => {
     try {
@@ -656,6 +685,43 @@ export default function KnowledgeHubView() {
                   })}
                 </div>
               )}
+            </GlassCard>
+
+            <GlassCard>
+              <h4 style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Sparkles size={12} style={{ color: 'var(--purple)' }} /> Embed Content Into Corpus
+              </h4>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '0 0 10px' }}>
+                Paste any text — it will be chunked, embedded with <code>text-embedding-004</code>, and indexed for semantic retrieval.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <select
+                  value={ingestCorpusId}
+                  onChange={(e) => setIngestCorpusId(e.target.value)}
+                  style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text-primary)', padding: '8px 10px', borderRadius: 'var(--radius-sm)', fontSize: 12 }}
+                >
+                  <option value="">Select a corpus...</option>
+                  {corpora.map((c) => {
+                    const cid = (c.corpus_id || c.id) as string;
+                    const cname = c.corpus_name || c.name || 'Untitled';
+                    return <option key={cid} value={cid}>{cname}</option>;
+                  })}
+                </select>
+                <textarea
+                  placeholder="Paste content to embed... (runs through sentence-aware chunker, then Gemini embeddings)"
+                  value={ingestText}
+                  onChange={(e) => setIngestText(e.target.value)}
+                  rows={6}
+                  style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text-primary)', padding: 'var(--space-sm)', borderRadius: 'var(--radius-sm)', fontSize: 13, resize: 'vertical', outline: 'none', fontFamily: 'var(--font-sans)' }}
+                />
+                <Button
+                  onClick={handleIngestToCorpus}
+                  disabled={!ingestCorpusId || !ingestText.trim() || ingestingToCorpus}
+                >
+                  {ingestingToCorpus ? <Loader2 size={14} className="mcv-spin" /> : <Sparkles size={14} />}
+                  Embed & Index
+                </Button>
+              </div>
             </GlassCard>
           </div>
         )}
