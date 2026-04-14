@@ -85,6 +85,82 @@ export function useRealtimeSync() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'team_members' }, () => {
         queryClient.invalidateQueries({ queryKey: ['team'] });
       })
+      // ── NAOS (agent state flows live) ──
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'naos_agents' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['naos', 'agents'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'naos_emotional_state' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['naos', 'emotional'] });
+        queryClient.invalidateQueries({ queryKey: ['naos', 'agents'] });
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'naos_interactions' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['naos', 'interactions'] });
+        queryClient.invalidateQueries({ queryKey: ['naos', 'agents'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'naos_relationships' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['naos', 'relationships'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'naos_culture_snapshot' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['naos', 'culture'] });
+      })
+      // ── Commerce ──
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['commerce', 'orders'] });
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['commerce', 'invoices'] });
+        queryClient.invalidateQueries({ queryKey: ['financials'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'subscriptions' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['commerce', 'subscriptions'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['commerce', 'products'] });
+      })
+      // ── Payments / financials ──
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payment_intents' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['payments'] });
+        queryClient.invalidateQueries({ queryKey: ['financials'] });
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transaction_records' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['transactions'] });
+        queryClient.invalidateQueries({ queryKey: ['financials'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'journal_entries' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['ledger'] });
+        queryClient.invalidateQueries({ queryKey: ['financials'] });
+      })
+      // ── Compliance ──
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'fraud_checks' }, (payload) => {
+        queryClient.invalidateQueries({ queryKey: ['compliance', 'fraud'] });
+        const check = payload.new as { decision?: string; risk_score?: number };
+        if (check?.decision === 'block' || (check?.risk_score ?? 0) > 80) {
+          addNotification({
+            type: 'warning', title: 'High-risk transaction flagged',
+            description: `Risk score ${check.risk_score}, decision: ${check.decision}`,
+            source: 'compliance',
+          });
+        }
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'nexus_alerts' }, (payload) => {
+        queryClient.invalidateQueries({ queryKey: ['compliance', 'nexus'] });
+        const alert = payload.new as { jurisdiction_name?: string; severity?: string; alert_type?: string };
+        addNotification({
+          type: alert?.severity === 'critical' ? 'error' : 'warning',
+          title: `Tax nexus: ${alert?.jurisdiction_name || 'Unknown'}`,
+          description: alert?.alert_type || 'Nexus threshold alert',
+          source: 'compliance',
+        });
+      })
+      // ── Storage / RAG progress ──
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'storage_chunks' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['rag', 'corpora'] });
+        queryClient.invalidateQueries({ queryKey: ['rag', 'chunks'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'storage_rag_corpora' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['rag', 'corpora'] });
+      })
       .subscribe();
 
     return () => {
