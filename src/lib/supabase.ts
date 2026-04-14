@@ -5,11 +5,13 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 //   - `supabase` (anon client) — legacy singleton; RLS policies referencing
 //     auth.uid() will NOT trigger. Kept for backward compatibility.
 //   - `getAuthedClient(getToken)` — returns a client whose requests include
-//     a Clerk-issued Supabase JWT so RLS + auth.jwt() claims work.
-//     Set up a JWT template named "supabase" in Clerk signed with the
-//     Supabase JWT secret. Usage:
-//       const { getToken } = useAuth();
-//       const sb = await getAuthedClient(() => getToken({ template: 'supabase' }));
+//     a Clerk-issued token so RLS + auth.jwt() claims work. Works with EITHER
+//     integration path:
+//       (A) Native third-party (recommended): Clerk issues standard session
+//           tokens; Supabase validates them. Call `getToken()` with no args.
+//       (B) Legacy JWT template: Create a Clerk template named "supabase"
+//           signed with Supabase JWT secret. Call `getToken({ template: 'supabase' })`.
+//     Both attach `Authorization: Bearer <jwt>` the same way.
 // ---------------------------------------------------------------------------
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
