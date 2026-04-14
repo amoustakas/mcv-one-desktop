@@ -24,6 +24,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const userId = await requireAuth(req, res); if (!userId) return;
   const action = req.method === 'GET' ? req.query.action as string : req.body?.action;
 
+  // Bare GET without action = health-check ping (used by Command Center
+  // System Health card). Returns 200 OK with a summary of supported actions.
+  if (!action) {
+    return res.json({ ok: true, service: 'dashboard', actions: ['stats','attention','morning-brief'] });
+  }
+
   try {
     switch (action) {
       // ── Aggregated Stats ──

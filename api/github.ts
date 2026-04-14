@@ -57,16 +57,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const userId = await requireAuth(req, res); if (!userId) return;
   if (!['GET', 'POST'].includes(req.method || '')) return res.status(405).json({ error: 'Method not allowed' });
 
+  const action = req.query.action as string;
+  const repo = req.query.repo as string;
+
+  // Bare GET without action = health-check ping (used by Command Center
+  // System Health card). Returns 200 OK with a summary regardless of auth.
+  if (!action) {
+    return res.json({
+      ok: true, service: 'github',
+      actions: ['repos','prs','commits','overview','branches','tree','file','pr-files','commit-detail','create-issue','update-issue','close-issue','add-issue-comment','create-pr','merge-pr'],
+    });
+  }
+
   let token: string;
   try {
     const result = await getProviderToken(userId, 'github');
     token = result.token;
   } catch {
-    return res.status(500).json({ error: 'GitHub not connected. Add a token in Settings > Integrations or set GITHUB_TOKEN env var.' });
+    return res.status(503).json({ error: 'GitHub not connected. Add a token in Settings > Integrations or set GITHUB_TOKEN env var.' });
   }
-
-  const action = req.query.action as string;
-  const repo = req.query.repo as string;
 
   try {
     switch (action) {

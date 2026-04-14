@@ -15,6 +15,14 @@ import type { DeviceDescriptor, DeviceInputEvent } from '../lib/devices/types';
 const SSE_URL = 'http://localhost:3100/devices/events';
 const RECONNECT_DELAY = 5_000;
 
+// Only attempt to connect in dev — the local device bridge server runs on
+// localhost:3100. In production on Vercel, this connection will always fail
+// and produces endless ERR_CONNECTION_REFUSED noise in the console, so we
+// skip it entirely.
+const DEVICE_EVENTS_ENABLED =
+  typeof window !== 'undefined' &&
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
 export type SSEConnectionState = 'disconnected' | 'connecting' | 'connected';
 
 export function useDeviceEvents() {
@@ -42,6 +50,11 @@ export function useDeviceEvents() {
   }, []);
 
   useEffect(() => {
+    // Skip the local SSE connection in production — there's no device
+    // bridge running at localhost:3100 on Vercel, and the retry loop
+    // spams ERR_CONNECTION_REFUSED into the console.
+    if (!DEVICE_EVENTS_ENABLED) return;
+
     // Prevent duplicate connections on StrictMode double-mount
     if (mountedRef.current) return;
     mountedRef.current = true;
