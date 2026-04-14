@@ -28,6 +28,7 @@ const globalSections: NavSection[] = [
     label: 'Intelligence', key: 'intel',
     items: [
       { id: 'intelligence', label: 'Knowledge Base' },
+      { id: 'knowledge-hub', label: 'Knowledge Hub' },
       { id: 'treasury', label: 'Treasury' },
       { id: 'signals', label: 'Signals Feed' },
       { id: 'memory', label: 'Memory Hub' },

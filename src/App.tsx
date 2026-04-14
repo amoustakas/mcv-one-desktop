@@ -95,6 +95,7 @@ const CommerceCreditsView = lazy(() => import('./views/CommerceCreditsView'));
 const FinancialsReportingView = lazy(() => import('./views/FinancialsReportingView'));
 const VentureOperationsView = lazy(() => import('./views/VentureOperationsView'));
 const VentureSettingsView = lazy(() => import('./views/VentureSettingsView'));
+const KnowledgeHubView = lazy(() => import('./views/KnowledgeHubView'));
 // Commerce + Financials views
 const CommerceOverview = lazy(() => import('./views/CommerceOverview'));
 const CommerceProducts = lazy(() => import('./views/CommerceProducts'));
@@ -328,6 +329,8 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <ContactCenterView />;
     case 'compliance-hub':
       return <ComplianceHubView />;
+    case 'knowledge-hub':
+      return <KnowledgeHubView />;
     default:
       return <AegisChat venture={venture} />;
   }

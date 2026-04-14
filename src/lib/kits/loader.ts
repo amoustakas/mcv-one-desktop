@@ -45,6 +45,7 @@ import { manifest as naosAgentManifest, handlers as naosAgentHandlers } from './
 import { manifest as creativeAiManifest, handlers as creativeAiHandlers } from './builtin/creative-ai-kit';
 import { manifest as videoAiManifest, handlers as videoAiHandlers } from './builtin/video-ai-kit';
 import { manifest as aiStudioManifest, handlers as aiStudioHandlers } from './builtin/ai-studio-kit';
+import { manifest as knowledgeHubManifest, handlers as knowledgeHubHandlers } from './builtin/knowledge-hub-kit';
 import { manifest as deepgramManifest, handlers as deepgramHandlers } from './builtin/deepgram-kit';
 import { manifest as whatsappManifest, handlers as whatsappHandlers } from './builtin/whatsapp-kit';
 import { manifest as messengerManifest, handlers as messengerHandlers } from './builtin/messenger-kit';
@@ -155,6 +156,7 @@ const builtinKits: KitInstance[] = [
   kit(creativeAiManifest, creativeAiHandlers),
   kit(videoAiManifest, videoAiHandlers),
   kit(aiStudioManifest, aiStudioHandlers),
+  kit(knowledgeHubManifest, knowledgeHubHandlers),
   kit(deepgramManifest, deepgramHandlers),
   kit(whatsappManifest, whatsappHandlers),
   kit(messengerManifest, messengerHandlers),

@@ -55,6 +55,7 @@ export const VIEW_ICONS: Record<string, LucideIcon> = {
   gmail: Mail, calendar: Calendar, drive: HardDrive,
   sheets: Table, 'google-docs': FileEdit, 'google-tasks': ListTodo,
   'contact-center': Phone, 'compliance-hub': Shield,
+  'knowledge-hub': Brain,
 };
 
 // ── Label map ──
@@ -95,6 +96,7 @@ export const VIEW_LABELS: Record<string, string> = {
   gmail: 'Gmail', calendar: 'Calendar', drive: 'Drive',
   sheets: 'Sheets', 'google-docs': 'Docs', 'google-tasks': 'Tasks',
   'contact-center': 'Contact Center', 'compliance-hub': 'Compliance',
+  'knowledge-hub': 'Knowledge Hub',
 };
 
 // ── View categories for color accents ──
@@ -114,7 +116,7 @@ const CATEGORY_MAP: Record<ViewCategory, ViewId[]> = {
     'creator-hub', 'creator-royalties', 'creator-escrow',
   ],
   growth: ['crm', 'growth', 'comms-hub', 'ad-studio', 'venture-growth', 'contact-center'],
-  intelligence: ['intelligence', 'treasury', 'signals', 'memory', 'portfolio'],
+  intelligence: ['intelligence', 'treasury', 'signals', 'memory', 'portfolio', 'knowledge-hub'],
   operations: ['tasks', 'docs', 'files', 'team', 'pipeline', 'venture-tasks', 'venture-docs', 'venture-operations', 'venture-workspace', 'settings', 'venture-settings', 'venture-onboarding', 'venture-profile', 'venture-dashboard', 'gmail', 'calendar', 'drive', 'sheets', 'google-docs', 'google-tasks'],
   devices: ['device-hub', 'stream-deck', 'audio-router', 'connected-sessions'],
 };
