@@ -1,0 +1,18 @@
+{
+  "name": "@mcv/compliance-sdk",
+  "version": "0.1.0",
+  "description": "Compliance type system for MCV venture apps — fraud rules, dunning configs, tax breakdowns, price localization, nexus tracking. Types + schemas only; Supabase-bound runtime (evaluator / dunning executor / tax engine) stays in consuming apps for now.",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": { "types": "./src/index.ts", "default": "./src/index.ts" },
+    "./types": { "types": "./src/types.ts", "default": "./src/types.ts" }
+  },
+  "files": ["src"],
+  "scripts": {
+    "lint": "echo 'no lint yet'",
+    "test": "echo 'no tests yet'"
+  }
+}
