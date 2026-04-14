@@ -48,6 +48,32 @@ const SLASH_COMMANDS: { name: string; description: string }[] = [
   { name: '/help', description: 'Show all commands' },
 ];
 
+/* ─── Global keyboard shortcut cheat sheet ──────────────────────── */
+
+/**
+ * Mirror of the shortcut handlers in App.tsx's useEffect. Kept here so the
+ * palette footer can surface them to the user — App.tsx is the source of
+ * truth for the bindings; this list is the user-facing documentation.
+ * Update both when adding a new shortcut.
+ */
+interface ShortcutHint {
+  keys: string[];      // rendered as <kbd> chips joined by +
+  label: string;
+  group: 'nav' | 'app';
+}
+
+const SHORTCUTS: ShortcutHint[] = [
+  { keys: ['⌘', 'K'],           label: 'Command Palette',      group: 'app' },
+  { keys: ['⌘', '/'],           label: 'Toggle Chat',          group: 'app' },
+  { keys: ['⌘', 'N'],           label: 'Quick Capture',        group: 'app' },
+  { keys: ['⌘', 'E'],           label: 'Toggle Global/Venture',group: 'app' },
+  { keys: ['⌘', '\\'],          label: 'Toggle Split View',    group: 'app' },
+  { keys: ['⌘', '1-8'],         label: 'Jump to Global View',  group: 'nav' },
+  { keys: ['⌘⇧', '1-9'],        label: 'Switch Venture',       group: 'nav' },
+  { keys: ['⌥', '1-3'],         label: 'Workspace Preset',     group: 'nav' },
+  { keys: ['⌥', '←/→'],         label: 'History Back / Fwd',   group: 'nav' },
+];
+
 /* ─── Category order & icons ─────────────────────────────────────── */
 
 const CATEGORY_ORDER: Category[] = ['Views', 'Ventures', 'Comms', 'Kits', 'Documents', 'Tasks', 'Contacts', 'Commands'];
@@ -404,6 +430,29 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
             );
           })}
         </div>
+
+        {/* Footer: pinned keyboard navigation hints always visible; a full
+            shortcut cheat sheet shows while the query is empty so users
+            can discover the Cmd+1-8 jumps and workspace presets. */}
+        <div className="palette-footer">
+          <div className="palette-footer-row palette-footer-nav">
+            <span className="palette-hint-chip"><kbd>↑</kbd><kbd>↓</kbd> Navigate</span>
+            <span className="palette-hint-chip"><kbd>↵</kbd> Select</span>
+            <span className="palette-hint-chip"><kbd>esc</kbd> Close</span>
+          </div>
+          {!query && (
+            <div className="palette-footer-row palette-footer-shortcuts">
+              {SHORTCUTS.map((s) => (
+                <span key={s.label} className="palette-shortcut">
+                  {s.keys.map((k, i) => (
+                    <kbd key={i}>{k}</kbd>
+                  ))}
+                  <span className="palette-shortcut-label">{s.label}</span>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <style>{`
@@ -550,6 +599,60 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
           text-align: center;
           font-size: var(--text-sm);
           color: var(--text-muted);
+        }
+
+        /* ── Footer: nav hints + (on empty query) shortcut cheat sheet ── */
+
+        .palette-footer {
+          flex-shrink: 0;
+          border-top: 1px solid var(--border);
+          background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.15));
+          padding: 6px 12px;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .palette-footer-row {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 10px;
+          font-size: 10px;
+          color: var(--text-muted);
+        }
+
+        .palette-footer-shortcuts {
+          padding-top: 6px;
+          border-top: 1px dashed rgba(255, 255, 255, 0.05);
+          gap: 12px 14px;
+        }
+
+        .palette-hint-chip,
+        .palette-shortcut {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          white-space: nowrap;
+        }
+
+        .palette-shortcut-label {
+          margin-left: 2px;
+          color: var(--text-secondary);
+        }
+
+        .palette-footer kbd {
+          font-family: var(--font-mono);
+          font-size: 9px;
+          line-height: 1;
+          color: var(--text-secondary);
+          background: var(--bg-card);
+          border: 1px solid var(--border);
+          padding: 2px 5px;
+          border-radius: 3px;
+          box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+          min-width: 14px;
+          text-align: center;
         }
       `}</style>
     </div>
