@@ -2,7 +2,9 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { lazyRetry } from '../lib/lazy-retry';
 import { motion } from 'framer-motion';
 import { Receipt, Plus, Send, DollarSign, AlertTriangle, Loader2, CheckCircle2 } from 'lucide-react';
-import { PageShell, PageHeader, KpiCard, GridLayout, GlassCard, Button, Badge, Tabs, EmptyState } from '../components/ui';
+import { PageShell, PageHeader, KpiCard, GridLayout, GlassCard, Button, Badge, Tabs, EmptyState, BulkActionBar } from '../components/ui';
+import type { BulkAction } from '../components/ui';
+import { Send as SendBulkIcon, CheckCircle2 as CheckAllIcon, Download as DownloadIcon, Trash2 as TrashIcon } from 'lucide-react';
 import { useCommerceStore } from '../stores/commerce';
 import { useNavigation } from '../stores/navigation';
 import { staggerContainer, fadeInUp } from '../lib/animations';
@@ -17,10 +19,89 @@ export default function CommerceInvoicesView() {
   const { invoices, invoicesLoading, fetchInvoices, sendInvoice, recordInvoicePayment } = useCommerceStore();
   const [tab, setTab] = useState('all');
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
 
   const selectedInvoice = selectedInvoiceId
     ? (invoices.find((i) => String((i as unknown as Record<string, unknown>).id) === selectedInvoiceId) as unknown as Parameters<typeof InvoiceDetailDialog>[0]['invoice']) || null
     : null;
+
+  const toggleRow = (id: string) => {
+    setSelectedRowIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const selectAllVisible = (visibleIds: string[]) => {
+    setSelectedRowIds(visibleIds);
+  };
+
+  const bulkActions: BulkAction[] = [
+    {
+      id: 'send',
+      label: 'Send',
+      icon: <SendBulkIcon size={12} />,
+      onRun: async (ids) => {
+        for (const id of ids) {
+          try { await sendInvoice(ventureId, id); } catch { /* keep going */ }
+        }
+        addToast({ type: 'success', message: `Sent ${ids.length} invoice${ids.length === 1 ? '' : 's'}` });
+        fetchInvoices(ventureId);
+      },
+    },
+    {
+      id: 'mark-paid',
+      label: 'Mark Paid',
+      icon: <CheckAllIcon size={12} />,
+      confirm: 'Mark selected invoices as fully paid?',
+      onRun: async (ids) => {
+        for (const id of ids) {
+          const inv = invoices.find((x) => String((x as unknown as Record<string, unknown>).id) === id) as unknown as Record<string, unknown>;
+          const amount = Number(inv?.amount || inv?.total || 0);
+          try { await recordInvoicePayment(ventureId, id, amount); } catch { /* keep going */ }
+        }
+        addToast({ type: 'success', message: `Marked ${ids.length} paid` });
+        fetchInvoices(ventureId);
+      },
+    },
+    {
+      id: 'export',
+      label: 'Export CSV',
+      icon: <DownloadIcon size={12} />,
+      onRun: (ids) => {
+        const rows = invoices
+          .filter((i) => ids.includes(String((i as unknown as Record<string, unknown>).id)))
+          .map((i) => {
+            const inv = i as unknown as Record<string, unknown>;
+            return [
+              String(inv.invoice_number || inv.number || inv.id),
+              String(inv.customer_name || inv.customer_id || ''),
+              String(inv.amount || inv.total || 0),
+              String(inv.due_date || ''),
+              String(inv.status || ''),
+            ].map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',');
+          });
+        const csv = ['"Invoice","Customer","Amount","Due Date","Status"', ...rows].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `invoices-export-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        addToast({ type: 'success', message: `Exported ${ids.length} invoices to CSV` });
+      },
+    },
+    {
+      id: 'delete',
+      label: 'Delete',
+      icon: <TrashIcon size={12} />,
+      danger: true,
+      confirm: true,
+      onRun: (ids) => {
+        addToast({ type: 'info', message: `Delete handler ready — wire to commerce store when API lands (${ids.length} items)` });
+      },
+    },
+  ];
 
   useEffect(() => {
     fetchInvoices(ventureId).catch(() => {});
@@ -95,23 +176,41 @@ export default function CommerceInvoicesView() {
             <EmptyState icon={<Receipt size={32} />} title="No invoices" description="Create your first invoice to start tracking AR." />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 100px 120px 100px 120px', padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, gap: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '28px 120px 1fr 100px 120px 100px 120px', padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, gap: 8, alignItems: 'center' }}>
+                <input
+                  type="checkbox"
+                  checked={filtered.length > 0 && selectedRowIds.length === filtered.length}
+                  ref={(el) => { if (el) el.indeterminate = selectedRowIds.length > 0 && selectedRowIds.length < filtered.length; }}
+                  onChange={(e) => { if (e.target.checked) selectAllVisible(filtered.map((i) => String((i as unknown as Record<string, unknown>).id))); else setSelectedRowIds([]); }}
+                  aria-label="Select all visible invoices"
+                  style={{ accentColor: 'var(--cyan)' }}
+                />
                 <span>Invoice #</span><span>Customer</span><span style={{ textAlign: 'right' }}>Amount</span><span>Due Date</span><span>Status</span><span style={{ textAlign: 'right' }}>Actions</span>
               </div>
               {filtered.map((i) => {
                 const inv = i as unknown as Record<string, unknown>;
                 const status = String(inv.status || 'draft');
+                const rowId = String(inv.id);
+                const isSelected = selectedRowIds.includes(rowId);
                 return (
                   <div
-                    key={String(inv.id)}
+                    key={rowId}
                     role="button"
                     tabIndex={0}
-                    onClick={() => setSelectedInvoiceId(String(inv.id))}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedInvoiceId(String(inv.id)); } }}
-                    style={{ display: 'grid', gridTemplateColumns: '120px 1fr 100px 120px 100px 120px', padding: '10px 0', borderBottom: '1px solid var(--border)', fontSize: 13, gap: 8, alignItems: 'center', cursor: 'pointer', transition: 'background-color 150ms ease' }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--bg-hover)'; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent'; }}
+                    onClick={() => setSelectedInvoiceId(rowId)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedInvoiceId(rowId); } }}
+                    style={{ display: 'grid', gridTemplateColumns: '28px 120px 1fr 100px 120px 100px 120px', padding: '10px 0', borderBottom: '1px solid var(--border)', fontSize: 13, gap: 8, alignItems: 'center', cursor: 'pointer', transition: 'background-color 150ms ease', backgroundColor: isSelected ? 'rgba(0, 240, 255, 0.05)' : undefined }}
+                    onMouseEnter={(e) => { if (!isSelected) (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--bg-hover)'; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = isSelected ? 'rgba(0, 240, 255, 0.05)' : 'transparent'; }}
                   >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={() => toggleRow(rowId)}
+                      aria-label={`Select invoice ${String(inv.invoice_number || inv.id)}`}
+                      style={{ accentColor: 'var(--cyan)' }}
+                    />
                     <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: 11 }}>{String(inv.invoice_number || inv.number || inv.id).slice(0, 12)}</span>
                     <span style={{ color: 'var(--text-primary)' }}>{String(inv.customer_name || inv.customer_id || '—')}</span>
                     <span style={{ color: 'var(--cyan)', textAlign: 'right', fontWeight: 600 }}>${Number(inv.amount || inv.total || 0).toLocaleString()}</span>
@@ -128,6 +227,15 @@ export default function CommerceInvoicesView() {
           )}
         </GlassCard>
       </div>
+
+      <BulkActionBar
+        selectedIds={selectedRowIds}
+        onClear={() => setSelectedRowIds([])}
+        actions={bulkActions}
+        totalCount={filtered.length}
+        onSelectAll={() => selectAllVisible(filtered.map((i) => String((i as unknown as Record<string, unknown>).id)))}
+        placement="floating"
+      />
 
       <Suspense fallback={null}>
         {selectedInvoiceId && (

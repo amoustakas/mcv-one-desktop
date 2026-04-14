@@ -3,13 +3,14 @@ import {
   Settings, Monitor, Volume2, Mic, Shield, Keyboard, Info, Database,
   Cloud, Zap, Server, CheckCircle2, HardDrive, Cpu, MonitorSmartphone,
   Search as SearchIcon, Sparkles, User, CreditCard, Key, AlertTriangle,
-  Eye, EyeOff, Bell, Layers, RotateCcw, ChevronRight,
+  Eye, EyeOff, Bell, Layers, RotateCcw, ChevronRight, Globe, Save as SaveIcon,
 } from 'lucide-react';
 import {
   PageShell, Button, SectionCard, Toolbar,
   FormField, Switch, Slider, Select, Combobox, Tooltip, Badge, ToggleGroup,
-  Input,
+  Input, ChipInput,
 } from '../components/ui';
+import { useGoogleWorkspaceStore } from '../stores/google-workspace';
 import IntegrationsHub from '../components/IntegrationsHub';
 import { APP_VERSION, BUILD_TIME } from '../lib/version';
 import { ventures } from '../lib/ventures';
@@ -50,6 +51,7 @@ const TABS: { id: Tab; label: string; icon: typeof Settings; summary?: string }[
   { id: 'general', label: 'General', icon: Monitor, summary: 'Theme, density, accessibility' },
   { id: 'account', label: 'Account', icon: User, summary: 'Profile, default venture, clock' },
   { id: 'integrations', label: 'Integrations', icon: Zap, summary: 'OAuth, API keys, MCP' },
+  { id: 'google-workspace', label: 'Google Workspace', icon: Globe, summary: 'Gmail · Calendar · Drive · GA4' },
   { id: 'ai-models', label: 'AI & Models', icon: Sparkles, summary: 'Claude, Gemini, tokens' },
   { id: 'audio', label: 'Audio & Voice', icon: Volume2, summary: 'Mic, speakers, TTS' },
   { id: 'devices', label: 'Devices', icon: Cpu, summary: 'Profiles, GoXLR, discovery' },
@@ -326,6 +328,9 @@ export default function SettingsView() {
                 health={health}
                 highlight={highlight}
               />
+            )}
+            {tab === 'google-workspace' && (
+              <GoogleWorkspaceSection ventureId={ventureId} ventureName={ventureMeta.name} />
             )}
             {tab === 'ai-models' && (
               <AiModelsSection
@@ -699,6 +704,110 @@ function ApiKeyRow({
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+function GoogleWorkspaceSection({ ventureId, ventureName }: { ventureId: string; ventureName: string }) {
+  const getMapping = useGoogleWorkspaceStore((s) => s.getVentureMapping);
+  const setMapping = useGoogleWorkspaceStore((s) => s.setVentureMapping);
+  const existing = getMapping(ventureId);
+  const { toast } = useToast();
+
+  const [gmailLabels, setGmailLabels] = useState<string[]>(existing?.gmail.labels || []);
+  const [searchQuery, setSearchQuery] = useState<string>(existing?.gmail.searchQuery || '');
+  const [calendarIds, setCalendarIds] = useState<string[]>(existing?.calendar.calendarIds || []);
+  const [calendarKeywords, setCalendarKeywords] = useState<string[]>(existing?.calendar.keywords || []);
+  const [driveFolders, setDriveFolders] = useState<string[]>(existing?.drive.folderIds || []);
+  const [sharedDriveId, setSharedDriveId] = useState<string>(existing?.drive.sharedDriveId || '');
+  const [ga4, setGa4] = useState<string>(existing?.analytics.propertyId || '');
+  const [siteUrl, setSiteUrl] = useState<string>(existing?.searchConsole.siteUrl || '');
+
+  const save = () => {
+    setMapping(ventureId, {
+      gmail: { labels: gmailLabels, searchQuery: searchQuery || undefined },
+      calendar: { calendarIds, keywords: calendarKeywords },
+      drive: { folderIds: driveFolders, sharedDriveId: sharedDriveId || undefined },
+      analytics: { propertyId: ga4 || undefined },
+      searchConsole: { siteUrl: siteUrl || undefined },
+    });
+    toast('success', `${ventureName} Google Workspace mapping saved`);
+  };
+
+  return (
+    <div className="settings-section-stack">
+      <SectionCard
+        title={`${ventureName} — Google Workspace`}
+        icon={<Globe size={14} />}
+        description="Map Gmail labels, Calendar IDs, Drive folders, and Analytics properties so venture-scoped views filter correctly"
+        action={<Button size="sm" variant="primary" icon={<SaveIcon size={12} />} onClick={save}>Save Mapping</Button>}
+      >
+        <div className="settings-form-grid">
+          <FormField label="Gmail Labels" hint="Press Enter or comma to add. Labels filter Inbox/Search for this venture.">
+            <ChipInput
+              value={gmailLabels}
+              onChange={setGmailLabels}
+              placeholder="BetEdge, Investors, Users…"
+              normalize={(s) => s.trim()}
+            />
+          </FormField>
+          <FormField label="Calendar IDs" hint="e.g. betedge@group.calendar.google.com">
+            <ChipInput
+              value={calendarIds}
+              onChange={setCalendarIds}
+              placeholder="calendar-id@group.calendar.google.com"
+            />
+          </FormField>
+          <FormField label="Calendar Auto-tag Keywords" hint="Events whose titles contain these words are auto-tagged to this venture">
+            <ChipInput
+              value={calendarKeywords}
+              onChange={setCalendarKeywords}
+              placeholder="betting, sports, odds"
+              normalize={(s) => s.toLowerCase().trim()}
+            />
+          </FormField>
+          <FormField label="Drive Folder IDs">
+            <ChipInput
+              value={driveFolders}
+              onChange={setDriveFolders}
+              placeholder="1a2b3c… (folder ID from Drive URL)"
+            />
+          </FormField>
+        </div>
+      </SectionCard>
+
+      <SectionCard title="Advanced" icon={<Zap size={14} />}>
+        <div className="settings-form-grid">
+          <FormField label="Gmail Search Query" hint="Custom query that defines this venture's Inbox (overrides Labels if set)">
+            <Input
+              value={searchQuery}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+              placeholder='from:@betedge.ai OR to:@betedge.ai'
+            />
+          </FormField>
+          <FormField label="Shared Drive ID" hint="Optional — if you use a Shared Drive instead of user folders">
+            <Input
+              value={sharedDriveId}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSharedDriveId(e.target.value)}
+              placeholder="0AB...shared-drive-id"
+            />
+          </FormField>
+          <FormField label="GA4 Property ID" hint='Format: "properties/123456789"'>
+            <Input
+              value={ga4}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGa4(e.target.value)}
+              placeholder="properties/123456789"
+            />
+          </FormField>
+          <FormField label="Search Console Site URL">
+            <Input
+              value={siteUrl}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSiteUrl(e.target.value)}
+              placeholder="https://betedge.ai"
+            />
+          </FormField>
+        </div>
+      </SectionCard>
     </div>
   );
 }

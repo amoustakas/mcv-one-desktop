@@ -10,6 +10,7 @@ import { useDeployments } from '../hooks/use-deployments';
 import { useActivities } from '../hooks/use-crm';
 import { useDashboardStats, useAttentionItems, useMorningBrief } from '../hooks/use-dashboard';
 import { useRoadmap } from '../hooks/use-orchestration';
+import { useAllVentureMetrics } from '../hooks/use-commerce-metrics';
 import { PageShell, PageHeader, StatCard, GlassCard, GridLayout, Badge } from '../components/ui';
 import { timeAgo, formatMoney } from '../lib/utils';
 import Markdown from '../components/Markdown';
@@ -60,26 +61,43 @@ export default function CommandCenter() {
   const recentActivities = activities.slice(0, 5);
   const recentDeploys = deploys.slice(0, 5);
 
-  // Per-venture rollups — aggregate KPIs with current data. Real numbers come
-  // from an expanded dashboard API in a follow-up; for now, venture rollups
-  // synthesize from available stats.
+  // Per-venture rollups — real data from /api/commerce-metrics per venture,
+  // with a synthesized fallback for ventures whose query hasn't resolved yet.
+  const { byVenture: ventureMetrics } = useAllVentureMetrics('30d');
   const ventureRollups = useMemo<Record<string, VentureRollup>>(() => {
     const rollups: Record<string, VentureRollup> = {};
     const totalTasks = stats?.tasks.open ?? 0;
     const totalPipeline = stats?.deals.pipelineValue ?? 0;
     const ventureCount = ventures.length;
+
     ventures.forEach((v) => {
-      // Even distribution as a baseline; replaced when per-venture API lands
-      rollups[v.id] = {
-        id: v.id,
-        openTasks: Math.round(totalTasks / ventureCount),
-        mrr: 0,
-        activeAlerts: attentionItems.filter((a: AttentionItem) => a.title.toLowerCase().includes(v.id)).length,
-        pipelineValue: Math.round(totalPipeline / ventureCount),
-      };
+      const metrics = ventureMetrics[v.id];
+      const alertsForVenture = attentionItems.filter((a: AttentionItem) =>
+        a.title.toLowerCase().includes(v.id),
+      ).length;
+
+      if (metrics) {
+        // Real data — prefer invoices.overdue + orders.revenue + outstanding AR
+        rollups[v.id] = {
+          id: v.id,
+          openTasks: Math.round(totalTasks / ventureCount), // tasks are not in commerce-metrics yet
+          mrr: metrics.subscriptions.mrr_estimate,
+          activeAlerts: alertsForVenture + metrics.invoices.overdue_count,
+          pipelineValue: metrics.invoices.outstanding_ar || metrics.orders.revenue,
+        };
+      } else {
+        // Fallback — even distribution while the per-venture query is pending
+        rollups[v.id] = {
+          id: v.id,
+          openTasks: Math.round(totalTasks / ventureCount),
+          mrr: 0,
+          activeAlerts: alertsForVenture,
+          pipelineValue: Math.round(totalPipeline / ventureCount),
+        };
+      }
     });
     return rollups;
-  }, [stats, attentionItems]);
+  }, [stats, attentionItems, ventureMetrics]);
 
   const refetchAll = () => {
     refetchStats();

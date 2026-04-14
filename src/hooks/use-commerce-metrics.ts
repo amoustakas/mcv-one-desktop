@@ -1,0 +1,104 @@
+import { useQueries, useQuery } from '@tanstack/react-query';
+import { apiGet } from '../lib/api/client';
+import { ventures } from '../lib/ventures';
+
+// Shape returned by /api/commerce-metrics?action=snapshot (see api/commerce-metrics.ts)
+export interface CommerceMetricsSnapshot {
+  venture_id: string;
+  range_days: number;
+  orders: {
+    total_count: number;
+    by_status: Record<string, number>;
+    revenue: number;
+  };
+  invoices: {
+    total_count: number;
+    outstanding_ar: number;
+    overdue_count: number;
+    by_status: Record<string, number>;
+  };
+  subscriptions: {
+    total: number;
+    active: number;
+    mrr_estimate: number;
+    arr_estimate: number;
+  };
+  customers: {
+    total: number;
+    avg_ltv: number;
+    total_spent: number;
+  };
+  products: { total: number; active: number };
+  payments: {
+    total_count: number;
+    succeeded: number;
+    failed: number;
+    total_processed: number;
+  };
+  cashflow: { inflow: number; outflow: number; net: number; transaction_count: number };
+  top_customers: Array<{
+    id: string;
+    email: string;
+    first_name?: string;
+    last_name?: string;
+    total_spent?: number;
+    ltv?: number;
+  }>;
+}
+
+const METRICS_BASE = '/api/commerce-metrics';
+
+export const commerceMetricsKeys = {
+  snapshot: (ventureId: string | 'all', range: string) => ['commerce-metrics', 'snapshot', ventureId, range] as const,
+  timeseries: (ventureId: string | 'all', range: string) => ['commerce-metrics', 'timeseries', ventureId, range] as const,
+};
+
+/**
+ * Fetch a single venture's commerce snapshot. Pass `venture_id='all'` to
+ * aggregate across every venture (the endpoint defaults to 'all' when the
+ * query param is omitted).
+ */
+export function useCommerceMetrics(ventureId: string | 'all' = 'all', range = '30d') {
+  return useQuery({
+    queryKey: commerceMetricsKeys.snapshot(ventureId, range),
+    queryFn: async () => {
+      const params = new URLSearchParams({ action: 'snapshot', range });
+      if (ventureId !== 'all') params.set('venture_id', ventureId);
+      return apiGet<CommerceMetricsSnapshot>(`${METRICS_BASE}?${params}`);
+    },
+    staleTime: 60_000,
+    refetchInterval: 120_000,
+    retry: 1,
+  });
+}
+
+/**
+ * Fetch snapshots for every venture in parallel. Returns a record keyed
+ * by venture id. Values are undefined while individual queries are loading
+ * or have errored. Convenient for Command Center-style per-venture rollup
+ * grids where we want partial data rather than all-or-nothing.
+ */
+export function useAllVentureMetrics(range = '30d') {
+  const queries = useQueries({
+    queries: ventures.map((v) => ({
+      queryKey: commerceMetricsKeys.snapshot(v.id, range),
+      queryFn: async () => {
+        const params = new URLSearchParams({ action: 'snapshot', range, venture_id: v.id });
+        return apiGet<CommerceMetricsSnapshot>(`${METRICS_BASE}?${params}`);
+      },
+      staleTime: 60_000,
+      refetchInterval: 120_000,
+      retry: 1,
+    })),
+  });
+
+  const byVenture: Record<string, CommerceMetricsSnapshot | undefined> = {};
+  ventures.forEach((v, i) => {
+    byVenture[v.id] = queries[i]?.data;
+  });
+
+  const isLoading = queries.some((q) => q.isLoading);
+  const isError = queries.every((q) => q.isError);
+
+  return { byVenture, isLoading, isError, queries };
+}

@@ -4,6 +4,7 @@ export type SettingSectionId =
   | 'general'
   | 'account'
   | 'integrations'
+  | 'google-workspace'
   | 'ai-models'
   | 'audio'
   | 'devices'
@@ -57,6 +58,14 @@ export const SETTINGS_REGISTRY: SettingDefinition[] = [
   // Integrations
   { id: 'integrations-hub', label: 'Integrations', section: 'integrations', scopes: ['global'], keywords: ['oauth', 'api key', 'connections'], description: 'OAuth providers, API keys, MCP servers' },
   { id: 'api-keys', label: 'API Keys', section: 'integrations', scopes: ['global', 'venture'], keywords: ['secret', 'token'], description: 'Per-service API keys (inline override)' },
+
+  // Google Workspace (per-venture only)
+  { id: 'gw-gmail-labels', label: 'Gmail Labels', section: 'google-workspace', scopes: ['venture'], keywords: ['gmail', 'labels', 'tags'] },
+  { id: 'gw-calendar-ids', label: 'Calendar IDs', section: 'google-workspace', scopes: ['venture'], keywords: ['calendar', 'events'] },
+  { id: 'gw-calendar-keywords', label: 'Calendar Keywords', section: 'google-workspace', scopes: ['venture'], keywords: ['calendar', 'auto-tag'] },
+  { id: 'gw-drive-folders', label: 'Drive Folders', section: 'google-workspace', scopes: ['venture'], keywords: ['drive', 'files'] },
+  { id: 'gw-ga4', label: 'GA4 Property ID', section: 'google-workspace', scopes: ['venture'], keywords: ['analytics', 'ga4'] },
+  { id: 'gw-search-console', label: 'Search Console URL', section: 'google-workspace', scopes: ['venture'], keywords: ['seo', 'search console'] },
 
   // AI & Models
   { id: 'preferred-model', label: 'Preferred Model', section: 'ai-models', scopes: ['global', 'venture'], keywords: ['claude', 'gemini', 'gpt'] },
