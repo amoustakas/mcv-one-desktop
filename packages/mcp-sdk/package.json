@@ -1,0 +1,20 @@
+{
+  "name": "@mcv/mcp-sdk",
+  "version": "0.1.0",
+  "description": "Model Context Protocol client for MCV venture apps — types, transports (stdio-proxy / SSE / streamable-HTTP), connection manager, server registry, schema adapter, and 15+ server presets (GitHub, Postgres, Brave, Filesystem, etc.).",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": { "types": "./src/index.ts", "default": "./src/index.ts" },
+    "./types": { "types": "./src/types.ts", "default": "./src/types.ts" },
+    "./client": { "types": "./src/client.ts", "default": "./src/client.ts" },
+    "./presets": { "types": "./src/presets.ts", "default": "./src/presets.ts" }
+  },
+  "files": ["src"],
+  "scripts": {
+    "lint": "echo 'no lint yet'",
+    "test": "echo 'no tests yet'"
+  }
+}
