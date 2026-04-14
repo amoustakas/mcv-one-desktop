@@ -1,12 +1,6 @@
 {
   "functions": {
-    "api/comms-sync.ts": { "maxDuration": 60 },
-    "api/veo.ts": { "maxDuration": 60 },
-    "api/live-proxy.ts": { "maxDuration": 60 },
-    "api/creative.ts": { "maxDuration": 30 },
-    "api/imagen-edit.ts": { "maxDuration": 30 },
-    "api/compliance-cron.ts": { "maxDuration": 60 },
-    "api/cron-asset-rediscovery.ts": { "maxDuration": 120 }
+    "api/[...slug].ts": { "maxDuration": 120 }
   },
   "crons": [
     { "path": "/api/compliance-cron", "schedule": "0 * * * *" },

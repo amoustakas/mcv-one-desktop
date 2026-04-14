@@ -11,13 +11,13 @@
 // Response envelope: { data, meta: { requestId, rateLimitRemaining, rateLimitLimit, rateLimitReset } }
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { validateApiKey } from '../../src/lib/platform/api-keys';
-import { checkRateLimit } from '../../src/lib/platform/rate-limiter';
+import { validateApiKey } from '../../../src/lib/platform/api-keys';
+import { checkRateLimit } from '../../../src/lib/platform/rate-limiter';
 import {
   listWebhooks,
   registerWebhook,
   removeWebhook,
-} from '../../src/lib/platform/webhooks';
+} from '../../../src/lib/platform/webhooks';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS

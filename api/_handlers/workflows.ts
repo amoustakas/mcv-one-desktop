@@ -9,9 +9,9 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { start, getRun, resumeHook } from 'workflow/api';
-import { deployPipelineWorkflow } from '../workflows/deploy-pipeline';
-import { startInfraWorkflow, stopInfraWorkflow, infraHealthCheckWorkflow } from '../workflows/docker-orchestration';
-import { morningBriefWorkflow } from '../workflows/morning-brief';
+import { deployPipelineWorkflow } from '../../workflows/deploy-pipeline';
+import { startInfraWorkflow, stopInfraWorkflow, infraHealthCheckWorkflow } from '../../workflows/docker-orchestration';
+import { morningBriefWorkflow } from '../../workflows/morning-brief';
 
 async function requireAuth(req: VercelRequest, res: VercelResponse): Promise<string | null> {
   const secretKey = process.env.CLERK_SECRET_KEY;

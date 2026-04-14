@@ -22,11 +22,15 @@ import fs from 'fs';
 import path from 'path';
 import { pathToFileURL } from 'url';
 
-const API_DIR = path.resolve(process.cwd(), 'api');
+// Handlers live under api/_handlers/ so Vercel (which ignores _-prefixed
+// paths) doesn't deploy each one as a separate function. The catchall
+// api/[...slug].ts dispatches to them in production. In local dev, we scan
+// the same directory and mount directly on Express.
+const API_DIR = path.resolve(process.cwd(), 'api', '_handlers');
 
 export async function registerApiRoutes(app: Express) {
   if (!fs.existsSync(API_DIR)) {
-    console.warn('[api-routes] api/ directory not found — skipping');
+    console.warn('[api-routes] api/_handlers/ directory not found — skipping');
     return;
   }
 

@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { discoverAssets } from '../src/lib/ventures/asset-discovery';
+import { discoverAssets } from '../../src/lib/ventures/asset-discovery';
 
 /**
  * Nightly cron — rescans every venture for related assets and upserts

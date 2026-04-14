@@ -4,7 +4,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { withAuth } from './_auth.js';
-import { scoreTransaction, listFraudRules, createFraudRule } from '../src/lib/compliance/fraud-engine';
+import { scoreTransaction, listFraudRules, createFraudRule } from '../../src/lib/compliance/fraud-engine';
 import {
   getDunningStats,
   getDunningConfig,
@@ -12,9 +12,9 @@ import {
   processRetries,
   initiateDunning,
   markRecovered,
-} from '../src/lib/compliance/dunning-manager';
-import { calculateTax, checkNexus, updateNexusTracking } from '../src/lib/compliance/tax-engine';
-import { localizePrice, getPriceLocalizationConfig, updatePriceLocalizationConfig } from '../src/lib/compliance/price-localization';
+} from '../../src/lib/compliance/dunning-manager';
+import { calculateTax, checkNexus, updateNexusTracking } from '../../src/lib/compliance/tax-engine';
+import { localizePrice, getPriceLocalizationConfig, updatePriceLocalizationConfig } from '../../src/lib/compliance/price-localization';
 
 // ─────────────────────────────────────────────────────────
 // HANDLER
