@@ -27,6 +27,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     switch (action) {
+      // ── Transcription (pre-recorded via raw audio blob) ──
+      // Body: { audio_base64: string, mime_type: 'audio/webm' | 'audio/mp3' | ..., language?, model?, smart_format?, punctuate?, diarize? }
+      // Response: full Deepgram response. Caller reads .results.channels[0].alternatives[0].transcript
+      case 'transcribe-blob': {
+        const {
+          audio_base64, mime_type = 'audio/webm',
+          language = 'en', model = 'nova-2',
+          smart_format = true, punctuate = true, diarize = false,
+        } = req.body;
+        if (!audio_base64) return res.status(400).json({ error: 'audio_base64 required' });
+        const params = new URLSearchParams({
+          model, language, smart_format: String(smart_format),
+          punctuate: String(punctuate), diarize: String(diarize),
+        });
+        const audioBuf = Buffer.from(audio_base64, 'base64');
+        const dgRes = await fetch(`${DG_API}/listen?${params.toString()}`, {
+          method: 'POST',
+          headers: { Authorization: `Token ${API_KEY}`, 'Content-Type': mime_type },
+          body: audioBuf,
+        });
+        if (!dgRes.ok) {
+          const e = await dgRes.json().catch(() => ({}));
+          return res.status(dgRes.status).json({ error: e.err_msg || `Deepgram ${dgRes.status}` });
+        }
+        return res.json(await dgRes.json());
+      }
+
       // ── Transcription (pre-recorded via URL) ──
       case 'transcribe-url': {
         const { url, language = 'en', model = 'nova-2', smart_format = true, punctuate = true, diarize = false, topics = false, sentiment = false, summarize = false } = req.body;

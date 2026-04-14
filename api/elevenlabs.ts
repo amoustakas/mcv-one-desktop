@@ -58,16 +58,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       case 'get-default-settings':
         return res.json(await xiFetch('/voices/settings/default'));
 
-      // ── Text-to-Speech ──
+      // ── Text-to-Speech (returns base64 MP3 audio) ──
       case 'tts': {
         const { voiceId, text, model_id = 'eleven_multilingual_v2', voice_settings } = req.body;
         if (!voiceId || !text) return res.status(400).json({ error: 'voiceId and text required' });
-        const data = await xiFetch(`/text-to-speech/${voiceId}`, {
+        // ElevenLabs TTS returns binary audio; bypass xiFetch which parses JSON.
+        const xiRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
           method: 'POST',
-          body: { text, model_id, voice_settings: voice_settings || { stability: 0.5, similarity_boost: 0.75 } },
-          headers: { Accept: 'application/json' },
+          headers: {
+            'xi-api-key': process.env.ELEVENLABS_API_KEY || '',
+            'Content-Type': 'application/json',
+            Accept: 'audio/mpeg',
+          },
+          body: JSON.stringify({
+            text, model_id,
+            voice_settings: voice_settings || { stability: 0.5, similarity_boost: 0.75 },
+          }),
         });
-        return res.json(data);
+        if (!xiRes.ok) {
+          const e = await xiRes.json().catch(() => ({}));
+          return res.status(xiRes.status).json({ error: e.detail?.message || `ElevenLabs ${xiRes.status}` });
+        }
+        const buf = Buffer.from(await xiRes.arrayBuffer());
+        return res.json({
+          audio_base64: buf.toString('base64'),
+          mime_type: 'audio/mpeg',
+          size_bytes: buf.byteLength,
+          voice_id: voiceId,
+          model_id,
+        });
       }
 
       case 'tts-stream': {
