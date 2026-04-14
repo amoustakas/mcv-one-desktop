@@ -10,6 +10,7 @@ import SettingsPanel from './components/SettingsPanel';
 import { ViewErrorBoundary } from './components/ErrorBoundary';
 import { useNavigation, type ViewId } from './stores/navigation';
 import { useTheme } from './stores/theme';
+import { useMcpBootstrap } from './hooks/use-mcp-bootstrap';
 import { useCommandStore } from './stores/command';
 import { useLayoutStore } from './stores/layout';
 import { getVenture, ventures } from './lib/ventures';
@@ -469,6 +470,7 @@ export default function App() {
   const { isOpen: paletteOpen, toggle: togglePalette, close: closePalette } = useCommandStore();
   const { sidebarCollapsed, statusBarVisible, presets } = useLayoutStore();
   useTheme();
+  useMcpBootstrap();
 
   // Bridge: navigation store → workspace store
   // When NavRail/keyboard sets activeView, update the active workspace panel
