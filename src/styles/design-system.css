@@ -106,6 +106,117 @@
   --provider-vercel: #FFFFFF;
   --provider-r2: #F6821F;
   --provider-gcp: #4285F4;
+
+  /* ── Phase 1 Foundation Tokens ── */
+
+  /* Elevation scale — combined shadow + ambient glow */
+  --elev-0: none;
+  --elev-1: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --elev-2: 0 2px 8px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --elev-3: 0 6px 16px rgba(0, 0, 0, 0.45), 0 2px 4px rgba(0, 0, 0, 0.3);
+  --elev-4: 0 12px 32px rgba(0, 0, 0, 0.5), 0 4px 8px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 240, 255, 0.04);
+  --elev-5: 0 24px 64px rgba(0, 0, 0, 0.6), 0 8px 16px rgba(0, 0, 0, 0.4), 0 0 40px rgba(0, 240, 255, 0.08);
+
+  /* Z-index map — single source of truth for stacking */
+  --z-base: 0;
+  --z-raised: 10;
+  --z-sticky: 100;
+  --z-dropdown: 1000;
+  --z-overlay: 2000;
+  --z-drawer: 2500;
+  --z-modal: 3000;
+  --z-popover: 3500;
+  --z-toast: 4000;
+  --z-tooltip: 5000;
+
+  /* Form state tokens */
+  --field-bg: var(--bg-input);
+  --field-bg-hover: rgba(0, 240, 255, 0.04);
+  --field-border: var(--border);
+  --field-border-hover: rgba(0, 240, 255, 0.18);
+  --field-border-focus: var(--cyan);
+  --field-border-error: var(--error);
+  --field-border-success: var(--success);
+  --field-ring-focus: 0 0 0 3px rgba(0, 240, 255, 0.12);
+  --field-ring-error: 0 0 0 3px rgba(239, 68, 68, 0.15);
+  --field-disabled-bg: rgba(255, 255, 255, 0.02);
+  --field-disabled-text: var(--text-muted);
+
+  /* Breakpoint tokens (for JS access via getComputedStyle) */
+  --bp-sm: 640px;
+  --bp-md: 768px;
+  --bp-lg: 1024px;
+  --bp-xl: 1280px;
+  --bp-2xl: 1536px;
+
+  /* Motion tokens — exported for Framer Motion helpers */
+  --motion-duration-instant: 80ms;
+  --motion-duration-fast: 150ms;
+  --motion-duration-base: 240ms;
+  --motion-duration-slow: 400ms;
+  --motion-duration-slower: 600ms;
+  --motion-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --motion-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Density — normal is the default; compact/spacious override */
+  --density-row-height: 40px;
+  --density-padding-x: var(--space-md);
+  --density-padding-y: var(--space-sm);
+  --density-gap: var(--space-md);
+  --density-font: var(--text-sm);
+}
+
+/* ── Density modes — apply at root to cascade everywhere ── */
+[data-density="compact"] {
+  --density-row-height: 32px;
+  --density-padding-x: var(--space-sm);
+  --density-padding-y: 6px;
+  --density-gap: var(--space-sm);
+  --density-font: var(--text-xs);
+}
+
+[data-density="spacious"] {
+  --density-row-height: 52px;
+  --density-padding-x: var(--space-lg);
+  --density-padding-y: var(--space-md);
+  --density-gap: var(--space-lg);
+  --density-font: var(--text-base);
+}
+
+/* ── High-contrast mode (a11y) ── */
+[data-contrast="high"] {
+  --text-primary: #FFFFFF;
+  --text-secondary: #D0D8E0;
+  --text-muted: #A0A8B0;
+  --border: rgba(0, 245, 255, 0.35);
+  --border-active: rgba(0, 245, 255, 0.65);
+  --glass-border: rgba(0, 245, 255, 0.3);
+  --field-border: rgba(255, 255, 255, 0.25);
+}
+
+@media (prefers-contrast: more) {
+  :root:not([data-contrast="normal"]) {
+    --text-secondary: #D0D8E0;
+    --border: rgba(0, 245, 255, 0.35);
+  }
+}
+
+/* ── Colorblind-safe palette (opt-in via data-palette="cb") ── */
+[data-palette="cb"] {
+  --success: #0072F5;
+  --warning: #F2A900;
+  --error: #CF3232;
+}
+
+/* ── Reduced motion respect ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ═══════════════════════════════════════════ */
