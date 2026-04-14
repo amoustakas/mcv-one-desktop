@@ -229,10 +229,11 @@ export default function KnowledgeHubView() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'list_corpora', venture_id: effectiveVentureId }),
       });
-      if (!res.ok) throw new Error('Failed to load corpora');
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
       setCorpora(data.corpora || []);
     } catch (err) {
+      console.error('[list_corpora]', err);
       addToast({ type: 'error', message: err instanceof Error ? err.message : 'Load failed' });
     } finally {
       setCorporaLoading(false);
@@ -248,11 +249,13 @@ export default function KnowledgeHubView() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'create_corpus', name: newCorpusName, venture_id: effectiveVentureId }),
       });
-      if (!res.ok) throw new Error('Create failed');
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
       setNewCorpusName('');
       addToast({ type: 'success', message: 'Corpus created' });
       loadCorpora();
     } catch (err) {
+      console.error('[create_corpus]', err);
       addToast({ type: 'error', message: err instanceof Error ? err.message : 'Create failed' });
     }
   }, [newCorpusName, effectiveVentureId, addToast, loadCorpora]);
