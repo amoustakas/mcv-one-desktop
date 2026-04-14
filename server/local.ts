@@ -55,6 +55,19 @@ const PORT = parseInt(process.env.PORT || "3100");
 app.use(cors({ origin: true }));
 app.use(express.json({ limit: '50mb' }));
 
+// Request logger for /api/* — surface every hit + response code so we can
+// see what the UI is actually doing without needing DevTools round-trips.
+app.use((req, res, next) => {
+  if (!req.url.startsWith('/api/')) return next();
+  const start = Date.now();
+  res.on('finish', () => {
+    const ms = Date.now() - start;
+    const tag = res.statusCode >= 500 ? 'ERR' : res.statusCode >= 400 ? 'WARN' : 'OK';
+    console.log(`[api] ${tag} ${req.method} ${req.url} ${res.statusCode} ${ms}ms`);
+  });
+  next();
+});
+
 // ═══════════════════════════════════════════════════════════════
 // Pipeline — Claude Code Sessions, Git Repos, Memory, Plans
 // ═══════════════════════════════════════════════════════════════
