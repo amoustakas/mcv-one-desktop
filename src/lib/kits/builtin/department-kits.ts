@@ -578,6 +578,350 @@ Return:
 Keep it under 600 words. Be specific and actionable.`;
     },
   },
+
+  // ─── Compliance (Atlas) ──────────────────────────────────────────────────
+
+  track_filings: {
+    dept: 'compliance',
+    toolName: 'track_filings',
+    maxTokens: 2500,
+    buildPrompt: (input) => {
+      const venture = (input.venture as string) || 'the venture';
+      return `Return a structured filings status matrix for **${venture}** across these jurisdictions: Delaware, California, New York, Washington, Texas, plus any state where sales exceed $100k/yr or 200 transactions (economic nexus triggers).
+
+For each jurisdiction include: registration status, sales tax registration, annual franchise fee, BOI/CTA filing due, next renewal date, estimated cost. Flag anything overdue or at risk. End with 3 prioritized actions this week.
+
+Be concise. Use a markdown table.`;
+    },
+  },
+
+  schedule_reminder: {
+    dept: 'compliance',
+    toolName: 'schedule_reminder',
+    maxTokens: 1200,
+    buildPrompt: (input) => {
+      const venture = (input.venture as string) || 'the venture';
+      const title = (input.title as string) || 'compliance deadline';
+      const due = (input.due_date as string) || '[due date]';
+      const kind = (input.kind as string) || 'filing';
+      return `Confirm a compliance reminder set up for **${venture}**:
+- Title: ${title}
+- Due: ${due}
+- Kind: ${kind}
+
+Return a calendar-ready description (under 200 chars), a 30-day pre-notice message, a day-of action plan, and consequences of missing this deadline. Be specific about the filing body and form number if well-known (e.g. DE franchise tax, CA statement of information).`;
+    },
+  },
+
+  soc2_checklist: {
+    dept: 'compliance',
+    toolName: 'soc2_checklist',
+    maxTokens: 3500,
+    buildPrompt: (input) => {
+      const venture = (input.venture as string) || 'the venture';
+      return `Generate a SOC 2 Type II readiness checklist for **${venture}**, organized by the five trust services criteria (Security, Availability, Processing Integrity, Confidentiality, Privacy).
+
+For each control family:
+- What auditors will ask for
+- The evidence artifacts you need (policies, screenshots, logs)
+- Quick-win vs long-haul items
+- Who owns it (Eng / Legal / Ops / Finance)
+
+End with the 3 highest-leverage controls to knock out this quarter. Be realistic — this is an early-stage venture, not a F500.`;
+    },
+  },
+
+  // ─── Research (Nova) ─────────────────────────────────────────────────────
+
+  draft_market_brief: {
+    dept: 'research',
+    toolName: 'draft_market_brief',
+    maxTokens: 5000,
+    buildPrompt: (input) => {
+      const venture = (input.venture as string) || 'the venture';
+      const market = (input.market as string) || '[market]';
+      const segments = (input.segments as string[]) || [];
+      return `Draft a market brief for **${venture}** entering the **${market}** market.
+
+Context:
+- Target segments: ${segments.length ? segments.join(', ') : 'to be determined'}
+
+Sections to produce:
+1. **TAM / SAM / SOM** — sized with assumptions shown (don't fake precision; cite ranges)
+2. **Key segments** — profile each, with buying signals
+3. **Competitive landscape** — incumbents, insurgents, adjacent threats
+4. **Adjacent markets** — where else does this capability reach
+5. **Entry hypothesis** — a testable wedge, cost to test, what "working" looks like in 90 days
+
+Cite source categories (analyst reports / customer interviews / public filings) even if we haven't collected them yet — mark those as [research gap]. No BS.`;
+    },
+  },
+
+  competitor_teardown: {
+    dept: 'research',
+    toolName: 'competitor_teardown',
+    maxTokens: 4000,
+    buildPrompt: (input) => {
+      const venture = (input.venture as string) || 'the venture';
+      const competitor = (input.competitor as string) || '[competitor]';
+      const url = (input.competitor_url as string) || '';
+      return `Deep teardown: **${competitor}**${url ? ` (${url})` : ''} vs **${venture}**.
+
+Sections:
+1. Positioning statement (inferred)
+2. Pricing — plans, tiers, price anchors, discounts/promos
+3. Distribution — sales motion, channels, integrations, partners
+4. Product surface — the 3 most-differentiated capabilities
+5. Product gaps — where they are weak
+6. What ${venture} does differently — crisp, not hand-wavy
+7. Plays we can run against them this quarter
+
+If you don't have public info on a field, flag [research gap] rather than inventing.`;
+    },
+  },
+
+  log_interview: {
+    dept: 'research',
+    toolName: 'log_interview',
+    maxTokens: 2500,
+    buildPrompt: (input) => {
+      const venture = (input.venture as string) || 'the venture';
+      const participant = (input.participant as string) || '[participant]';
+      const pains = (input.pain_points as string[]) || [];
+      const quotes = (input.quotes as string[]) || [];
+      return `Structure interview notes for **${venture}** with **${participant}**.
+
+Pain points captured:
+${pains.length ? pains.map(p => `- ${p}`).join('\n') : '_(none supplied — extract from quotes)_'}
+
+Quotes:
+${quotes.length ? quotes.map(q => `> ${q}`).join('\n\n') : '_(none supplied)_'}
+
+Output a full interview log using the research.interview-log template: Pain Points (with severity), Current Workflow (step-by-step), Willingness to Pay (number or proxy), Quotes (verbatim with context), Follow-up Questions (the 5 we should ask next), Signal Strength (weak/medium/strong). Be honest about missing info.`;
+    },
+  },
+
+  // ─── Finance (Mint) ──────────────────────────────────────────────────────
+
+  update_burn: {
+    dept: 'finance',
+    toolName: 'update_burn',
+    maxTokens: 1500,
+    buildPrompt: (input) => {
+      const venture = (input.venture as string) || 'the venture';
+      const month = (input.month as string) || '[month]';
+      const burn = (input.burn_usd as number) || 0;
+      return `Record monthly burn for **${venture}** — ${month}: **$${burn.toLocaleString()}**.
+
+Return:
+1. Variance vs the prior month (assume the user will paste it — flag if you need it)
+2. Runway projection (months) assuming current cash balance unknown — ask
+3. Burn multiple estimate if revenue is known — ask for MRR
+4. 2 obvious lever candidates if burn is >$100k/mo
+5. One-line CFO-ready summary ("Runway: N months. Watch: X. Action: Y.")`;
+    },
+  },
+
+  cap_table_snapshot: {
+    dept: 'finance',
+    toolName: 'cap_table_snapshot',
+    maxTokens: 2500,
+    buildPrompt: (input) => {
+      const venture = (input.venture as string) || 'the venture';
+      const asOf = (input.as_of as string) || new Date().toISOString().slice(0, 10);
+      const holders = (input.holders as unknown[]) || [];
+      return `Cap table snapshot for **${venture}** as of **${asOf}**.
+
+Holders supplied: ${holders.length ? JSON.stringify(holders).slice(0, 1000) : '_(none — use placeholders)_'}
+
+Produce:
+1. A markdown table with Holder, Class, Shares, Fully-Diluted %, Vesting Status
+2. Option pool health check (size, remaining grants)
+3. Dilution forecast if the next round is 20% @ current valuation
+4. Red flags (e.g. single-class super-voting, mis-aligned vesting)
+5. One-paragraph narrative for the board deck`;
+    },
+  },
+
+  unit_economics_calc: {
+    dept: 'finance',
+    toolName: 'unit_economics_calc',
+    maxTokens: 2000,
+    buildPrompt: (input) => {
+      const venture = (input.venture as string) || 'the venture';
+      const mrr = (input.monthly_revenue_per_user as number) || 0;
+      const gm = (input.gross_margin_pct as number) || 0;
+      const churn = (input.monthly_churn_pct as number) || 0;
+      const cac = (input.blended_cac as number) || 0;
+      return `Compute unit economics for **${venture}**.
+
+Inputs:
+- Monthly revenue per user: $${mrr}
+- Gross margin: ${gm}%
+- Monthly churn: ${churn}%
+- Blended CAC: $${cac}
+
+Output:
+1. Contribution margin per user (month)
+2. LTV (gross margin × avg lifetime in months)
+3. LTV/CAC ratio — grade it (healthy > 3)
+4. Payback period (months)
+5. Sensitivity table: what happens if churn drops 1pt? CAC rises 20%?
+6. Plain-English recommendation — hire more sales or fix retention first?`;
+    },
+  },
+
+  // ─── Ops (Vector) ────────────────────────────────────────────────────────
+
+  generate_runbook: {
+    dept: 'ops',
+    toolName: 'generate_runbook',
+    maxTokens: 4000,
+    buildPrompt: (input) => {
+      const venture = (input.venture as string) || 'the venture';
+      const service = (input.service as string) || '[service]';
+      const deps = (input.dependencies as string[]) || [];
+      return `Generate an on-call runbook for **${service}** (venture: **${venture}**).
+
+Dependencies: ${deps.length ? deps.join(', ') : '_(list will be inferred)_'}
+
+Sections:
+1. Service overview (what does this thing do, who owns it)
+2. Health checks (URLs + expected responses + signals of trouble)
+3. Common failure modes (top 5, each with symptoms + quick diagnosis)
+4. Escalation path (who to wake, at what threshold, via which channel)
+5. Recovery procedures (by failure mode — exact commands where possible)
+6. Dependencies graph (upstream / downstream / SLA implications)
+7. Postmortem triggers (incident severity definitions)
+
+Keep it scannable. An on-call at 3am should be able to start solving within 60 seconds of opening this.`;
+    },
+  },
+
+  scaffold_postmortem: {
+    dept: 'ops',
+    toolName: 'scaffold_postmortem',
+    maxTokens: 2500,
+    buildPrompt: (input) => {
+      const venture = (input.venture as string) || 'the venture';
+      const incident = (input.incident as string) || '[incident]';
+      const occurredAt = (input.occurred_at as string) || '[timestamp]';
+      const impact = (input.impact_summary as string) || '';
+      return `Scaffold a blameless postmortem for **${venture}** — incident: **${incident}** at ${occurredAt}.
+
+Impact summary supplied: ${impact || '_(not supplied — ask)_'}
+
+Produce:
+1. **Summary** — 2 sentences
+2. **Timeline** — detection / response / resolution windows with gaps called out
+3. **Root cause** — technical + organizational + latent contributors (not one "main" cause)
+4. **Impact** — user-facing, revenue, internal hours lost
+5. **What went well** — at least 3 things
+6. **Action items** — each owned, time-boxed, sized by leverage (fix vs prevent vs detect)
+7. **Follow-ups** — anything we chose NOT to fix and why
+
+Blameless tone throughout. Never name individuals; name roles + systems.`;
+    },
+  },
+
+  onboarding_checklist: {
+    dept: 'ops',
+    toolName: 'onboarding_checklist',
+    maxTokens: 2500,
+    buildPrompt: (input) => {
+      const venture = (input.venture as string) || 'the venture';
+      const role = (input.role as string) || '[role]';
+      const hire = (input.hire_name as string) || 'the new hire';
+      return `Week-one onboarding checklist for **${hire}** joining **${venture}** as **${role}**.
+
+Structure:
+1. **Day 0 (before start)** — accounts, hardware, pre-reads
+2. **Day 1** — welcome 1:1, team intros, workspace access
+3. **Days 2-3** — product tour, codebase walk (if eng), first ticket
+4. **Week 1** — meet stakeholders, shadow on-call, ship something trivial
+5. **End of Week 1 checkpoint** — what "going well" looks like
+6. **Role-specific wedge** — the first real deliverable by day 30
+
+Assign owners (Manager / Buddy / IT / HR) per item. Skip corporate fluff.`;
+    },
+  },
+
+  // ─── Product (Helix) ─────────────────────────────────────────────────────
+
+  draft_prd: {
+    dept: 'product',
+    toolName: 'draft_prd',
+    maxTokens: 4500,
+    buildPrompt: (input) => {
+      const venture = (input.venture as string) || 'the venture';
+      const feature = (input.feature as string) || '[feature]';
+      const problem = (input.problem as string) || '';
+      const users = (input.users as string) || '';
+      return `Draft a PRD for **${feature}** (venture: **${venture}**).
+
+Problem supplied: ${problem || '_(not supplied — force a clearer one before shipping)_'}
+Target users: ${users || '_(not supplied — sharpen this)_'}
+
+Sections:
+1. **Problem** — user pain, not feature description
+2. **Users** — primary + secondary + non-target
+3. **Goals + Non-Goals** — ruthless prioritization
+4. **Requirements** — MVP must/should/could/won't
+5. **Success metrics** — leading + lagging, with thresholds
+6. **Risks** — what kills this feature, how we'd detect it
+7. **Open questions** — the 5 things we need to decide before engineering starts
+8. **Out of scope** — explicit list, with reasoning
+
+Be honest about trade-offs. If the problem isn't sharp, say so and propose next steps.`;
+    },
+  },
+
+  draft_rfc: {
+    dept: 'product',
+    toolName: 'draft_rfc',
+    maxTokens: 4500,
+    buildPrompt: (input) => {
+      const venture = (input.venture as string) || 'the venture';
+      const title = (input.title as string) || '[title]';
+      const context = (input.context as string) || '';
+      const alternatives = (input.alternatives as string[]) || [];
+      return `Draft an RFC for **${venture}**: **${title}**.
+
+Context: ${context || '_(none supplied — ask)_'}
+Alternatives supplied: ${alternatives.length ? alternatives.map(a => `- ${a}`).join('\n') : '_(none — require at least 2 beyond the proposal)_'}
+
+Structure:
+1. **Context** — why this is even a question now
+2. **Proposal** — the recommended path
+3. **Alternatives considered** — each with pros/cons + why rejected
+4. **Trade-offs** — cost, complexity, operational burden
+5. **Risks** — what breaks if this is wrong, what's recoverable vs not
+6. **Migration plan** — if this changes existing systems
+7. **Open questions** — what's still undecided
+
+Make it possible for a reviewer to disagree clearly. No hand-waving.`;
+    },
+  },
+
+  compose_release_notes: {
+    dept: 'product',
+    toolName: 'compose_release_notes',
+    maxTokens: 2500,
+    buildPrompt: (input) => {
+      const venture = (input.venture as string) || 'the venture';
+      const version = (input.version as string) || '[version]';
+      const shipped = (input.shipped as string[]) || [];
+      const fixed = (input.fixed as string[]) || [];
+      const known = (input.known_issues as string[]) || [];
+      return `Compose release notes for **${venture} ${version}**.
+
+Shipped: ${shipped.length ? shipped.map(s => `- ${s}`).join('\n') : '_(none supplied)_'}
+Fixed: ${fixed.length ? fixed.map(f => `- ${f}`).join('\n') : '_(none supplied)_'}
+Known issues: ${known.length ? known.map(k => `- ${k}`).join('\n') : '_(none)_'}
+
+Tell the story. Lead with the biggest user-facing win. Group related changes. Use plain language (no internal jargon). End with a "What's next" teaser. Sprinkle in a reasonable amount of energy without being cringe.`;
+    },
+  },
 };
 
 // =============================================================================

@@ -242,6 +242,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         return res.json({ docs: data || [], count: data?.length ?? 0, epic_id: epicId });
       }
+      case 'update-doc': {
+        const { id, title, body_markdown, status, meta } = req.body as {
+          id: string; title?: string; body_markdown?: string; status?: string; meta?: Record<string, unknown>;
+        };
+        if (!id) return res.status(400).json({ error: 'id required' });
+        const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+        if (title !== undefined) patch.title = title;
+        if (body_markdown !== undefined) patch.body_markdown = body_markdown;
+        if (status !== undefined) patch.status = status;
+        if (meta !== undefined) patch.meta = meta;
+        if (status === 'approved') patch.approved_at = new Date().toISOString();
+        if (status === 'executed') patch.executed_at = new Date().toISOString();
+        const { data, error } = await supabase.from('venture_docs')
+          .update(patch).eq('id', id).select().single();
+        if (error) throw error;
+        return res.json({ doc: data });
+      }
+
       case 'list-docs': {
         const venture_id = (req.body?.venture_id || req.query.venture_id) as string;
         const department = (req.body?.department || req.query.department) as string | undefined;

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { FileText, Scale, ShieldCheck, Beaker, DollarSign, Wrench, Rocket, Check, Clock, Plus, Download, ChevronRight } from 'lucide-react';
+import { useEffect, useMemo, useState, useRef } from 'react';
+import { FileText, Scale, ShieldCheck, Beaker, DollarSign, Wrench, Rocket, Plus, Download, ChevronRight, Save, Sparkles } from 'lucide-react';
 import { GlassCard, Button, Badge, EmptyState } from '../ui';
 import { apiPost } from '../../lib/api/client';
 import type { Venture } from '../../lib/ventures';
@@ -50,6 +50,12 @@ export default function VentureDocsPanel({ venture }: { venture: Venture }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+  const [draftBody, setDraftBody] = useState<string>('');
+  const [draftTitle, setDraftTitle] = useState<string>('');
+  const [draftStatus, setDraftStatus] = useState<VentureDoc['status']>('draft');
+  const [saving, setSaving] = useState(false);
+  const [saveNote, setSaveNote] = useState<string | null>(null);
+  const lastLoadedIdRef = useRef<string | null>(null);
 
   async function refresh() {
     setLoading(true);
@@ -95,6 +101,62 @@ export default function VentureDocsPanel({ venture }: { venture: Venture }) {
 
   const activeDocs = docsByDept[activeDept];
   const selectedDoc = docs.find(d => d.id === selectedDocId);
+
+  // Hydrate the draft editor whenever the selection changes — guarded so
+  // typing into the body doesn't clobber on re-render.
+  useEffect(() => {
+    if (!selectedDoc) { lastLoadedIdRef.current = null; return; }
+    if (lastLoadedIdRef.current === selectedDoc.id) return;
+    lastLoadedIdRef.current = selectedDoc.id;
+    setDraftBody(selectedDoc.body_markdown || '');
+    setDraftTitle(selectedDoc.title);
+    setDraftStatus(selectedDoc.status);
+    setSaveNote(null);
+  }, [selectedDoc]);
+
+  const dirty = selectedDoc && (
+    draftBody !== (selectedDoc.body_markdown || '') ||
+    draftTitle !== selectedDoc.title ||
+    draftStatus !== selectedDoc.status
+  );
+
+  async function saveDoc() {
+    if (!selectedDoc) return;
+    setSaving(true);
+    setSaveNote(null);
+    try {
+      const { doc } = await apiPost<{ doc: VentureDoc }>('/api/ventures', {
+        action: 'update-doc',
+        id: selectedDoc.id,
+        title: draftTitle,
+        body_markdown: draftBody,
+        status: draftStatus,
+      });
+      setDocs(prev => prev.map(d => d.id === doc.id ? doc : d));
+      setSaveNote('Saved · embedding in background…');
+
+      // Fire-and-forget RAG embed — don't block the save UX. The cron also
+      // catches stale docs every 30 min; this just makes new content
+      // retrievable immediately.
+      apiPost('/api/venture-docs-embed', { action: 'embed-one', doc_id: doc.id })
+        .then((r: unknown) => {
+          const result = (r as { result?: { status?: string; chunks?: number } }).result;
+          if (result?.status === 'embedded') {
+            setSaveNote(`Saved · embedded ${result.chunks} chunk${result.chunks === 1 ? '' : 's'}`);
+          } else if (result?.status?.startsWith('skipped')) {
+            setSaveNote('Saved · no embed changes needed');
+          } else {
+            setSaveNote('Saved');
+          }
+        })
+        .catch(() => setSaveNote('Saved · embed deferred to next cron'));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Save failed');
+      setSaveNote(null);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   const totalDocs = docs.length;
   const approvedDocs = docs.filter(d => d.status === 'approved' || d.status === 'executed').length;
@@ -188,25 +250,58 @@ export default function VentureDocsPanel({ venture }: { venture: Venture }) {
           )}
         </GlassCard>
 
-        {/* Right: selected doc preview */}
+        {/* Right: selected doc editor */}
         <GlassCard className="vdocs-card vdocs-preview">
           {selectedDoc ? (
             <>
               <div className="vdocs-preview-head">
-                <h4 className="vdocs-h4">{selectedDoc.title}</h4>
-                <Badge color={STATUS_COLOR[selectedDoc.status]} variant="outline">{selectedDoc.status}</Badge>
+                <input
+                  className="vdocs-title-input"
+                  value={draftTitle}
+                  onChange={(e) => setDraftTitle(e.target.value)}
+                  placeholder="Document title"
+                />
+                <select
+                  className="vdocs-status-select"
+                  value={draftStatus}
+                  onChange={(e) => setDraftStatus(e.target.value as VentureDoc['status'])}
+                >
+                  <option value="draft">draft</option>
+                  <option value="in-review">in-review</option>
+                  <option value="approved">approved</option>
+                  <option value="executed">executed</option>
+                  <option value="archived">archived</option>
+                </select>
+                <Badge color={STATUS_COLOR[draftStatus]} variant="outline">{draftStatus}</Badge>
               </div>
-              <pre className="vdocs-preview-body">{selectedDoc.body_markdown || '(empty)'}</pre>
-              <div className="vdocs-preview-footer">
-                <span>Template: <code>{selectedDoc.template_id || '—'}</code></span>
-                <span>Updated {new Date(selectedDoc.updated_at).toLocaleDateString()}</span>
+              <textarea
+                className="vdocs-edit-body"
+                value={draftBody}
+                onChange={(e) => setDraftBody(e.target.value)}
+                placeholder="# Document body (markdown)…"
+                spellCheck
+              />
+              <div className="vdocs-edit-footer">
+                <div className="vdocs-edit-meta">
+                  <span>Template: <code>{selectedDoc.template_id || '—'}</code></span>
+                  <span>Updated {new Date(selectedDoc.updated_at).toLocaleString()}</span>
+                  {saveNote && <span className="vdocs-save-note"><Sparkles size={10} /> {saveNote}</span>}
+                </div>
+                <Button
+                  size="sm"
+                  onClick={saveDoc}
+                  disabled={!dirty || saving}
+                  icon={<Save size={12} />}
+                >
+                  {saving ? 'Saving…' : dirty ? 'Save + embed' : 'Saved'}
+                </Button>
               </div>
             </>
           ) : (
             <EmptyState
               icon={<FileText size={18} />}
               title="Select a document"
-              description="Click any doc on the left to preview. Rich editor lands in a later Epic 6 story."
+              description="Click any doc on the left to edit. Saving re-embeds the content into RAG so NAOS agents can retrieve it."
             />
           )}
         </GlassCard>
@@ -238,10 +333,16 @@ export default function VentureDocsPanel({ venture }: { venture: Venture }) {
         .vdocs-doc-title { font-size: 12px; color: var(--text-primary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .vdocs-doc-meta { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
         .vdocs-doc-add { padding-top: 8px; margin-top: 8px; border-top: 1px solid var(--border); }
-        .vdocs-preview-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
-        .vdocs-preview-body { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); background: var(--bg-input); padding: 12px; border-radius: var(--radius-sm); white-space: pre-wrap; max-height: 400px; overflow-y: auto; line-height: 1.6; }
-        .vdocs-preview-footer { display: flex; justify-content: space-between; margin-top: 10px; font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); }
-        .vdocs-preview-footer code { color: var(--cyan); }
+        .vdocs-preview-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+        .vdocs-title-input { flex: 1; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 14px; font-weight: 600; padding: 6px 10px; font-family: var(--font-display); }
+        .vdocs-title-input:focus { border-color: var(--border-active); outline: none; }
+        .vdocs-status-select { background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 11px; padding: 4px 8px; font-family: var(--font-mono); }
+        .vdocs-edit-body { width: 100%; min-height: 320px; max-height: 60vh; font-family: var(--font-mono); font-size: 12px; color: var(--text-primary); background: var(--bg-input); padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); line-height: 1.6; resize: vertical; }
+        .vdocs-edit-body:focus { border-color: var(--border-active); outline: none; }
+        .vdocs-edit-footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 10px; font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); flex-wrap: wrap; }
+        .vdocs-edit-meta { display: flex; flex-direction: column; gap: 2px; }
+        .vdocs-edit-meta code { color: var(--cyan); }
+        .vdocs-save-note { display: inline-flex; align-items: center; gap: 4px; color: var(--success); font-family: var(--font-sans); }
       `}</style>
     </div>
   );
