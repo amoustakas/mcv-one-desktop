@@ -268,6 +268,44 @@ describe('PaymentRouter', () => {
       // The key assertion: preference changes outcomes
       expect(decisionWithPreference.primaryRail).not.toBe(decisionNoPreference.primaryRail);
     });
+
+    it('metadata.preferred_processor hint wins over ventureConfig.preferredRail', async () => {
+      // Per-request metadata hint (used by Capital payment_processor_config)
+      // must override the venture-wide default, since the hint is more specific.
+      const router = new PaymentRouter();
+      const procA = makeProcessor({
+        id: 'proc_a', name: 'Processor A',
+        supportedCurrencies: ['USD'], supportedCountries: ['*'], supportedMethods: ['card'],
+        estimateFee: vi.fn().mockResolvedValue(makeFee(1.00, 0, 0.01)),
+      });
+      const procB = makeProcessor({
+        id: 'proc_b', name: 'Processor B',
+        supportedCurrencies: ['USD'], supportedCountries: ['*'], supportedMethods: ['card'],
+        estimateFee: vi.fn().mockResolvedValue(makeFee(1.00, 0, 0.01)),
+      });
+      router.register(procA);
+      router.register(procB);
+
+      // Venture prefers proc_a, but per-request metadata prefers proc_b.
+      // The metadata hint should win.
+      const decision = await router.route(
+        { ...baseRoutingReq({ amount: 100 }), metadata: { preferred_processor: 'proc_b' } },
+        {
+          ventureId:           'test',
+          enabledProcessors:   ['proc_a', 'proc_b'],
+          preferredRail:       'proc_a', // venture wants A
+          platformFee:         { type: 'flat', value: 0 },
+          autoPayoutSchedule:  'weekly',
+          autoPayoutMinimum:   100,
+          cryptoEnabled:       false,
+          creditSystemEnabled: false,
+          invoicingEnabled:    false,
+        },
+      );
+
+      // Metadata hint wins: proc_b picked despite ventureConfig.preferredRail=proc_a
+      expect(decision.primaryRail).toBe('proc_b');
+    });
   });
 
   // ── Test 5: calculates savings vs default ────────────────────────────────
