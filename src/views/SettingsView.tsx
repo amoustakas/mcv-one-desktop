@@ -263,37 +263,65 @@ export default function SettingsView() {
           />
 
           {/* Search results panel — overlays content when query active */}
-          {query.trim() && (
-            <div className="settings-search-results">
-              <SectionCard title={`Search results (${searchResults.length})`} padding="sm">
-                {searchResults.length === 0 ? (
-                  <p className="settings-empty">No settings match "{query}"</p>
-                ) : (
-                  <ul className="settings-result-list">
-                    {searchResults.map(({ def }) => (
-                      <li key={def.id}>
-                        <button
-                          type="button"
-                          className="settings-result"
-                          onClick={() => {
-                            setTab(def.section);
-                            setHighlight(def.id);
-                            setQuery('');
-                          }}
-                        >
-                          <div>
-                            <span className="settings-result-label">{def.label}</span>
-                            {def.description && <span className="settings-result-desc">{def.description}</span>}
+          {query.trim() && (() => {
+            // Group results by section so users see related settings clustered
+            const bySection = new Map<string, typeof searchResults>();
+            for (const r of searchResults) {
+              const arr = bySection.get(r.def.section) || [];
+              arr.push(r);
+              bySection.set(r.def.section, arr);
+            }
+            const sectionLabels = TABS.reduce<Record<string, string>>((acc, t) => { acc[t.id] = t.label; return acc; }, {});
+            return (
+              <div className="settings-search-results">
+                <SectionCard
+                  title={`Search results (${searchResults.length})`}
+                  description={searchResults.length > 0 ? `Across ${bySection.size} section${bySection.size === 1 ? '' : 's'}` : undefined}
+                  padding="sm"
+                >
+                  {searchResults.length === 0 ? (
+                    <p className="settings-empty">No settings match "{query}"</p>
+                  ) : (
+                    <div className="settings-result-groups">
+                      {Array.from(bySection.entries()).map(([section, results]) => (
+                        <div key={section} className="settings-result-group">
+                          <div className="settings-result-group-head">
+                            <span className="settings-result-group-name">{sectionLabels[section] || section}</span>
+                            <span className="settings-result-group-count">{results.length}</span>
                           </div>
-                          <Badge color="#8899AA">{def.section}</Badge>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </SectionCard>
-            </div>
-          )}
+                          <ul className="settings-result-list">
+                            {results.map(({ def, score }) => (
+                              <li key={def.id}>
+                                <button
+                                  type="button"
+                                  className="settings-result"
+                                  onClick={() => {
+                                    setTab(def.section);
+                                    setHighlight(def.id);
+                                    setQuery('');
+                                  }}
+                                >
+                                  <div>
+                                    <span className="settings-result-label">{def.label}</span>
+                                    {def.description && <span className="settings-result-desc">{def.description}</span>}
+                                  </div>
+                                  {score >= 80 ? (
+                                    <Badge color="#10B981" size="sm" variant="outline">match</Badge>
+                                  ) : (
+                                    <Badge color="#8899AA" size="sm" variant="outline">related</Badge>
+                                  )}
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </SectionCard>
+              </div>
+            );
+          })()}
 
           <div className={`settings-content ${scope === 'venture' ? 'settings-content-venture' : ''}`}>
             {/* Per-venture banner */}
@@ -1275,6 +1303,11 @@ const settingsStyles = `
 .settings-scope-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
 
 .settings-search-results { padding: 16px 24px 0; }
+.settings-result-groups { display: flex; flex-direction: column; gap: 12px; }
+.settings-result-group { display: flex; flex-direction: column; gap: 4px; }
+.settings-result-group-head { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-bottom: 1px solid var(--border); }
+.settings-result-group-name { font-size: 10px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+.settings-result-group-count { font-size: 9px; color: var(--text-muted); font-family: var(--font-mono); margin-left: auto; }
 .settings-result-list { list-style: none; display: flex; flex-direction: column; gap: 2px; }
 .settings-result { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 10px; border-radius: var(--radius-sm); text-align: left; color: var(--text-secondary); transition: all var(--transition-fast); }
 .settings-result:hover { background: var(--bg-card); color: var(--text-primary); }

@@ -21,7 +21,7 @@ import type { Contact } from '../lib/schemas/crm';
 import { PageHeader, Button, GlassCard, Badge, StatCard, Tabs, EmptyState, GridLayout, BulkActionBar } from '../components/ui';
 import type { BulkAction } from '../components/ui';
 import { Tag as TagIcon, ArrowRightCircle } from 'lucide-react';
-import { timeAgo, formatMoney, formatDate } from '../lib/utils';
+import { timeAgo, formatMoney, formatDate, cn } from '../lib/utils';
 import ContextCommsMenu from '../components/ContextCommsMenu';
 
 // ── Constants ──
@@ -276,6 +276,15 @@ export default function CRMView() {
       return v;
     } catch { return null; }
   });
+  const [selectedDealIds, setSelectedDealIds] = useState<string[]>([]);
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
+
+  const toggleDealSelected = (id: string) => {
+    setSelectedDealIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+  const toggleAccountSelected = (id: string) => {
+    setSelectedAccountIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
   const { data: deals = [] } = useDeals(ventureFilter || undefined);
   const { data: activities = [] } = useActivities(ventureFilter || undefined);
   const { data: accounts = [] } = useAccounts(ventureFilter || undefined);
@@ -437,6 +446,116 @@ export default function CRMView() {
   function handleDeleteAccount(id: string) {
     deleteAccountMut.mutate(id);
   }
+
+  // Bulk action defs for Deals (kanban) and Accounts (table)
+  const dealBulkActions: BulkAction[] = [
+    {
+      id: 'advance-stage',
+      label: 'Advance Stage',
+      icon: <ArrowRight size={12} />,
+      onRun: async (ids) => {
+        const stages = Object.keys(STAGE_COLORS);
+        for (const id of ids) {
+          const d = deals.find((x) => x.id === id);
+          if (!d) continue;
+          const idx = stages.indexOf(d.stage);
+          if (idx >= 0 && idx < stages.length - 1) {
+            try { await updateDealMut.mutateAsync({ id, stage: stages[idx + 1] }); } catch { /* skip */ }
+          }
+        }
+        toast('success', `Advanced ${ids.length} deal${ids.length === 1 ? '' : 's'}`);
+      },
+    },
+    {
+      id: 'won',
+      label: 'Mark Won',
+      icon: <DollarSign size={12} />,
+      confirm: 'Mark selected deals as closed_won?',
+      onRun: async (ids) => {
+        for (const id of ids) {
+          try { await updateDealMut.mutateAsync({ id, stage: 'closed_won' }); } catch { /* skip */ }
+        }
+        toast('success', `${ids.length} deal${ids.length === 1 ? '' : 's'} won 🎉`);
+      },
+    },
+    {
+      id: 'lost',
+      label: 'Mark Lost',
+      icon: <X size={12} />,
+      onRun: async (ids) => {
+        for (const id of ids) {
+          try { await updateDealMut.mutateAsync({ id, stage: 'closed_lost' }); } catch { /* skip */ }
+        }
+        toast('info', `${ids.length} deal${ids.length === 1 ? '' : 's'} closed lost`);
+      },
+    },
+    {
+      id: 'delete',
+      label: 'Delete',
+      icon: <Trash2 size={12} />,
+      danger: true,
+      confirm: true,
+      onRun: async (ids) => {
+        for (const id of ids) {
+          try { await deleteDealMut.mutateAsync(id); } catch { /* skip */ }
+        }
+        toast('info', `Deleted ${ids.length} deal${ids.length === 1 ? '' : 's'}`);
+      },
+    },
+  ];
+
+  const accountBulkActions: BulkAction[] = [
+    {
+      id: 'change-type',
+      label: 'Change Type',
+      icon: <ArrowRightCircle size={12} />,
+      onRun: async (ids) => {
+        const t = window.prompt('New account type (prospect/customer/partner/vendor/churned):')?.trim().toLowerCase();
+        if (!t) return;
+        const valid = Object.keys(ACCOUNT_TYPE_COLORS);
+        if (!valid.includes(t)) { toast('error', `Invalid. Must be one of: ${valid.join(', ')}`); return; }
+        for (const id of ids) {
+          try {
+            await fetch('/api/crm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'update-account', id, type: t }) });
+          } catch { /* skip */ }
+        }
+        toast('success', `Updated ${ids.length} account${ids.length === 1 ? '' : 's'} to ${t}`);
+      },
+    },
+    {
+      id: 'export',
+      label: 'Export CSV',
+      icon: <FileText size={12} />,
+      onRun: (ids) => {
+        const rows = accounts
+          .filter((a) => ids.includes(a.id))
+          .map((a) => [a.name, a.domain || '', a.industry || '', a.type, a.size || '', String(a.health_score ?? '')]
+            .map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','));
+        const csv = ['"Name","Domain","Industry","Type","Size","Health"', ...rows].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `accounts-export-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast('success', `Exported ${ids.length} accounts`);
+      },
+    },
+    {
+      id: 'delete',
+      label: 'Delete',
+      icon: <Trash2 size={12} />,
+      danger: true,
+      confirm: true,
+      onRun: async (ids) => {
+        for (const id of ids) {
+          try { await deleteAccountMut.mutateAsync(id); } catch { /* skip */ }
+        }
+        toast('info', `Deleted ${ids.length} account${ids.length === 1 ? '' : 's'}`);
+      },
+    },
+  ];
 
   // Filtered contacts
   const filteredContacts = contacts.filter(c => {
@@ -627,6 +746,15 @@ export default function CRMView() {
           {/* ── Deals Tab ── */}
           {tab === 'deals' && (
             <div className="crm-deals-board">
+              <BulkActionBar
+                selectedIds={selectedDealIds}
+                onClear={() => setSelectedDealIds([])}
+                actions={dealBulkActions}
+                totalCount={deals.length}
+                onSelectAll={() => setSelectedDealIds(deals.map((d) => d.id))}
+                placement="floating"
+                label={(n) => `${n} deal${n === 1 ? '' : 's'} selected`}
+              />
               {Object.entries(STAGE_COLORS).map(([stage, color]) => {
                 const stageDeals = deals.filter(d => d.stage === stage);
                 const stageVal = stageDeals.reduce((s, d) => s + (d.value || 0), 0);
@@ -645,8 +773,16 @@ export default function CRMView() {
                           whileHover={{ y: -2, boxShadow: '0 4px 20px rgba(0,245,255,0.08)' }}
                           transition={{ duration: 0.15 }}
                         >
-                          <GlassCard className="crm-deal-card">
+                          <GlassCard className={cn('crm-deal-card', selectedDealIds.includes(d.id) && 'crm-deal-card-selected')}>
                             <div className="crm-deal-card-top">
+                              <input
+                                type="checkbox"
+                                className="crm-deal-check"
+                                checked={selectedDealIds.includes(d.id)}
+                                onChange={() => toggleDealSelected(d.id)}
+                                onClick={(e) => e.stopPropagation()}
+                                aria-label={`Select deal ${d.title}`}
+                              />
                               <span className="crm-deal-title">{d.title}</span>
                               <button className="crm-deal-del" onClick={() => handleDeleteDeal(d.id)}><Trash2 size={10} /></button>
                             </div>
@@ -706,11 +842,30 @@ export default function CRMView() {
           {/* ── Accounts Tab ── */}
           {tab === 'accounts' && (
             <div className="crm-table">
-              <div className="crm-table-header" style={{ gridTemplateColumns: '1.5fr 1fr 100px 80px 80px 60px 30px' }}>
+              <div className="crm-table-header" style={{ gridTemplateColumns: '24px 1.5fr 1fr 100px 80px 80px 60px 30px' }}>
+                <span className="crm-col-check">
+                  <input
+                    type="checkbox"
+                    checked={accounts.length > 0 && selectedAccountIds.length === accounts.length}
+                    ref={(el) => { if (el) el.indeterminate = selectedAccountIds.length > 0 && selectedAccountIds.length < accounts.length; }}
+                    onChange={(e) => { if (e.target.checked) setSelectedAccountIds(accounts.map((a) => a.id)); else setSelectedAccountIds([]); }}
+                    aria-label="Select all visible accounts"
+                    style={{ accentColor: 'var(--cyan)' }}
+                  />
+                </span>
                 <span>Company</span><span>Industry</span><span>Type</span><span>Size</span><span>Health</span><span>Added</span><span></span>
               </div>
               {accounts.map(ac => (
-                <div key={ac.id} className="crm-table-row" style={{ gridTemplateColumns: '1.5fr 1fr 100px 80px 80px 60px 30px' }}>
+                <div key={ac.id} className={cn('crm-table-row', selectedAccountIds.includes(ac.id) && 'crm-row-bulk-selected')} style={{ gridTemplateColumns: '24px 1.5fr 1fr 100px 80px 80px 60px 30px' }}>
+                  <span className="crm-col-check" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selectedAccountIds.includes(ac.id)}
+                      onChange={() => toggleAccountSelected(ac.id)}
+                      aria-label={`Select ${ac.name}`}
+                      style={{ accentColor: 'var(--cyan)' }}
+                    />
+                  </span>
                   <span className="crm-name">
                     <span className="crm-avatar-sm" style={{ background: ACCOUNT_TYPE_COLORS[ac.type] || '#6B7280' }}>{ac.name.charAt(0).toUpperCase()}</span>
                     {ac.name}{ac.domain && <span className="crm-role">{ac.domain}</span>}
@@ -724,6 +879,16 @@ export default function CRMView() {
                 </div>
               ))}
               {accounts.length === 0 && !loading && <EmptyState icon={<Building size={20} />} title="No accounts yet" description="Add your first company/organization above." />}
+
+              <BulkActionBar
+                selectedIds={selectedAccountIds}
+                onClear={() => setSelectedAccountIds([])}
+                actions={accountBulkActions}
+                totalCount={accounts.length}
+                onSelectAll={() => setSelectedAccountIds(accounts.map((a) => a.id))}
+                placement="floating"
+                label={(n) => `${n} account${n === 1 ? '' : 's'} selected`}
+              />
             </div>
           )}
 
@@ -841,6 +1006,8 @@ export default function CRMView() {
         .crm-row-bulk-selected { background: rgba(0, 240, 255, 0.06) !important; box-shadow: inset 0 0 0 1px rgba(0, 240, 255, 0.25); }
         .crm-col-check { display: inline-flex; align-items: center; justify-content: center; }
         .crm-col-check input { cursor: pointer; }
+        .crm-deal-card-selected { border-color: var(--cyan) !important; background: rgba(0, 240, 255, 0.04); box-shadow: inset 0 0 0 1px var(--cyan); }
+        .crm-deal-check { accent-color: var(--cyan); cursor: pointer; flex-shrink: 0; margin-right: 4px; }
         .crm-name { font-weight:500; display:flex; align-items:center; gap:8px; }
         .crm-avatar-sm { width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:var(--bg-deep); flex-shrink:0; }
         .crm-role { font-size:10px; color:var(--text-muted); margin-left:4px; }

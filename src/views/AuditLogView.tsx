@@ -5,7 +5,8 @@ import {
   Share2, Award, Package, Search, RefreshCw, User, Loader2,
   Activity, Clock,
 } from 'lucide-react';
-import { PageShell, PageHeader, KpiCard, GridLayout, GlassCard, Badge, Tabs, EmptyState, Input } from '../components/ui';
+import { PageShell, PageHeader, KpiCard, GridLayout, GlassCard, Badge, Tabs, EmptyState, Input, Button, Tooltip } from '../components/ui';
+import { Download } from 'lucide-react';
 import { useAuditLog } from '../hooks/use-storage-meta';
 import { useNavigation } from '../stores/navigation';
 import { ventures } from '../lib/ventures';
@@ -69,7 +70,40 @@ export default function AuditLogView() {
 
   return (
     <PageShell>
-      <PageHeader title="Audit Log" icon={<Shield size={20} />} loading={auditLog.isLoading} onRefresh={() => auditLog.refetch()} />
+      <PageHeader title="Audit Log" icon={<Shield size={20} />} loading={auditLog.isLoading} onRefresh={() => auditLog.refetch()}>
+        <Tooltip content="Download filtered entries as CSV (compliance-ready)">
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<Download size={13} />}
+            disabled={entries.length === 0}
+            onClick={() => {
+              const headers = ['"Timestamp","Action","User","File ID","Venture","Details"'];
+              const rows = entries.map((e) => {
+                const r = e as Record<string, unknown>;
+                const ts = (r.timestamp as string) || (r.created_at as string) || '';
+                const details = r.details ? JSON.stringify(r.details) : '';
+                return [ts, String(r.action || ''), String(r.user_id || ''), String(r.file_id || ''), String(r.venture_id || ''), details]
+                  .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+                  .join(',');
+              });
+              const csv = [...headers, ...rows].join('\n');
+              const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              const stamp = new Date().toISOString().slice(0, 10);
+              const v = ventureFilter ? `-${ventureFilter}` : '';
+              const act = actionFilter ? `-${actionFilter}` : '';
+              a.download = `audit-log${v}${act}-${stamp}.csv`;
+              document.body.appendChild(a); a.click(); document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            }}
+          >
+            Export CSV
+          </Button>
+        </Tooltip>
+      </PageHeader>
 
       <motion.div variants={staggerContainer} initial="hidden" animate="show" style={{ marginTop: 12 }}>
         <GridLayout cols={4} gap="md">

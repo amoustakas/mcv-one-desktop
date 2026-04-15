@@ -22,6 +22,22 @@ export default function TasksView() {
   const [newPriority, setNewPriority] = useState('medium');
   const [newVenture, setNewVenture] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dropTargetCol, setDropTargetCol] = useState<string | null>(null);
+
+  const handleDropOnColumn = (col: string) => {
+    if (!draggingId) return;
+    const task = tasks.find((t: Task) => t.id === draggingId);
+    if (!task || task.status === col) {
+      setDraggingId(null);
+      setDropTargetCol(null);
+      return;
+    }
+    updateTask.mutate({ id: draggingId, status: col });
+    toast('success', `Moved to ${STATUS_LABELS[col] || col}`);
+    setDraggingId(null);
+    setDropTargetCol(null);
+  };
   const { mode, activeVenture } = useNavigation();
   const { toast } = useToast();
 
@@ -130,7 +146,16 @@ export default function TasksView() {
       {/* Kanban Board */}
       <div className="tv-board">
         {STATUS_COLS.map(col => (
-          <div key={col} className="tv-col">
+          <div
+            key={col}
+            className={`tv-col ${dropTargetCol === col ? 'tv-col-droptarget' : ''}`}
+            onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDropTargetCol(col); }}
+            onDragLeave={(e) => {
+              // Only clear if leaving column entirely (not a child element)
+              if (e.currentTarget === e.target) setDropTargetCol(null);
+            }}
+            onDrop={() => handleDropOnColumn(col)}
+          >
             <div className="tv-col-header">
               <div className="tv-col-header-gradient" style={{ background: `linear-gradient(to right, transparent, ${STATUS_COLORS[col]}, transparent)` }} />
               <div className="tv-col-header-icon" style={{ color: STATUS_COLORS[col] }}>
@@ -149,9 +174,15 @@ export default function TasksView() {
             >
               {(grouped[col] || []).map(t => {
                 const isSelected = selectedIds.includes(t.id);
+                const isDragging = draggingId === t.id;
                 return (
                 <motion.div key={t.id} variants={fadeInUp}>
-                  <div className={`tv-card ${isSelected ? 'tv-card-selected' : ''}`}>
+                  <div
+                    className={`tv-card ${isSelected ? 'tv-card-selected' : ''} ${isDragging ? 'tv-card-dragging' : ''}`}
+                    draggable
+                    onDragStart={(e) => { setDraggingId(t.id); e.dataTransfer.effectAllowed = 'move'; }}
+                    onDragEnd={() => { setDraggingId(null); setDropTargetCol(null); }}
+                  >
                     <div className="tv-card-prio-stripe" style={{ background: PRIO_COLORS[t.priority] || 'var(--text-muted)' }} />
                     <div className="tv-card-top">
                       <input
@@ -233,6 +264,11 @@ export default function TasksView() {
 
         .tv-card-selected { border-color: var(--cyan) !important; background: rgba(0, 240, 255, 0.04); box-shadow: 0 0 0 1px var(--cyan) inset; }
         .tv-card-checkbox { accent-color: var(--cyan); cursor: pointer; flex-shrink: 0; }
+        .tv-card { cursor: grab; }
+        .tv-card:active { cursor: grabbing; }
+        .tv-card-dragging { opacity: 0.4; transform: rotate(1deg); }
+        .tv-col-droptarget { background: rgba(0, 240, 255, 0.04); box-shadow: inset 0 0 0 2px var(--border-active); }
+        .tv-col-droptarget .tv-col-cards { background: rgba(0, 240, 255, 0.02); }
         .tv-card-top { display:flex; align-items:center; gap:6px; }
         .tv-card-title { flex:1; font-size:12px; font-weight:500; color:var(--text-primary); }
         .tv-card-del { opacity:0; color:var(--text-muted); padding:4px; border-radius:var(--radius-sm); transition:all 0.15s; cursor:pointer; background:none; border:none; }
