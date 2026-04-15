@@ -52,12 +52,26 @@ export async function coreHttp<Response, Body = unknown>(
 
     if (!res.ok) {
       const payload = await res.json().catch(() => null);
-      const err = new CoreApiError(service, res.status, payload?.code, payload?.message || res.statusText, payload);
+      // Triangle error envelope: { error: { code, message, details? } }
+      const errObj = (payload as { error?: { code?: string; message?: string } } | null)?.error;
+      const err = new CoreApiError(
+        service,
+        res.status,
+        errObj?.code ?? (payload as { code?: string } | null)?.code,
+        errObj?.message ?? (payload as { message?: string } | null)?.message ?? res.statusText,
+        payload,
+      );
       if (args.throwOnError) throw err;
       return coreFail(err);
     }
 
-    const data = (await res.json()) as Response;
+    const body = (await res.json()) as { data?: Response } | Response;
+    // Triangle convention: success responses wrap payload in { data: ... }.
+    // Unwrap transparently; fall back to the raw body if the envelope is absent
+    // (e.g. /health style pings that return { ok: true, ... }).
+    const data = (body && typeof body === 'object' && 'data' in (body as Record<string, unknown>))
+      ? ((body as { data: Response }).data)
+      : (body as Response);
     return coreOk(data);
   } catch (e) {
     clearTimeout(timer);
