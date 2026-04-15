@@ -15,6 +15,7 @@ import {
   createNotificationsBridge, type NotificationsBridge,
   createVenturesBridge, type VenturesBridge,
 } from './ecosystem-bridges';
+import { createTaxExportService, type TaxExportService } from './tax-export';
 
 export interface CapitalEngine {
   rounds: RoundsService;
@@ -28,6 +29,7 @@ export interface CapitalEngine {
   distributions: DistributionsService;
   notifications: NotificationsBridge;
   ventures: VenturesBridge;
+  tax: TaxExportService;
 }
 
 export interface CapitalEngineOpts {
@@ -62,5 +64,6 @@ export function createCapitalEngine(opts: CapitalEngineOpts): CapitalEngine {
     }),
     notifications: createNotificationsBridge(supabase),
     ventures: createVenturesBridge(supabase),
+    tax: createTaxExportService({ supabase }),
   };
 }

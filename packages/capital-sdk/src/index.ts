@@ -35,9 +35,13 @@ export {
   setCapitalPaymentRouter, getCapitalPaymentRouter,
 } from './ecosystem-bridges';
 export type {
-  NotificationsBridge, NotifyInput, NotificationType,
+  NotificationsBridge, NotifyInput, NotificationType, NotificationChannels,
   VenturesBridge, VentureRef,
 } from './ecosystem-bridges';
+export { createTaxExportService } from './tax-export';
+export type {
+  TaxExportService, TaxForm, TaxExportRow, TaxExportResult, ExportTaxFormInput,
+} from './tax-export';
 export { createCapitalEngine } from './create-capital-engine';
 export type { CapitalEngine, CapitalEngineOpts } from './create-capital-engine';
 

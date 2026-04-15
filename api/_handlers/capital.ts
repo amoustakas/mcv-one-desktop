@@ -414,6 +414,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.json({ distribution: dist });
       }
 
+      // ─── Tax exports (1099-DIV / T5 CSV from processed distributions) ─
+      case 'export-tax-form': {
+        const result = await engine.tax.exportTaxForm({
+          form: params.form as 'T5' | '1099-DIV',
+          ventureId: params.venture_id as string,
+          taxYear: Number(params.tax_year),
+        });
+        // Optionally return as raw CSV download when ?as=csv on the body.
+        if (params.as === 'csv') {
+          res.setHeader('Content-Type', 'text/csv');
+          res.setHeader('Content-Disposition', `attachment; filename="${result.form}-${result.ventureId}-${result.taxYear}.csv"`);
+          return res.send(result.csv);
+        }
+        return res.json(result);
+      }
+
       // ─── Ventures lookup (Capital × Ventures registry) ──────────────
       case 'get-venture-for-round': {
         const venture = await engine.ventures.getVenture(params.venture_id as string);

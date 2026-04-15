@@ -20,7 +20,8 @@
     "./distributions-service":{ "types": "./src/distributions-service.ts", "default": "./src/distributions-service.ts" },
     "./ecosystem-bridges":  { "types": "./src/ecosystem-bridges.ts",     "default": "./src/ecosystem-bridges.ts" },
     "./waterfall":          { "types": "./src/waterfall.ts",             "default": "./src/waterfall.ts" },
-    "./create-capital-engine": { "types": "./src/create-capital-engine.ts", "default": "./src/create-capital-engine.ts" }
+    "./create-capital-engine": { "types": "./src/create-capital-engine.ts", "default": "./src/create-capital-engine.ts" },
+    "./tax-export":         { "types": "./src/tax-export.ts",            "default": "./src/tax-export.ts" }
   },
   "files": ["src"],
   "dependencies": {
