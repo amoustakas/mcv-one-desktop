@@ -292,6 +292,116 @@ ${s.docs.total} total  ·  by dept: ${docDepts || '—'}`;
 }
 
 // =============================================================================
+// find_docs — semantic search across venture_docs via pgvector
+// =============================================================================
+
+interface DocChunk {
+  id: string;
+  text: string;
+  source: string;
+  file_id: string | null;
+  chunk_index: number;
+  score: number;
+  metadata?: { department?: string; doc_id?: string; title?: string; kind?: string };
+}
+
+/**
+ * Filter retrieved chunks by department and deduplicate to the best chunk
+ * per doc — callers typically want to see "which documents matched" rather
+ * than multiple chunks from the same doc. Keeps the highest-scoring chunk
+ * per doc_id as the representative.
+ */
+export function filterAndDedupeChunks(
+  chunks: DocChunk[],
+  opts: { departments?: string[]; maxResults?: number },
+): DocChunk[] {
+  const deptSet = opts.departments?.length ? new Set(opts.departments.map(d => d.toLowerCase())) : null;
+
+  // Filter by department if specified
+  const filtered = deptSet
+    ? chunks.filter(c => {
+        const dept = c.metadata?.department?.toLowerCase();
+        return dept ? deptSet.has(dept) : false;
+      })
+    : chunks;
+
+  // Dedupe by doc_id — keep highest score
+  const bestByDoc = new Map<string, DocChunk>();
+  for (const c of filtered) {
+    const docKey = c.metadata?.doc_id || c.file_id || c.id;
+    const existing = bestByDoc.get(docKey);
+    if (!existing || c.score > existing.score) {
+      bestByDoc.set(docKey, c);
+    }
+  }
+
+  return [...bestByDoc.values()]
+    .sort((a, b) => b.score - a.score)
+    .slice(0, opts.maxResults ?? 10);
+}
+
+export function renderFindDocsMarkdown(query: string, chunks: DocChunk[]): string {
+  if (!chunks.length) {
+    return `**No matching docs found** for: _${query}_\n\nTry broader wording or run \`apply_${'{dept}'}_templates\` if this venture has no documentation yet.`;
+  }
+
+  const lines = [`**Doc search**: _${query}_\n`];
+  for (const c of chunks) {
+    const dept = c.metadata?.department ? ` · ${c.metadata.department}` : '';
+    const score = c.score.toFixed(2);
+    const snippet = c.text.slice(0, 200).replace(/\n+/g, ' ').trim();
+    lines.push(`### ${c.source}${dept}  _(score ${score})_`);
+    lines.push(`> ${snippet}${c.text.length > 200 ? '…' : ''}`);
+    lines.push('');
+  }
+  return lines.join('\n').trim();
+}
+
+const findDocs: KitToolHandler = async (input, ctx) => {
+  const query = (input.query as string)?.trim();
+  if (!query) {
+    return { success: false, error: 'query is required', displayMarkdown: '`find_docs` needs a `query` string.' };
+  }
+
+  const ventureId = (input.venture as string) || ctx.ventureId || null;
+  const departments = input.departments as string[] | undefined;
+  const maxResults = Math.min((input.max_results as number) || 8, 20);
+  // Retrieve a wider pool so department filtering + dedupe still has headroom
+  const topK = Math.min(maxResults * 6, 50);
+
+  const res = await ctx.fetch('/api/google-rag', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'retrieve',
+      query,
+      venture_id: ventureId,
+      top_k: topK,
+      threshold: 0.6,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: `RAG ${res.status}` }));
+    return {
+      success: false,
+      error: err.error || `RAG retrieve ${res.status}`,
+      displayMarkdown: `**find_docs** failed: ${err.error || res.statusText}`,
+    };
+  }
+
+  const data = await res.json() as { chunks?: DocChunk[] };
+  const all = data.chunks || [];
+  const filtered = filterAndDedupeChunks(all, { departments, maxResults });
+
+  return {
+    success: true,
+    data: { query, venture: ventureId, count: filtered.length, total_matched: all.length, chunks: filtered },
+    displayMarkdown: renderFindDocsMarkdown(query, filtered),
+  };
+};
+
+// =============================================================================
 // Manifest
 // =============================================================================
 
@@ -324,6 +434,24 @@ const tools: KitToolSchema[] = [
       },
     },
   },
+  {
+    name: 'find_docs',
+    description: 'Semantic search across venture_docs using pgvector embeddings. Returns the best-matching doc per result (dedupe by doc_id, highest-score chunk wins). Use for "what do our legal docs say about indemnification?", "find all postmortems mentioning oncall", cross-venture precedent lookups.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Natural-language search query.' },
+        venture: { type: 'string', description: 'Limit to one venture. Omit/null for cross-venture search.' },
+        departments: {
+          type: 'array',
+          items: { type: 'string', enum: ['legal', 'compliance', 'research', 'finance', 'ops', 'product'] },
+          description: 'Optional filter — restrict results to specific departments.',
+        },
+        max_results: { type: 'number', description: 'Number of distinct docs to return. Default 8, max 20.' },
+      },
+      required: ['query'],
+    },
+  },
 ];
 
 export const manifest: KitManifest = {
@@ -342,7 +470,8 @@ export const manifest: KitManifest = {
 export const handlers: Record<string, KitToolHandler> = {
   consult_departments: consultDepartments,
   venture_snapshot: ventureSnapshot,
+  find_docs: findDocs,
 };
 
 // Exposed for unit tests
-export const __test = { summarizeSnapshot, formatConsultMarkdown, renderSnapshotMarkdown };
+export const __test = { summarizeSnapshot, formatConsultMarkdown, renderSnapshotMarkdown, filterAndDedupeChunks, renderFindDocsMarkdown };

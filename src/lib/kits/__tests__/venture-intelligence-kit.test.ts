@@ -1,7 +1,29 @@
 import { describe, it, expect } from 'vitest';
 import { __test } from '../builtin/venture-intelligence-kit';
 
-const { summarizeSnapshot, formatConsultMarkdown, renderSnapshotMarkdown } = __test;
+const { summarizeSnapshot, formatConsultMarkdown, renderSnapshotMarkdown, filterAndDedupeChunks, renderFindDocsMarkdown } = __test;
+
+interface DocChunk {
+  id: string;
+  text: string;
+  source: string;
+  file_id: string | null;
+  chunk_index: number;
+  score: number;
+  metadata?: { department?: string; doc_id?: string; title?: string; kind?: string };
+}
+
+function chunk(p: Partial<DocChunk> = {}): DocChunk {
+  return {
+    id: p.id || 'c1',
+    text: p.text || 'lorem ipsum',
+    source: p.source || 'Some Doc',
+    file_id: p.file_id ?? null,
+    chunk_index: p.chunk_index ?? 0,
+    score: p.score ?? 0.7,
+    metadata: p.metadata,
+  };
+}
 
 describe('venture-intelligence-kit', () => {
   describe('summarizeSnapshot', () => {
@@ -206,6 +228,127 @@ describe('venture-intelligence-kit', () => {
       );
       expect(md).toContain('Clerk:** shared root org');
       expect(md).toContain('Tier:** —');
+    });
+  });
+
+  describe('filterAndDedupeChunks', () => {
+    it('dedupes multiple chunks from the same doc, keeping highest score', () => {
+      const input = [
+        chunk({ id: 'c1', score: 0.5, metadata: { doc_id: 'doc-a', department: 'legal' } }),
+        chunk({ id: 'c2', score: 0.9, metadata: { doc_id: 'doc-a', department: 'legal' } }),
+        chunk({ id: 'c3', score: 0.7, metadata: { doc_id: 'doc-a', department: 'legal' } }),
+      ];
+      const result = filterAndDedupeChunks(input, {});
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('c2');
+      expect(result[0].score).toBe(0.9);
+    });
+
+    it('preserves chunks from different docs', () => {
+      const input = [
+        chunk({ id: 'c1', score: 0.9, metadata: { doc_id: 'doc-a' } }),
+        chunk({ id: 'c2', score: 0.8, metadata: { doc_id: 'doc-b' } }),
+        chunk({ id: 'c3', score: 0.7, metadata: { doc_id: 'doc-c' } }),
+      ];
+      const result = filterAndDedupeChunks(input, {});
+      expect(result).toHaveLength(3);
+    });
+
+    it('filters by department when specified', () => {
+      const input = [
+        chunk({ id: 'c1', score: 0.9, metadata: { doc_id: 'a', department: 'legal' } }),
+        chunk({ id: 'c2', score: 0.8, metadata: { doc_id: 'b', department: 'finance' } }),
+        chunk({ id: 'c3', score: 0.7, metadata: { doc_id: 'c', department: 'ops' } }),
+      ];
+      const result = filterAndDedupeChunks(input, { departments: ['legal', 'finance'] });
+      expect(result.map(c => c.metadata?.department).sort()).toEqual(['finance', 'legal']);
+    });
+
+    it('drops chunks with no department metadata when filtering by dept', () => {
+      const input = [
+        chunk({ id: 'c1', score: 0.9, metadata: { doc_id: 'a', department: 'legal' } }),
+        chunk({ id: 'c2', score: 0.8, metadata: { doc_id: 'b' } }), // no dept
+        chunk({ id: 'c3', score: 0.7 }), // no metadata at all
+      ];
+      const result = filterAndDedupeChunks(input, { departments: ['legal'] });
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('c1');
+    });
+
+    it('is case-insensitive on department filter', () => {
+      const input = [
+        chunk({ id: 'c1', score: 0.9, metadata: { doc_id: 'a', department: 'LEGAL' } }),
+      ];
+      const result = filterAndDedupeChunks(input, { departments: ['Legal'] });
+      expect(result).toHaveLength(1);
+    });
+
+    it('sorts results by score descending', () => {
+      const input = [
+        chunk({ id: 'c1', score: 0.3, metadata: { doc_id: 'a' } }),
+        chunk({ id: 'c2', score: 0.9, metadata: { doc_id: 'b' } }),
+        chunk({ id: 'c3', score: 0.6, metadata: { doc_id: 'c' } }),
+      ];
+      const result = filterAndDedupeChunks(input, {});
+      expect(result.map(c => c.score)).toEqual([0.9, 0.6, 0.3]);
+    });
+
+    it('respects maxResults cap', () => {
+      const input = Array.from({ length: 20 }, (_, i) =>
+        chunk({ id: `c${i}`, score: 1 - i * 0.01, metadata: { doc_id: `d${i}` } }),
+      );
+      const result = filterAndDedupeChunks(input, { maxResults: 5 });
+      expect(result).toHaveLength(5);
+    });
+
+    it('defaults maxResults to 10', () => {
+      const input = Array.from({ length: 20 }, (_, i) =>
+        chunk({ id: `c${i}`, score: 1 - i * 0.01, metadata: { doc_id: `d${i}` } }),
+      );
+      const result = filterAndDedupeChunks(input, {});
+      expect(result).toHaveLength(10);
+    });
+
+    it('falls back to file_id or chunk id when metadata.doc_id missing', () => {
+      const input = [
+        chunk({ id: 'c1', score: 0.5, file_id: 'f1' }),
+        chunk({ id: 'c2', score: 0.9, file_id: 'f1' }), // same file → dedupe
+        chunk({ id: 'c3', score: 0.7, file_id: null }), // falls back to id=c3
+      ];
+      const result = filterAndDedupeChunks(input, {});
+      expect(result).toHaveLength(2);
+      expect(result[0].score).toBe(0.9);
+    });
+  });
+
+  describe('renderFindDocsMarkdown', () => {
+    it('renders empty state when no chunks matched', () => {
+      const md = renderFindDocsMarkdown('indemnification', []);
+      expect(md).toContain('No matching docs found');
+      expect(md).toContain('indemnification');
+    });
+
+    it('renders each chunk with source, department, score, and snippet', () => {
+      const md = renderFindDocsMarkdown('liability caps', [
+        chunk({ source: 'MSA Template', score: 0.87, text: 'Liability capped at 12 months of fees.', metadata: { department: 'legal' } }),
+      ]);
+      expect(md).toContain('MSA Template');
+      expect(md).toContain('legal');
+      expect(md).toContain('0.87');
+      expect(md).toContain('Liability capped');
+    });
+
+    it('truncates long snippets with ellipsis', () => {
+      const long = 'x'.repeat(500);
+      const md = renderFindDocsMarkdown('q', [chunk({ text: long, score: 0.9 })]);
+      expect(md).toContain('…');
+      expect(md).not.toContain('x'.repeat(250));
+    });
+
+    it('flattens newlines in snippets so markdown quotes stay on one line', () => {
+      const md = renderFindDocsMarkdown('q', [chunk({ text: 'line one\n\nline two', score: 0.9 })]);
+      expect(md).not.toContain('line one\n\nline two');
+      expect(md).toContain('line one line two');
     });
   });
 });
