@@ -42,7 +42,9 @@ export default function VenturesIndexView({ onSelect, onNew }: VenturesIndexProp
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [applyMenuOpen, setApplyMenuOpen] = useState(false);
   const [applying, setApplying] = useState<Department | null>(null);
-  const [applyResult, setApplyResult] = useState<{ dept: Department; success: number; total: number; docs: number } | null>(null);
+  const [applyResult, setApplyResult] = useState<{ dept: Department; success: number; total: number; docs: number; docIds: string[] } | null>(null);
+  const [undoing, setUndoing] = useState(false);
+  const [undoCountdown, setUndoCountdown] = useState(0);
   const applyMenuRef = useRef<HTMLDivElement>(null);
   const [contextMenu, setContextMenu] = useState<{ venture: Venture; x: number; y: number } | null>(null);
   const [promoteDialogOpen, setPromoteDialogOpen] = useState(false);
@@ -77,19 +79,24 @@ export default function VenturesIndexView({ onSelect, onNew }: VenturesIndexProp
     setApplyResult(null);
     const ids = [...selected];
 
+    // Capture docs from each response so Undo can delete exactly what we
+    // created. Failed calls contribute empty arrays so count/docIds align
+    // with what actually landed in the DB.
+    type ApplyDoc = { id: string };
     const results = await Promise.all(ids.map(venture_id =>
-      apiPost<{ docs: unknown[]; count: number }>('/api/ventures', {
+      apiPost<{ docs: ApplyDoc[]; count: number }>('/api/ventures', {
         action: 'apply-doc-template',
         venture_id,
         department: dept,
-      }).then(r => ({ ok: true, count: r.count ?? 0 }))
-        .catch(() => ({ ok: false, count: 0 }))
+      }).then(r => ({ ok: true, count: r.count ?? 0, docIds: (r.docs || []).map(d => d.id) }))
+        .catch(() => ({ ok: false, count: 0, docIds: [] as string[] }))
     ));
 
     const success = results.filter(r => r.ok).length;
     const docs = results.reduce((sum, r) => sum + r.count, 0);
+    const docIds = results.flatMap(r => r.docIds);
     setApplying(null);
-    setApplyResult({ dept, success, total: ids.length, docs });
+    setApplyResult({ dept, success, total: ids.length, docs, docIds });
 
     // Refresh snapshots so doc counts update immediately
     try {
@@ -103,8 +110,50 @@ export default function VenturesIndexView({ onSelect, onNew }: VenturesIndexProp
       // ignore — result toast still surfaces the apply outcome
     }
 
-    // Auto-clear the result after 8 seconds
-    setTimeout(() => setApplyResult(null), 8000);
+    // 15s undo window — starts the countdown AND schedules auto-clear
+    startUndoCountdown(15);
+  }
+
+  function startUndoCountdown(seconds: number) {
+    setUndoCountdown(seconds);
+  }
+
+  // Tick the countdown each second; auto-dismiss the toast when it hits 0
+  useEffect(() => {
+    if (undoCountdown <= 0) return;
+    const id = setTimeout(() => {
+      if (undoCountdown <= 1) {
+        setApplyResult(null);
+        setUndoCountdown(0);
+      } else {
+        setUndoCountdown(c => c - 1);
+      }
+    }, 1000);
+    return () => clearTimeout(id);
+  }, [undoCountdown]);
+
+  async function undoLastApply() {
+    if (!applyResult || undoing || applyResult.docIds.length === 0) return;
+    setUndoing(true);
+    try {
+      await apiPost<{ deleted: number }>('/api/ventures', {
+        action: 'delete-docs',
+        doc_ids: applyResult.docIds,
+      });
+      // Refresh snapshots so cards reflect the rollback
+      const data = await apiPost<{ snapshots: PortfolioSnapshot[] }>(
+        '/api/ventures', { action: 'list-snapshots' },
+      );
+      const snapMap: Record<string, PortfolioSnapshot> = {};
+      for (const s of data.snapshots || []) snapMap[s.id] = s;
+      setSnapshots(snapMap);
+    } catch {
+      // leave toast up so user sees we didn't reverse cleanly
+    } finally {
+      setUndoing(false);
+      setApplyResult(null);
+      setUndoCountdown(0);
+    }
   }
 
   // Close apply menu on outside click
@@ -380,7 +429,19 @@ export default function VenturesIndexView({ onSelect, onNew }: VenturesIndexProp
             Applied <strong>{applyResult.dept}</strong> templates to {applyResult.success}/{applyResult.total} ventures
             {applyResult.docs > 0 && ` · ${applyResult.docs} docs seeded`}
           </span>
-          <button className="vix-toast-close" onClick={() => setApplyResult(null)}><X size={12} /></button>
+          {applyResult.docIds.length > 0 && (
+            <button
+              className="vix-toast-undo"
+              onClick={undoLastApply}
+              disabled={undoing}
+              title="Delete the documents that were just created"
+            >
+              {undoing ? 'Undoing…' : `Undo${undoCountdown > 0 ? ` · ${undoCountdown}s` : ''}`}
+            </button>
+          )}
+          <button className="vix-toast-close" onClick={() => { setApplyResult(null); setUndoCountdown(0); }}>
+            <X size={12} />
+          </button>
         </div>
       )}
 
@@ -427,6 +488,9 @@ export default function VenturesIndexView({ onSelect, onNew }: VenturesIndexProp
         .vix-apply-toast strong { font-weight: 700; color: var(--cyan); text-transform: capitalize; }
         .vix-toast-close { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 2px; display: flex; align-items: center; }
         .vix-toast-close:hover { color: var(--text-primary); }
+        .vix-toast-undo { background: transparent; border: 1px solid var(--border-active); color: var(--cyan); font-family: var(--font-mono); font-size: 11px; padding: 4px 10px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.12s; }
+        .vix-toast-undo:hover:not(:disabled) { background: var(--cyan-glow); border-color: var(--cyan); color: var(--text-primary); }
+        .vix-toast-undo:disabled { opacity: 0.6; cursor: not-allowed; }
         .vix-modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); z-index: var(--z-overlay, 2000); backdrop-filter: blur(2px); animation: vix-fade-in 0.15s ease-out; }
         @keyframes vix-fade-in { from { opacity: 0; } to { opacity: 1; } }
         .vix-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(480px, 90vw); background: var(--bg-shell); border: 1px solid var(--border-active); border-radius: var(--radius-md); box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6); z-index: var(--z-modal, 3000); padding: 20px; animation: vix-modal-in 0.18s ease-out; }
