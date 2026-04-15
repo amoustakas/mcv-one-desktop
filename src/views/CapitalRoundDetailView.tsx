@@ -4,7 +4,7 @@
 import { useMemo, useState } from 'react';
 import { Briefcase, Target, Calendar, ArrowLeft, Users, FileText } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
-import { useRound, useCommitmentsByRound, useDocumentsByRound, useUpdateRoundStatus, useUpdateCommitmentStatus } from '../hooks/use-capital';
+import { useRound, useCommitmentsByRound, useDocumentsByRound, useUpdateRoundStatus, useUpdateCommitmentStatus, useVenture } from '../hooks/use-capital';
 import { PageHeader, PageShell, StatCard, GlassCard, GridLayout, Badge, EmptyState, Button } from '../components/ui';
 import InvestorUpdatesPanel from '../components/capital/InvestorUpdatesPanel';
 import DistributionsPanel from '../components/capital/DistributionsPanel';
@@ -38,8 +38,26 @@ export default function CapitalRoundDetailView() {
   const { data: round, isLoading } = useRound(activeRoundId);
   const { data: commitments = [] } = useCommitmentsByRound(activeRoundId);
   const { data: documents = [] } = useDocumentsByRound(activeRoundId);
+  const { data: venture } = useVenture(round?.ventureId);
   const updateRoundStatus = useUpdateRoundStatus();
   const updateCommitStatus = useUpdateCommitmentStatus();
+
+  // Per-round venture brand tokens — applied as CSS vars on the view's
+  // root wrapper so child components (RoundProgressCard, InvestorUpdatesPanel,
+  // DistributionsPanel) can use `var(--venture-primary)` for accents.
+  // Same shape as apps/launchpad/p/[venture]/[round]/page.tsx brandStyle().
+  const brandStyle = useMemo<React.CSSProperties>(() => {
+    if (!venture) return {};
+    const wl = (venture.whiteLabel ?? {}) as { primaryColor?: string; accentColor?: string; brandName?: string };
+    const primary = wl.primaryColor ?? venture.color ?? '#00F0FF';
+    const accent = wl.accentColor ?? '#8B5CF6';
+    const brandName = wl.brandName ?? venture.name;
+    return {
+      ['--venture-primary' as string]: primary,
+      ['--venture-accent' as string]: accent,
+      ['--venture-brand-name' as string]: `"${brandName}"`,
+    };
+  }, [venture]);
 
   const sortedCommits = useMemo(() => [...commitments].sort((a, b) => b.amountUsd - a.amountUsd), [commitments]);
 
@@ -65,14 +83,23 @@ export default function CapitalRoundDetailView() {
 
   return (
     <PageShell scroll>
-      <PageHeader
-        icon={<Briefcase size={20} />}
-        title={round.name}
-        subtitle={`${activeVenture?.toUpperCase() ?? round.ventureId} · ${round.roundType} · ${round.raiseLane}`}
-        loading={isLoading}
-      >
-        <Button variant="ghost" icon={<ArrowLeft size={14} />} onClick={() => setView('capital-venture')}>Back</Button>
-      </PageHeader>
+      <div style={brandStyle}>
+        {venture && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--venture-primary, var(--text-muted))' }}>
+            {venture.icon && <span style={{ fontSize: 14 }}>{venture.icon}</span>}
+            <span>{venture.name}</span>
+            <span style={{ opacity: 0.4 }}>/</span>
+            <span style={{ color: 'var(--text-muted)' }}>Capital</span>
+          </div>
+        )}
+        <PageHeader
+          icon={<Briefcase size={20} />}
+          title={round.name}
+          subtitle={`${activeVenture?.toUpperCase() ?? round.ventureId} · ${round.roundType} · ${round.raiseLane}`}
+          loading={isLoading}
+        >
+          <Button variant="ghost" icon={<ArrowLeft size={14} />} onClick={() => setView('capital-venture')}>Back</Button>
+        </PageHeader>
 
       {/* KPIs */}
       <GridLayout cols={4} gap="md">
@@ -217,6 +244,7 @@ export default function CapitalRoundDetailView() {
             ))}
           </GlassCard>
         )}
+      </div>
       </div>
     </PageShell>
   );

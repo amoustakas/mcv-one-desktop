@@ -276,6 +276,24 @@ export function useGlobalSummary() {
   });
 }
 
+// Fetch the venture registry row for a given id — used by CapitalRoundDetailView
+// to apply per-round brand tokens (mirrors apps/launchpad/p/[venture]/[round]).
+export function useVenture(ventureId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['capital', 'venture', ventureId],
+    queryFn: async () => {
+      if (!ventureId) return null;
+      const data = await apiPost<{ venture: { id: string; name: string; color: string | null; icon: string | null; whiteLabel: Record<string, unknown> | null } | null }>(
+        '/api/capital',
+        { action: 'get-venture-for-round', venture_id: ventureId },
+      );
+      return data.venture;
+    },
+    enabled: Boolean(ventureId),
+    staleTime: 5 * 60_000, // brand tokens change rarely
+  });
+}
+
 export function useVentureSummary(ventureId: string | null | undefined) {
   return useQuery({
     queryKey: ['capital', 'venture-summary', ventureId],
