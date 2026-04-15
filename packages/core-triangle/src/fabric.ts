@@ -1,35 +1,33 @@
 // MCV Core Triangle — Fabric client.
-// Port 8081 HTTP / 50052 gRPC.
-// Provides: event publish/subscribe, durable jobs, audit log, storage, real-time.
+// Aligned with real Triangle SDK contract:
+//
+//   POST /events   → publishEvent({ topic, type, source, ventureId, data, correlationId?, metadata? })
+//   POST /audit    → logAudit({ ventureId, userId?, action, resourceType, resourceId?, metadata?, ipAddress? })
+//   GET  /audit    → queryAudit(URLSearchParams)
+//   GET  /health   → ping
+//
+// Gaps flagged in TRIANGLE_GAPS.md:
+//   - Jobs endpoint (enqueue/get/stats) not exposed publicly yet
+//   - Storage upload/signed-url uses a different contract than the local client
+//     assumed; we expose typed stubs that return CoreNotAvailableError
+//   - SSE subscribe kept as-is against /events/subscribe; confirm path when
+//     realtime ships.
 
 import type { CoreServiceConfig, CoreResponse } from './types';
 import { coreHttp } from './http';
 
+// ── Request types (local public surface preserved for existing callers) ──
+
 export interface EventPublishRequest {
   topic: string;
   payload: Record<string, unknown>;
-  /** Correlate related events across services */
   traceId?: string;
-  /** Dedupe within a topic */
   idempotencyKey?: string;
   ventureId?: string;
 }
 export interface EventPublishResult {
   eventId: string;
   acceptedAt: string;
-}
-
-export interface JobEnqueueRequest {
-  queue: string;
-  name: string;
-  payload: Record<string, unknown>;
-  runAt?: string;
-  /** Retry policy override */
-  maxAttempts?: number;
-}
-export interface JobEnqueueResult {
-  jobId: string;
-  enqueuedAt: string;
 }
 
 export interface AuditWriteRequest {
@@ -43,14 +41,24 @@ export interface AuditWriteRequest {
   userAgent?: string;
 }
 
+export interface JobEnqueueRequest {
+  queue: string;
+  name: string;
+  payload: Record<string, unknown>;
+  runAt?: string;
+  maxAttempts?: number;
+}
+export interface JobEnqueueResult {
+  jobId: string;
+  enqueuedAt: string;
+}
+
 export interface StoragePutRequest {
   bucket: string;
   key: string;
-  /** base64-encoded body for small objects, or a presigned-url request */
   bodyBase64?: string;
   contentType?: string;
   metadata?: Record<string, string>;
-  /** Ask Fabric to return a presigned upload URL instead of accepting the body */
   presign?: boolean;
 }
 export interface StoragePutResult {
@@ -74,26 +82,20 @@ export interface FabricClient {
   audit(req: AuditWriteRequest): Promise<CoreResponse<{ ok: true }>>;
   storagePut(req: StoragePutRequest): Promise<CoreResponse<StoragePutResult>>;
   storageGetUrl(bucket: string, key: string): Promise<CoreResponse<{ url: string; expiresIn: number }>>;
-  /**
-   * Subscribe to a topic over SSE/WebSocket. Returns an async iterator of
-   * events. If Fabric is unavailable throws a CoreNotAvailableError — unlike
-   * the RPC methods, subscribe has no meaningful ok=false value.
-   */
   subscribe<T = unknown>(opts: RealtimeSubscribeOptions): AsyncIterable<T>;
-  ping(): Promise<CoreResponse<{ ok: true; service: 'fabric'; version: string }>>;
+  ping(): Promise<CoreResponse<{ ok: true; service: 'fabric'; version?: string }>>;
 }
 
 export function createFabricClient(config: CoreServiceConfig): FabricClient {
   async function* subscribeSse<T>(opts: RealtimeSubscribeOptions): AsyncGenerator<T> {
     const token = await config.getAuthToken();
-    const url = `${config.baseUrl.replace(/\/$/, '')}/v1/events/subscribe?topic=${encodeURIComponent(opts.topic)}`;
+    const url = `${config.baseUrl.replace(/\/$/, '')}/events/subscribe?topic=${encodeURIComponent(opts.topic)}`;
     const res = await fetch(url, {
       headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), Accept: 'text/event-stream' },
       signal: opts.signal,
     });
-    if (!res.ok || !res.body) {
-      throw new Error(`Fabric subscribe failed: ${res.status}`);
-    }
+    if (!res.ok || !res.body) throw new Error(`Fabric subscribe failed: ${res.status}`);
+
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
@@ -101,33 +103,103 @@ export function createFabricClient(config: CoreServiceConfig): FabricClient {
       const { value, done } = await reader.read();
       if (done) return;
       buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() ?? '';
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const payload = line.slice(6);
-          try {
-            yield JSON.parse(payload) as T;
-          } catch {
-            // ignore malformed chunks
-          }
+      const events = buffer.split(/\r?\n\r?\n/);
+      buffer = events.pop() ?? '';
+      for (const evt of events) {
+        const dataLine = evt.split(/\r?\n/).find((l) => l.startsWith('data: '));
+        if (!dataLine) continue;
+        try {
+          yield JSON.parse(dataLine.slice(6)) as T;
+        } catch {
+          // skip malformed chunks
         }
       }
     }
   }
 
+  async function publish(req: EventPublishRequest): Promise<CoreResponse<EventPublishResult>> {
+    // Map legacy {topic, payload: {type, ...data}} onto real {topic, type, source, data}.
+    const { type, ...data } = (req.payload ?? {}) as { type?: string } & Record<string, unknown>;
+    const body = {
+      topic: req.topic,
+      type: type ?? `${req.topic}.event`,
+      source: 'mcv-one-desktop',
+      ventureId: req.ventureId ?? config.ventureId ?? '',
+      data,
+      correlationId: req.traceId,
+      metadata: req.idempotencyKey ? { idempotencyKey: req.idempotencyKey } : undefined,
+    };
+    const res = await coreHttp<{ eventId: string; timestamp: string }>('fabric', config, {
+      method: 'POST',
+      path: '/events',
+      body,
+    });
+    if (!res.ok) return res;
+    return { ok: true, data: { eventId: res.data.eventId, acceptedAt: res.data.timestamp } };
+  }
+
+  async function audit(req: AuditWriteRequest): Promise<CoreResponse<{ ok: true }>> {
+    const body = {
+      ventureId: req.ventureId ?? config.ventureId ?? '',
+      userId: req.actor.userId,
+      action: req.action,
+      resourceType: req.resource.type,
+      resourceId: req.resource.id,
+      metadata: {
+        actor: req.actor,
+        before: req.before,
+        after: req.after,
+        userAgent: req.userAgent,
+      },
+      ipAddress: req.ip,
+    };
+    const res = await coreHttp<{ id: string }>('fabric', config, {
+      method: 'POST',
+      path: '/audit',
+      body,
+    });
+    if (!res.ok) return res;
+    return { ok: true, data: { ok: true } };
+  }
+
+  async function enqueue(_req: JobEnqueueRequest): Promise<CoreResponse<JobEnqueueResult>> {
+    // Public Fabric SDK currently has no jobs endpoint — see TRIANGLE_GAPS.
+    return {
+      ok: false,
+      error: new (await import('./types')).CoreNotAvailableError('fabric'),
+    };
+  }
+
+  async function storagePut(_req: StoragePutRequest): Promise<CoreResponse<StoragePutResult>> {
+    return {
+      ok: false,
+      error: new (await import('./types')).CoreNotAvailableError('fabric'),
+    };
+  }
+
+  async function storageGetUrl(_bucket: string, _key: string): Promise<CoreResponse<{ url: string; expiresIn: number }>> {
+    return {
+      ok: false,
+      error: new (await import('./types')).CoreNotAvailableError('fabric'),
+    };
+  }
+
+  async function ping(): Promise<CoreResponse<{ ok: true; service: 'fabric'; version?: string }>> {
+    const res = await coreHttp<{ ok?: boolean; version?: string }>('fabric', config, {
+      method: 'GET',
+      path: '/health',
+    });
+    if (!res.ok) return res;
+    return { ok: true, data: { ok: true, service: 'fabric', version: res.data?.version } };
+  }
+
   return {
-    publish: (req) => coreHttp('fabric', config, { method: 'POST', path: '/v1/events/publish', body: req }),
-    enqueue: (req) => coreHttp('fabric', config, { method: 'POST', path: '/v1/jobs/enqueue', body: req }),
-    audit: (req) => coreHttp('fabric', config, { method: 'POST', path: '/v1/audit', body: req }),
-    storagePut: (req) => coreHttp('fabric', config, { method: 'POST', path: '/v1/storage/put', body: req }),
-    storageGetUrl: (bucket, key) =>
-      coreHttp('fabric', config, {
-        method: 'GET',
-        path: '/v1/storage/url',
-        query: { bucket, key },
-      }),
+    publish,
+    enqueue,
+    audit,
+    storagePut,
+    storageGetUrl,
     subscribe: (opts) => subscribeSse(opts) as AsyncIterable<unknown> as never,
-    ping: () => coreHttp('fabric', config, { method: 'GET', path: '/v1/ping' }),
+    ping,
   };
 }
