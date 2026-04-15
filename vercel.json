@@ -6,7 +6,8 @@
     { "path": "/api/compliance-cron", "schedule": "0 * * * *" },
     { "path": "/api/cron-asset-rediscovery", "schedule": "0 6 * * *" },
     { "path": "/api/venture-docs-embed", "schedule": "*/30 * * * *" },
-    { "path": "/api/cron-capital-distributions", "schedule": "*/5 * * * *" }
+    { "path": "/api/cron-capital-distributions", "schedule": "*/5 * * * *" },
+    { "path": "/api/cron-notifications-dispatch", "schedule": "*/2 * * * *" }
   ],
   "buildCommand": "npm run build",
   "outputDirectory": "dist",

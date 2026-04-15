@@ -9,6 +9,14 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type NotificationType = 'info' | 'success' | 'warning' | 'error';
 
+/** Per-channel routing config — populated rows get picked up by
+ *  cron-notifications-dispatch and delivered. Keys must match channel
+ *  names the dispatcher knows: slack, email. */
+export interface NotificationChannels {
+  slack?: { channel: string; thread_ts?: string };
+  email?: { to: string; subject?: string };
+}
+
 export interface NotifyInput {
   type?: NotificationType;
   title: string;
@@ -16,11 +24,15 @@ export interface NotifyInput {
   source?: string;        // default 'capital'
   ventureId?: string;
   metadata?: Record<string, unknown>;
+  /** Clerk user_id whose OAuth tokens deliver via slack/gmail. */
+  targetUserId?: string;
+  /** Per-channel delivery config. Empty = in-app only. */
+  channels?: NotificationChannels;
 }
 
 export interface NotificationsBridge {
   notify(input: NotifyInput): Promise<void>;
-  publishCapitalEvent(topic: string, payload: Record<string, unknown>, opts?: { title?: string; description?: string; ventureId?: string; type?: NotificationType }): Promise<void>;
+  publishCapitalEvent(topic: string, payload: Record<string, unknown>, opts?: { title?: string; description?: string; ventureId?: string; type?: NotificationType; targetUserId?: string; channels?: NotificationChannels }): Promise<void>;
 }
 
 export function createNotificationsBridge(supabase: SupabaseClient | null): NotificationsBridge {
@@ -34,6 +46,8 @@ export function createNotificationsBridge(supabase: SupabaseClient | null): Noti
           description: input.description ?? null,
           source: input.source ?? 'capital',
           venture_id: input.ventureId ?? null,
+          target_user_id: input.targetUserId ?? null,
+          channels: input.channels ?? {},
         });
       } catch (err) {
         // Best-effort; don't break the primary mutation.
@@ -52,6 +66,8 @@ export function createNotificationsBridge(supabase: SupabaseClient | null): Noti
           description,
           source: 'capital',
           venture_id: opts?.ventureId ?? null,
+          target_user_id: opts?.targetUserId ?? null,
+          channels: opts?.channels ?? {},
         });
       } catch (err) {
         console.warn(`[capital/event ${topic}] notify failed:`, err);
