@@ -69,6 +69,12 @@ export function useRealtimeSync() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
         queryClient.invalidateQueries({ queryKey: ['dashboard'] });
         const notif = payload.new as { type?: string; title?: string; description?: string; source?: string; venture_id?: string };
+        // Source-specific query invalidation — lets each domain refresh its own
+        // views without polling. Capital events write notifications rows from
+        // api/_handlers/capital.ts publishCapitalEvent().
+        if (notif.source === 'capital') {
+          queryClient.invalidateQueries({ queryKey: ['capital'] });
+        }
         addNotification({
           type: (notif.type as 'info' | 'success' | 'warning' | 'error') || 'info',
           title: notif.title || 'New notification',
@@ -102,6 +108,28 @@ export function useRealtimeSync() {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'naos_culture_snapshot' }, () => {
         queryClient.invalidateQueries({ queryKey: ['naos', 'culture'] });
+      })
+      // ── Capital (real-time round, commitment, distribution updates) ──
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'capital_rounds' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['capital', 'rounds'] });
+        queryClient.invalidateQueries({ queryKey: ['capital', 'round'] });
+        queryClient.invalidateQueries({ queryKey: ['capital', 'global-summary'] });
+        queryClient.invalidateQueries({ queryKey: ['capital', 'venture-summary'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'capital_commitments' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['capital', 'commitments'] });
+        queryClient.invalidateQueries({ queryKey: ['capital', 'commitments-by-round'] });
+        queryClient.invalidateQueries({ queryKey: ['capital', 'global-summary'] });
+        queryClient.invalidateQueries({ queryKey: ['capital', 'venture-summary'] });
+        queryClient.invalidateQueries({ queryKey: ['capital', 'pipeline-funnel'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'capital_distributions' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['capital', 'distributions'] });
+        queryClient.invalidateQueries({ queryKey: ['capital', 'distribution'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'capital_activities' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['capital', 'activities'] });
+        queryClient.invalidateQueries({ queryKey: ['capital', 'recent-activities'] });
       })
       // ── Commerce ──
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
