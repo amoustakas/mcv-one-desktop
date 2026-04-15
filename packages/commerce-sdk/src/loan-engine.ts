@@ -28,30 +28,14 @@ import type {
 
 // ─── Adapter (same 3-method shape as the other ledger-backed factories) ─
 
-export interface LedgerAccountRef { id: string }
-export interface LedgerJournalEntryRef { id: string }
-
-export interface LedgerJournalEntryInput {
-  ventureId: string;
-  entryDate: string;
-  description: string;
-  sourceType: string;
-  sourceId: string;
-  lines: Array<{
-    accountId: string;
-    debitAmount: number;
-    creditAmount: number;
-    currency?: string;
-    exchangeRate?: number;
-    dimensions?: Record<string, string | undefined>;
-  }>;
-}
-
-export interface LedgerAdapter {
-  getAccountByCode(ventureId: string, code: string): Promise<LedgerAccountRef | null>;
-  createJournalEntry(input: LedgerJournalEntryInput): Promise<LedgerJournalEntryRef>;
-  postJournalEntry(entryId: string, postedBy: string): Promise<unknown>;
-}
+// Shared ledger contract — see @mcv/ledger-sdk/adapter.
+import type { LedgerAdapter, LedgerJournalEntryInput } from '@mcv/ledger-sdk';
+export type {
+  LedgerAccountRef,
+  LedgerJournalEntryRef,
+  LedgerJournalEntryInput,
+  LedgerAdapter,
+} from '@mcv/ledger-sdk';
 
 // ─── Pure helpers (exported) ───────────────────────────────────────────
 

@@ -39,31 +39,16 @@ import {
 } from './types';
 
 // ─── Adapter ────────────────────────────────────────────────────────────
+// Shared contract lives in @mcv/ledger-sdk — re-exported here so anyone
+// importing from this subpath keeps working.
 
-export interface LedgerAccountRef { id: string }
-export interface LedgerJournalEntryRef { id: string }
-
-export interface LedgerJournalEntryInput {
-  ventureId: string;
-  entryDate: string;
-  description: string;
-  sourceType: string;
-  sourceId: string;
-  lines: Array<{
-    accountId: string;
-    debitAmount: number;
-    creditAmount: number;
-    currency?: string;
-    exchangeRate?: number;
-    dimensions?: Record<string, string | undefined>;
-  }>;
-}
-
-export interface LedgerAdapter {
-  getAccountByCode(ventureId: string, code: string): Promise<LedgerAccountRef | null>;
-  createJournalEntry(input: LedgerJournalEntryInput): Promise<LedgerJournalEntryRef>;
-  postJournalEntry(entryId: string, postedBy: string): Promise<unknown>;
-}
+import type { LedgerAdapter } from '@mcv/ledger-sdk';
+export type {
+  LedgerAccountRef,
+  LedgerJournalEntryRef,
+  LedgerJournalEntryInput,
+  LedgerAdapter,
+} from '@mcv/ledger-sdk';
 
 // ─── Chart-of-accounts codes used by this engine ───────────────────────
 

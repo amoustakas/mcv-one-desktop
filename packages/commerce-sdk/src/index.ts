@@ -100,4 +100,9 @@ export type {
   ConversationalCheckoutSummary,
 } from './checkout-service';
 
-export const MCV_COMMERCE_SDK_VERSION = '0.18.0' as const;
+// Top-level bundle factory — wire all 17 services in one call.
+// Subpath factories above remain available for partial / tree-shaken usage.
+export { createCommerceEngine } from './create-commerce-engine';
+export type { CommerceEngine, CommerceEngineOpts } from './create-commerce-engine';
+
+export const MCV_COMMERCE_SDK_VERSION = '0.19.0' as const;

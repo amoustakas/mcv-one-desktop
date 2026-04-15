@@ -13,5 +13,6 @@ export * from './chart-of-accounts';
 export * from './service';
 export * from './credit-service';
 export * from './engine';
+export * from './adapter';
 
 export const MCV_LEDGER_SDK_VERSION = '0.1.0' as const;
