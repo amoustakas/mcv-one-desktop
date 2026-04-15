@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Activity, Package, Globe, FileText, Target, Shield } from 'lucide-react';
-import { GlassCard } from '../ui';
+import { Activity, Package, Globe, FileText, Target, Shield, MessageSquare } from 'lucide-react';
+import { GlassCard, Button } from '../ui';
 import { apiPost } from '../../lib/api/client';
 import { summarizeSnapshot, healthColor, type SnapshotSummary } from '../../lib/ventures/snapshot';
 import type { Venture } from '../../lib/ventures';
+import { useNavigation } from '../../stores/navigation';
+import { useChatStore } from '../../stores/chat';
 
 // Human-visible rendering of the same composite state the venture_snapshot
 // NAOS tool returns — reuses summarizeSnapshot() so the health-score math
@@ -24,6 +26,22 @@ export default function VentureSnapshotCard({ venture }: Props) {
   const [summary, setSummary] = useState<SnapshotSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const chatDocked = useNavigation(s => s.chatDocked);
+  const toggleChatDock = useNavigation(s => s.toggleChatDock);
+  const setChatVenture = useNavigation(s => s.setChatVenture);
+  const setInputText = useChatStore(s => s.setInputText);
+
+  // "Ask Aegis" — pre-scopes the chat to this venture, pre-fills the prompt
+  // with a question grounded in the live snapshot, and opens the chat dock
+  // if it isn't already. User hits Enter to send. Uses existing chat store +
+  // nav primitives rather than a new chat surface.
+  function askAegisAboutVenture() {
+    if (!summary) return;
+    setChatVenture(venture.id);
+    const prompt = buildSnapshotPrompt(venture, summary);
+    setInputText(prompt);
+    if (!chatDocked) toggleChatDock();
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -141,14 +159,40 @@ export default function VentureSnapshotCard({ venture }: Props) {
         </div>
       </div>
 
-      <div className="vsc-weights">
-        <Shield size={11} style={{ color: 'var(--text-muted)' }} />
-        <span>Health is 40% quests · 25% assets · 20% docs · 15% domains</span>
+      <div className="vsc-footer">
+        <div className="vsc-weights">
+          <Shield size={11} style={{ color: 'var(--text-muted)' }} />
+          <span>Health is 40% quests · 25% assets · 20% docs · 15% domains</span>
+        </div>
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={<MessageSquare size={12} />}
+          onClick={askAegisAboutVenture}
+          title="Ask Aegis about this venture with live snapshot context"
+        >
+          Ask Aegis
+        </Button>
       </div>
 
       <style>{styles}</style>
     </GlassCard>
   );
+}
+
+function buildSnapshotPrompt(venture: Venture, s: SnapshotSummary): string {
+  const tier = s.tier ? `Tier ${s.tier}` : 'Tier unset';
+  const clerk = s.clerk_provisioned ? 'dedicated Clerk tenant' : 'shared root org';
+  const depts = Object.entries(s.docs.byDept).map(([d, n]) => `${d}=${n}`).join(', ') || 'no docs yet';
+
+  return `About **${venture.name}** (${venture.id}) — current snapshot:
+- Health: ${s.health_score}/100 · ${tier} · ${s.status} · ${clerk}
+- Quests: ${s.quests.done}/${s.quests.total} done (${s.quests.pct}%), ${s.quests.in_progress} in-progress
+- Assets: ${s.assets.confirmed} confirmed, ${s.assets.discovered} pending review
+- Domains: ${s.domains.verified} verified, ${s.domains.pending} pending DNS
+- Docs: ${s.docs.total} total across ${Object.keys(s.docs.byDept).length} depts (${depts})
+
+Based on this state, what are the 3 highest-leverage things I should tackle next for ${venture.name}? Consult the relevant departments if helpful.`;
 }
 
 function Tile({ icon, label, primary, secondary, accent }: { icon: React.ReactNode; label: string; primary: string; secondary: string; accent: string }) {
@@ -184,5 +228,6 @@ const styles = `
   .vsc-tile-head { display: flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
   .vsc-tile-primary { font-size: 16px; font-weight: 700; color: var(--text-primary); font-family: var(--font-display); line-height: 1.2; }
   .vsc-tile-secondary { font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); }
-  .vsc-weights { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); padding-top: 8px; border-top: 1px solid var(--border); }
+  .vsc-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 8px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+  .vsc-weights { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); flex: 1; min-width: 200px; }
 `;
