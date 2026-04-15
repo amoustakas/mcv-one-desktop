@@ -224,11 +224,16 @@ export default function FabricEventsView() {
               <Loader2 size={14} className="mcv-spin" /> Querying Fabric...
             </div>
           ) : error ? (
-            <EmptyState icon={<AlertCircle size={32} />} title="Fabric query failed" description={error}>
-              <Button variant="secondary" size="sm" icon={<RefreshCw size={13} />} onClick={() => { void load(); }}>
-                Retry
-              </Button>
-            </EmptyState>
+            <EmptyState
+              icon={<AlertCircle size={32} />}
+              title="Fabric query failed"
+              description={error}
+              action={
+                <Button variant="secondary" size="sm" icon={<RefreshCw size={13} />} onClick={() => { void load(); }}>
+                  Retry
+                </Button>
+              }
+            />
           ) : entries.length === 0 ? (
             <EmptyState
               icon={<Radio size={32} />}
