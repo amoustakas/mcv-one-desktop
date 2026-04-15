@@ -32,6 +32,7 @@ export interface TaxCalculationResult {
 
 export interface TaxAdapter {
   calculateTax(input: {
+    ventureId: string;
     customerLocation: {
       country: string;
       state?: string | undefined;
@@ -47,7 +48,7 @@ export interface TaxAdapter {
     }>;
     shippingAmount?: number;
     discountAmount?: number;
-    isB2B?: boolean;
+    isB2B: boolean;
   }): Promise<TaxCalculationResult>;
 }
 
@@ -205,7 +206,7 @@ export function createCartService({ supabase, tax, product }: CartServiceOptions
 
     const { data: cartRow, error: cartError } = await supabase
       .from('cart_sessions')
-      .select('applied_discounts, shipping_address, shipping_total, currency')
+      .select('venture_id, applied_discounts, shipping_address, shipping_total, currency')
       .eq('id', cartId)
       .single();
     if (cartError) throw new Error(`Failed to fetch cart for recalculation: ${cartError.message}`);
@@ -223,6 +224,7 @@ export function createCartService({ supabase, tax, product }: CartServiceOptions
     if (shippingAddress && items.length > 0) {
       const taxResult = await tax
         .calculateTax({
+          ventureId: cartRow.venture_id as string,
           customerLocation: {
             country: shippingAddress.country,
             state: shippingAddress.state,

@@ -27,9 +27,11 @@ const ledger: LedgerAdapter = {
 
 const payments: PaymentRouterAdapter = {
   // The PaymentRouter singleton already returns { result, decision } —
-  // signature matches PaymentRouterAdapter.processPayment exactly.
+  // signature matches PaymentRouterAdapter.processPayment exactly. The
+  // payments-sdk has stricter unions (`paymentMethod` is a literal union
+  // vs the SDK adapter's `string | null`); cast at the boundary.
   processPayment: (req) => paymentRouter.processPayment(req as Parameters<typeof paymentRouter.processPayment>[0]),
-  estimateRoute: (input) => paymentRouter.estimateRoute(input),
+  estimateRoute: (input) => paymentRouter.estimateRoute(input as Parameters<typeof paymentRouter.estimateRoute>[0]),
 };
 
 const cart: CartAdapter = {

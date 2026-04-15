@@ -58,7 +58,7 @@ export interface PaymentResult {
   status: string;
   error?: string | null;
   processorId: string;
-  processorPaymentId: string;
+  processorPaymentId: string | null;
   fee: { totalFee: number };
 }
 
@@ -311,21 +311,23 @@ export function createCheckoutService({
     }
 
     // 5. Transaction audit row — non-fatal on failure.
-    await supabase.from('transactions').insert({
-      venture_id: ventureId,
-      order_id: orderId,
-      payment_id: paymentResult.paymentId,
-      processor_id: paymentResult.processorId,
-      processor_payment_id: paymentResult.processorPaymentId,
-      amount: total,
-      currency,
-      status: paymentResult.status,
-      fee: paymentResult.fee.totalFee,
-      metadata: {
-        rail: decision.primaryRail,
-        reasoning: decision.reasoning,
-      },
-    }).then(() => null).catch(() => null);
+    void Promise.resolve(
+      supabase.from('transactions').insert({
+        venture_id: ventureId,
+        order_id: orderId,
+        payment_id: paymentResult.paymentId,
+        processor_id: paymentResult.processorId,
+        processor_payment_id: paymentResult.processorPaymentId,
+        amount: total,
+        currency,
+        status: paymentResult.status,
+        fee: paymentResult.fee.totalFee,
+        metadata: {
+          rail: decision.primaryRail,
+          reasoning: decision.reasoning,
+        },
+      }),
+    ).catch(() => undefined);
 
     // 6. Ledger entry: DR 1010 Cash / CR 4000 Revenue. Swallowed — ledger
     //    outages or missing accounts shouldn't block order confirmation.
@@ -379,12 +381,14 @@ export function createCheckoutService({
     }
 
     // 8. Fire-and-forget order-confirmation notification.
-    supabase.from('notification_queue').insert({
-      venture_id: ventureId,
-      event: 'order.confirmed',
-      customer_id: customerId ?? null,
-      payload: { orderId, total, currency },
-    }).then(() => null).catch(() => null);
+    void Promise.resolve(
+      supabase.from('notification_queue').insert({
+        venture_id: ventureId,
+        event: 'order.confirmed',
+        customer_id: customerId ?? null,
+        payload: { orderId, total, currency },
+      }),
+    ).catch(() => undefined);
 
     return {
       orderId,

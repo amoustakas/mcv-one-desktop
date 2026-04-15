@@ -792,7 +792,7 @@ export default function CRMView() {
                           whileHover={{ y: -2, boxShadow: '0 4px 20px rgba(0,245,255,0.08)' }}
                           transition={{ duration: 0.15 }}
                           draggable
-                          onDragStart={(e) => { setDraggingDealId(d.id); e.dataTransfer.effectAllowed = 'move'; }}
+                          onDragStart={(e) => { setDraggingDealId(d.id); (e as unknown as React.DragEvent).dataTransfer.effectAllowed = 'move'; }}
                           onDragEnd={() => { setDraggingDealId(null); setDealDropTarget(null); }}
                         >
                           <GlassCard className={cn('crm-deal-card', selectedDealIds.includes(d.id) && 'crm-deal-card-selected', draggingDealId === d.id && 'crm-deal-card-dragging')}>
