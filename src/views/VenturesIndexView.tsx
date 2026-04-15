@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
-import { Plus, Layers, GitCompare, Check, X, FileText, ChevronUp, Loader2 } from 'lucide-react';
+import { Plus, Layers, GitCompare, Check, X, FileText, ChevronUp, Loader2, Building2, AlertTriangle } from 'lucide-react';
 import { PageShell, PageHeader, GlassCard, Badge, Button, Toggle } from '../components/ui';
 import { ventures as builtinVentures, type Venture, type VentureTier } from '../lib/ventures';
 import { apiPost } from '../lib/api/client';
@@ -45,6 +45,9 @@ export default function VenturesIndexView({ onSelect, onNew }: VenturesIndexProp
   const [applyResult, setApplyResult] = useState<{ dept: Department; success: number; total: number; docs: number } | null>(null);
   const applyMenuRef = useRef<HTMLDivElement>(null);
   const [contextMenu, setContextMenu] = useState<{ venture: Venture; x: number; y: number } | null>(null);
+  const [promoteDialogOpen, setPromoteDialogOpen] = useState(false);
+  const [promoting, setPromoting] = useState(false);
+  const [promoteResult, setPromoteResult] = useState<{ success: number; skipped: number; failed: number } | null>(null);
 
   // Exit compare mode cleans selection so the next entry starts fresh
   function toggleCompareMode() {
@@ -115,6 +118,45 @@ export default function VenturesIndexView({ onSelect, onNew }: VenturesIndexProp
     document.addEventListener('mousedown', onClick);
     return () => document.removeEventListener('mousedown', onClick);
   }, [applyMenuOpen]);
+
+  async function bulkPromoteToTenants() {
+    if (selected.size === 0 || promoting) return;
+    setPromoting(true);
+    setPromoteDialogOpen(false);
+    setPromoteResult(null);
+    const ids = [...selected];
+
+    // Skip ventures that already have a clerk_org_id — provision-org is
+    // idempotent server-side but this avoids noise in the result count.
+    // Ventures with a dedicated org still show the "Tenant" badge on the card.
+    const toPromote = ids.filter(id => !remote?.find(v => v.id === id)?.clerkOrgId);
+    const skipped = ids.length - toPromote.length;
+
+    const results = await Promise.all(toPromote.map(venture_id =>
+      apiPost<{ clerk_org_id: string }>('/api/ventures', {
+        action: 'provision-org',
+        venture_id,
+        mirror_members: true,
+      }).then(() => ({ ok: true as const }))
+        .catch(() => ({ ok: false as const }))
+    ));
+
+    const success = results.filter(r => r.ok).length;
+    const failed = results.length - success;
+    setPromoting(false);
+    setPromoteResult({ success, skipped, failed });
+
+    // Refresh ventures list so new clerk_org_id values populate + Tenant
+    // badges appear on the newly-promoted cards
+    try {
+      const data = await apiPost<{ ventures: Venture[] }>('/api/ventures', { action: 'list' });
+      setRemote(data.ventures || []);
+    } catch {
+      // ignore
+    }
+
+    setTimeout(() => setPromoteResult(null), 10000);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -277,12 +319,57 @@ export default function VenturesIndexView({ onSelect, onNew }: VenturesIndexProp
 
           <Button
             size="sm"
+            variant="ghost"
+            icon={promoting ? <Loader2 size={12} className="vix-spin" /> : <Building2 size={12} />}
+            onClick={() => setPromoteDialogOpen(true)}
+            disabled={promoting || selected.size === 0}
+            title="Promote selected ventures to dedicated Clerk tenants"
+          >
+            {promoting ? 'Promoting…' : 'Promote to tenant'}
+          </Button>
+
+          <Button
+            size="sm"
             icon={<GitCompare size={12} />}
             onClick={openCompare}
             disabled={selected.size < 2}
           >
             Compare {selected.size}
           </Button>
+        </div>
+      )}
+
+      {promoteDialogOpen && (
+        <>
+          <div className="vix-modal-backdrop" onClick={() => setPromoteDialogOpen(false)} />
+          <div className="vix-modal" role="dialog" aria-modal="true">
+            <div className="vix-modal-head">
+              <AlertTriangle size={16} style={{ color: '#F59E0B' }} />
+              <div className="vix-modal-title">Promote {selected.size} venture{selected.size === 1 ? '' : 's'} to dedicated tenants?</div>
+            </div>
+            <div className="vix-modal-body">
+              <p>Each selected venture will get its own Clerk organization. Current members with access to the venture will be mirrored into the new org. The venture's RLS scope flips from shared root to org-isolated.</p>
+              <p className="vix-modal-note">Ventures already promoted are skipped automatically. This is idempotent server-side but not trivially reversible — unlink via venture settings if needed.</p>
+            </div>
+            <div className="vix-modal-actions">
+              <Button variant="ghost" size="sm" onClick={() => setPromoteDialogOpen(false)}>Cancel</Button>
+              <Button size="sm" icon={<Building2 size={12} />} onClick={bulkPromoteToTenants}>
+                Promote {selected.size}
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {promoteResult && (
+        <div className="vix-apply-toast" role="status">
+          <Check size={13} style={{ color: promoteResult.failed === 0 ? '#10B981' : '#F59E0B' }} />
+          <span>
+            Promoted <strong>{promoteResult.success}</strong> venture{promoteResult.success === 1 ? '' : 's'} to dedicated tenants
+            {promoteResult.skipped > 0 && ` · ${promoteResult.skipped} already provisioned`}
+            {promoteResult.failed > 0 && ` · ${promoteResult.failed} failed`}
+          </span>
+          <button className="vix-toast-close" onClick={() => setPromoteResult(null)}><X size={12} /></button>
         </div>
       )}
 
@@ -340,6 +427,15 @@ export default function VenturesIndexView({ onSelect, onNew }: VenturesIndexProp
         .vix-apply-toast strong { font-weight: 700; color: var(--cyan); text-transform: capitalize; }
         .vix-toast-close { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 2px; display: flex; align-items: center; }
         .vix-toast-close:hover { color: var(--text-primary); }
+        .vix-modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); z-index: var(--z-overlay, 2000); backdrop-filter: blur(2px); animation: vix-fade-in 0.15s ease-out; }
+        @keyframes vix-fade-in { from { opacity: 0; } to { opacity: 1; } }
+        .vix-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(480px, 90vw); background: var(--bg-shell); border: 1px solid var(--border-active); border-radius: var(--radius-md); box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6); z-index: var(--z-modal, 3000); padding: 20px; animation: vix-modal-in 0.18s ease-out; }
+        @keyframes vix-modal-in { from { transform: translate(-50%, -46%); opacity: 0; } to { transform: translate(-50%, -50%); opacity: 1; } }
+        .vix-modal-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+        .vix-modal-title { font-size: 14px; font-weight: 700; color: var(--text-primary); font-family: var(--font-display); }
+        .vix-modal-body p { font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin: 0 0 10px; }
+        .vix-modal-note { color: var(--text-muted); font-size: 11px; }
+        .vix-modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; border-top: 1px solid var(--border); padding-top: 14px; }
         .vix-card-head { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px; }
         .vix-icon { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-md); font-weight: 800; color: var(--bg-deep); font-size: 16px; font-family: var(--font-display); flex-shrink: 0; }
         .vix-title-col { flex: 1; min-width: 0; }
