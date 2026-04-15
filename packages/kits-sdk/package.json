@@ -22,6 +22,7 @@
   "files": ["src"],
   "dependencies": {
     "@mcv/ad-specs-sdk": "*",
+    "@mcv/capital-sdk": "*",
     "@mcv/mcp-sdk": "*",
     "@mcv/payments-sdk": "*",
     "@mcv/storage-sdk": "*",

@@ -549,3 +549,27 @@ pre {
 /* Portrait monitors: optimize for vertical scroll */
 [data-screen-class="portrait"] .app-content { overflow-y: auto; }
 [data-screen-class="portrait"] .mcv-page-header { position: sticky; top: 0; z-index: 5; background: var(--bg-deep); }
+
+/* ── EdgeIQ Capital — stage + lane tokens ── */
+:root {
+  --capital-stage-cold: #6B7280;
+  --capital-stage-warm: #F59E0B;
+  --capital-stage-engaged: #00F0FF;
+  --capital-stage-soft-commit: #8B5CF6;
+  --capital-stage-due-diligence: #A78BFA;
+  --capital-stage-signed: #3B82F6;
+  --capital-stage-funded: #10B981;
+  --capital-stage-active-investor: #34D399;
+  --capital-stage-churned: #EF4444;
+  --capital-stage-dormant: #4B5563;
+
+  --capital-lane-equity: #00F0FF;
+  --capital-lane-token: #8B5CF6;
+  --capital-lane-hybrid: linear-gradient(90deg, #00F0FF 0%, #8B5CF6 100%);
+
+  --capital-status-draft: #6B7280;
+  --capital-status-open: #10B981;
+  --capital-status-closing: #F59E0B;
+  --capital-status-closed: #3B82F6;
+  --capital-status-funded: #00F0FF;
+}
