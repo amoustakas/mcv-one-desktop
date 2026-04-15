@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "buildCommand": "cd ../.. && npm install && cd apps/launchpad && npm run build",
+  "installCommand": "echo 'deferred to buildCommand (monorepo root install required)'",
+  "outputDirectory": ".next",
+  "devCommand": "next dev --port 3200"
+}
