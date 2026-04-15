@@ -199,6 +199,54 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.json({ commitments });
       }
       case 'create-commitment': {
+        const commitmentInput = params.commitment as {
+          contactId: string;
+          roundId: string;
+          [k: string]: unknown;
+        };
+
+        // VC gate (Epic 11 Story 5): if the round requires accreditation and
+        // the investor profile has a VC on file, verify it. Non-accredited
+        // status or invalid signatures are rejected. No VC on file =
+        // allowed in dev (backwards-compat) but flagged in activity log.
+        const round = await engine.rounds.getRound(commitmentInput.roundId);
+        if (round?.accreditedOnly) {
+          const { data: profile } = await supabase
+            .from('capital_investor_profile')
+            .select('metadata')
+            .eq('contact_id', commitmentInput.contactId)
+            .maybeSingle();
+          const vc = (profile?.metadata as { vc?: unknown } | null)?.vc as Record<string, unknown> | undefined;
+          if (!vc) {
+            if (process.env.NODE_ENV === 'production') {
+              return res.status(403).json({
+                error: 'Round requires accredited investors; no credential on file',
+                code: 'VC_REQUIRED',
+              });
+            }
+            // Dev: allow but log
+            console.warn(`[capital] commit without VC on accreditedOnly round ${round.id} (allowed in ${process.env.NODE_ENV})`);
+          } else {
+            const { verifyAccreditationCredential } = await import('../../src/lib/capital/vc-issuer');
+            const vr = verifyAccreditationCredential(vc as never);
+            if (!vr.ok) {
+              return res.status(403).json({
+                error: `Accreditation credential invalid: ${vr.reason ?? 'unknown'}`,
+                code: 'VC_INVALID',
+                expired: vr.expired,
+                unsigned: vr.unsigned,
+              });
+            }
+            const subj = (vc as { credentialSubject?: { accreditationStatus?: string } }).credentialSubject;
+            if (subj?.accreditationStatus === 'non_accredited') {
+              return res.status(403).json({
+                error: 'Round requires accredited investors; credential shows non_accredited',
+                code: 'VC_NOT_ACCREDITED',
+              });
+            }
+          }
+        }
+
         const commitment = await engine.commitments.createCommitment(params.commitment as never);
         await engine.activities.recordActivity({
           ventureId: commitment.ventureId,
