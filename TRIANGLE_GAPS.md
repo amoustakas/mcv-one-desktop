@@ -44,30 +44,23 @@ existing Clerk users into Identity. Currently no migration code path.
 
 ## P1 — Intelligence shape mismatches
 
-### Wire-format mismatch between local `@mcv/core-triangle` and real Triangle SDKs
-**Observation.** The local `packages/core-triangle/src/*.ts` clients were
-written speculatively before the real Triangle services shipped. The local
-clients call paths like `/v1/chat/stream`, `/v1/events/publish`,
-`/v1/session`. The real SDKs in
-`mcv-core-triangle/packages/{identity,fabric,intelligence}-sdk/src/`
-expose differently-shaped methods (e.g. `chatStream(req)` returns an
-async generator of `{id, delta, finishReason?, model}` chunks; Fabric
-`publishEvent({topic,type,source,...})` rather than `publish({topic,
-payload, ...})`).
+### ~~Wire-format mismatch~~ RESOLVED (2026-04-15)
+**Status.** Closed. `packages/core-triangle/src/{http,identity,fabric,intelligence}.ts`
+were rewritten to speak the real Triangle HTTP contract:
+  - Intelligence: `POST /chat`, `POST /chat/stream` (SSE: `event: chunk|done`,
+    `data: {id,delta,model,finishReason?}`, terminal `data: [DONE]`),
+    `POST /rag/query`, `GET /health`.
+  - Fabric: `POST /events` (shape `{topic,type,source,ventureId,data,correlationId?,metadata?}`),
+    `POST /audit`, `GET /audit`, `GET /health`.
+  - Identity: `GET /users/me`, `GET /ventures`, `GET /health`.
+  - `coreHttp` now unwraps the universal `{data: ...}` success envelope.
 
-**Status.** Both implementations are real, but they don't speak the same
-wire protocol.
+Public method surface on the local clients (`chat`, `chatStream`, `publish`,
+`audit`, `session`, `tenants`) is preserved — consumers (the hook, chat.ts
+handler, useFabricAudit) continue to compile without changes. See
+`mcv-one-desktop` commit: `refactor(core-triangle): align wire format...`.
 
-**Wired here.** We use the local `@mcv/core-triangle` shape exclusively.
-Verification step 5 (chat works end-to-end) WILL FAIL until either:
-  (a) the Triangle services adopt the local client's URL/shape, OR
-  (b) we rewrite `packages/core-triangle/src/*.ts` to match the real
-      SDK shape (much larger PR).
-
-**Recommendation.** Option (b) is the right long-term path. File a
-follow-up issue: "Align `@mcv/core-triangle` HTTP client with the real
-Triangle SDK wire format." Block on it before deploying to anything
-beyond local-dev.
+**Sub-gaps discovered during alignment (see below).**
 
 ---
 
@@ -106,6 +99,59 @@ is blocking and returns `{ runId, status, finalMessage }`.
 partly because of this gap. Documented in `MCV_INTEGRATION.md`.
 
 ---
+
+### SSE stream omits usage + toolCalls mid-flight
+**Observation.** The real Intelligence `/chat/stream` SSE protocol emits
+only `{id, delta, model, finishReason?}` per chunk and terminates with
+`[DONE]`. There is no final `{response: ChatResponse}` envelope carrying
+token counts, cost, or `tool_use` blocks.
+
+**Wired here.** `chatStream()` synthesizes a `ChatResponse` by accumulating
+deltas + reading `finishReason` from the last chunk; `usage` is zeroed
+and `toolCalls` is omitted on the streaming path. Non-streaming `/chat`
+still returns full usage + toolCalls in `metadata`.
+
+**Impact.** Per-stream cost auditing in `chat.ts` (`publishChatAudit` for
+`chat.completed` via Intelligence) will record `inputTokens: 0,
+outputTokens: 0, costUsd: 0`. Non-streaming is accurate. Flag for the
+Triangle team: consider adding a final SSE `event: summary` chunk that
+carries `{usage, toolCalls, metadata}`.
+
+### Embeddings endpoint not public
+**Need.** The legacy `Intelligence.embed({texts, taskType})` maps to
+Google `text-embedding-004` (what MCV Desktop's RAG uses). Real
+Intelligence SDK has no public embeddings method.
+
+**Wired here.** `embed()` returns `CoreNotAvailableError`. MCV Desktop
+continues to call Google's embedding SDK directly via `api/_handlers/_embeddings.ts`.
+
+### Fabric Jobs surface absent from public SDK
+**Observation.** `enqueueJob`/`getJob`/`getJobStats` exist on the Fabric
+internal SDK surface but aren't part of the public HTTP SDK contract the
+local client aligns to.
+
+**Wired here.** `enqueue()` returns `CoreNotAvailableError`. No caller in
+mcv-one-desktop currently uses jobs.
+
+### Fabric storage contract divergence
+**Observation.** Legacy local client had `storagePut(bucket, key,
+bodyBase64)` and `storageGetUrl(bucket, key)`. Real Fabric SDK has
+`uploadFile`, `getSignedUrl`, `deleteFile`, `listFiles` — different
+shape (buckets are fixed enum: avatars/documents/exports/assets/uploads),
+different auth model (presigned upload).
+
+**Wired here.** `storagePut` / `storageGetUrl` return `CoreNotAvailableError`.
+MCV Desktop's current storage writes go through Supabase + S3 directly;
+migration to Fabric storage is a future task.
+
+### Identity RBAC `can()` not exposed publicly
+**Observation.** RBAC check exists only on the Identity internal gRPC
+client (`checkPermission`). Public HTTP SDK has no `/rbac/check` route.
+
+**Wired here.** `can()` returns `CoreNotAvailableError`. Callers should
+fall back to client-side role checks by reading `session().roles` and
+`session().tenants`. Low impact: only a convenience wrapper
+(`canOrFallback`) was using it.
 
 ## P2 — Fabric / observability
 

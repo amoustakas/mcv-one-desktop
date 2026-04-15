@@ -70,14 +70,32 @@ export async function listKits(): Promise<RegistryKit[]> {
   return data.kits;
 }
 
+/**
+ * Optional audit callback for kit lifecycle events. Plain-TS callers that
+ * have access to an audit publisher (e.g. a React component passing
+ * `useFabricAudit()`'s return value) can thread it through install/uninstall
+ * so every kit lifecycle event lands in the observability pipeline
+ * without the SDK taking a hard dependency on Fabric.
+ *
+ * Fire-and-forget; the SDK never awaits it and errors are swallowed.
+ */
+export type RegistryAuditFn = (type: string, data?: Record<string, unknown>) => void;
+
+function safeAudit(fn: RegistryAuditFn | undefined, type: string, data?: Record<string, unknown>): void {
+  if (!fn) return;
+  try { fn(type, data); } catch { /* audit must never break kit ops */ }
+}
+
 /** Install a kit for the current user */
-export async function installKit(kitId: string): Promise<void> {
+export async function installKit(kitId: string, onAudit?: RegistryAuditFn): Promise<void> {
   await postRegistry({ action: 'install', kitId });
+  safeAudit(onAudit, 'kit.installed', { kitId });
 }
 
 /** Uninstall a kit */
-export async function uninstallKit(kitId: string): Promise<void> {
+export async function uninstallKit(kitId: string, onAudit?: RegistryAuditFn): Promise<void> {
   await postRegistry({ action: 'uninstall', kitId });
+  safeAudit(onAudit, 'kit.uninstalled', { kitId });
 }
 
 /** List user's installed kits */

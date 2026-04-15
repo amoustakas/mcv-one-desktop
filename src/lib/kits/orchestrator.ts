@@ -165,8 +165,37 @@ export class AgentOrchestrator extends SdkAgentOrchestrator {
     systemPrompt: string;
     context: KitExecutionContext;
     model?: string;
+    /**
+     * Optional Fabric audit callback — fired on every tool dispatch.
+     * Wired per-instance (not module-level) so the React-bound useFabricAudit()
+     * callback from the calling component carries through to this plain-TS site.
+     * Fire-and-forget; must not block the tool execution path.
+     */
+    onToolCallAudit?: (kitId: string, toolName: string) => void;
   }) {
-    super({ ...config, adapters: appAdapters });
+    let perInstanceAdapters: OrchestratorAdapters = appAdapters;
+    if (config.onToolCallAudit) {
+      const onAudit = config.onToolCallAudit;
+      const baseTelemetry = appAdapters.telemetry;
+      if (baseTelemetry) {
+        perInstanceAdapters = {
+          ...appAdapters,
+          telemetry: {
+            addStep: baseTelemetry.addStep.bind(baseTelemetry),
+            recordToolResult: baseTelemetry.recordToolResult.bind(baseTelemetry),
+            recordToolDispatch: (kitId: string, toolName: string) => {
+              baseTelemetry.recordToolDispatch(kitId, toolName);
+              try {
+                onAudit(kitId, toolName);
+              } catch {
+                // audit must never break tool dispatch
+              }
+            },
+          },
+        };
+      }
+    }
+    super({ ...config, adapters: perInstanceAdapters });
   }
 }
 

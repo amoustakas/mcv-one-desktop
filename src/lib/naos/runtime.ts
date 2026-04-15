@@ -19,6 +19,8 @@ interface RunConfig {
   callbacks: OrchestratorCallbacks;
   maxToolRounds?: number;
   files?: UploadedFile[];
+  /** Optional Fabric audit callback; threaded into the orchestrator's tool-dispatch adapter. */
+  onToolCallAudit?: (kitId: string, toolName: string) => void;
 }
 
 export class AgentRuntime {
@@ -139,6 +141,7 @@ export class AgentRuntime {
         fetch: globalThis.fetch,
       },
       model: modelId,
+      onToolCallAudit: config.onToolCallAudit,
     });
 
     const maxRounds = config.maxToolRounds ?? agent.capabilities.maxToolRounds;

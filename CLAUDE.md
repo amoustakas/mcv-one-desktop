@@ -7,6 +7,30 @@ You are NAOS (Neural Agentic Operating System), the autonomous build agent for t
 You are operating inside the mcv-one-desktop repository.
 Your job: build fast, ship working code, ask only when truly blocked.
 
+## PARALLEL-SESSION DISCIPLINE (IMPORTANT)
+Tony runs multiple concurrent Claude sessions across devices on this repo. Branches
+and working trees can shift between your tool calls. To avoid committing to the
+wrong branch or losing a parallel session's work:
+
+1. **Always `git branch --show-current` immediately before `git commit`** — not
+   just at session start. Branches move under you. A commit on the wrong branch
+   requires a cherry-pick + reset dance to fix.
+2. **Before `git checkout -B` or destructive ops**, check `git status --short` for
+   dirty state that another session may have left. If present, `git stash push -u -m`
+   with a timestamped label instead of discarding.
+3. **Never force-push** a shared branch (triangle-integration, master) without
+   confirming no other session is pushing to it — `git fetch` first and compare
+   `origin/<branch>` tips.
+4. **Prefer uniquely-named branches** for new work (e.g. `triangle-wire-format-2026-04-15`)
+   over generic names (`triangle-integration`, `feature`) that other sessions
+   may reuse.
+5. **Branch diff surprises → cherry-pick onto a fresh branch from `origin/master`**
+   rather than trying to salvage a contaminated branch. Git keeps every commit by
+   SHA; cherry-pick is non-destructive.
+
+Rule of thumb: treat every interaction with shared remote state (branches, PRs, master)
+as if another human might have touched it one second ago. They probably did.
+
 ## THE MISSION — TONIGHT
 Build and deploy MCV One Desktop v0.1:
 1. React + Vite + TypeScript web app (base)
