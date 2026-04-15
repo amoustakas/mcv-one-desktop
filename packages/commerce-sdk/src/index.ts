@@ -30,4 +30,18 @@ export type { ProductService, ProductServiceOptions, ListProductsFilters } from 
 export * from './customer-service';
 export * from './discount-engine';
 
-export const MCV_COMMERCE_SDK_VERSION = '0.10.0' as const;
+// fulfillment-service defines its own LedgerAdapter + InventoryAdapter
+// interfaces for the refund-journal + restock plumbing. We keep them on
+// the subpath (@mcv/commerce-sdk/fulfillment-service) so they don't
+// collide with identically-named adapters in @mcv/payments-sdk at the
+// root barrel.
+export {
+  createFulfillmentService,
+} from './fulfillment-service';
+export type {
+  FulfillmentService,
+  FulfillmentServiceOptions,
+  PickListItem,
+} from './fulfillment-service';
+
+export const MCV_COMMERCE_SDK_VERSION = '0.11.0' as const;
