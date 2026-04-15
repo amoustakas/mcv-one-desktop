@@ -13,7 +13,7 @@ export {
 } from '@mcv/kits-sdk/loader';
 
 // Built-in kits
-import { manifest as githubManifest, handlers as githubHandlers } from './builtin/github-kit';
+import { manifest as githubManifest, handlers as githubHandlers } from '@mcv/kits-sdk/builtin/github-kit';
 import { manifest as tasksManifest, handlers as tasksHandlers } from '@mcv/kits-sdk/builtin/tasks-kit';
 import { manifest as docsManifest, handlers as docsHandlers } from '@mcv/kits-sdk/builtin/docs-kit';
 import { manifest as crmManifest, handlers as crmHandlers } from '@mcv/kits-sdk/builtin/crm-kit';
@@ -118,7 +118,7 @@ import { manifest as epicManifest, handlers as epicHandlers } from '@mcv/kits-sd
 import { manifest as stripeConnectManifest, handlers as stripeConnectHandlers } from '@mcv/kits-sdk/builtin/stripe-connect-kit';
 // Department agents (Cassandra/Atlas/Nova/Mint/Vector/Helix) + cross-cutting intelligence
 import { departmentKits } from '@mcv/kits-sdk/builtin/department-kits';
-import { manifest as ventureIntelManifest, handlers as ventureIntelHandlers } from './builtin/venture-intelligence-kit';
+import { manifest as ventureIntelManifest, handlers as ventureIntelHandlers } from '@mcv/kits-sdk/builtin/venture-intelligence-kit';
 
 // ---------------------------------------------------------------------------
 // Local Kit Registry — hardcoded builtin list lives here because the 95+

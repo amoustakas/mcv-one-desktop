@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { __test } from '../builtin/venture-intelligence-kit';
+import { __test } from '@mcv/kits-sdk/builtin/venture-intelligence-kit';
 import { compareSnapshots, type ComparisonRow, type SnapshotSummary } from '../../ventures/snapshot';
 
 const { summarizeSnapshot, formatConsultMarkdown, renderSnapshotMarkdown, filterAndDedupeChunks, renderFindDocsMarkdown, renderCompareMarkdown } = __test;

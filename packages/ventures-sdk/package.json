@@ -1,0 +1,21 @@
+{
+  "name": "@mcv/ventures-sdk",
+  "version": "0.1.0",
+  "description": "MCV Ventures primitives — venture types (Venture, VentureAsset, VentureWhiteLabel, etc.) plus portable helper modules: asset-discovery (heuristic asset inference), snapshot (cross-time venture state diffing/comparison), white-label (custom domain + branding helpers). The actual venture data registry stays in app code; this SDK provides the contract + the operations.",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".":                   { "types": "./src/index.ts",              "default": "./src/index.ts" },
+    "./types":             { "types": "./src/types.ts",              "default": "./src/types.ts" },
+    "./asset-discovery":   { "types": "./src/asset-discovery.ts",    "default": "./src/asset-discovery.ts" },
+    "./snapshot":          { "types": "./src/snapshot.ts",           "default": "./src/snapshot.ts" },
+    "./white-label":       { "types": "./src/white-label.ts",        "default": "./src/white-label.ts" }
+  },
+  "files": ["src"],
+  "scripts": {
+    "lint": "echo 'no lint yet'",
+    "test": "echo 'no tests yet'"
+  }
+}
