@@ -17,10 +17,11 @@ every adapter should be incrementally growing toward the INTEROP shape.
 
 ## Shipped Adapters (2026-04-15)
 
-| ID        | Kind     | Direction      | File                                                                 |
-|-----------|----------|----------------|----------------------------------------------------------------------|
-| `plaid`   | payment  | inbound        | [src/lib/capital/adapters/plaid-adapter.ts](../../src/lib/capital/adapters/plaid-adapter.ts) |
-| `stripe`  | payment  | inbound        | [src/lib/capital/adapters/stripe-adapter.ts](../../src/lib/capital/adapters/stripe-adapter.ts) |
+| ID        | Kind        | Direction  | Event shape              | File                                                                 |
+|-----------|-------------|------------|--------------------------|----------------------------------------------------------------------|
+| `plaid`   | payment     | inbound    | `CapitalPaymentEvent`    | [src/lib/capital/adapters/plaid-adapter.ts](../../src/lib/capital/adapters/plaid-adapter.ts) |
+| `stripe`  | payment     | inbound    | `CapitalPaymentEvent`    | [src/lib/capital/adapters/stripe-adapter.ts](../../src/lib/capital/adapters/stripe-adapter.ts) |
+| `ofac`    | compliance  | inbound    | `CapitalComplianceEvent` | [src/lib/capital/adapters/ofac-adapter.ts](../../src/lib/capital/adapters/ofac-adapter.ts) |
 
 Outbound payment movement (distributions, payouts) does **not** live
 here — it routes through `@mcv/payments-sdk`'s `PaymentProcessor`
@@ -30,7 +31,7 @@ abstraction. See §"Where does this belong?" below.
 
 ## Where does this belong? (decision tree)
 
-```
+```text
 Is the integration moving money?
 ├─ YES  → @mcv/payments-sdk (PaymentProcessor)
 │          Examples: Stripe card/ACH outbound, Solana USDC, Coinbase.
@@ -130,7 +131,7 @@ so an admin can pick the right one.
 
 ## Webhook Wiring (inbound flow)
 
-```
+```text
 foreign webhook → your-webhook.ts
     │
     ├─ authenticate + emit to payment_events audit table
@@ -165,6 +166,59 @@ The cron notification dispatcher picks up the row and fans out to
 Slack/email/webhook channels configured per-user. When `FABRIC_URL` is
 set, the topic also publishes to the Fabric event bus for external
 subscribers (portal, investor apps).
+
+---
+
+## Compliance Adapters (non-payment inbound)
+
+OFAC (Epic 13 S6) is the first compliance adapter and proves the
+pattern for every future non-payment inbound screener (AccreditedInvestor
+verification, KYC vendors, consolidated-sanctions screeners).
+
+### CapitalComplianceEvent shape
+
+```typescript
+export interface CapitalComplianceEvent {
+  contactId: string;
+  outcome: 'clear' | 'match' | 'review';
+  score: number;                  // 0-1
+  source: string;                 // 'ofac' | 'verify-investor' | 'jumio' | ...
+  matchedRecord?: { name?; dob?; list?; programs?; sourceEntryId? };
+  screenedAt: string;
+  rawEvent: unknown;
+  matchDiagnostics: { strategy: string; threshold: number; alternates?: number };
+}
+```
+
+Compared to `CapitalPaymentEvent`, the shape is contact-scoped (no
+commitment, no amount) and returns a tri-state outcome instead of a
+match/null binary. `review` exists so name-only collisions (strong
+name match but DOB absent or disagreeing) can be surfaced without
+hard-blocking transactions.
+
+### reconcileCapitalCompliance helper
+
+[src/lib/capital/compliance-reconcile.ts](../../src/lib/capital/compliance-reconcile.ts) is the
+compliance-side counterpart to `reconcileCapitalPayment`. It:
+
+- Stamps `capital_investor_profile.metadata.compliance.<source>` with
+  the full event so downstream gates read one shape regardless of
+  vendor.
+- On `match` emits `capital.compliance.match` (notification type
+  `error`).
+- On `review` emits `capital.compliance.review_needed` (type `warning`).
+- On `clear` stamps silently — no notification noise.
+
+### Outcome → downstream gate (forward-looking)
+
+Gates aren't shipped yet, but the outcome enum is designed to be the
+single branch:
+
+| Outcome | Commit create | Distribution | Portal access |
+|---------|---------------|--------------|---------------|
+| clear   | allow         | allow        | allow         |
+| review  | allow w/ flag | allow w/ flag| allow         |
+| match   | 403 block     | 403 block    | read-only     |
 
 ---
 

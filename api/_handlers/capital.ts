@@ -401,6 +401,47 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         );
         return res.json({ profile });
       }
+      case 'screen-contact-ofac': {
+        // OFAC SDN screening (Epic 13 S6). Runs the contact's legal name
+        // (+ optional DOB) against the bundled OFAC seed list and stamps
+        // the result on capital_investor_profile.metadata.compliance.ofac.
+        // Follow-up PR will replace the seed with a supabase-backed
+        // ofac_sdn_entries cache refreshed nightly from the Treasury CSV.
+        const contactId = params.contact_id as string;
+        if (!contactId) return res.status(400).json({ error: 'contact_id required' });
+
+        const { data: contact } = await supabase
+          .from('crm_contacts')
+          .select('id, full_name, metadata')
+          .eq('id', contactId)
+          .maybeSingle();
+        if (!contact?.full_name) {
+          return res.status(404).json({ error: 'contact not found or missing full_name' });
+        }
+        const dob = (contact.metadata as { date_of_birth?: string } | null)?.date_of_birth
+          ?? (params.dob as string | undefined);
+
+        const { createOfacAdapter } = await import('../../src/lib/capital/adapters/ofac-adapter');
+        const { OFAC_SEED } = await import('../../src/lib/capital/adapters/ofac-seed');
+        const { reconcileCapitalCompliance } = await import('../../src/lib/capital/compliance-reconcile');
+
+        const adapter = createOfacAdapter({ sdnEntries: OFAC_SEED });
+        const event = await adapter.fromForeign({ contactId: contact.id, name: contact.full_name, dob });
+        const result = await reconcileCapitalCompliance(event, { supabase });
+        if (event && event.outcome !== 'clear') {
+          await publishCapitalEvent(
+            `capital.compliance.${event.outcome === 'match' ? 'match' : 'review_needed'}`,
+            `OFAC screening ${event.outcome} — ${contact.full_name}`,
+            {
+              description: event.matchedRecord
+                ? `Matched ${event.matchedRecord.name} (${(event.matchedRecord.programs ?? []).join(', ')}) · score ${event.score.toFixed(2)}`
+                : `score ${event.score.toFixed(2)} (threshold ${event.matchDiagnostics.threshold})`,
+              type: event.outcome === 'match' ? 'error' : 'warning',
+            },
+          );
+        }
+        return res.json({ event, result });
+      }
       case 'link-stripe-customer': {
         // Stamps `crm_contacts.metadata.stripe_customer_id` so the
         // StripeAdapter (Epic 13 S2) can auto-match payment_intent.succeeded

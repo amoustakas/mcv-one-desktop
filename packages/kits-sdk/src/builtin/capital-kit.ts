@@ -416,6 +416,27 @@ const notifyInvestors: KitToolHandler = async (input, ctx) => {
   };
 };
 
+// ─── 20. screen_investor_ofac ───────────────────────────────────────────
+
+const screenInvestorOfac: KitToolHandler = async (input, ctx) => {
+  const data = await postJson('/api/capital', {
+    action: 'screen-contact-ofac',
+    contact_id: input.contact_id,
+    dob: input.dob,
+  }, ctx);
+  const e = data.event;
+  if (!e) return { success: false, error: 'screening produced no event — contact missing full_name?' };
+  const iconByOutcome: Record<string, string> = { clear: '✅', review: '⚠️', match: '🚨' };
+  const icon = iconByOutcome[e.outcome] ?? '•';
+  let md = `## ${icon} OFAC screening — ${e.outcome.toUpperCase()}\n\n`;
+  md += `**Contact:** ${e.contactId}\n**Score:** ${e.score.toFixed(3)} (threshold ${e.matchDiagnostics.threshold})\n**Strategy:** ${e.matchDiagnostics.strategy}\n`;
+  if (e.matchedRecord) {
+    md += `\n**Matched record**\n- Name: ${e.matchedRecord.name ?? '—'}\n- List: ${e.matchedRecord.list ?? '—'}\n- Programs: ${(e.matchedRecord.programs ?? []).join(', ') || '—'}\n- Source id: ${e.matchedRecord.sourceEntryId ?? '—'}\n`;
+  }
+  md += `\n_Result stamped on capital_investor_profile.metadata.compliance.ofac._`;
+  return { success: true, data: e, displayMarkdown: md };
+};
+
 // ─── Manifest ───────────────────────────────────────────────────────────
 
 export const manifest: KitManifest = {
@@ -651,6 +672,18 @@ export const manifest: KitManifest = {
       },
     },
     {
+      name: 'screen_investor_ofac',
+      description: 'Run an OFAC SDN screening on a Capital investor contact. Stamps capital_investor_profile.metadata.compliance.ofac and emits a capital.compliance.match / review_needed notification when non-clear.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          contact_id: { type: 'string', description: 'crm_contacts.id of the investor to screen.' },
+          dob: { type: 'string', description: 'Optional ISO date of birth to strengthen the match. Overrides contact metadata.date_of_birth when supplied.' },
+        },
+        required: ['contact_id'],
+      },
+    },
+    {
       name: 'notify_investors',
       description: 'Send a quick update to investors of a round (publishes capital_investor_update content immediately). Short-circuit of publish_investor_update.',
       input_schema: {
@@ -688,4 +721,5 @@ export const handlers: Record<string, KitToolHandler> = {
   process_distribution: processDistribution,
   list_distributions: listDistributions,
   notify_investors: notifyInvestors,
+  screen_investor_ofac: screenInvestorOfac,
 };
