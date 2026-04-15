@@ -19,6 +19,14 @@
  * optional Source (select), Status (select: rows with 'archived' are skipped).
  */
 import { createClient } from '@supabase/supabase-js';
+import {
+  richTextToPlain,
+  slug,
+  extractVariables,
+  translateBlocksToMarkdown,
+  type NotionRichText,
+  type NotionBlock,
+} from '../src/lib/notion/blocks-to-markdown';
 
 const NOTION_API = 'https://api.notion.com/v1';
 const NOTION_VERSION = '2022-06-28';
@@ -26,7 +34,6 @@ const NOTION_VERSION = '2022-06-28';
 type Department = 'legal' | 'compliance' | 'research' | 'finance' | 'ops' | 'product';
 const VALID_DEPTS: Department[] = ['legal', 'compliance', 'research', 'finance', 'ops', 'product'];
 
-type NotionRichText = { plain_text?: string; text?: { content?: string } };
 type NotionPage = {
   id: string;
   properties: Record<string, {
@@ -36,12 +43,6 @@ type NotionPage = {
     select?: { name: string } | null;
     multi_select?: Array<{ name: string }>;
   }>;
-};
-type NotionBlock = {
-  id: string;
-  type: string;
-  has_children?: boolean;
-  [key: string]: unknown;
 };
 
 type TemplateRow = {
@@ -70,10 +71,6 @@ function parseArgs(argv: string[]) {
     }
   }
   return args;
-}
-
-function slug(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50);
 }
 
 async function notion<T>(path: string, init?: RequestInit): Promise<T> {
@@ -125,11 +122,6 @@ async function fetchBlockChildren(blockId: string): Promise<NotionBlock[]> {
   return all;
 }
 
-function richTextToPlain(rt?: NotionRichText[]): string {
-  if (!rt?.length) return '';
-  return rt.map(t => t.plain_text || t.text?.content || '').join('');
-}
-
 function extractProp(page: NotionPage, propName: string, kind: 'title' | 'rich_text' | 'select' | 'multi_select'): string | null {
   for (const [name, prop] of Object.entries(page.properties)) {
     if (name.toLowerCase() !== propName.toLowerCase()) continue;
@@ -142,50 +134,6 @@ function extractProp(page: NotionPage, propName: string, kind: 'title' | 'rich_t
     }
   }
   return null;
-}
-
-async function translateBlocksToMarkdown(blocks: NotionBlock[], depth = 0): Promise<string> {
-  const lines: string[] = [];
-  const indent = '  '.repeat(depth);
-
-  for (const b of blocks) {
-    const type = b.type;
-    const payload = (b as Record<string, { rich_text?: NotionRichText[]; language?: string }>)[type] || {};
-    const text = richTextToPlain(payload.rich_text);
-
-    switch (type) {
-      case 'heading_1': lines.push(`${indent}# ${text}`); break;
-      case 'heading_2': lines.push(`${indent}## ${text}`); break;
-      case 'heading_3': lines.push(`${indent}### ${text}`); break;
-      case 'paragraph': if (text) lines.push(`${indent}${text}`); break;
-      case 'bulleted_list_item': lines.push(`${indent}- ${text}`); break;
-      case 'numbered_list_item': lines.push(`${indent}1. ${text}`); break;
-      case 'to_do': lines.push(`${indent}- [ ] ${text}`); break;
-      case 'quote': lines.push(`${indent}> ${text}`); break;
-      case 'code': lines.push(`${indent}\`\`\`${payload.language || ''}\n${text}\n${indent}\`\`\``); break;
-      case 'divider': lines.push('---'); break;
-      case 'callout': if (text) lines.push(`${indent}> **Note:** ${text}`); break;
-      default:
-        if (text) lines.push(`${indent}${text}`);
-    }
-
-    if (b.has_children && depth < 3) {
-      const kids = await fetchBlockChildren(b.id);
-      const nested = await translateBlocksToMarkdown(kids, depth + 1);
-      if (nested) lines.push(nested);
-    }
-    lines.push('');
-  }
-
-  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
-}
-
-function extractVariables(markdown: string): string[] {
-  const seen = new Set<string>();
-  const re = /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g;
-  let m;
-  while ((m = re.exec(markdown))) seen.add(m[1]);
-  return [...seen].sort();
 }
 
 async function main() {
@@ -218,7 +166,7 @@ async function main() {
 
     if (args.verbose) console.log(`  fetching body for: ${title}`);
     const blocks = await fetchBlockChildren(page.id);
-    const body_markdown = await translateBlocksToMarkdown(blocks);
+    const body_markdown = await translateBlocksToMarkdown(blocks, fetchBlockChildren);
 
     rows.push({
       id: `${department}.${slug(title)}`,
