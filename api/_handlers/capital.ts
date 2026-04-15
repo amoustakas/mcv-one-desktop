@@ -30,6 +30,32 @@ const supabase = createClient(
 
 const engine = createCapitalEngine({ supabase });
 
+// Fire-and-forget notification helper — mirrors api/_handlers/crm.ts:notify.
+// Writes to the shared `notifications` table so the Desktop bell + any
+// future Fabric consumer sees Capital lifecycle events.
+async function publishCapitalEvent(
+  topic: string,
+  title: string,
+  opts: {
+    description?: string;
+    ventureId?: string;
+    type?: 'info' | 'success' | 'warning' | 'error';
+    payload?: Record<string, unknown>;
+  } = {},
+) {
+  try {
+    await supabase.from('notifications').insert({
+      type: opts.type ?? 'info',
+      title,
+      description: opts.description ?? null,
+      source: 'capital',
+      venture_id: opts.ventureId ?? null,
+    });
+  } catch (err) {
+    console.warn(`[capital ${topic}] notify failed:`, err instanceof Error ? err.message : err);
+  }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const userId = await requireAuth(req, res); if (!userId) return;
   const action = req.method === 'GET' ? req.query.action as string : req.body?.action;
@@ -71,6 +97,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           actorId: userId,
           actorType: 'user',
         });
+        await publishCapitalEvent('capital.round.created', `Round created: ${round.name}`, {
+          description: `${round.ventureId} · ${round.roundType} · target ${round.targetRaise}`,
+          ventureId: round.ventureId,
+          type: 'success',
+        });
         return res.json({ round });
       }
       case 'update-round': {
@@ -92,6 +123,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           newValue: round.status,
           actorId: userId,
           actorType: 'user',
+        });
+        const topic = `capital.round.${round.status}`;
+        const titleByStatus: Record<string, string> = {
+          open: `Round opened: ${round.name}`,
+          closing: `Round closing: ${round.name}`,
+          closed: `Round closed: ${round.name}`,
+          funded: `Round funded: ${round.name}`,
+          cancelled: `Round cancelled: ${round.name}`,
+        };
+        await publishCapitalEvent(topic, titleByStatus[round.status] ?? `Round → ${round.status}`, {
+          description: `${round.ventureId} · committed ${round.totalCommitted} of ${round.targetRaise}`,
+          ventureId: round.ventureId,
+          type: round.status === 'funded' ? 'success' : round.status === 'cancelled' ? 'warning' : 'info',
         });
         return res.json({ round });
       }
@@ -169,6 +213,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           title: `Payment received: ${commitment.amountUsd} USD via ${commitment.paymentMethod}`,
           actorId: userId,
           actorType: 'user',
+        });
+        await publishCapitalEvent('capital.commitment.funded', `Commitment funded: ${commitment.amountUsd} USD`, {
+          description: `${commitment.ventureId} · ${commitment.paymentMethod} · ref ${commitment.paymentReference}`,
+          ventureId: commitment.ventureId,
+          type: 'success',
         });
         return res.json({ commitment });
       }
@@ -315,6 +364,57 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       case 'upcoming-followups': {
         const followups = await engine.dashboard.upcomingFollowUps(Number(params.days_ahead ?? 7));
         return res.json({ followups });
+      }
+
+      // ─── Distributions (Capital × Ledger × Payments) ────────────────
+      case 'list-distributions': {
+        const distributions = await engine.distributions.listDistributions(
+          params.venture_id as string,
+          { roundId: params.round_id as string | undefined, status: params.status as never, limit: Number(params.limit ?? 50) },
+        );
+        return res.json({ distributions });
+      }
+      case 'get-distribution': {
+        const state = await engine.distributions.getDistribution(params.id as string);
+        return res.json(state ?? { distribution: null, recipients: [] });
+      }
+      case 'create-distribution': {
+        const dist = await engine.distributions.createDistribution({
+          ...(params.input as never),
+          createdBy: userId,
+        });
+        await publishCapitalEvent('capital.distribution.created', `Distribution scheduled: ${dist.distributionType}`, {
+          description: `${dist.ventureId} · ${dist.totalAmount} ${dist.currency}`,
+          ventureId: dist.ventureId,
+          type: 'info',
+        });
+        return res.json({ distribution: dist });
+      }
+      case 'process-distribution': {
+        const dist = await engine.distributions.processDistribution(params.id as string, userId);
+        await publishCapitalEvent('capital.distribution.paid', `Distribution ${dist.status}: ${dist.distributionType}`, {
+          description: `${dist.ventureId} · paid ${dist.totalPaid} to ${dist.totalRecipients}`,
+          ventureId: dist.ventureId,
+          type: dist.status === 'completed' ? 'success' : dist.status === 'failed' ? 'error' : 'warning',
+        });
+        return res.json({ distribution: dist });
+      }
+      case 'cancel-distribution': {
+        const dist = await engine.distributions.cancelDistribution(params.id as string);
+        return res.json({ distribution: dist });
+      }
+
+      // ─── Ventures lookup (Capital × Ventures registry) ──────────────
+      case 'get-venture-for-round': {
+        const venture = await engine.ventures.getVenture(params.venture_id as string);
+        return res.json({ venture });
+      }
+      case 'list-ventures': {
+        const ventures = await engine.ventures.listVentures({
+          status: params.status as string | undefined,
+          tier: params.tier !== undefined ? Number(params.tier) : undefined,
+        });
+        return res.json({ ventures });
       }
 
       // ─── Content integration (Capital × Content OS) ────────────────

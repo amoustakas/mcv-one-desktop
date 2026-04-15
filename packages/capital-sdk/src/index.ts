@@ -23,6 +23,21 @@ export type {
   RoundContentRole, CapitalContentType, RoundContentLink, RoundContentEntry,
   CapitalContentRow, CreateRoundContentInput, ContentVisibility, ContentStatus,
 } from './content-integration';
+export { createDistributionsService } from './distributions-service';
+export type {
+  DistributionsService, DistributionsServiceOptions,
+  Distribution, DistributionRecipient, CreateDistributionInput,
+  DistributionType, DistributionStatus, RecipientStatus,
+  LedgerAdapterLike, PaymentRouterLike,
+} from './distributions-service';
+export {
+  createNotificationsBridge, createVenturesBridge,
+  setCapitalPaymentRouter, getCapitalPaymentRouter,
+} from './ecosystem-bridges';
+export type {
+  NotificationsBridge, NotifyInput, NotificationType,
+  VenturesBridge, VentureRef,
+} from './ecosystem-bridges';
 export { createCapitalEngine } from './create-capital-engine';
 export type { CapitalEngine, CapitalEngineOpts } from './create-capital-engine';
 

@@ -12,13 +12,30 @@ async function loadRoundAndContent(params: Params) {
   const round = await engine.rounds.getRoundBySlug(params.ventureSlug, params.roundSlug);
   if (!round || !round.isPublic || (round.status !== 'open' && round.status !== 'closing')) return null;
 
-  const [description, updates] = await Promise.all([
+  const [description, updates, venture] = await Promise.all([
     engine.content.getRoundDescription(round.id).catch(() => null),
     engine.content.listRoundUpdates(round.id, { limit: 10 }).catch(() => []),
+    engine.ventures.getVenture(round.ventureId).catch(() => null),
   ]);
 
   const publicUpdates = updates.filter((u) => u.content.visibility === 'public' || u.content.visibility === 'published');
-  return { round, description, publicUpdates };
+  return { round, description, publicUpdates, venture };
+}
+
+// Compute brand CSS vars for the venture — matches @mcv/ventures-sdk/white-label
+// shape without importing it (avoids cross-SDK type dance on the server).
+type VentureLike = { name: string; color: string | null; whiteLabel: Record<string, unknown> | null; icon: string | null };
+function brandStyle(venture: VentureLike | null): React.CSSProperties {
+  if (!venture) return {};
+  const wl = (venture.whiteLabel ?? {}) as { primaryColor?: string; accentColor?: string; brandName?: string };
+  const primary = wl.primaryColor ?? venture.color ?? '#00F0FF';
+  const accent = wl.accentColor ?? '#8B5CF6';
+  const brandName = wl.brandName ?? venture.name;
+  return {
+    ['--venture-primary' as string]: primary,
+    ['--venture-accent' as string]: accent,
+    ['--venture-brand-name' as string]: `"${brandName}"`,
+  };
 }
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
@@ -80,14 +97,15 @@ export default async function RoundPage({ params }: { params: Promise<Params> })
   const resolved = await params;
   const data = await loadRoundAndContent(resolved);
   if (!data) notFound();
-  const { round, description, publicUpdates } = data;
+  const { round, description, publicUpdates, venture } = data;
 
   const progress = round.targetRaise > 0 ? Math.min(100, (round.totalCommitted / round.targetRaise) * 100) : 0;
 
   return (
-    <div className="lp-container" style={{ padding: '48px 24px', maxWidth: 960 }}>
-      <div style={{ color: 'var(--text-muted)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
-        {round.ventureId}
+    <div className="lp-container" style={{ padding: '48px 24px', maxWidth: 960, ...brandStyle(venture) }}>
+      <div style={{ color: 'var(--text-muted)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+        {venture?.icon && <span style={{ fontSize: 16 }}>{venture.icon}</span>}
+        <span style={{ color: 'var(--venture-primary, var(--text-muted))' }}>{venture?.name ?? round.ventureId}</span>
       </div>
       <h1 style={{ fontSize: 48, margin: '0 0 16px', lineHeight: 1.1 }}>{round.name}</h1>
 

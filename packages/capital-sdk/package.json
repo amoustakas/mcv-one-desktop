@@ -17,6 +17,8 @@
     "./activities-service": { "types": "./src/activities-service.ts",    "default": "./src/activities-service.ts" },
     "./dashboard-service":  { "types": "./src/dashboard-service.ts",     "default": "./src/dashboard-service.ts" },
     "./content-integration":{ "types": "./src/content-integration.ts",   "default": "./src/content-integration.ts" },
+    "./distributions-service":{ "types": "./src/distributions-service.ts", "default": "./src/distributions-service.ts" },
+    "./ecosystem-bridges":  { "types": "./src/ecosystem-bridges.ts",     "default": "./src/ecosystem-bridges.ts" },
     "./waterfall":          { "types": "./src/waterfall.ts",             "default": "./src/waterfall.ts" },
     "./create-capital-engine": { "types": "./src/create-capital-engine.ts", "default": "./src/create-capital-engine.ts" }
   },

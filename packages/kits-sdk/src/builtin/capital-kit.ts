@@ -330,6 +330,92 @@ const draftRoundDescription: KitToolHandler = async (input, ctx) => {
   };
 };
 
+// ─── 16. create_distribution ────────────────────────────────────────────
+
+const createDistribution: KitToolHandler = async (input, ctx) => {
+  const recipients = Array.isArray(input.recipients) ? input.recipients : [];
+  const data = await postJson('/api/capital', {
+    action: 'create-distribution',
+    input: {
+      ventureId: input.venture_id,
+      roundId: input.round_id,
+      distributionType: input.distribution_type || 'dividend',
+      totalAmount: Number(input.total_amount),
+      currency: input.currency || 'USD',
+      scheduledFor: input.scheduled_for,
+      notes: input.notes,
+      recipients: recipients.map((r: Record<string, unknown>) => ({
+        contactId: r.contact_id,
+        commitmentId: r.commitment_id,
+        amount: Number(r.amount),
+        amountUsd: Number(r.amount_usd ?? r.amount),
+        currency: r.currency || 'USD',
+        paymentMethod: r.payment_method,
+      })),
+    },
+  }, ctx);
+  const d = data.distribution;
+  return {
+    success: true,
+    data: d,
+    displayMarkdown: `**Distribution scheduled:** ${usd(d.totalAmount)} ${d.distributionType} across ${recipients.length} recipients \`${d.id?.slice(0, 8)}\``,
+  };
+};
+
+// ─── 17. process_distribution ───────────────────────────────────────────
+
+const processDistribution: KitToolHandler = async (input, ctx) => {
+  const data = await postJson('/api/capital', { action: 'process-distribution', id: input.distribution_id }, ctx);
+  const d = data.distribution;
+  return {
+    success: true,
+    data: d,
+    displayMarkdown: `**Distribution ${d.status}:** paid ${usd(d.totalPaid)} to ${d.totalRecipients} recipients${d.journalEntryId ? ` · JE \`${d.journalEntryId.slice(0, 8)}\`` : ''}`,
+  };
+};
+
+// ─── 18. list_distributions ─────────────────────────────────────────────
+
+const listDistributions: KitToolHandler = async (input, ctx) => {
+  const data = await postJson('/api/capital', {
+    action: 'list-distributions',
+    venture_id: input.venture_id,
+    round_id: input.round_id,
+    status: input.status,
+  }, ctx);
+  const list = data.distributions ?? [];
+  if (!list.length) return { success: true, data: [], displayMarkdown: 'No distributions.' };
+  let md = `## Distributions\n\n| Type | Status | Total | Paid | Recipients |\n|------|--------|-------|------|------------|\n`;
+  for (const d of list) md += `| ${d.distributionType} | ${d.status} | ${usd(d.totalAmount)} | ${usd(d.totalPaid)} | ${d.totalRecipients} |\n`;
+  return { success: true, data: list, displayMarkdown: md };
+};
+
+// ─── 19. notify_investors ───────────────────────────────────────────────
+
+const notifyInvestors: KitToolHandler = async (input, ctx) => {
+  // Thin wrapper that uses publish_investor_update with a short title + body
+  // to hit the portal timeline + launchpad (if visibility=public) + RAG.
+  const data = await postJson('/api/capital', {
+    action: 'create-round-content',
+    input: {
+      ventureId: input.venture_id,
+      roundId: input.round_id,
+      role: 'update',
+      contentType: 'capital_investor_update',
+      title: input.title || 'Update',
+      bodyMarkdown: input.message,
+      visibility: input.visibility || 'internal',
+      status: 'approved',
+      publishImmediately: true,
+    },
+  }, ctx);
+  return {
+    success: true,
+    data: data.entry,
+    displayMarkdown: `**Notified investors** via update \`${data.entry?.contentId?.slice(0, 8)}\``,
+  };
+};
+
 // ─── Manifest ───────────────────────────────────────────────────────────
 
 export const manifest: KitManifest = {
@@ -510,6 +596,75 @@ export const manifest: KitManifest = {
         required: ['venture_id', 'round_id', 'title', 'body_markdown'],
       },
     },
+    {
+      name: 'create_distribution',
+      description: 'Schedule a dividend/yield/interest distribution for investors of a round. Provide per-recipient list with amount + payment method.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          venture_id: { type: 'string' },
+          round_id: { type: 'string', description: 'Optional — round context for the payout' },
+          distribution_type: { type: 'string', enum: ['dividend','interest','yield','token_airdrop','buyback','return_of_capital','fee_rebate','other'] },
+          total_amount: { type: 'number' },
+          currency: { type: 'string' },
+          scheduled_for: { type: 'string', description: 'ISO timestamp. Omit to process immediately via process_distribution.' },
+          notes: { type: 'string' },
+          recipients: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                contact_id: { type: 'string' },
+                commitment_id: { type: 'string' },
+                amount: { type: 'number' },
+                amount_usd: { type: 'number' },
+                currency: { type: 'string' },
+                payment_method: { type: 'string' },
+              },
+              required: ['contact_id', 'amount'],
+            },
+          },
+        },
+        required: ['venture_id', 'total_amount', 'recipients'],
+      },
+    },
+    {
+      name: 'process_distribution',
+      description: 'Execute a scheduled distribution: post journal entries (if Ledger configured), route payouts via payment router (if configured), mark recipients paid. Emits capital.distribution.paid event.',
+      input_schema: {
+        type: 'object',
+        properties: { distribution_id: { type: 'string' } },
+        required: ['distribution_id'],
+      },
+    },
+    {
+      name: 'list_distributions',
+      description: 'List distributions for a venture, optionally filtered by round or status.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          venture_id: { type: 'string' },
+          round_id: { type: 'string' },
+          status: { type: 'string', enum: ['scheduled','processing','partial','completed','failed','cancelled'] },
+        },
+        required: ['venture_id'],
+      },
+    },
+    {
+      name: 'notify_investors',
+      description: 'Send a quick update to investors of a round (publishes capital_investor_update content immediately). Short-circuit of publish_investor_update.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          venture_id: { type: 'string' },
+          round_id: { type: 'string' },
+          title: { type: 'string' },
+          message: { type: 'string', description: 'Markdown body' },
+          visibility: { type: 'string', enum: ['internal','public'], description: 'internal = portal investors; public = launchpad' },
+        },
+        required: ['venture_id', 'round_id', 'message'],
+      },
+    },
   ],
 };
 
@@ -529,4 +684,8 @@ export const handlers: Record<string, KitToolHandler> = {
   publish_investor_update: publishInvestorUpdate,
   get_round_updates: getRoundUpdates,
   draft_round_description: draftRoundDescription,
+  create_distribution: createDistribution,
+  process_distribution: processDistribution,
+  list_distributions: listDistributions,
+  notify_investors: notifyInvestors,
 };
