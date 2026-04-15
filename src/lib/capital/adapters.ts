@@ -19,6 +19,7 @@ import type {
   PaymentRouterLike,
 } from '@mcv/capital-sdk/distributions-service';
 import type { PaymentRouter, PaymentMethod } from '@mcv/payments-sdk';
+import { resolveProcessor } from '../payments/processor-config';
 
 export function makeCapitalLedgerAdapter(supabase: SupabaseClient): LedgerAdapterLike {
   const svc = createLedgerService({ supabase });
@@ -51,6 +52,21 @@ export function makeCapitalLedgerAdapter(supabase: SupabaseClient): LedgerAdapte
 export function makeCapitalPaymentRouterAdapter(router: PaymentRouter): PaymentRouterLike {
   return {
     async processPayment(request) {
+      // Per-venture processor override: if payment_processor_config has a row
+      // for this (venture, method), surface the preferred processor_id +
+      // processor-specific metadata (e.g. Stripe Connect account_id) into
+      // the PaymentRequest metadata. Router scoring + processor implementations
+      // can consume `preferred_processor` as a routing hint.
+      let configMetadata: Record<string, unknown> = {};
+      let preferredProcessor: string | null = null;
+      if (request.ventureId && request.method) {
+        const resolved = await resolveProcessor(request.ventureId, request.method);
+        if (resolved) {
+          preferredProcessor = resolved.processorId;
+          configMetadata = resolved.metadata;
+        }
+      }
+
       const res = await router.processPayment({
         amount: request.amount,
         currency: request.currency,
@@ -59,7 +75,11 @@ export function makeCapitalPaymentRouterAdapter(router: PaymentRouter): PaymentR
         customerCountry: 'US',
         ventureId: request.ventureId ?? 'capital',
         description: request.reference ?? `capital distribution`,
-        metadata: request.metadata ?? {},
+        metadata: {
+          ...configMetadata,
+          ...(request.metadata ?? {}),
+          ...(preferredProcessor ? { preferred_processor: preferredProcessor } : {}),
+        },
       });
       return { result: res.result, decision: res.decision };
     },
