@@ -37,7 +37,17 @@ export default function VentureSnapshotCard({ venture }: Props) {
   const chatDocked = useNavigation(s => s.chatDocked);
   const toggleChatDock = useNavigation(s => s.toggleChatDock);
   const setChatVenture = useNavigation(s => s.setChatVenture);
+  const openVentureDetailTab = useNavigation(s => s.openVentureDetailTab);
+  const switchToVenture = useNavigation(s => s.switchToVenture);
   const setInputText = useChatStore(s => s.setInputText);
+
+  // For complex workflows (DNS verification, team invitations, etc.) we
+  // jump to the relevant tab in VentureDetailView rather than inlining a
+  // stubbed mini-flow that would lie about what it actually does.
+  function jumpToTab(tab: string) {
+    switchToVenture(venture.id);
+    openVentureDetailTab(tab);
+  }
 
   // Inline asset confirmation picker state
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -286,6 +296,23 @@ export default function VentureSnapshotCard({ venture }: Props) {
         </div>
       )}
 
+      {summary.domains.pending > 0 && (
+        <div className="vsc-confirm-row">
+          <button
+            className="vsc-confirm-toggle vsc-domain-cta"
+            onClick={() => jumpToTab('domains')}
+            type="button"
+            title="Open the Domains tab to run DNS verification"
+          >
+            <Globe size={11} />
+            <span>
+              <strong>{summary.domains.pending}</strong> domain{summary.domains.pending === 1 ? '' : 's'} pending DNS verification
+            </span>
+            <span className="vsc-confirm-cta">Verify →</span>
+          </button>
+        </div>
+      )}
+
       {applyPickerOpen && summary.docs.total === 0 && (
         <div className="vsc-picker" role="region" aria-label="Seed department templates">
           <div className="vsc-picker-head">
@@ -446,4 +473,8 @@ const styles = `
   .vsc-doc-cta svg { color: #F59E0B; }
   .vsc-doc-cta .vsc-confirm-cta { color: #F59E0B; }
   .vsc-dept-chip:hover:not(:disabled) { border-color: #F59E0B; background: rgba(245, 158, 11, 0.10); }
+  .vsc-domain-cta { background: rgba(16, 185, 129, 0.08); border-color: rgba(16, 185, 129, 0.35); }
+  .vsc-domain-cta:hover { background: rgba(16, 185, 129, 0.16); border-color: rgba(16, 185, 129, 0.6); }
+  .vsc-domain-cta svg { color: #10B981; }
+  .vsc-domain-cta .vsc-confirm-cta { color: #10B981; }
 `;
