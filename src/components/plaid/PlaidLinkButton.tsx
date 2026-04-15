@@ -12,6 +12,10 @@ interface PlaidLinkButtonProps {
   clientUserId?: string;
   /** Called after the public token is exchanged + item is persisted */
   onLinked?: (result: { item_id: string; access_token_present: boolean }) => void;
+  /** When set, also stamps `crm_contacts.metadata.plaid_account_id` on this
+   *  contact via /api/capital action=link-plaid-account so the PlaidAdapter
+   *  (Epic 13 S1) can match incoming wires/ACH to the investor automatically. */
+  capitalContactId?: string;
   label?: string;
   size?: 'sm' | 'md' | 'lg';
   variant?: 'primary' | 'secondary' | 'ghost';
@@ -27,6 +31,7 @@ export default function PlaidLinkButton({
   ventureId,
   clientUserId,
   onLinked,
+  capitalContactId,
   label = 'Link a bank account',
   size = 'md',
   variant = 'primary',
@@ -70,13 +75,29 @@ export default function PlaidLinkButton({
         },
       );
       toast('success', `Linked ${metadata.institution?.name || 'bank'}`);
+
+      // Capital reconciliation hook: stamp the contact's CRM metadata so
+      // PlaidAdapter (Epic 13 S1) can auto-match incoming wires/ACH.
+      // Best-effort — link still succeeds even if this stamp fails.
+      if (capitalContactId && metadata.accounts?.[0]?.id) {
+        try {
+          await apiPost('/api/capital', {
+            action: 'link-plaid-account',
+            contact_id: capitalContactId,
+            plaid_account_id: metadata.accounts[0].id,
+          });
+        } catch (linkErr) {
+          console.warn('[plaid-link] capital link-plaid-account failed:', linkErr);
+        }
+      }
+
       onLinked?.({ item_id: exchanged.item_id, access_token_present: !!exchanged.access_token });
     } catch (e) {
       toast('error', e instanceof Error ? e.message : 'Link exchange failed');
     } finally {
       setLoading(false);
     }
-  }, [ventureId, onLinked, toast]);
+  }, [ventureId, onLinked, capitalContactId, toast]);
 
   const { open, ready } = usePlaidLink({
     token: linkToken,
