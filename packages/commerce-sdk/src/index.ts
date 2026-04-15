@@ -27,4 +27,6 @@ export * from './commerce-analytics';
 export { createProductService, mapProductRow } from './product-service';
 export type { ProductService, ProductServiceOptions, ListProductsFilters } from './product-service';
 
-export const MCV_COMMERCE_SDK_VERSION = '0.8.0' as const;
+export * from './customer-service';
+
+export const MCV_COMMERCE_SDK_VERSION = '0.9.0' as const;

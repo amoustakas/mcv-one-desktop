@@ -1,6 +1,6 @@
 {
   "name": "@mcv/commerce-sdk",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "MCV Commerce & Financial OS — types + (progressively) service factories. First slice ships the canonical type system (products, orders, subscriptions, invoices, loans, fulfillment, discounts, inventory, gift cards, reviews, wishlists, search, analytics). Service engines will land as incremental DI factories composed on @mcv/ledger-sdk + @mcv/payments-sdk.",
   "private": true,
   "type": "module",
@@ -16,7 +16,8 @@
     "./notification-service": { "types": "./src/notification-service.ts", "default": "./src/notification-service.ts" },
     "./digital-delivery-service": { "types": "./src/digital-delivery-service.ts", "default": "./src/digital-delivery-service.ts" },
     "./commerce-analytics": { "types": "./src/commerce-analytics.ts", "default": "./src/commerce-analytics.ts" },
-    "./product-service": { "types": "./src/product-service.ts", "default": "./src/product-service.ts" }
+    "./product-service": { "types": "./src/product-service.ts", "default": "./src/product-service.ts" },
+    "./customer-service": { "types": "./src/customer-service.ts", "default": "./src/customer-service.ts" }
   },
   "files": ["src"],
   "dependencies": {
