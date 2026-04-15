@@ -1,5 +1,5 @@
 import type { KitInstance } from './types';
-import { createKitInstance } from '@mcv/kits-sdk/loader';
+import { createKitInstance, setSharedBuiltinKits } from '@mcv/kits-sdk/loader';
 
 // Re-export the pure loader operations from the SDK so app callers like
 // `import { executeKitTool, ... } from '@/lib/kits/loader'` keep working.
@@ -47,7 +47,7 @@ import { manifest as gscManifest, handlers as gscHandlers } from '@mcv/kits-sdk/
 import { manifest as gtasksManifest, handlers as gtasksHandlers } from '@mcv/kits-sdk/builtin/google-tasks-kit';
 import { manifest as mcpGoogleManifest, handlers as mcpGoogleHandlers } from '@mcv/kits-sdk/builtin/mcp-google-bridge';
 import { manifest as automationManifest, handlers as automationHandlers } from '@mcv/kits-sdk/builtin/automation-kit';
-import { manifest as naosAgentManifest, handlers as naosAgentHandlers } from './builtin/naos-agent-kit';
+import { manifest as naosAgentManifest, handlers as naosAgentHandlers } from '@mcv/kits-sdk/builtin/naos-agent-kit';
 import { manifest as creativeAiManifest, handlers as creativeAiHandlers } from '@mcv/kits-sdk/builtin/creative-ai-kit';
 import { manifest as videoAiManifest, handlers as videoAiHandlers } from '@mcv/kits-sdk/builtin/video-ai-kit';
 import { manifest as aiStudioManifest, handlers as aiStudioHandlers } from '@mcv/kits-sdk/builtin/ai-studio-kit';
@@ -235,6 +235,11 @@ const builtinKits: KitInstance[] = [
   // Cross-cutting venture intelligence (consult_departments + venture_snapshot)
   kit(ventureIntelManifest, ventureIntelHandlers),
 ];
+
+// Wire the assembled kit list into kits-sdk's shared-singleton so
+// SDK-resident kits (notably naos-agent-kit) can access it without a
+// chicken-and-egg import on this module.
+setSharedBuiltinKits(builtinKits);
 
 /** Returns all built-in kit instances */
 export function getBuiltinKits(): KitInstance[] {

@@ -1,6 +1,6 @@
 import type { KitManifest, KitToolHandler } from '../types';
-import { runAutonomousAgent, AGENT_PROFILES, type AgentProfile } from '../../agents/autonomous-agent';
-import { getBuiltinKits } from '../loader';
+import { runAutonomousAgent, AGENT_PROFILES, type AgentProfile } from '@mcv/kits-sdk/autonomous-agent';
+import { getSharedBuiltinKits } from '@mcv/kits-sdk/loader';
 
 // ---------------------------------------------------------------------------
 // NAOS Agent Kit
@@ -17,7 +17,7 @@ const executeAgent: KitToolHandler = async (input, ctx) => {
   if (!task) return { success: false, error: 'task is required', displayMarkdown: 'Please provide a task description.' };
 
   const profileConfig = AGENT_PROFILES[profile] || AGENT_PROFILES['chief-of-staff'];
-  const kits = getBuiltinKits();
+  const kits = getSharedBuiltinKits();
 
   const md: string[] = [`## NAOS Agent: ${profile}\n`, `*Task: "${task}"*\n`, '---\n'];
 

@@ -24,5 +24,6 @@ export * from './shared-context';
 export * from './registry-client';
 export * from './loader';
 export * from './orchestrator';
+export * from './autonomous-agent';
 
 export const MCV_KITS_SDK_VERSION = '0.3.0' as const;

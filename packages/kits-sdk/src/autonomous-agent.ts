@@ -1,5 +1,5 @@
-import type { KitInstance, KitToolSchema, KitExecutionContext, ToolCallResult, ReasoningStep } from '../kits/types';
-import { getToolsForVenture, executeKitTool } from '../kits/loader';
+import type { KitInstance, KitToolSchema, KitExecutionContext, ToolCallResult, ReasoningStep } from './types';
+import { getToolsForVenture, executeKitTool } from './loader';
 
 // ---------------------------------------------------------------------------
 // NAOS Autonomous Agent Framework

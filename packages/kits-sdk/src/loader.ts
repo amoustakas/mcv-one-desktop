@@ -71,6 +71,28 @@ export async function executeKitTool(
   }
 }
 
+// ─── Shared builtin-kits singleton ────────────────────────────────────────
+// Apps assemble their hardcoded builtin-kits array (which typically includes
+// kits that *themselves* want access to the full kit list, like the NAOS
+// autonomous-agent kit). Call `setSharedBuiltinKits(kits)` once after
+// assembling; consumers call `getSharedBuiltinKits()` inside handlers. This
+// breaks the chicken-and-egg coupling without requiring the kit list to be
+// threaded through every execution context.
+
+let sharedBuiltinKits: KitInstance[] | null = null;
+
+/** Register the app's assembled builtin-kits array for cross-kit access.
+ *  Call once after the app's loader finishes assembling its kit list. */
+export function setSharedBuiltinKits(kits: KitInstance[]): void {
+  sharedBuiltinKits = kits;
+}
+
+/** Retrieve the shared builtin-kits array set via `setSharedBuiltinKits`.
+ *  Returns empty array if no app has wired one yet. */
+export function getSharedBuiltinKits(): KitInstance[] {
+  return sharedBuiltinKits ?? [];
+}
+
 /** Build the kit instructions string to append to the system prompt.
  *  Lists each loaded, venture-scoped kit with its description and any
  *  manifest-supplied LLM instructions. */
