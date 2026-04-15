@@ -106,6 +106,19 @@ optimistic vs. server-persisted.
 | `FraudRuleDetailDialog` (delete) | POST `delete-fraud-rule` — optimistic remove + restore on failure | server ✓ |
 | `NexusAlertDetailDialog` (acknowledge/register/exempt) | `useComplianceStore.updateNexusStatus` | local (needs migration for `nexus_alert_status` column) |
 
+**Review moderation wired end-to-end.** `CommerceReviews` Approve/Reject
+buttons call `useCommerceSurfaceStore.moderateReview` → POST
+`moderate-review` (new action in `commerce-surface.ts`). The handler does
+a soft moderation (status flip + `moderated_at` + `moderator_note`) so
+rejected reviews stay queryable rather than getting deleted. Store
+removes the row from the moderation queue and merges the updated row
+into the approved-reviews list — no refetch needed.
+
+**AssetTierGraph "Add asset manually" no longer console.logs.** Routes
+the user to Settings → Integrations (the canonical asset onboarding
+surface) with a toast that tells them where they're going. One less
+button-that-does-nothing in the venture detail view.
+
 **Native prompt() retired in 4 spots.** All in-app data entry now goes
 through proper `Dialog` primitives:
 

@@ -8,6 +8,7 @@ import { useCommerceSurfaceStore } from '../stores/commerce-surface';
 import { useNavigation } from '../stores/navigation';
 import type { Review } from '../lib/commerce/surface-types';
 import { PageShell, PageHeader, StatCard, GlassCard } from '../components/ui';
+import { useToast } from '../components/Toasts';
 
 function StarRating({ rating }: { rating: number }) {
   return (
@@ -70,9 +71,19 @@ function ReviewCard({ review, onApprove, onReject }: { review: Review; onApprove
 }
 
 export default function CommerceReviews() {
-  const { reviews, moderationQueue, reviewsLoading, fetchReviews, fetchModerationQueue } = useCommerceSurfaceStore();
+  const { reviews, moderationQueue, reviewsLoading, fetchReviews, fetchModerationQueue, moderateReview } = useCommerceSurfaceStore();
   const { activeVenture } = useNavigation();
   const ventureId = activeVenture || 'mcv';
+  const { toast } = useToast();
+
+  const handleModerate = async (id: string, decision: 'approve' | 'reject') => {
+    const ok = await moderateReview(ventureId, id, decision);
+    if (ok) {
+      toast(decision === 'approve' ? 'success' : 'info', decision === 'approve' ? 'Review approved' : 'Review rejected');
+    } else {
+      toast('error', 'Moderation failed — check server logs');
+    }
+  };
 
   useEffect(() => {
     fetchModerationQueue(ventureId);
@@ -120,8 +131,8 @@ export default function CommerceReviews() {
                   <ReviewCard
                     key={review.id}
                     review={review}
-                    onApprove={() => { /* TODO: approve action */ }}
-                    onReject={() => { /* TODO: reject action */ }}
+                    onApprove={() => handleModerate(review.id, 'approve')}
+                    onReject={() => handleModerate(review.id, 'reject')}
                   />
                 ))}
               </div>

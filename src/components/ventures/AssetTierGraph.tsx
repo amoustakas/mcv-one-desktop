@@ -3,6 +3,8 @@ import { Check, X, Globe, Code, Package, FileText, Link2, Hash, Box, Plus } from
 import { GlassCard, Badge, Button, EmptyState } from '../ui';
 import { apiPost } from '../../lib/api/client';
 import type { Venture, VentureAsset, VentureAssetKind, VentureTier } from '../../lib/ventures';
+import { useToast } from '../Toasts';
+import { useNavigation } from '../../stores/navigation';
 
 const KIND_ICON: Record<VentureAssetKind, typeof Globe> = {
   repo: Code,
@@ -24,6 +26,8 @@ export default function AssetTierGraph({ venture }: { venture: Venture }) {
   const [assets, setAssets] = useState<VentureAsset[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const setView = useNavigation((s) => s.setView);
 
   async function refresh() {
     setLoading(true);
@@ -130,7 +134,18 @@ export default function AssetTierGraph({ venture }: { venture: Venture }) {
       })}
 
       <div className="atg-add-row">
-        <Button variant="ghost" size="sm" icon={<Plus size={12} />} onClick={() => console.log('TODO: open add-asset dialog')}>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<Plus size={12} />}
+          onClick={() => {
+            // Asset onboarding lives in Settings → Integrations (per-venture
+            // integration linker). Route there instead of opening a half-built
+            // dialog. Toast tells the user where they're going.
+            toast('info', 'Add assets via Settings → Integrations for this venture');
+            setView('settings' as Parameters<typeof setView>[0]);
+          }}
+        >
           Add asset manually
         </Button>
       </div>

@@ -108,6 +108,7 @@ interface CommerceSurfaceState {
   fetchReviews: (ventureId: string, productId?: string, status?: string) => Promise<void>;
   fetchModerationQueue: (ventureId: string) => Promise<void>;
   createReview: (ventureId: string, input: Record<string, unknown>) => Promise<Review>;
+  moderateReview: (ventureId: string, id: string, decision: 'approve' | 'reject', note?: string) => Promise<boolean>;
 
   // ── Wishlist Actions ────────────────────────────────────
 
@@ -410,6 +411,24 @@ export const useCommerceSurfaceStore = create<CommerceSurfaceState>((set, _get) 
     const { data } = await apiPost<{ data: Review }>('create-review', ventureId, input);
     set((state) => ({ reviews: [data, ...state.reviews] }));
     return data;
+  },
+
+  moderateReview: async (ventureId, id, decision, note) => {
+    try {
+      const { data } = await apiPost<{ data: Review }>('moderate-review', ventureId, { id, decision, moderator_note: note });
+      // Remove from moderation queue (it's no longer pending) and merge the
+      // updated row into the reviews list so the approved-reviews section
+      // reflects the change without a refetch.
+      set((state) => ({
+        moderationQueue: state.moderationQueue.filter((r) => r.id !== id),
+        reviews: state.reviews.some((r) => r.id === id)
+          ? state.reviews.map((r) => (r.id === id ? data : r))
+          : [data, ...state.reviews],
+      }));
+      return true;
+    } catch {
+      return false;
+    }
   },
 
   // ── Wishlists ───────────────────────────────────────────

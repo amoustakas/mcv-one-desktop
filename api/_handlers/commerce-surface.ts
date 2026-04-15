@@ -858,6 +858,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.json({ data });
       }
 
+      case 'moderate-review': {
+        if (req.method !== 'POST') return res.status(405).json({ error: 'POST required' });
+        const { id, decision, moderator_note } = req.body;
+        if (!id) return res.status(400).json({ error: 'id is required' });
+        if (decision !== 'approve' && decision !== 'reject') {
+          return res.status(400).json({ error: 'decision must be "approve" or "reject"' });
+        }
+        // Soft moderation: status flip + audit fields. Rejected reviews stay
+        // in the table (rather than getting deleted) so a flagged-for-rejection
+        // pattern can be reviewed and reversed without losing the original
+        // review text or rating.
+        const newStatus = decision === 'approve' ? 'approved' : 'rejected';
+        const { data, error } = await supabase.from('reviews').update({
+          status: newStatus,
+          moderated_at: new Date().toISOString(),
+          moderator_note: moderator_note ?? null,
+        }).eq('id', id as string).eq('venture_id', ventureId).select().single();
+        if (error) throw error;
+        return res.json({ data });
+      }
+
       // ── WISHLIST ─────────────────────────────────────────────────────────────
 
       case 'get-wishlists': {
