@@ -63,4 +63,14 @@ export type {
   ListInvoicesFilters,
 } from './invoice-engine';
 
-export const MCV_COMMERCE_SDK_VERSION = '0.14.0' as const;
+// loan-engine — subpath-only for the LedgerAdapter namespace reason.
+// calculateAmortization is pure and safe to expose at the root.
+export { createLoanEngine, calculateAmortization, mapLoanRow, mapRepaymentRow } from './loan-engine';
+export type {
+  LoanEngine,
+  LoanEngineOptions,
+  ListLoansFilters,
+  AmortizationRow,
+} from './loan-engine';
+
+export const MCV_COMMERCE_SDK_VERSION = '0.15.0' as const;
