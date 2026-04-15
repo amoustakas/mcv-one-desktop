@@ -1,12 +1,13 @@
 // EdgeIQ Capital — Per-venture cap table + round roster.
 // SPEC-EQC-001 Epic 2.5
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Briefcase, Plus, TrendingUp, Users, DollarSign, Activity as ActivityIcon } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
 import { useVentureSummary, useInvestors, useActivities } from '../hooks/use-capital';
 import { PageHeader, PageShell, StatCard, GlassCard, GridLayout, Badge, EmptyState, Button } from '../components/ui';
 import { formatMoney, timeAgo } from '../lib/utils';
+import RoundCreationWizard from '../components/capital/RoundCreationWizard';
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'var(--capital-status-draft)',
@@ -20,6 +21,7 @@ const STATUS_COLORS: Record<string, string> = {
 export default function CapitalVentureView() {
   const activeVenture = useNavigation((s) => s.activeVenture);
   const setView = useNavigation((s) => s.setView);
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   const { data: summary, isLoading, refetch } = useVentureSummary(activeVenture);
   const { data: investors = [] } = useInvestors(activeVenture ?? undefined);
@@ -56,7 +58,7 @@ export default function CapitalVentureView() {
         loading={isLoading}
         onRefresh={() => refetch()}
       >
-        <Button variant="primary" icon={<Plus size={14} />} onClick={() => alert('Round creation wizard — Epic 2.6 follow-up')}>
+        <Button variant="primary" icon={<Plus size={14} />} onClick={() => setWizardOpen(true)}>
           New Round
         </Button>
       </PageHeader>
@@ -175,6 +177,19 @@ export default function CapitalVentureView() {
           </GlassCard>
         )}
       </div>
+
+      {activeVenture && (
+        <RoundCreationWizard
+          open={wizardOpen}
+          ventureId={activeVenture}
+          onClose={() => setWizardOpen(false)}
+          onCreated={(roundId) => {
+            refetch();
+            sessionStorage.setItem('capital.activeRoundId', roundId);
+            setView('capital-round-detail');
+          }}
+        />
+      )}
     </PageShell>
   );
 }

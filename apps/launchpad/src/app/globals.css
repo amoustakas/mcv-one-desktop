@@ -1,0 +1,102 @@
+/* MCV Launchpad — minimal design tokens mirroring mcv-one-desktop design-system.css */
+:root {
+  --bg-deep: #060D14;
+  --bg-card: #0F1720;
+  --bg-elevated: #1A242F;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --text: #E7EEF5;
+  --text-muted: #8A9AAD;
+  --cyan: #00F0FF;
+  --purple: #8B5CF6;
+  --green: #10B981;
+  --amber: #F59E0B;
+  --red: #EF4444;
+
+  --lane-equity: var(--cyan);
+  --lane-token: var(--purple);
+  --lane-hybrid: linear-gradient(90deg, var(--cyan) 0%, var(--purple) 100%);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-deep);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--cyan); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.lp-container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+.lp-hero { padding: 96px 0 48px; text-align: center; }
+.lp-hero h1 {
+  font-size: clamp(36px, 6vw, 72px);
+  font-weight: 700;
+  line-height: 1.1;
+  margin: 0 0 16px;
+  background: linear-gradient(90deg, var(--cyan), var(--purple));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.lp-hero p { font-size: 20px; color: var(--text-muted); max-width: 720px; margin: 0 auto 40px; }
+.lp-hero-cta { display: inline-flex; gap: 12px; }
+.lp-btn {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  border: none;
+  transition: transform 0.1s ease;
+}
+.lp-btn:active { transform: translateY(1px); }
+.lp-btn-primary { background: linear-gradient(90deg, var(--cyan), var(--purple)); color: white; }
+.lp-btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border-subtle); }
+
+.lp-section-title { font-size: 14px; color: var(--text-muted); margin: 48px 0 16px; text-transform: uppercase; letter-spacing: 0.1em; }
+
+.lp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+
+.lp-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 24px;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.lp-card:hover { border-color: rgba(0, 240, 255, 0.3); transform: translateY(-2px); }
+.lp-card h3 { margin: 0 0 4px; font-size: 18px; font-weight: 600; }
+.lp-card-venture { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 12px; }
+.lp-card-meta { display: flex; gap: 12px; font-size: 11px; color: var(--text-muted); margin-top: 12px; }
+
+.lp-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.lp-badge-equity { background: rgba(0, 240, 255, 0.15); color: var(--cyan); }
+.lp-badge-token { background: rgba(139, 92, 246, 0.15); color: var(--purple); }
+.lp-badge-hybrid { background: linear-gradient(90deg, rgba(0, 240, 255, 0.15), rgba(139, 92, 246, 0.15)); color: var(--text); }
+.lp-badge-open { background: rgba(16, 185, 129, 0.15); color: var(--green); }
+.lp-badge-closing { background: rgba(245, 158, 11, 0.15); color: var(--amber); }
+
+.lp-progress-track { height: 6px; background: var(--bg-elevated); border-radius: 3px; overflow: hidden; margin: 12px 0 4px; }
+.lp-progress-fill { height: 100%; background: linear-gradient(90deg, var(--cyan), var(--purple)); transition: width 0.3s ease; }
+.lp-progress-label { display: flex; justify-content: space-between; font-size: 12px; }
+.lp-progress-label span:last-child { color: var(--text-muted); }
+
+.lp-footer { padding: 96px 0 48px; text-align: center; color: var(--text-muted); font-size: 12px; border-top: 1px solid var(--border-subtle); margin-top: 96px; }
+.lp-footer a { margin: 0 12px; }
+
+.lp-empty { text-align: center; padding: 96px 24px; color: var(--text-muted); }
