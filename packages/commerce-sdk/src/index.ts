@@ -73,4 +73,12 @@ export type {
   AmortizationRow,
 } from './loan-engine';
 
-export const MCV_COMMERCE_SDK_VERSION = '0.15.0' as const;
+// subscription-engine — subpath-only for LedgerAdapter namespace reasons.
+export { createSubscriptionEngine, mapSubscriptionRow } from './subscription-engine';
+export type {
+  SubscriptionEngine,
+  SubscriptionEngineOptions,
+  OverageResult,
+} from './subscription-engine';
+
+export const MCV_COMMERCE_SDK_VERSION = '0.16.0' as const;
