@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createServerIntelligence } from '../../src/lib/mcv-core/intelligence.js';
 
 async function requireAuth(req: VercelRequest, res: VercelResponse): Promise<string | null> {
   const secretKey = process.env.CLERK_SECRET_KEY;
@@ -25,6 +26,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (!messages || !Array.isArray(messages)) {
     return res.status(400).json({ error: 'messages array required' });
+  }
+
+  // ── Triangle routing ────────────────────────────────────────────────
+  // Route through Intelligence with provider:'google' when configured. The
+  // gateway handles provider failover and centralized cost tracking.
+  const intelligence = createServerIntelligence();
+  if (intelligence) {
+    try {
+      const result = await intelligence.chat({
+        provider: 'google',
+        model: 'gemini-1.5-pro',
+        messages: [
+          ...(systemPrompt ? [{ role: 'system' as const, content: systemPrompt }] : []),
+          ...messages.map((m: { role: string; content: string }) => ({
+            role: (m.role === 'assistant' ? 'assistant' : 'user') as 'user' | 'assistant',
+            content: m.content,
+          })),
+        ],
+      });
+      if (result.ok) {
+        return res.status(200).json({ content: result.data.content });
+      }
+      // eslint-disable-next-line no-console
+      console.warn('[gemini] Intelligence call failed, falling back to direct GenAI:', result.error.message);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('[gemini] Intelligence threw, falling back to direct GenAI:', (err as Error).message);
+    }
   }
 
   const googleKey = process.env.GOOGLE_AI_KEY || process.env.VITE_GOOGLE_AI_KEY || process.env.GOOGLE_GENERATIVE_AI_KEY || '';
