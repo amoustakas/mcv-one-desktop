@@ -44,4 +44,6 @@ export type {
   PickListItem,
 } from './fulfillment-service';
 
-export const MCV_COMMERCE_SDK_VERSION = '0.11.0' as const;
+export * from './inventory-manager';
+
+export const MCV_COMMERCE_SDK_VERSION = '0.12.0' as const;
