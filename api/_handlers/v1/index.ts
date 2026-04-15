@@ -918,8 +918,73 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
 
+      // ═══════════════════════════════════════════════════════════════════
+      // CAPITAL — third-party read access to rounds / commitments /
+      // distributions, scoped to the API key's venture. Write actions
+      // require `capital:write` permission (not yet exposed externally).
+      // Epic 6 Story 2 — white-label API tier.
+      // ═══════════════════════════════════════════════════════════════════
+      case 'capital': {
+        if (!apiKey.permissions.includes('capital:read') && !apiKey.permissions.includes('capital:write')) {
+          return err(res, 403, 'API key missing capital:read or capital:write permission.');
+        }
+        const { createCapitalEngine } = await import('@mcv/capital-sdk');
+        const engine = createCapitalEngine({ supabase });
+
+        switch (action) {
+          case 'list-rounds': {
+            const rounds = await engine.rounds.listRounds(ventureId, {
+              status: (body.status as never) ?? (getParam(req, 'status') as never),
+              limit: Number(body.limit ?? getParam(req, 'limit') ?? 50),
+            });
+            return ok(res, { rounds }, meta);
+          }
+          case 'list-public-rounds': {
+            // Public = is_public=true AND status IN (open,closing). Also
+            // filtered by venture scope — partners only see their own rounds.
+            const rounds = await engine.rounds.listPublicRounds({ ventureId });
+            return ok(res, { rounds }, meta);
+          }
+          case 'get-round': {
+            const id = getParam(req, 'id') ?? (body.id as string);
+            if (!id) return err(res, 400, 'id is required');
+            const round = await engine.rounds.getRound(id);
+            if (!round) return err(res, 404, 'Round not found');
+            if (round.ventureId !== ventureId) return err(res, 403, 'Round outside API key scope');
+            return ok(res, { round }, meta);
+          }
+          case 'list-commitments': {
+            const commitments = await engine.commitments.listCommitments(ventureId, {
+              roundId: getParam(req, 'roundId') ?? (body.roundId as string | undefined),
+              status: (body.status as never) ?? (getParam(req, 'status') as never),
+              limit: Number(body.limit ?? getParam(req, 'limit') ?? 100),
+            });
+            return ok(res, { commitments }, meta);
+          }
+          case 'list-distributions': {
+            const distributions = await engine.distributions.listDistributions(ventureId, {
+              roundId: getParam(req, 'roundId') ?? (body.roundId as string | undefined),
+              status: (body.status as never) ?? (getParam(req, 'status') as never),
+              limit: Number(body.limit ?? getParam(req, 'limit') ?? 50),
+            });
+            return ok(res, { distributions }, meta);
+          }
+          case 'verify-accreditation-vc': {
+            // Public verification endpoint — any holder of the VC can verify
+            // via a partner API key. Requires only capital:read.
+            const vc = body.vc ?? (() => { const s = getParam(req, 'vc'); return s ? JSON.parse(s) : null; })();
+            if (!vc) return err(res, 400, 'vc body param is required');
+            const { verifyAccreditationCredential } = await import('../../../src/lib/capital/vc-issuer');
+            const result = verifyAccreditationCredential(vc as never);
+            return ok(res, result, meta);
+          }
+          default:
+            return err(res, 400, `Unknown action "${action}" for resource "capital". Valid: list-rounds, list-public-rounds, get-round, list-commitments, list-distributions, verify-accreditation-vc`);
+        }
+      }
+
       default:
-        return err(res, 404, `Unknown resource "${resource}". Valid: products, subscriptions, invoices, payments, credits, loans, ledger, finance, webhooks`);
+        return err(res, 404, `Unknown resource "${resource}". Valid: products, subscriptions, invoices, payments, credits, loans, ledger, finance, webhooks, capital`);
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Internal server error';
