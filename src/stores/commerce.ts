@@ -51,6 +51,7 @@ interface CommerceState {
   createInvoice: (ventureId: string, input: Record<string, unknown>) => Promise<Invoice>;
   sendInvoice: (ventureId: string, invoiceId: string) => Promise<void>;
   recordInvoicePayment: (ventureId: string, invoiceId: string, amount: number) => Promise<void>;
+  voidInvoice: (ventureId: string, invoiceId: string) => Promise<void>;
   fetchOverdueInvoices: (ventureId: string) => Promise<Invoice[]>;
 
   // Actions — Loans
@@ -199,6 +200,13 @@ export const useCommerceStore = create<CommerceState>((set, _get) => ({
 
   recordInvoicePayment: async (ventureId, invoiceId, amount) => {
     const { data } = await post<{ data: Invoice }>('record-invoice-payment', ventureId, { invoiceId, amount });
+    set((state) => ({
+      invoices: state.invoices.map((inv: any) => (inv.id === invoiceId ? data : inv)),
+    }));
+  },
+
+  voidInvoice: async (ventureId, invoiceId) => {
+    const { data } = await post<{ data: Invoice }>('void-invoice', ventureId, { invoiceId });
     set((state) => ({
       invoices: state.invoices.map((inv: any) => (inv.id === invoiceId ? data : inv)),
     }));

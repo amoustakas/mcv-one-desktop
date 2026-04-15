@@ -4,7 +4,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { withAuth } from './_auth.js';
-import { scoreTransaction, listFraudRules, createFraudRule } from '../../src/lib/compliance/fraud-engine';
+import { scoreTransaction, listFraudRules, createFraudRule, updateFraudRule, deleteFraudRule } from '../../src/lib/compliance/fraud-engine';
 import {
   getDunningStats,
   getDunningConfig,
@@ -89,6 +89,31 @@ async function handler(req: VercelRequest, res: VercelResponse) {
           enabled: (body.enabled as boolean) ?? true,
         });
         return res.json({ data: rule });
+      }
+
+      case 'update-fraud-rule': {
+        const id = body.id as string;
+        if (!id) return res.status(400).json({ error: 'id is required' });
+        // Partial update — only fields explicitly present in the body are forwarded
+        // so the dialog can do field-level toggles (e.g. enabled-only) without
+        // clobbering the rest of the rule.
+        const patch: Record<string, unknown> = {};
+        if (body.name !== undefined) patch.name = body.name;
+        if (body.condition !== undefined) patch.condition = body.condition;
+        if (body.ruleAction !== undefined) patch.action = body.ruleAction;
+        if (body.scoreImpact !== undefined) patch.scoreImpact = body.scoreImpact;
+        if (body.enabled !== undefined) patch.enabled = body.enabled;
+        const rule = await updateFraudRule(id, patch as Parameters<typeof updateFraudRule>[1]);
+        if (!rule) return res.status(404).json({ error: 'Rule not found or update failed' });
+        return res.json({ data: rule });
+      }
+
+      case 'delete-fraud-rule': {
+        const id = body.id as string;
+        if (!id) return res.status(400).json({ error: 'id is required' });
+        const ok = await deleteFraudRule(id);
+        if (!ok) return res.status(500).json({ error: 'Delete failed' });
+        return res.json({ data: { success: true, id } });
       }
 
       case 'process-retries': {

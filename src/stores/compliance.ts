@@ -230,10 +230,12 @@ export const useComplianceStore = create<ComplianceState & ComplianceActions>()(
         // "rule_" prefix is the dialog's sentinel for unsaved drafts.
         const isNew = id.startsWith('rule_') || !get().fraudRules.some((r) => String((r as unknown as Record<string, unknown>).id) === id);
 
+        const condition = (rule.custom_expression as string | undefined) ?? `${rule.trigger_type ?? 'velocity'}:${rule.threshold ?? 0}`;
+
         if (isNew) {
           const created = await compliancePost<FraudRule>('create-fraud-rule', ventureId, {
             name: rule.name,
-            condition: rule.custom_expression ?? `${rule.trigger_type ?? 'velocity'}:${rule.threshold ?? 0}`,
+            condition,
             ruleAction: rule.action,
             scoreImpact: rule.risk_score,
             enabled: rule.enabled !== false,
@@ -245,18 +247,27 @@ export const useComplianceStore = create<ComplianceState & ComplianceActions>()(
           return false;
         }
 
-        // Optimistic local merge — server update endpoint pending.
-        set((s) => ({
-          fraudRules: s.fraudRules.map((r) =>
-            String((r as unknown as Record<string, unknown>).id) === id
-              ? ({ ...(r as unknown as Record<string, unknown>), ...rule } as unknown as FraudRule)
-              : r,
-          ),
-        }));
+        const updated = await compliancePost<FraudRule>('update-fraud-rule', ventureId, {
+          id,
+          name: rule.name,
+          condition,
+          ruleAction: rule.action,
+          scoreImpact: rule.risk_score,
+          enabled: rule.enabled,
+        });
+        if (updated) {
+          set((s) => ({
+            fraudRules: s.fraudRules.map((r) =>
+              String((r as unknown as Record<string, unknown>).id) === id ? updated : r,
+            ),
+          }));
+          return true;
+        }
         return false;
       },
 
-      toggleFraudRule: async (_ventureId, ruleId, enabled) => {
+      toggleFraudRule: async (ventureId, ruleId, enabled) => {
+        // Optimistic flip first — toggle should feel instant.
         set((s) => ({
           fraudRules: s.fraudRules.map((r) =>
             String((r as unknown as Record<string, unknown>).id) === ruleId
@@ -264,14 +275,32 @@ export const useComplianceStore = create<ComplianceState & ComplianceActions>()(
               : r,
           ),
         }));
-        return false; // No persistent endpoint yet.
+        const updated = await compliancePost<FraudRule>('update-fraud-rule', ventureId, { id: ruleId, enabled });
+        if (!updated) {
+          // Rollback on failure so the UI doesn't lie about persisted state.
+          set((s) => ({
+            fraudRules: s.fraudRules.map((r) =>
+              String((r as unknown as Record<string, unknown>).id) === ruleId
+                ? ({ ...(r as unknown as Record<string, unknown>), enabled: !enabled } as unknown as FraudRule)
+                : r,
+            ),
+          }));
+          return false;
+        }
+        return true;
       },
 
-      deleteFraudRule: async (_ventureId, ruleId) => {
+      deleteFraudRule: async (ventureId, ruleId) => {
+        const before = get().fraudRules;
         set((s) => ({
           fraudRules: s.fraudRules.filter((r) => String((r as unknown as Record<string, unknown>).id) !== ruleId),
         }));
-        return false;
+        const deleted = await compliancePost<{ success: boolean }>('delete-fraud-rule', ventureId, { id: ruleId });
+        if (!deleted) {
+          set({ fraudRules: before });
+          return false;
+        }
+        return true;
       },
 
       updateNexusStatus: async (_ventureId, alertId, status) => {

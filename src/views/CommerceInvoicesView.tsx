@@ -16,7 +16,7 @@ export default function CommerceInvoicesView() {
   const { activeVenture, mode } = useNavigation();
   const ventureId = (mode === 'venture' ? activeVenture : null) || 'mcv';
 
-  const { invoices, invoicesLoading, fetchInvoices, sendInvoice, recordInvoicePayment } = useCommerceStore();
+  const { invoices, invoicesLoading, fetchInvoices, sendInvoice, recordInvoicePayment, voidInvoice } = useCommerceStore();
   const [tab, setTab] = useState('all');
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
@@ -92,13 +92,27 @@ export default function CommerceInvoicesView() {
       },
     },
     {
-      id: 'delete',
-      label: 'Delete',
+      id: 'void',
+      label: 'Void',
       icon: <TrashIcon size={12} />,
       danger: true,
-      confirm: true,
-      onRun: (ids) => {
-        addToast({ type: 'info', message: `Delete handler ready — wire to commerce store when API lands (${ids.length} items)` });
+      confirm: 'Void selected invoices? Paid invoices are skipped.',
+      onRun: async (ids) => {
+        let voided = 0;
+        let skipped = 0;
+        for (const id of ids) {
+          try {
+            await voidInvoice(ventureId, id);
+            voided += 1;
+          } catch {
+            skipped += 1;
+          }
+        }
+        const summary = skipped > 0
+          ? `Voided ${voided}, skipped ${skipped} (already paid or voided)`
+          : `Voided ${voided} invoice${voided === 1 ? '' : 's'}`;
+        addToast({ type: voided > 0 ? 'success' : 'warning', message: summary });
+        fetchInvoices(ventureId);
       },
     },
   ];

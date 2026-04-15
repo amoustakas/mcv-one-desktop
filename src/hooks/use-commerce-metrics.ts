@@ -179,3 +179,40 @@ export function useAllVentureTimeseries(range = '30d') {
 
   return { byVenture };
 }
+
+export interface CustomerOrderRow {
+  id: string;
+  order_number?: string;
+  total: number;
+  status: string;
+  created_at: string;
+  line_count?: number;
+}
+
+/**
+ * Recent N orders for a single customer in a venture. Powers the
+ * TopCustomersCard expand panel and any future customer-detail surface.
+ * Disabled when either id is empty so the card can pass an empty
+ * customerId before the user expands a row without firing a request.
+ */
+export function useCustomerRecentOrders(
+  ventureId: string,
+  customerId: string,
+  limit = 5,
+) {
+  return useQuery({
+    queryKey: ['commerce', 'customer-orders', ventureId, customerId, limit] as const,
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        action: 'list-customer-orders',
+        ventureId,
+        customerId,
+        limit: String(limit),
+      });
+      const res = await apiGet<{ data: CustomerOrderRow[] }>(`/api/commerce?${params}`);
+      return res.data ?? [];
+    },
+    enabled: !!ventureId && !!customerId,
+    staleTime: 60_000,
+  });
+}

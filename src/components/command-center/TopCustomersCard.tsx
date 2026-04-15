@@ -1,10 +1,43 @@
 import { useMemo, useState } from 'react';
-import { Crown, Mail, ExternalLink, ArrowUpRight, ChevronDown, TrendingUp, Calendar } from 'lucide-react';
+import { Crown, Mail, ExternalLink, ArrowUpRight, ChevronDown, TrendingUp, Calendar, ShoppingBag, Loader2 } from 'lucide-react';
 import { SectionCard, Badge, Tooltip } from '../ui';
 import { formatCurrency } from '../../lib/utils';
 import { ventures } from '../../lib/ventures';
 import type { CommerceMetricsSnapshot } from '../../hooks/use-commerce-metrics';
+import { useCustomerRecentOrders } from '../../hooks/use-commerce-metrics';
 import { useNavigation } from '../../stores/navigation';
+
+/**
+ * Inline list of a customer's most recent orders. Owns its own query so
+ * the parent only mounts it for the currently expanded row — fan-out
+ * across 10 customers stays at zero requests until a user expands one.
+ */
+function RecentOrdersList({ ventureId, customerId }: { ventureId: string; customerId: string }) {
+  const { data, isLoading } = useCustomerRecentOrders(ventureId, customerId, 5);
+  if (isLoading) {
+    return (
+      <div className="tc-recent-loading">
+        <Loader2 size={11} className="mcv-spin" /> Loading orders…
+      </div>
+    );
+  }
+  if (!data || data.length === 0) {
+    return <div className="tc-recent-empty">No recent orders for this customer.</div>;
+  }
+  return (
+    <ul className="tc-recent-list">
+      {data.map((o) => (
+        <li key={o.id} className="tc-recent-row">
+          <ShoppingBag size={9} className="tc-recent-icon" />
+          <span className="tc-recent-num">#{o.order_number ?? o.id.slice(-6).toUpperCase()}</span>
+          <span className="tc-recent-amt">{formatCurrency(o.total)}</span>
+          <span className="tc-recent-status">{o.status}</span>
+          <span className="tc-recent-when">{new Date(o.created_at).toLocaleDateString()}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 /**
  * Aggregates top customers across every venture, ranks by LTV, returns the
@@ -32,6 +65,7 @@ export default function TopCustomersCard({
   const customers = useMemo(() => {
     const all: Array<{
       id: string;
+      customerId: string;
       name: string;
       email: string;
       ltv: number;
@@ -48,6 +82,7 @@ export default function TopCustomersCard({
         const name = [c.first_name, c.last_name].filter(Boolean).join(' ') || c.email;
         all.push({
           id: `${v.id}:${c.id}`,
+          customerId: c.id,
           name,
           email: c.email,
           ltv: Number(c.ltv || 0),
@@ -149,6 +184,12 @@ export default function TopCustomersCard({
                       <span className="tc-expand-stat-val">{ventureRevShare > 0 ? `${ventureRevShare.toFixed(1)}%` : '—'}</span>
                     </div>
                   </div>
+                  <div className="tc-recent-section">
+                    <span className="tc-recent-heading">
+                      <ShoppingBag size={10} /> Recent orders
+                    </span>
+                    <RecentOrdersList ventureId={c.ventureId} customerId={c.customerId} />
+                  </div>
                   <div className="tc-expand-actions">
                     <button type="button" className="tc-expand-btn" onClick={() => jumpToContact(c.email)}>
                       <ArrowUpRight size={11} /> Open in CRM
@@ -179,6 +220,17 @@ export default function TopCustomersCard({
         .tc-expand-stat > svg { color: var(--text-muted); }
         .tc-expand-stat-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px; }
         .tc-expand-stat-val { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--text-primary); }
+        .tc-recent-section { display: flex; flex-direction: column; gap: 4px; }
+        .tc-recent-heading { display: inline-flex; align-items: center; gap: 4px; font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; font-weight: 600; padding: 2px 0; }
+        .tc-recent-loading { font-size: 10px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; }
+        .tc-recent-empty { font-size: 10px; color: var(--text-muted); padding: 4px 8px; font-style: italic; }
+        .tc-recent-list { list-style: none; display: flex; flex-direction: column; gap: 2px; }
+        .tc-recent-row { display: grid; grid-template-columns: 11px 70px 1fr 70px 70px; align-items: center; gap: 6px; padding: 4px 6px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 10px; }
+        .tc-recent-icon { color: var(--text-muted); }
+        .tc-recent-num { font-family: var(--font-mono); color: var(--text-secondary); }
+        .tc-recent-amt { color: var(--cyan); font-weight: 600; font-family: var(--font-mono); text-align: right; }
+        .tc-recent-status { font-size: 9px; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.3px; }
+        .tc-recent-when { font-family: var(--font-mono); color: var(--text-muted); font-size: 9px; text-align: right; }
         .tc-expand-actions { display: flex; gap: 6px; }
         .tc-expand-btn { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-full); font-size: 10px; font-weight: 500; color: var(--text-secondary); text-decoration: none; transition: all var(--transition-fast); }
         .tc-expand-btn:hover { color: var(--cyan); border-color: var(--border-active); background: rgba(0, 240, 255, 0.06); }

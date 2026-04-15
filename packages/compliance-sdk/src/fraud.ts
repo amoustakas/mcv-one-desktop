@@ -35,6 +35,7 @@ export interface FraudEngine {
     id: string,
     updates: Partial<Omit<FraudRule, 'id' | 'ventureId'>>,
   ): Promise<FraudRule | null>;
+  deleteFraudRule(id: string): Promise<boolean>;
   listFraudRules(ventureId: string): Promise<FraudRule[]>;
 }
 
@@ -364,6 +365,12 @@ export function createFraudEngine({
         scoreImpact: data.score_impact,
         enabled: data.enabled,
       };
+    },
+
+    async deleteFraudRule(id) {
+      if (!supabase) return false;
+      const { error } = await supabase.from('fraud_rules').delete().eq('id', id);
+      return !error;
     },
 
     async listFraudRules(ventureId) {

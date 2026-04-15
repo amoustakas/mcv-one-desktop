@@ -289,18 +289,18 @@ export default function ComplianceHubView() {
             rule={selectedRule || { id: selectedRuleId, name: 'New Rule', enabled: true, risk_score: 50, action: 'flag', trigger_type: 'velocity' }}
             onSave={async (updated) => {
               const persisted = await upsertFraudRule(ventureId, updated as unknown as Record<string, unknown>);
-              toast(persisted ? 'success' : 'info', persisted ? 'Fraud rule saved' : 'Saved locally — update endpoint pending');
+              toast(persisted ? 'success' : 'error', persisted ? 'Fraud rule saved' : 'Save failed — check server logs');
               if (persisted) await fetchFraudRules(ventureId);
               setSelectedRuleId(null);
             }}
             onToggle={async (id, enabled) => {
-              await toggleFraudRule(ventureId, id, enabled);
-              toast('info', enabled ? 'Rule enabled (local)' : 'Rule disabled (local)');
+              const ok = await toggleFraudRule(ventureId, id, enabled);
+              toast(ok ? 'success' : 'error', ok ? (enabled ? 'Rule enabled' : 'Rule disabled') : 'Toggle failed — reverted');
             }}
             onDelete={async (id) => {
-              await deleteFraudRule(ventureId, id);
-              toast('info', 'Rule removed (local — destroy endpoint pending)');
-              setSelectedRuleId(null);
+              const ok = await deleteFraudRule(ventureId, id);
+              toast(ok ? 'success' : 'error', ok ? 'Rule deleted' : 'Delete failed — restored');
+              if (ok) setSelectedRuleId(null);
             }}
           />
         )}

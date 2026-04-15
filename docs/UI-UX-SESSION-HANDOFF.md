@@ -100,8 +100,23 @@ optimistic vs. server-persisted.
 | `EscrowDetailDialog` (release/approve milestone) | `useCreatorStore.approveMilestone` + auto `releaseEscrow` when all approved | server ✓ |
 | `EscrowDetailDialog` (save/dispute) | toast says "API pending" | local |
 | `FraudRuleDetailDialog` (new) | `useComplianceStore.upsertFraudRule` → POST `create-fraud-rule` | server ✓ |
-| `FraudRuleDetailDialog` (update/toggle/delete) | optimistic local | local |
-| `NexusAlertDetailDialog` (acknowledge/register/exempt) | `useComplianceStore.updateNexusStatus` | local |
+| `FraudRuleDetailDialog` (update) | POST `update-fraud-rule` (full or partial) | server ✓ |
+| `FraudRuleDetailDialog` (toggle) | POST `update-fraud-rule` with `enabled` only — optimistic flip + rollback | server ✓ |
+| `FraudRuleDetailDialog` (delete) | POST `delete-fraud-rule` — optimistic remove + restore on failure | server ✓ |
+| `NexusAlertDetailDialog` (acknowledge/register/exempt) | `useComplianceStore.updateNexusStatus` | local (needs migration for `nexus_alert_status` column) |
+
+**Bulk-action void:** `CommerceInvoicesView` "Void" bulk action wires
+to `useCommerceStore.voidInvoice` → POST `void-invoice` (soft status
+flip; full ledger reversal goes through `InvoiceEngine.voidInvoice`
+when wired from server-side flows). Skips paid/already-voided
+invoices server-side and reports counts in the toast.
+
+**TopCustomers expand → real recent orders:** the inline expand panel
+on `TopCustomersCard` now renders a `RecentOrdersList` sub-component
+that fires `useCustomerRecentOrders(ventureId, customerId, 5)` only
+when the row is expanded — fan-out across all 10 cards stays at zero
+requests until a user expands one. Backed by new `list-customer-orders`
+action on `/api/commerce`.
 
 The "local" rows surface as `info`/`warning` toasts that explicitly call
 out the missing endpoint, so users see the change reflected and know it's

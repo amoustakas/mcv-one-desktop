@@ -442,6 +442,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.json({ data });
       }
 
+      case 'void-invoice': {
+        if (req.method !== 'POST') return res.status(405).json({ error: 'POST required' });
+        const { invoiceId } = req.body;
+        if (!invoiceId) return res.status(400).json({ error: 'invoiceId is required' });
+
+        // Soft void: any non-paid/non-voided invoice can be voided. The invoice-engine
+        // SDK does full journal-entry reversal — this UI path is only used for drafts
+        // and uncollected sent invoices, so the status flip is sufficient.
+        const { data, error } = await supabase
+          .from('invoices')
+          .update({ status: 'voided', updated_at: new Date().toISOString() })
+          .eq('id', invoiceId as string)
+          .eq('venture_id', ventureId)
+          .not('status', 'in', '("paid","voided")')
+          .select()
+          .single();
+        if (error) throw error;
+        if (!data) return res.status(409).json({ error: 'Invoice cannot be voided in its current status' });
+        return res.json({ data });
+      }
+
+      case 'list-customer-orders': {
+        // Recent orders for a single customer — powers TopCustomers expand panel.
+        const { customerId, limit: lRaw } = req.query;
+        if (!customerId) return res.status(400).json({ error: 'customerId is required' });
+        const limit = Math.min(Number(lRaw) || 10, 50);
+
+        const { data, error } = await supabase
+          .from('orders')
+          .select('id, order_number, total, status, created_at, line_count')
+          .eq('venture_id', ventureId)
+          .eq('customer_id', customerId as string)
+          .order('created_at', { ascending: false })
+          .limit(limit);
+        if (error) throw error;
+        return res.json({ data: data ?? [] });
+      }
+
       // ── LOANS ─────────────────────────────────────────────────────────────
 
       case 'list-loans': {
