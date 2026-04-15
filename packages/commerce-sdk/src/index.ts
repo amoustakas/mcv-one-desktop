@@ -28,5 +28,6 @@ export { createProductService, mapProductRow } from './product-service';
 export type { ProductService, ProductServiceOptions, ListProductsFilters } from './product-service';
 
 export * from './customer-service';
+export * from './discount-engine';
 
-export const MCV_COMMERCE_SDK_VERSION = '0.9.0' as const;
+export const MCV_COMMERCE_SDK_VERSION = '0.10.0' as const;
