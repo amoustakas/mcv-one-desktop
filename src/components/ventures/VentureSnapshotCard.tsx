@@ -45,6 +45,38 @@ export default function VentureSnapshotCard({ venture }: Props) {
   const [pickerLoading, setPickerLoading] = useState(false);
   const [confirmingIds, setConfirmingIds] = useState<Set<string>>(new Set());
 
+  // Inline apply-templates picker state — for empty-docs shortcut
+  const [applyPickerOpen, setApplyPickerOpen] = useState(false);
+  const [applyingDept, setApplyingDept] = useState<string | null>(null);
+
+  async function applyTemplatesForDept(dept: string) {
+    if (applyingDept) return;
+    setApplyingDept(dept);
+    try {
+      const result = await apiPost<{ count: number }>('/api/ventures', {
+        action: 'apply-doc-template',
+        venture_id: venture.id,
+        department: dept,
+      });
+      // Optimistic: bump the docs total on the card so the user sees immediate
+      // impact. Real byDept breakdown will reconcile on next full refresh.
+      const added = result?.count ?? 0;
+      setSummary(prev => prev ? {
+        ...prev,
+        docs: {
+          ...prev.docs,
+          total: prev.docs.total + added,
+          byDept: { ...prev.docs.byDept, [dept]: (prev.docs.byDept[dept] || 0) + added },
+        },
+      } : prev);
+      setApplyPickerOpen(false);
+    } catch {
+      // keep picker open so user can retry or pick a different dept
+    } finally {
+      setApplyingDept(null);
+    }
+  }
+
   async function openConfirmPicker() {
     if (pickerOpen) { setPickerOpen(false); return; }
     setPickerOpen(true);
@@ -240,6 +272,44 @@ export default function VentureSnapshotCard({ venture }: Props) {
         </div>
       )}
 
+      {summary.docs.total === 0 && (
+        <div className="vsc-confirm-row">
+          <button
+            className="vsc-confirm-toggle vsc-doc-cta"
+            onClick={() => setApplyPickerOpen(o => !o)}
+            type="button"
+          >
+            <FileText size={11} />
+            <span>No documentation yet — seed a department to get started</span>
+            <span className="vsc-confirm-cta">{applyPickerOpen ? 'Collapse' : 'Seed'}</span>
+          </button>
+        </div>
+      )}
+
+      {applyPickerOpen && summary.docs.total === 0 && (
+        <div className="vsc-picker" role="region" aria-label="Seed department templates">
+          <div className="vsc-picker-head">
+            <span>Pick a department to seed</span>
+            {applyingDept && <span style={{ color: 'var(--cyan)' }}>Applying {applyingDept}…</span>}
+          </div>
+          <div className="vsc-picker-chips">
+            {(['legal', 'compliance', 'research', 'finance', 'ops', 'product'] as const).map(d => (
+              <button
+                key={d}
+                className="vsc-picker-chip vsc-dept-chip"
+                onClick={() => applyTemplatesForDept(d)}
+                disabled={!!applyingDept}
+              >
+                <span className="vsc-chip-name">{d.charAt(0).toUpperCase() + d.slice(1)}</span>
+                <span className="vsc-chip-action">
+                  {applyingDept === d ? '…' : <Check size={11} />}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {pickerOpen && (
         <div className="vsc-picker" role="region" aria-label="Confirm discovered assets">
           {pickerLoading && <div className="vsc-picker-loading">Loading discoveries…</div>}
@@ -371,4 +441,9 @@ const styles = `
   .vsc-chip-kind { font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); font-family: var(--font-mono); }
   .vsc-chip-name { font-weight: 600; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .vsc-chip-action { display: flex; align-items: center; color: #10B981; }
+  .vsc-doc-cta { background: rgba(245, 158, 11, 0.08); border-color: rgba(245, 158, 11, 0.35); }
+  .vsc-doc-cta:hover { background: rgba(245, 158, 11, 0.16); border-color: rgba(245, 158, 11, 0.6); }
+  .vsc-doc-cta svg { color: #F59E0B; }
+  .vsc-doc-cta .vsc-confirm-cta { color: #F59E0B; }
+  .vsc-dept-chip:hover:not(:disabled) { border-color: #F59E0B; background: rgba(245, 158, 11, 0.10); }
 `;
