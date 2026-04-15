@@ -23,6 +23,10 @@ export type ViewId =
   // Operations
   | 'tasks'
   | 'docs'
+  | 'blog'
+  | 'venture-site'
+  | 'announcements'
+  | 'taxonomy'
   // Tools & AI
   | 'ai-studio'
   | 'prompt-composer'
@@ -123,6 +127,12 @@ export type ViewId =
   | 'venture-epics'
   // Per-venture integrations panel (Stripe Connect, Plaid, R2, Comms, etc.)
   | 'venture-integrations'
+  // EdgeIQ Capital — cap table, rounds, investor portal admin, launchpad
+  | 'capital'
+  | 'capital-venture'
+  | 'capital-round-detail'
+  | 'capital-contact-detail'
+  | 'capital-launchpad-admin'
   // Departmental Command Suites (global toolbox + dedicated per-department surfaces)
   | 'suite-command-bridge'
   | 'suite-creative-studio'
@@ -221,6 +231,11 @@ const VIEW_LABELS: Record<string, string> = {
   'contact-center': 'Contact Center', 'compliance-hub': 'Compliance',
   'knowledge-hub': 'Knowledge Hub',
   'audit-log': 'Audit Log',
+  capital: 'Capital',
+  'capital-venture': 'Capital',
+  'capital-round-detail': 'Round',
+  'capital-contact-detail': 'Investor',
+  'capital-launchpad-admin': 'Launchpad',
 };
 
 export const useNavigation = create<NavigationState>()(

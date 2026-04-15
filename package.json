@@ -34,6 +34,7 @@
     "@google/genai": "^1.48.0",
     "@google/generative-ai": "^0.24.1",
     "@mcv/ad-specs-sdk": "*",
+    "@mcv/capital-sdk": "*",
     "@mcv/commerce-sdk": "*",
     "@mcv/compliance-sdk": "*",
     "@mcv/core-triangle": "*",
