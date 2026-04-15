@@ -269,6 +269,13 @@ export default function CRMView() {
 
   const ventureFilter = mode === 'venture' ? activeVenture : undefined;
   const { data: contacts = [], isLoading: loading, refetch } = useContacts(ventureFilter || undefined);
+  const [pendingJumpEmail, setPendingJumpEmail] = useState<string | null>(() => {
+    try {
+      const v = sessionStorage.getItem('mcv-crm-jumpto-email');
+      if (v) sessionStorage.removeItem('mcv-crm-jumpto-email');
+      return v;
+    } catch { return null; }
+  });
   const { data: deals = [] } = useDeals(ventureFilter || undefined);
   const { data: activities = [] } = useActivities(ventureFilter || undefined);
   const { data: accounts = [] } = useAccounts(ventureFilter || undefined);
@@ -282,6 +289,24 @@ export default function CRMView() {
   const toggleContactSelected = (id: string) => {
     setSelectedContactIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
+
+  // Cross-surface jump: if another view stashed an email in sessionStorage,
+  // open that contact's detail panel as soon as the contacts list resolves.
+  useEffect(() => {
+    if (!pendingJumpEmail || contacts.length === 0) return;
+    const match = contacts.find((c: Contact) => c.email?.toLowerCase() === pendingJumpEmail);
+    if (match) {
+      setTab('contacts');
+      setSelectedContact(match);
+      toast('info', `Opened ${match.name} from Command Center`);
+    } else {
+      // No exact match — surface as a search filter so user sees nearest results
+      setTab('contacts');
+      setSearch(pendingJumpEmail);
+      toast('info', `No exact contact for ${pendingJumpEmail} — filtered list`);
+    }
+    setPendingJumpEmail(null);
+  }, [pendingJumpEmail, contacts]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const promptBulkTag = (): string | null => {
     const t = window.prompt('Tag to add to selected contacts:');

@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, ArrowRight, Globe, MessageSquare, FileText, CheckSquare, Users, Hash, Slash, Wrench, Package, Mail, Phone } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Search, ArrowRight, Globe, MessageSquare, FileText, CheckSquare, Users, Hash, Slash, Wrench, Package, Mail, Phone, Clock } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
 import { useTheme } from '../stores/theme';
 import { ventures } from '../lib/ventures';
@@ -7,6 +7,7 @@ import { apiPost } from '../lib/api/client';
 import { useKitStore } from '../stores/kits';
 import { useCommsActions } from '../stores/comms-actions';
 import { cn } from '../lib/utils';
+import { scoreItem, getRecentIds, pushRecentId } from '../lib/palette-scoring';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -20,7 +21,7 @@ interface PaletteItem {
   category: Category;
 }
 
-type Category = 'Views' | 'Ventures' | 'Comms' | 'Documents' | 'Tasks' | 'Contacts' | 'Commands' | 'Kits';
+type Category = 'Views' | 'Ventures' | 'Comms' | 'Documents' | 'Tasks' | 'Contacts' | 'Commands' | 'Kits' | 'Recent';
 
 interface CachedData {
   docs: PaletteItem[];
@@ -76,9 +77,10 @@ const SHORTCUTS: ShortcutHint[] = [
 
 /* ─── Category order & icons ─────────────────────────────────────── */
 
-const CATEGORY_ORDER: Category[] = ['Views', 'Ventures', 'Comms', 'Kits', 'Documents', 'Tasks', 'Contacts', 'Commands'];
+const CATEGORY_ORDER: Category[] = ['Recent', 'Views', 'Ventures', 'Comms', 'Kits', 'Documents', 'Tasks', 'Contacts', 'Commands'];
 
 const CATEGORY_ICONS: Record<Category, React.ReactNode> = {
+  Recent: <Clock size={11} />,
   Views: <Globe size={11} />,
   Ventures: <ArrowRight size={11} />,
   Comms: <MessageSquare size={11} />,
@@ -278,49 +280,58 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
     ...commandItems,
   ];
 
-  /* ── Filter ────────────────────────────────────────────────────── */
+  /* ── Recent items LRU (localStorage) ───────────────────────────── */
 
-  const lowerQ = query.toLowerCase();
+  const [recentIds, setRecentIds] = useState<string[]>(() => getRecentIds());
+
+  /* ── Filter + score ────────────────────────────────────────────── */
+
   const isSlashQuery = query.startsWith('/');
 
-  const filtered = query
-    ? allItems.filter((item) => {
-        // If typing a slash query, prioritize commands
-        if (isSlashQuery) {
-          if (item.category === 'Commands') {
-            return item.label.toLowerCase().includes(lowerQ);
-          }
-          // Also show other items that match
-          return (
-            item.label.toLowerCase().includes(lowerQ) ||
-            item.sublabel?.toLowerCase().includes(lowerQ)
-          );
-        }
-        return (
-          item.label.toLowerCase().includes(lowerQ) ||
-          item.sublabel?.toLowerCase().includes(lowerQ)
-        );
-      })
-    : allItems;
+  const { grouped, flatItems } = useMemo(() => {
+    const grouped = new Map<Category, PaletteItem[]>();
 
-  /* ── Group by category ─────────────────────────────────────────── */
-
-  const grouped = new Map<Category, PaletteItem[]>();
-  for (const item of filtered) {
-    const list = grouped.get(item.category);
-    if (list) {
-      list.push(item);
+    if (!query) {
+      // Empty query — show recents at top, then everything in original order
+      const byId = new Map(allItems.map((i) => [i.id, i]));
+      const recentItems: PaletteItem[] = recentIds
+        .map((id) => byId.get(id))
+        .filter((x): x is PaletteItem => !!x)
+        .map((x) => ({ ...x, category: 'Recent' as Category }));
+      if (recentItems.length > 0) grouped.set('Recent', recentItems);
+      for (const item of allItems) {
+        const list = grouped.get(item.category);
+        if (list) list.push(item);
+        else grouped.set(item.category, [item]);
+      }
     } else {
-      grouped.set(item.category, [item]);
-    }
-  }
+      // Score every item and keep matches. Slash queries pin Commands to top.
+      const scored = allItems
+        .map((item) => {
+          let s = scoreItem(item.label, item.sublabel, query);
+          if (s === 0) return null;
+          if (isSlashQuery && item.category === 'Commands') s += 250;
+          if (recentIds.includes(item.id)) s += 150;
+          return { item, score: s };
+        })
+        .filter((x): x is { item: PaletteItem; score: number } => x !== null)
+        .sort((a, b) => b.score - a.score);
 
-  // Flatten for keyboard navigation, preserving category order
-  const flatItems: PaletteItem[] = [];
-  for (const cat of CATEGORY_ORDER) {
-    const items = grouped.get(cat);
-    if (items) flatItems.push(...items);
-  }
+      for (const { item } of scored) {
+        const list = grouped.get(item.category);
+        if (list) list.push(item);
+        else grouped.set(item.category, [item]);
+      }
+    }
+
+    // Flatten for keyboard navigation, preserving category order
+    const flatItems: PaletteItem[] = [];
+    for (const cat of CATEGORY_ORDER) {
+      const items = grouped.get(cat);
+      if (items) flatItems.push(...items);
+    }
+    return { grouped, flatItems };
+  }, [allItems, query, recentIds, isSlashQuery]);
 
   /* ── Reset index on query change ───────────────────────────────── */
 
@@ -341,6 +352,10 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
   /* ── Handlers ──────────────────────────────────────────────────── */
 
   const handleSelect = useCallback((item: PaletteItem) => {
+    // Track the item in recents for the next palette open. Keyed off the
+    // ORIGINAL category-tagged id so re-clicking a recent re-promotes it.
+    const next = pushRecentId(item.id);
+    setRecentIds(next);
     item.action();
     onClose();
   }, [onClose]);

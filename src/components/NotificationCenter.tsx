@@ -1,10 +1,28 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bell, Check, Trash2, Zap, GitBranch, Cloud, Users, FileText, MessageSquare, Wrench } from 'lucide-react';
+import { Bell, Check, Trash2, Zap, GitBranch, Cloud, Users, FileText, MessageSquare, Wrench, ArrowUpRight, Filter } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useNotificationStore, routeNotification } from '../stores/notifications';
 import type { AppNotification } from '../stores/notifications';
-import { GlassCard, Button, Badge } from './ui';
+import { GlassCard, Button, Badge, Tooltip } from './ui';
 import { cn, timeAgo } from '../lib/utils';
+import { useNavigation, type ViewId } from '../stores/navigation';
+
+// Map a notification source string to the most relevant view to open.
+// Sources are open-set (kits and integrations contribute their own), so
+// fall back to a no-op rather than crashing on unknown values.
+const SOURCE_VIEW_MAP: Record<string, ViewId> = {
+  github: 'engineering' as ViewId,
+  vercel: 'engineering' as ViewId,
+  crm: 'crm' as ViewId,
+  docs: 'docs' as ViewId,
+  chat: 'chat' as ViewId,
+  kit: 'kit-store' as ViewId,
+  system: 'command-center' as ViewId,
+  commerce: 'commerce' as ViewId,
+  compliance: 'compliance-hub' as ViewId,
+  comms: 'comms-hub' as ViewId,
+  naos: 'naos-command' as ViewId,
+};
 
 interface SupabaseNotification {
   id: string; type: string; title: string; description: string;
@@ -33,7 +51,9 @@ function mapToStore(row: SupabaseNotification): AppNotification {
 
 export default function NotificationCenter() {
   const [open, setOpen] = useState(false);
+  const [showUnreadOnly, setShowUnreadOnly] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const setView = useNavigation((s) => s.setView);
 
   const notifications = useNotificationStore((s) => s.notifications);
   const unreadCount = useNotificationStore((s) => s.unreadCount);
@@ -41,6 +61,14 @@ export default function NotificationCenter() {
   const storeMarkRead = useNotificationStore((s) => s.markRead);
   const storeMarkAllRead = useNotificationStore((s) => s.markAllRead);
   const storeClearRead = useNotificationStore((s) => s.clearRead);
+
+  const navigateForNotification = (n: AppNotification) => {
+    const view = SOURCE_VIEW_MAP[n.source];
+    if (!view) return;
+    if (!n.read) markRead(n.id);
+    setView(view);
+    setOpen(false);
+  };
 
   useEffect(() => {
     loadNotifications();
@@ -97,28 +125,74 @@ export default function NotificationCenter() {
             </div>
           </div>
 
+          <div className="nc-filter-bar">
+            <button
+              type="button"
+              className={cn('nc-filter-pill', !showUnreadOnly && 'active')}
+              onClick={() => setShowUnreadOnly(false)}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              className={cn('nc-filter-pill', showUnreadOnly && 'active')}
+              onClick={() => setShowUnreadOnly(true)}
+            >
+              <Filter size={9} /> Unread {unreadCount > 0 && <span className="nc-filter-count">{unreadCount}</span>}
+            </button>
+          </div>
           <div className="nc-list">
-            {notifications.length === 0 && <div className="nc-empty">No notifications</div>}
-            {notifications.filter(n => routeNotification(n) !== 'queue').map(n => {
-              const Icon = SOURCE_ICONS[n.source] || Bell;
-              const color = TYPE_COLORS[n.type] || '#6B7280';
-              return (
-                <div key={n.id} className={cn('nc-item', n.read ? 'read' : 'unread')} onClick={() => !n.read && markRead(n.id)}>
-                  <div className="nc-item-icon" style={{ background: `${color}15`, color }}>
-                    <Icon size={12} />
+            {(() => {
+              const visible = notifications
+                .filter((n) => routeNotification(n) !== 'queue')
+                .filter((n) => (showUnreadOnly ? !n.read : true));
+              if (visible.length === 0) {
+                return <div className="nc-empty">{showUnreadOnly ? 'All caught up' : 'No notifications'}</div>;
+              }
+              return visible.map((n) => {
+                const Icon = SOURCE_ICONS[n.source] || Bell;
+                const color = TYPE_COLORS[n.type] || '#6B7280';
+                const canJump = !!SOURCE_VIEW_MAP[n.source];
+                return (
+                  <div
+                    key={n.id}
+                    className={cn('nc-item', n.read ? 'read' : 'unread', canJump && 'nc-item-jumpable')}
+                    onClick={() => {
+                      if (canJump) navigateForNotification(n);
+                      else if (!n.read) markRead(n.id);
+                    }}
+                    role={canJump ? 'button' : undefined}
+                    tabIndex={canJump ? 0 : undefined}
+                    onKeyDown={(e) => {
+                      if (canJump && (e.key === 'Enter' || e.key === ' ')) {
+                        e.preventDefault();
+                        navigateForNotification(n);
+                      }
+                    }}
+                  >
+                    <div className="nc-item-icon" style={{ background: `${color}15`, color }}>
+                      <Icon size={12} />
+                    </div>
+                    <div className="nc-item-content">
+                      <span className="nc-item-title">
+                        {n.title}
+                        {canJump && (
+                          <Tooltip content={`Open ${n.source}`}>
+                            <ArrowUpRight size={10} className="nc-jump-icon" />
+                          </Tooltip>
+                        )}
+                      </span>
+                      {n.description && <span className="nc-item-desc">{n.description}</span>}
+                      <span className="nc-item-meta">
+                        <span className="nc-item-source">{n.source}</span>
+                        <span className="nc-item-time">{timeAgo(n.createdAt)}</span>
+                      </span>
+                    </div>
+                    {!n.read && <span className="nc-unread-dot" />}
                   </div>
-                  <div className="nc-item-content">
-                    <span className="nc-item-title">{n.title}</span>
-                    {n.description && <span className="nc-item-desc">{n.description}</span>}
-                    <span className="nc-item-meta">
-                      <span className="nc-item-source">{n.source}</span>
-                      <span className="nc-item-time">{timeAgo(n.createdAt)}</span>
-                    </span>
-                  </div>
-                  {!n.read && <span className="nc-unread-dot" />}
-                </div>
-              );
-            })}
+                );
+              });
+            })()}
           </div>
         </GlassCard>
       )}
@@ -165,6 +239,16 @@ export default function NotificationCenter() {
         .nc-item-time { font-size:9px; color:var(--text-muted); font-family:var(--font-mono); }
 
         .nc-unread-dot { width:6px; height:6px; border-radius:50%; background:var(--cyan); flex-shrink:0; margin-top:6px; box-shadow:0 0 6px rgba(0,240,255,0.4); }
+
+        .nc-filter-bar { display: flex; gap: 4px; padding: 6px 12px; border-bottom: 1px solid var(--border); background: rgba(0, 0, 0, 0.15); }
+        .nc-filter-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; font-size: 10px; font-weight: 600; color: var(--text-muted); background: transparent; border: 1px solid transparent; border-radius: var(--radius-full); transition: all var(--transition-fast); }
+        .nc-filter-pill:hover { color: var(--text-primary); }
+        .nc-filter-pill.active { color: var(--cyan); background: rgba(0, 240, 255, 0.1); border-color: rgba(0, 240, 255, 0.25); }
+        .nc-filter-count { background: var(--cyan); color: var(--bg-deep); padding: 0 5px; min-width: 14px; height: 14px; border-radius: var(--radius-full); display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; font-family: var(--font-mono); }
+
+        .nc-item-jumpable { cursor: pointer; }
+        .nc-item-jumpable:hover .nc-jump-icon { opacity: 1; transform: translate(2px, -2px); }
+        .nc-jump-icon { color: var(--cyan); margin-left: 4px; opacity: 0; transition: all var(--transition-fast); vertical-align: -1px; }
       `}</style>
     </div>
   );
