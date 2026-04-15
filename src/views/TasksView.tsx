@@ -231,17 +231,29 @@ export default function TasksView() {
         label={(n) => `${n} task${n === 1 ? '' : 's'} selected`}
       />
 
-      {blocked.length > 0 && (
-        <div className="tv-blocked">
-          <h3 className="tv-blocked-title"><Ban size={12} /> Blocked ({blocked.length})</h3>
-          {blocked.map(t => (
+      <div
+        className={`tv-blocked ${dropTargetCol === 'blocked' ? 'tv-blocked-droptarget' : ''} ${draggingId ? 'tv-blocked-active' : ''}`}
+        onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDropTargetCol('blocked'); }}
+        onDragLeave={(e) => { if (e.currentTarget === e.target) setDropTargetCol(null); }}
+        onDrop={() => handleDropOnColumn('blocked')}
+      >
+        <h3 className="tv-blocked-title">
+          <Ban size={12} /> Blocked ({blocked.length})
+          {draggingId && dropTargetCol !== 'blocked' && (
+            <span className="tv-blocked-hint">Drop a task here to mark blocked</span>
+          )}
+        </h3>
+        {blocked.length === 0 ? (
+          !draggingId && <p className="tv-blocked-empty">No blocked tasks. Drag any card here to flag one as blocked.</p>
+        ) : (
+          blocked.map(t => (
             <div key={t.id} className="tv-card blocked">
               <span className="tv-card-title">{t.title}</span>
               <button className="tv-move tv-move-next" onClick={() => updateTask.mutate({ id: t.id, status: 'todo' })}>Unblock →</button>
             </div>
-          ))}
-        </div>
-      )}
+          ))
+        )}
+      </div>
 
       <style>{`
         .tv-add { display:flex; gap:8px; padding:10px 20px; margin:0 20px; align-items:center; }
@@ -284,8 +296,12 @@ export default function TasksView() {
         .tv-move-next:hover { color:var(--cyan); border-color:rgba(0,240,255,0.2); }
         .tv-move-back:hover { color:var(--text-secondary); }
 
-        .tv-blocked { padding:10px 20px 16px; }
-        .tv-blocked-title { font-size:11px; font-weight:600; color:var(--error); display:flex; align-items:center; gap:4px; margin-bottom:8px; }
+        .tv-blocked { padding:10px 20px 16px; transition:all 0.15s; border-radius:var(--radius-md); }
+        .tv-blocked-active { background:rgba(239,68,68,0.02); border:1px dashed rgba(239,68,68,0.2); padding:10px 20px 16px; }
+        .tv-blocked-droptarget { background:rgba(239,68,68,0.08); border:1px dashed var(--error); box-shadow:inset 0 0 0 1px rgba(239,68,68,0.3); }
+        .tv-blocked-title { font-size:11px; font-weight:600; color:var(--error); display:flex; align-items:center; gap:6px; margin-bottom:8px; }
+        .tv-blocked-hint { margin-left:auto; font-size:10px; font-weight:500; color:var(--text-muted); font-style:italic; }
+        .tv-blocked-empty { font-size:11px; color:var(--text-muted); padding:8px 0; font-style:italic; }
       `}</style>
     </PageShell>
   );

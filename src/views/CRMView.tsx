@@ -18,9 +18,9 @@ import {
   usePipelineStats,
 } from '../hooks/use-crm';
 import type { Contact } from '../lib/schemas/crm';
-import { PageHeader, Button, GlassCard, Badge, StatCard, Tabs, EmptyState, GridLayout, BulkActionBar } from '../components/ui';
+import { PageHeader, Button, GlassCard, Badge, StatCard, Tabs, EmptyState, GridLayout, BulkActionBar, Tooltip } from '../components/ui';
 import type { BulkAction } from '../components/ui';
-import { Tag as TagIcon, ArrowRightCircle } from 'lucide-react';
+import { Tag as TagIcon, ArrowRightCircle, AlertTriangle } from 'lucide-react';
 import { timeAgo, formatMoney, formatDate, cn } from '../lib/utils';
 import ContextCommsMenu from '../components/ContextCommsMenu';
 
@@ -815,27 +815,58 @@ export default function CRMView() {
           {tab === 'activities' && (
             <div className="crm-activities">
               {activities.length === 0 && !loading && <EmptyState icon={<Activity size={20} />} title="No activities yet" description="Open a contact to log your first interaction." />}
-              {activities.map(a => {
-                const Icon = ACTIVITY_ICONS[a.type] || StickyNote;
-                const color = ACTIVITY_COLORS[a.type] || '#6B7280';
-                return (
-                  <div key={a.id} className="crm-act-row">
-                    <div className="crm-act-icon" style={{ background: `${color}20`, color }}>
-                      <Icon size={13} />
+              {(() => {
+                // Group activities by relative day label (Today / Yesterday / Older dates)
+                const groups: { label: string; rows: typeof activities }[] = [];
+                const today = new Date(); today.setHours(0, 0, 0, 0);
+                const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+                let lastLabel = '';
+                for (const a of activities) {
+                  const ts = a.created_at ? new Date(a.created_at) : null;
+                  let label = 'Unknown';
+                  if (ts) {
+                    const d = new Date(ts); d.setHours(0, 0, 0, 0);
+                    if (d.getTime() === today.getTime()) label = 'Today';
+                    else if (d.getTime() === yesterday.getTime()) label = 'Yesterday';
+                    else label = ts.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: ts.getFullYear() === today.getFullYear() ? undefined : 'numeric' });
+                  }
+                  if (label !== lastLabel) {
+                    groups.push({ label, rows: [] });
+                    lastLabel = label;
+                  }
+                  groups[groups.length - 1].rows.push(a);
+                }
+                return groups.map((g) => (
+                  <div key={g.label} className="crm-act-group">
+                    <div className="crm-act-divider">
+                      <span className="crm-act-divider-label">{g.label}</span>
+                      <span className="crm-act-divider-count">{g.rows.length}</span>
+                      <div className="crm-act-divider-line" />
                     </div>
-                    <div className="crm-act-info">
-                      <span className="crm-act-title">{a.title}</span>
-                      {a.description && <span className="crm-act-desc">{a.description}</span>}
-                      <span className="crm-act-meta">
-                        <span className="crm-act-type" style={{ color }}>{a.type}</span>
-                        {a.contacts?.name && <span>· {a.contacts.name}</span>}
-                        {a.venture_id && <span>· {a.venture_id}</span>}
-                      </span>
-                    </div>
-                    <span className="crm-act-time">{timeAgo(a.created_at)}</span>
+                    {g.rows.map((a) => {
+                      const Icon = ACTIVITY_ICONS[a.type] || StickyNote;
+                      const color = ACTIVITY_COLORS[a.type] || '#6B7280';
+                      return (
+                        <div key={a.id} className="crm-act-row">
+                          <div className="crm-act-icon" style={{ background: `${color}20`, color }}>
+                            <Icon size={13} />
+                          </div>
+                          <div className="crm-act-info">
+                            <span className="crm-act-title">{a.title}</span>
+                            {a.description && <span className="crm-act-desc">{a.description}</span>}
+                            <span className="crm-act-meta">
+                              <span className="crm-act-type" style={{ color }}>{a.type}</span>
+                              {a.contacts?.name && <span>· {a.contacts.name}</span>}
+                              {a.venture_id && <span>· {a.venture_id}</span>}
+                            </span>
+                          </div>
+                          <span className="crm-act-time">{timeAgo(a.created_at)}</span>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
+                ));
+              })()}
             </div>
           )}
 
@@ -902,6 +933,16 @@ export default function CRMView() {
               <div className="crm-pipe-stages">
                 {pipelineData.map(p => {
                   const maxVal = Math.max(...pipelineData.map(x => x.totalValue), 1);
+                  // Per-stage enrichment computed from deals array — avg deal
+                  // size + count of deals "at risk" (open >30 days, not yet won/lost)
+                  const stageDeals = deals.filter(d => d.stage === p.stage);
+                  const avgDeal = p.count > 0 ? p.totalValue / p.count : 0;
+                  const now = Date.now();
+                  const atRisk = stageDeals.filter(d => {
+                    if (p.stage === 'closed_won' || p.stage === 'closed_lost') return false;
+                    const created = d.created_at ? new Date(d.created_at).getTime() : now;
+                    return (now - created) > 30 * 864e5;
+                  }).length;
                   return (
                     <div key={p.stage} className="crm-pipe-stage">
                       <div className="crm-pipe-stage-header">
@@ -914,6 +955,16 @@ export default function CRMView() {
                       <div className="crm-pipe-stage-vals">
                         <span>Total: {formatMoney(p.totalValue)}</span>
                         <span>Weighted: {formatMoney(p.weightedValue)}</span>
+                      </div>
+                      <div className="crm-pipe-chips">
+                        <span className="crm-pipe-chip">Avg {formatMoney(avgDeal)}</span>
+                        {atRisk > 0 && (
+                          <Tooltip content={`${atRisk} deals open >30 days in this stage — review for stalled progress`}>
+                            <span className="crm-pipe-chip crm-pipe-chip-warn">
+                              <AlertTriangle size={9} /> {atRisk} stalled
+                            </span>
+                          </Tooltip>
+                        )}
                       </div>
                     </div>
                   );
@@ -1008,6 +1059,14 @@ export default function CRMView() {
         .crm-col-check input { cursor: pointer; }
         .crm-deal-card-selected { border-color: var(--cyan) !important; background: rgba(0, 240, 255, 0.04); box-shadow: inset 0 0 0 1px var(--cyan); }
         .crm-deal-check { accent-color: var(--cyan); cursor: pointer; flex-shrink: 0; margin-right: 4px; }
+        .crm-act-group { display: flex; flex-direction: column; gap: 4px; }
+        .crm-act-divider { display: flex; align-items: center; gap: 8px; padding: 12px 4px 4px; }
+        .crm-act-divider-label { font-size: 10px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+        .crm-act-divider-count { font-size: 9px; color: var(--text-muted); font-family: var(--font-mono); padding: 1px 6px; background: var(--bg-card); border-radius: var(--radius-full); border: 1px solid var(--border); }
+        .crm-act-divider-line { flex: 1; height: 1px; background: var(--border); }
+        .crm-pipe-chips { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+        .crm-pipe-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 9px; font-weight: 600; padding: 2px 8px; border-radius: var(--radius-full); border: 1px solid var(--border); color: var(--text-muted); background: var(--bg-card); }
+        .crm-pipe-chip-warn { color: var(--warning); border-color: rgba(245, 158, 11, 0.3); }
         .crm-name { font-weight:500; display:flex; align-items:center; gap:8px; }
         .crm-avatar-sm { width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:var(--bg-deep); flex-shrink:0; }
         .crm-role { font-size:10px; color:var(--text-muted); margin-left:4px; }
