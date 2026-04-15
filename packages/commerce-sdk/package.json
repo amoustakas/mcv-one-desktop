@@ -1,0 +1,25 @@
+{
+  "name": "@mcv/commerce-sdk",
+  "version": "0.1.0",
+  "description": "MCV Commerce & Financial OS — types + (progressively) service factories. First slice ships the canonical type system (products, orders, subscriptions, invoices, loans, fulfillment, discounts, inventory, gift cards, reviews, wishlists, search, analytics). Service engines will land as incremental DI factories composed on @mcv/ledger-sdk + @mcv/payments-sdk.",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".":               { "types": "./src/index.ts",          "default": "./src/index.ts" },
+    "./types":         { "types": "./src/types.ts",          "default": "./src/types.ts" },
+    "./surface-types": { "types": "./src/surface-types.ts",  "default": "./src/surface-types.ts" }
+  },
+  "files": ["src"],
+  "dependencies": {
+    "zod": "^4.3.6"
+  },
+  "peerDependencies": {
+    "@supabase/supabase-js": "^2.0.0"
+  },
+  "scripts": {
+    "lint": "echo 'no lint yet'",
+    "test": "echo 'no tests yet'"
+  }
+}
