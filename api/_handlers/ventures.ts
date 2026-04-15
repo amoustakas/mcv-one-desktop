@@ -242,6 +242,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         return res.json({ docs: data || [], count: data?.length ?? 0, epic_id: epicId });
       }
+      case 'create-doc': {
+        const { venture_id, department, title, body_markdown, meta } = req.body as {
+          venture_id: string; department: string; title: string; body_markdown?: string; meta?: Record<string, unknown>;
+        };
+        if (!venture_id || !department || !title) {
+          return res.status(400).json({ error: 'venture_id + department + title required' });
+        }
+        const { data, error } = await supabase.from('venture_docs').insert({
+          venture_id,
+          department,
+          title,
+          body_markdown: body_markdown || '',
+          status: 'draft',
+          owner: userId,
+          meta: meta || {},
+        }).select().single();
+        if (error) throw error;
+        return res.json({ doc: data });
+      }
       case 'update-doc': {
         const { id, title, body_markdown, status, meta } = req.body as {
           id: string; title?: string; body_markdown?: string; status?: string; meta?: Record<string, unknown>;

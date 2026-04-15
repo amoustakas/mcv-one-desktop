@@ -80,7 +80,7 @@ function makeSharedHandlers(dept: Department): Record<string, KitToolHandler> {
     },
     [`update_${dept}_doc_status`]: async (input, ctx) => {
       const data = await postJson('/api/ventures', {
-        action: 'update-doc-status',
+        action: 'update-doc',
         id: input.doc_id,
         status: input.status,
       }, ctx);
