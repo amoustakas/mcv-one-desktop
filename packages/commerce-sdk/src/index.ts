@@ -54,4 +54,13 @@ export type {
   GiftCardServiceOptions,
 } from './gift-card-service';
 
-export const MCV_COMMERCE_SDK_VERSION = '0.13.0' as const;
+// invoice-engine also carries its own LedgerAdapter — subpath-only for
+// the same adapter-namespace reason.
+export { createInvoiceEngine, mapInvoiceRow, mapLineItemRow } from './invoice-engine';
+export type {
+  InvoiceEngine,
+  InvoiceEngineOptions,
+  ListInvoicesFilters,
+} from './invoice-engine';
+
+export const MCV_COMMERCE_SDK_VERSION = '0.14.0' as const;
