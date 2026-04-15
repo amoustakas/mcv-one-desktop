@@ -2,6 +2,12 @@
 
 **Epic 13 foundation** · Part of [MCV Capital Protocol v0.1](./PROTOCOL.md)
 
+> **See also:** [LEGACY_ADAPTERS.md](./LEGACY_ADAPTERS.md) — the
+> implementation-grade reference for the minimal adapter contract shipped
+> today (Plaid, Stripe). This document describes the target long-term
+> shape; LEGACY_ADAPTERS.md describes what's in code now and how to add
+> the next one.
+
 ---
 
 ## Why Interop (instead of Competition)
