@@ -4,6 +4,7 @@ import { PageShell, PageHeader, Tabs, EmptyState, Button } from '../components/u
 import { listKits, searchKits, installKit, uninstallKit, getInstalledKits } from '../lib/kits/registry-client';
 import { useKitStore } from '../stores/kits';
 import { useNavigation } from '../stores/navigation';
+import { useFabricAudit } from '../hooks/use-fabric-audit';
 import type { KitManifest } from '../lib/kits/types';
 
 interface RegistryKitItem {
@@ -25,6 +26,7 @@ export default function KitStoreView() {
   const [installedIds, setInstalledIds] = useState<Set<string>>(new Set());
   const { getLoadedKits, disableKit, enableKit } = useKitStore();
   const { activeVenture, mode } = useNavigation();
+  const audit = useFabricAudit();
   const allLoadedKits = getLoadedKits();
   const loadedKits = mode === 'venture' && activeVenture
     ? allLoadedKits.filter((k) => {
@@ -79,6 +81,7 @@ export default function KitStoreView() {
     try {
       await installKit(kitId);
       setInstalledIds((prev) => new Set(prev).add(kitId));
+      audit('kit.installed', { kitId });
     } catch {
       // Show error inline
     }
@@ -92,6 +95,7 @@ export default function KitStoreView() {
         next.delete(kitId);
         return next;
       });
+      audit('kit.uninstalled', { kitId });
     } catch {
       // Show error inline
     }

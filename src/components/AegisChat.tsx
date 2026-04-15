@@ -31,6 +31,7 @@ import MessageActions from './chat/MessageActions';
 import ArtifactsPanel from './chat/ArtifactsPanel';
 import ReasoningTrace from './chat/ReasoningTrace';
 import { useFileBridge } from '../stores/file-bridge';
+import { useFabricAudit } from '../hooks/use-fabric-audit';
 import { useArtifactStore } from '../stores/artifacts';
 import { mediaIngestion } from '../lib/google/file-bridge';
 import { parseArtifacts } from '../lib/artifact-parser';
@@ -88,6 +89,7 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
   const [activeToolCalls, setActiveToolCalls] = useState<ToolCallStatus[]>([]);
   const hasVoice = isRecordingSupported();
   const { user } = useUser();
+  const audit = useFabricAudit();
 
   // Sync local state to global chat store for cross-component access
   const chatStore = useChatStore();
@@ -194,6 +196,7 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
         setConversations((prev) => [{ id: conv.id, title: conv.title }, ...prev]);
         setActiveConvId(conv.id);
         setMessages([]);
+        audit('naos.session.opened', { sessionId: conv.id, ventureId: venture.id, backend: 'supabase' });
       }
     } else {
       const id = crypto.randomUUID();
@@ -202,6 +205,7 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
       setConversations(convs);
       setActiveConvId(id);
       setMessages([]);
+      audit('naos.session.opened', { sessionId: id, ventureId: venture.id, backend: 'local' });
     }
   }
 
@@ -296,6 +300,11 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
     } else {
       saveLocal(venture.id, convId, newMessages);
     }
+    audit('chat.message.user_sent', {
+      length: text.length,
+      ventureId: venture.id,
+      conversationId: convId,
+    });
 
     try {
       const loadedKits = getLoadedKits();

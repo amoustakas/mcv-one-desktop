@@ -5,6 +5,7 @@ import { useTheme } from '../stores/theme';
 import { ventures } from '../lib/ventures';
 import { Button, Badge } from './ui';
 import { cn } from '../lib/utils';
+import { useFabricAudit } from '../hooks/use-fabric-audit';
 
 const statusLabels: Record<string, string> = { active: 'ACTIVE', development: 'DEV', planned: 'PLANNED', concept: 'CONCEPT' };
 const statusColors: Record<string, string> = { active: '#10B981', development: '#00F0FF', planned: '#8B5CF6', concept: '#6B7280' };
@@ -20,6 +21,7 @@ export default function VentureMegaMenu() {
   const ref = useRef<HTMLDivElement>(null);
   const { mode, activeVenture, switchToGlobal, switchToVenture } = useNavigation();
   const { applyGlobalTheme, applyVentureTheme } = useTheme();
+  const audit = useFabricAudit();
 
   const current = ventures.find(v => v.id === activeVenture);
 
@@ -31,8 +33,20 @@ export default function VentureMegaMenu() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [open]);
 
-  function handleGlobal() { switchToGlobal(); applyGlobalTheme(); setOpen(false); }
-  function handleVenture(slug: string) { switchToVenture(slug); applyVentureTheme(slug); setOpen(false); }
+  function handleGlobal() {
+    const from = mode === 'venture' ? activeVenture ?? undefined : 'global';
+    switchToGlobal();
+    applyGlobalTheme();
+    setOpen(false);
+    audit('venture.switched', { from, to: 'global' });
+  }
+  function handleVenture(slug: string) {
+    const from = mode === 'venture' ? activeVenture ?? undefined : 'global';
+    switchToVenture(slug);
+    applyVentureTheme(slug);
+    setOpen(false);
+    audit('venture.switched', { from, to: slug, ventureId: slug });
+  }
 
   return (
     <div className="vmm" ref={ref}>
