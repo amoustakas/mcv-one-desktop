@@ -978,8 +978,76 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const result = verifyAccreditationCredential(vc as never);
             return ok(res, result, meta);
           }
+
+          // ── Write actions (require capital:write scope) ───────────────
+          case 'create-round':
+          case 'update-round-status':
+          case 'create-commitment':
+          case 'update-commitment-status':
+          case 'record-payment':
+          case 'issue-accreditation-vc': {
+            if (!apiKey.permissions.includes('capital:write')) {
+              return err(res, 403, `Action "${action}" requires capital:write permission.`);
+            }
+            switch (action) {
+              case 'create-round': {
+                const input = (body.round ?? {}) as Record<string, unknown>;
+                // Enforce venture scoping — key can only create rounds in its own venture.
+                if (input.ventureId && input.ventureId !== ventureId) {
+                  return err(res, 403, 'round.ventureId outside API key scope');
+                }
+                const round = await engine.rounds.createRound({ ...input, ventureId } as never);
+                return ok(res, { round }, meta);
+              }
+              case 'update-round-status': {
+                const id = (body.id as string) ?? getParam(req, 'id');
+                const status = (body.status as string) ?? getParam(req, 'status');
+                if (!id || !status) return err(res, 400, 'id and status required');
+                const existing = await engine.rounds.getRound(id);
+                if (!existing || existing.ventureId !== ventureId) return err(res, 403, 'Round outside scope');
+                const round = await engine.rounds.updateStatus(id, status as never, 'api-key');
+                return ok(res, { round }, meta);
+              }
+              case 'create-commitment': {
+                const input = (body.commitment ?? {}) as Record<string, unknown>;
+                if (input.ventureId && input.ventureId !== ventureId) {
+                  return err(res, 403, 'commitment.ventureId outside API key scope');
+                }
+                const commitment = await engine.commitments.createCommitment({ ...input, ventureId } as never);
+                return ok(res, { commitment }, meta);
+              }
+              case 'update-commitment-status': {
+                const id = (body.id as string) ?? getParam(req, 'id');
+                const status = (body.status as string) ?? getParam(req, 'status');
+                if (!id || !status) return err(res, 400, 'id and status required');
+                const commitment = await engine.commitments.updateStatus(id, status as never, 'api-key');
+                return ok(res, { commitment }, meta);
+              }
+              case 'record-payment': {
+                const id = (body.id as string) ?? getParam(req, 'id');
+                const paymentMethod = (body.paymentMethod as string) ?? getParam(req, 'paymentMethod');
+                const ref = (body.reference as string) ?? getParam(req, 'reference');
+                if (!id || !paymentMethod || !ref) return err(res, 400, 'id, paymentMethod, reference required');
+                const commitment = await engine.commitments.recordPayment(id, paymentMethod as never, ref);
+                return ok(res, { commitment }, meta);
+              }
+              case 'issue-accreditation-vc': {
+                const { issueAccreditationCredential } = await import('../../../src/lib/capital/vc-issuer');
+                const vc = issueAccreditationCredential({
+                  clerkUserId: body.clerkUserId as string,
+                  accreditationStatus: body.accreditationStatus as never,
+                  jurisdiction: (body.jurisdiction as never) ?? 'US',
+                  verificationMethod: (body.verificationMethod as string) ?? 'partner-attested',
+                  exemptions: body.exemptions as string[] | undefined,
+                  validityDays: body.validityDays as number | undefined,
+                });
+                return ok(res, { vc }, meta);
+              }
+            }
+            return err(res, 500, 'unreachable');
+          }
           default:
-            return err(res, 400, `Unknown action "${action}" for resource "capital". Valid: list-rounds, list-public-rounds, get-round, list-commitments, list-distributions, verify-accreditation-vc`);
+            return err(res, 400, `Unknown action "${action}" for resource "capital". Read: list-rounds, list-public-rounds, get-round, list-commitments, list-distributions, verify-accreditation-vc. Write: create-round, update-round-status, create-commitment, update-commitment-status, record-payment, issue-accreditation-vc`);
         }
       }
 
