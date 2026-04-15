@@ -1,6 +1,6 @@
 import type { KitManifest, KitToolHandler } from '../types';
-import { analyzeFile, generateBrief, semanticSearch } from '../../storage/ai-pipeline';
-import type { StorageItem } from '../../storage/types';
+import { analyzeFile, generateBrief, semanticSearch } from '@mcv/storage-sdk/ai-pipeline';
+import type { StorageItem } from '@mcv/storage-sdk/types';
 
 const analyzeFileTool: KitToolHandler = async (input, _ctx) => {
   const file: StorageItem = {

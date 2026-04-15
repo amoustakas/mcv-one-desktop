@@ -74,10 +74,10 @@ import { manifest as teamManifest, handlers as teamHandlers } from '@mcv/kits-sd
 import { manifest as treasuryManifest, handlers as treasuryHandlers } from '@mcv/kits-sdk/builtin/treasury-kit';
 import { manifest as venturesManifest, handlers as venturesHandlers } from '@mcv/kits-sdk/builtin/ventures-kit';
 import { manifest as commsSyncManifest, handlers as commsSyncHandlers } from '@mcv/kits-sdk/builtin/comms-sync-kit';
-import { manifest as storageSupabaseManifest, handlers as storageSupabaseHandlers } from './builtin/storage-supabase-kit';
-import { manifest as storageLocalManifest, handlers as storageLocalHandlers } from './builtin/storage-local-kit';
-import { manifest as storageGdriveManifest, handlers as storageGdriveHandlers } from './builtin/storage-gdrive-kit';
-import { manifest as storageAiManifest, handlers as storageAiHandlers } from './builtin/storage-ai-kit';
+import { manifest as storageSupabaseManifest, handlers as storageSupabaseHandlers } from '@mcv/kits-sdk/builtin/storage-supabase-kit';
+import { manifest as storageLocalManifest, handlers as storageLocalHandlers } from '@mcv/kits-sdk/builtin/storage-local-kit';
+import { manifest as storageGdriveManifest, handlers as storageGdriveHandlers } from '@mcv/kits-sdk/builtin/storage-gdrive-kit';
+import { manifest as storageAiManifest, handlers as storageAiHandlers } from '@mcv/kits-sdk/builtin/storage-ai-kit';
 import { manifest as googleRagManifest, handlers as googleRagHandlers } from '@mcv/kits-sdk/builtin/google-rag-kit';
 import { manifest as adStudioManifest, handlers as adStudioHandlers } from './builtin/ad-studio-kit';
 import { manifest as naosCommandManifest, handlers as naosCommandHandlers } from '@mcv/kits-sdk/builtin/naos-command-kit';

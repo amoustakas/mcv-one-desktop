@@ -42,6 +42,7 @@
     "@mcv/mcp-sdk": "*",
     "@mcv/naos-sdk": "*",
     "@mcv/payments-sdk": "*",
+    "@mcv/storage-sdk": "*",
     "@mcv/rag-sdk": "*",
     "@mcv/task-sdk": "*",
     "@mcv/voice-sdk": "*",

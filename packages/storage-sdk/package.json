@@ -1,0 +1,24 @@
+{
+  "name": "@mcv/storage-sdk",
+  "version": "0.1.0",
+  "description": "MCV Storage primitives — unified file storage abstraction across Supabase Storage, Google Drive, local filesystem, and AI-enriched providers. Includes orchestrator (provider-routing), audit log, NFT certification, and AI pipeline (analyze/brief/semantic-search). DI factories all the way; consumers pass a Supabase client and any provider-specific credentials at construction time.",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".":             { "types": "./src/index.ts",            "default": "./src/index.ts" },
+    "./types":       { "types": "./src/types.ts",            "default": "./src/types.ts" },
+    "./orchestrator":{ "types": "./src/orchestrator.ts",     "default": "./src/orchestrator.ts" },
+    "./audit":       { "types": "./src/audit.ts",            "default": "./src/audit.ts" },
+    "./certification":{ "types": "./src/certification.ts",   "default": "./src/certification.ts" },
+    "./ai-pipeline": { "types": "./src/ai-pipeline.ts",      "default": "./src/ai-pipeline.ts" },
+    "./providers/*": { "types": "./src/providers/*.ts",      "default": "./src/providers/*.ts" }
+  },
+  "files": ["src"],
+  "dependencies": {},
+  "scripts": {
+    "lint": "echo 'no lint yet'",
+    "test": "echo 'no tests yet'"
+  }
+}

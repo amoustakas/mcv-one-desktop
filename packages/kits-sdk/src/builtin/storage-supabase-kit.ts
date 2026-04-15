@@ -1,7 +1,7 @@
 // src/lib/kits/builtin/storage-supabase-kit.ts
 
 import type { KitManifest, KitToolHandler } from '../types';
-import { supabaseList, supabaseWrite, supabaseDelete, supabaseMove, supabaseCopy } from '../../storage/providers/supabase';
+import { supabaseList, supabaseWrite, supabaseDelete, supabaseMove, supabaseCopy } from '@mcv/storage-sdk/providers/supabase';
 
 const listFiles: KitToolHandler = async (input, ctx) => {
   const path = (input.path as string) || '';

@@ -1,6 +1,6 @@
 {
   "name": "@mcv/kits-sdk",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "MCV Agent-First Kit primitives — types, capability-based permissions, Web Worker sandbox, runtime bridge, registry client, shared key-value context. The portable substrate of the MCV orchestration shell. Loader, orchestrator and notifications stay in the app shell until their DI boundaries are established.",
   "private": true,
   "type": "module",
@@ -19,6 +19,9 @@
     "./builtin/*":       { "types": "./src/builtin/*.ts",            "default": "./src/builtin/*.ts" }
   },
   "files": ["src"],
+  "dependencies": {
+    "@mcv/storage-sdk": "*"
+  },
   "scripts": {
     "lint": "echo 'no lint yet'",
     "test": "echo 'no tests yet'"

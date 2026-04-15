@@ -1,7 +1,7 @@
 // src/lib/kits/builtin/storage-local-kit.ts
 
 import type { KitManifest, KitToolHandler } from '../types';
-import { localList, localWrite, localDelete, localMove, localMkdir } from '../../storage/providers/local';
+import { localList, localWrite, localDelete, localMove, localMkdir } from '@mcv/storage-sdk/providers/local';
 
 const listFiles: KitToolHandler = async (input, ctx) => {
   const path = (input.path as string) || '';

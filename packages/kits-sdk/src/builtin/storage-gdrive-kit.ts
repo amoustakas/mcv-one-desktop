@@ -1,5 +1,5 @@
 import type { KitManifest, KitToolHandler } from '../types';
-import { gdriveList, gdriveSearch } from '../../storage/providers/gdrive';
+import { gdriveList, gdriveSearch } from '@mcv/storage-sdk/providers/gdrive';
 
 const listFiles: KitToolHandler = async (input, ctx) => {
   const path = (input.path as string) || '';
