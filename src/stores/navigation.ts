@@ -153,8 +153,13 @@ interface NavigationState {
   // History stack for back/forward
   history: ViewId[];
   historyIndex: number;
+  // One-shot detail-tab request — consumed by VentureDetailView then cleared.
+  // Lets a caller say "navigate to venture-detail and open the Docs tab".
+  pendingDetailTab: string | null;
 
   setView: (view: ViewId) => void;
+  openVentureDetailTab: (tab: string) => void;
+  consumePendingDetailTab: () => string | null;
   switchToGlobal: () => void;
   switchToVenture: (slug: string) => void;
   toggleChatDock: () => void;
@@ -232,6 +237,25 @@ export const useNavigation = create<NavigationState>()(
       splitDirection: 'horizontal',
       history: ['command-center'],
       historyIndex: 0,
+      pendingDetailTab: null,
+
+      openVentureDetailTab: (tab) =>
+        set((s) => {
+          const newHistory = [...s.history.slice(0, s.historyIndex + 1), 'venture-detail' as ViewId].slice(-50);
+          return {
+            activeView: 'venture-detail',
+            previousView: s.activeView,
+            pendingDetailTab: tab,
+            history: newHistory,
+            historyIndex: newHistory.length - 1,
+          };
+        }),
+
+      consumePendingDetailTab: () => {
+        const pending = get().pendingDetailTab;
+        if (pending) set({ pendingDetailTab: null });
+        return pending;
+      },
 
       setView: (view) =>
         set((s) => {

@@ -1,6 +1,7 @@
-import { useState, Suspense, lazy } from 'react';
+import { useState, useEffect, Suspense, lazy } from 'react';
 import { Tabs, PageShell, EmptyState } from '../components/ui';
 import { type Venture } from '../lib/ventures';
+import { useNavigation } from '../stores/navigation';
 import VentureQuestPanel from '../components/ventures/VentureQuestPanel';
 import AssetTierGraph from '../components/ventures/AssetTierGraph';
 import ClerkOrgPanel from '../components/ventures/ClerkOrgPanel';
@@ -32,8 +33,21 @@ const TABS: TabDef[] = [
   { id: 'settings', label: 'Settings' },
 ];
 
+const VALID_TABS = new Set<TabId>(['overview', 'quests', 'assets', 'domains', 'socials', 'team', 'docs', 'ops', 'settings']);
+
 export default function VentureDetailView({ venture }: { venture: Venture }) {
   const [tab, setTab] = useState<TabId>('overview');
+  const consumePendingDetailTab = useNavigation(s => s.consumePendingDetailTab);
+
+  // Honor a one-shot tab request from any caller (e.g. the Venture Wizard hint
+  // "Open Docs tab"). We consume-and-clear so navigating away + back doesn't
+  // keep yanking the user to the same tab.
+  useEffect(() => {
+    const pending = consumePendingDetailTab();
+    if (pending && VALID_TABS.has(pending as TabId)) {
+      setTab(pending as TabId);
+    }
+  }, [consumePendingDetailTab]);
 
   return (
     <div className="vdv-root">

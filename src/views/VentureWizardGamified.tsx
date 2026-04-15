@@ -365,14 +365,9 @@ export default function VentureWizardGamified() {
 // Per-step hints — contextual guidance + deep links into the Venture Detail tabs
 // ---------------------------------------------------------------------------
 
-function StepHint({ kind, venture, ventureId }: { kind: StepKind; venture?: Venture; ventureId: string }) {
-  const { setView } = useNavigation();
-  const jumpTo = (tab: string) => {
-    // For now there's no tab-aware route; setView('venture-detail') shows default Overview.
-    // In a later pass we can push tab selection into navigation store.
-    setView('venture-detail');
-    console.info(`[wizard] jump to ${tab} tab for ${ventureId}`);
-  };
+function StepHint({ kind, venture, ventureId: _ventureId }: { kind: StepKind; venture?: Venture; ventureId: string }) {
+  const openVentureDetailTab = useNavigation(s => s.openVentureDetailTab);
+  const jumpTo = (tab: string) => openVentureDetailTab(tab);
 
   switch (kind) {
     case 'identity':

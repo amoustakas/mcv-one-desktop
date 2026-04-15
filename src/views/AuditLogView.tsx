@@ -5,8 +5,7 @@ import {
   Share2, Award, Package, Search, RefreshCw, User, Loader2,
   Activity, Clock,
 } from 'lucide-react';
-import { PageShell, PageHeader, KpiCard, GridLayout, GlassCard, Badge, Tabs, EmptyState, Input, Button, Tooltip } from '../components/ui';
-import { Download } from 'lucide-react';
+import { PageShell, PageHeader, KpiCard, GridLayout, GlassCard, Badge, Tabs, EmptyState, Input, Button, Tooltip, DatePicker } from '../components/ui';
 import { useAuditLog } from '../hooks/use-storage-meta';
 import { useNavigation } from '../stores/navigation';
 import { ventures } from '../lib/ventures';
@@ -35,6 +34,8 @@ export default function AuditLogView() {
   const [actionFilter, setActionFilter] = useState<string>('');
   const [ventureFilter, setVentureFilter] = useState(mode === 'venture' ? activeVenture || '' : '');
   const [searchUser, setSearchUser] = useState('');
+  const [fromDate, setFromDate] = useState<string | null>(null);
+  const [toDate, setToDate] = useState<string | null>(null);
 
   const auditLog = useAuditLog({
     ventureId: ventureFilter || undefined,
@@ -43,7 +44,20 @@ export default function AuditLogView() {
     limit: 100,
   });
 
-  const entries = auditLog.data?.entries || [];
+  // Client-side date range filter on top of the server query — keeps the
+  // existing useAuditLog hook signature untouched.
+  const allEntries = auditLog.data?.entries || [];
+  const entries = (fromDate || toDate)
+    ? allEntries.filter((e) => {
+        const r = e as Record<string, unknown>;
+        const ts = (r.timestamp as string) || (r.created_at as string);
+        if (!ts) return true; // entries with no timestamp pass through
+        const day = ts.slice(0, 10); // YYYY-MM-DD lex-comparable
+        if (fromDate && day < fromDate) return false;
+        if (toDate && day > toDate) return false;
+        return true;
+      })
+    : allEntries;
 
   const actionCounts = entries.reduce<Record<string, number>>((acc, e) => {
     const a = String((e as Record<string, unknown>).action || 'unknown');
@@ -116,7 +130,7 @@ export default function AuditLogView() {
 
       {/* Filters */}
       <GlassCard style={{ marginTop: 16 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, alignItems: 'end' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, alignItems: 'end' }}>
           <div>
             <label style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 4 }}>Action</label>
             <select value={actionFilter} onChange={(e) => setActionFilter(e.target.value)} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text-primary)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', fontSize: 13 }}>
@@ -134,7 +148,27 @@ export default function AuditLogView() {
             <label style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 4 }}>User ID</label>
             <Input placeholder="Filter by user" value={searchUser} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchUser(e.target.value)} />
           </div>
+          <div>
+            <label style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 4 }}>From Date</label>
+            <DatePicker value={fromDate} onChange={setFromDate} max={toDate || undefined} placeholder="Any" />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 4 }}>To Date</label>
+            <DatePicker value={toDate} onChange={setToDate} min={fromDate || undefined} placeholder="Any" />
+          </div>
         </div>
+        {(fromDate || toDate) && (
+          <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>Showing {entries.length} of {allEntries.length} server entries within range</span>
+            <button
+              type="button"
+              onClick={() => { setFromDate(null); setToDate(null); }}
+              style={{ marginLeft: 'auto', color: 'var(--cyan)', fontSize: 11, background: 'transparent', border: 'none', cursor: 'pointer', textDecoration: 'underline dotted' }}
+            >
+              Clear date range
+            </button>
+          </div>
+        )}
       </GlassCard>
 
       {/* Action breakdown */}
