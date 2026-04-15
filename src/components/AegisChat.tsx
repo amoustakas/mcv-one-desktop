@@ -332,6 +332,8 @@ export default function AegisChat({ venture, docked = false }: AegisChatProps) {
             userId: user?.id ?? '',
             kits: loadedKits,
             files: activeFiles,
+            onToolCallAudit: (kitId, toolName) =>
+              audit('kit.tool_call', { kitId, toolName, ventureId: venture.id, conversationId: convId! }),
             callbacks: {
               onText: (partial) => { setIsThinking(false); setStreamingText(partial); },
               onToolCall: (tc) => { setIsThinking(false);
