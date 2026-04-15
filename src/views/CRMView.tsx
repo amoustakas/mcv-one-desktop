@@ -18,7 +18,7 @@ import {
   usePipelineStats,
 } from '../hooks/use-crm';
 import type { Contact } from '../lib/schemas/crm';
-import { PageHeader, Button, GlassCard, Badge, StatCard, Tabs, EmptyState, GridLayout, BulkActionBar, Tooltip } from '../components/ui';
+import { PageHeader, Button, GlassCard, Badge, StatCard, Tabs, EmptyState, GridLayout, BulkActionBar, Tooltip, Dialog, DialogActions, FormField, Input, Select } from '../components/ui';
 import type { BulkAction } from '../components/ui';
 import { Tag as TagIcon, ArrowRightCircle, AlertTriangle } from 'lucide-react';
 import { timeAgo, formatMoney, formatDate, cn } from '../lib/utils';
@@ -330,13 +330,52 @@ export default function CRMView() {
     setPendingJumpEmail(null);
   }, [pendingJumpEmail, contacts]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const promptBulkTag = (): string | null => {
-    const t = window.prompt('Tag to add to selected contacts:');
-    return t?.trim() || null;
+  // Bulk-action prompts moved to a single in-app Dialog. The action handler
+  // stages the work in `bulkPrompt` (mode + ids + initial value), the Dialog
+  // collects/validates input, and `runBulkPrompt` dispatches to the right
+  // mutation. This replaces 3 sequential window.prompt() calls — also lets
+  // us validate type values via a Select instead of free-text + check.
+  type BulkPromptMode = 'tag' | 'contact-type' | 'account-type';
+  const [bulkPrompt, setBulkPrompt] = useState<{ mode: BulkPromptMode; ids: string[] } | null>(null);
+  const [bulkPromptValue, setBulkPromptValue] = useState('');
+  const [bulkPromptBusy, setBulkPromptBusy] = useState(false);
+
+  const openBulkPrompt = (mode: BulkPromptMode, ids: string[]) => {
+    setBulkPromptValue(mode === 'tag' ? '' : (mode === 'contact-type' ? 'lead' : 'prospect'));
+    setBulkPrompt({ mode, ids });
   };
-  const promptBulkType = (): string | null => {
-    const t = window.prompt('New type for selected contacts (lead/prospect/client/partner/investor/vendor):');
-    return t?.trim().toLowerCase() || null;
+
+  const runBulkPrompt = async () => {
+    if (!bulkPrompt) return;
+    const v = bulkPromptValue.trim();
+    if (!v) return;
+    setBulkPromptBusy(true);
+    try {
+      if (bulkPrompt.mode === 'tag') {
+        for (const id of bulkPrompt.ids) {
+          const c = contacts.find((x: Contact) => x.id === id);
+          if (!c) continue;
+          const tags = Array.from(new Set([...(c.tags || []), v]));
+          try { await updateContactMut.mutateAsync({ id, tags }); } catch { /* skip */ }
+        }
+        toast('success', `Tagged ${bulkPrompt.ids.length} contact${bulkPrompt.ids.length === 1 ? '' : 's'} with "${v}"`);
+      } else if (bulkPrompt.mode === 'contact-type') {
+        for (const id of bulkPrompt.ids) {
+          try { await updateContactMut.mutateAsync({ id, type: v as Contact['type'] }); } catch { /* skip */ }
+        }
+        toast('success', `Updated ${bulkPrompt.ids.length} contact${bulkPrompt.ids.length === 1 ? '' : 's'} to ${v}`);
+      } else {
+        for (const id of bulkPrompt.ids) {
+          try {
+            await fetch('/api/crm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'update-account', id, type: v }) });
+          } catch { /* skip */ }
+        }
+        toast('success', `Updated ${bulkPrompt.ids.length} account${bulkPrompt.ids.length === 1 ? '' : 's'} to ${v}`);
+      }
+      setBulkPrompt(null);
+    } finally {
+      setBulkPromptBusy(false);
+    }
   };
   const createDealMut = useCreateDeal();
   const updateDealMut = useUpdateDeal();
@@ -369,34 +408,16 @@ export default function CRMView() {
       id: 'tag',
       label: 'Add Tag',
       icon: <TagIcon size={12} />,
-      onRun: async (ids) => {
-        const tag = promptBulkTag();
-        if (!tag) return;
-        for (const id of ids) {
-          const c = contacts.find((x: Contact) => x.id === id);
-          if (!c) continue;
-          const tags = Array.from(new Set([...(c.tags || []), tag]));
-          try { await updateContactMut.mutateAsync({ id, tags }); } catch { /* skip */ }
-        }
-        toast('success', `Tagged ${ids.length} contact${ids.length === 1 ? '' : 's'} with "${tag}"`);
-      },
+      onRun: (ids) => openBulkPrompt('tag', ids),
     },
     {
       id: 'change-type',
       label: 'Change Type',
       icon: <ArrowRightCircle size={12} />,
-      onRun: async (ids) => {
-        const type = promptBulkType();
-        if (!type) return;
-        const valid = ['lead', 'prospect', 'client', 'partner', 'investor', 'vendor'];
-        if (!valid.includes(type)) {
-          toast('error', `Invalid type. Must be one of: ${valid.join(', ')}`);
-          return;
-        }
-        for (const id of ids) {
-          try { await updateContactMut.mutateAsync({ id, type: type as Contact['type'] }); } catch { /* skip */ }
-        }
-        toast('success', `Updated ${ids.length} contact${ids.length === 1 ? '' : 's'} to ${type}`);
+      onRun: (ids) => {
+        openBulkPrompt('contact-type', ids);
+        // Empty body — actual mutation happens in runBulkPrompt below.
+        return Promise.resolve();
       },
     },
     {
@@ -522,17 +543,9 @@ export default function CRMView() {
       id: 'change-type',
       label: 'Change Type',
       icon: <ArrowRightCircle size={12} />,
-      onRun: async (ids) => {
-        const t = window.prompt('New account type (prospect/customer/partner/vendor/churned):')?.trim().toLowerCase();
-        if (!t) return;
-        const valid = Object.keys(ACCOUNT_TYPE_COLORS);
-        if (!valid.includes(t)) { toast('error', `Invalid. Must be one of: ${valid.join(', ')}`); return; }
-        for (const id of ids) {
-          try {
-            await fetch('/api/crm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'update-account', id, type: t }) });
-          } catch { /* skip */ }
-        }
-        toast('success', `Updated ${ids.length} account${ids.length === 1 ? '' : 's'} to ${t}`);
+      onRun: (ids) => {
+        openBulkPrompt('account-type', ids);
+        return Promise.resolve();
       },
     },
     {
@@ -1223,6 +1236,69 @@ export default function CRMView() {
         .crm-pipe-sum-label { display:block; font-size:9px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-top:4px; }
 
       `}</style>
+
+      <Dialog
+        open={!!bulkPrompt}
+        onClose={() => (bulkPromptBusy ? null : setBulkPrompt(null))}
+        size="sm"
+        title={
+          bulkPrompt?.mode === 'tag' ? 'Add tag to selected contacts' :
+          bulkPrompt?.mode === 'contact-type' ? 'Change contact type' :
+          'Change account type'
+        }
+        description={`${bulkPrompt?.ids.length ?? 0} item${bulkPrompt?.ids.length === 1 ? '' : 's'} selected`}
+        footer={
+          <DialogActions>
+            <Button variant="secondary" size="sm" onClick={() => setBulkPrompt(null)} disabled={bulkPromptBusy}>Cancel</Button>
+            <Button
+              variant="primary"
+              size="sm"
+              loading={bulkPromptBusy}
+              disabled={!bulkPromptValue.trim()}
+              onClick={runBulkPrompt}
+            >
+              Apply to {bulkPrompt?.ids.length ?? 0}
+            </Button>
+          </DialogActions>
+        }
+      >
+        {bulkPrompt?.mode === 'tag' && (
+          <FormField label="Tag" hint="Added to each contact's existing tag list — duplicates are skipped">
+            <Input
+              value={bulkPromptValue}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBulkPromptValue(e.target.value)}
+              placeholder="e.g. q4-prospect"
+              autoFocus
+            />
+          </FormField>
+        )}
+        {bulkPrompt?.mode === 'contact-type' && (
+          <FormField label="New type">
+            <Select
+              value={bulkPromptValue}
+              onChange={(v) => setBulkPromptValue(v)}
+              options={['lead', 'prospect', 'client', 'partner', 'investor', 'vendor'].map((t) => ({
+                value: t,
+                label: t,
+                icon: <span style={{ width: 8, height: 8, borderRadius: '50%', background: TYPE_COLORS[t] || '#888', display: 'inline-block' }} />,
+              }))}
+            />
+          </FormField>
+        )}
+        {bulkPrompt?.mode === 'account-type' && (
+          <FormField label="New type">
+            <Select
+              value={bulkPromptValue}
+              onChange={(v) => setBulkPromptValue(v)}
+              options={Object.keys(ACCOUNT_TYPE_COLORS).map((t) => ({
+                value: t,
+                label: t,
+                icon: <span style={{ width: 8, height: 8, borderRadius: '50%', background: ACCOUNT_TYPE_COLORS[t], display: 'inline-block' }} />,
+              }))}
+            />
+          </FormField>
+        )}
+      </Dialog>
     </div>
   );
 }

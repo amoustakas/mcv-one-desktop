@@ -106,6 +106,27 @@ optimistic vs. server-persisted.
 | `FraudRuleDetailDialog` (delete) | POST `delete-fraud-rule` — optimistic remove + restore on failure | server ✓ |
 | `NexusAlertDetailDialog` (acknowledge/register/exempt) | `useComplianceStore.updateNexusStatus` | local (needs migration for `nexus_alert_status` column) |
 
+**Native prompt() retired in 4 spots.** All in-app data entry now goes
+through proper `Dialog` primitives:
+
+- `CommerceCreditsView` Grant Credit (was 3 sequential `prompt()` calls
+  for customer / amount / note → single Dialog with FormField + validation)
+- `CommerceLoansView` row-level repayment (was a `prompt()` → routes the
+  user into `LoanDetailDialog` which already has a proper amount input
+  + payment history context)
+- `CRMView` bulk Add Tag / Change Type / Change Account Type (was
+  `window.prompt()` calls → unified `bulkPrompt` state + one Dialog
+  that switches Input vs Select by mode; type changes get a colored-dot
+  Select instead of free-text "must be one of these strings" validation)
+
+**Dispute reason loop closed.** When a milestone is disputed via
+`EscrowDetailDialog`, the reason now persists to `escrow_milestones.metadata`
+server-side (see `dispute-milestone` action). On reopen, the dialog
+renders an inline red-bordered banner under the disputed milestone showing
+the reason + `timeAgo(disputed_at)`. Required adding `metadata` to the
+canonical `EscrowMilestoneSchema` and threading it through `mapEscrowRow`
+in the creator store.
+
 **Bulk-action void:** `CommerceInvoicesView` "Void" bulk action wires
 to `useCommerceStore.voidInvoice` → POST `void-invoice` (soft status
 flip; full ledger reversal goes through `InvoiceEngine.voidInvoice`

@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { CreditCard, Plus, Wallet, TrendingUp, Gift, Loader2 } from 'lucide-react';
-import { PageShell, PageHeader, KpiCard, GridLayout, GlassCard, Button, Badge, Tabs, EmptyState } from '../components/ui';
+import { PageShell, PageHeader, KpiCard, GridLayout, GlassCard, Button, Badge, Tabs, EmptyState, Dialog, DialogActions, FormField, Input } from '../components/ui';
 import { useNavigation } from '../stores/navigation';
 import { staggerContainer, fadeInUp } from '../lib/animations';
 import { useState, useEffect, lazy, Suspense } from 'react';
@@ -67,6 +67,15 @@ export default function CommerceCreditsView() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [selectedLedgerId, setSelectedLedgerId] = useState<string | null>(null);
 
+  // Grant Credit form — replaces 3 sequential prompt() calls so users get
+  // a real form with validation, currency hint, and a single Cancel/Submit
+  // path instead of confirming 3 separate native dialogs.
+  const [grantOpen, setGrantOpen] = useState(false);
+  const [grantSubmitting, setGrantSubmitting] = useState(false);
+  const [grantCustomerId, setGrantCustomerId] = useState('');
+  const [grantAmount, setGrantAmount] = useState('100');
+  const [grantNote, setGrantNote] = useState('Promotional credit');
+
   const selectedLedger = selectedLedgerId ? ledgers.find((l) => l.id === selectedLedgerId) : null;
   const selectedLedgerEntries = selectedLedgerId
     ? transactions
@@ -90,21 +99,29 @@ export default function CommerceCreditsView() {
     return () => { mounted = false; };
   }, [ventureId]);
 
-  const handleGrant = async () => {
-    const customerId = prompt('Customer ID:');
-    if (!customerId) return;
-    const amountStr = prompt('Credit amount ($):', '100');
-    if (!amountStr) return;
-    const note = prompt('Note (optional):', 'Promotional credit') || '';
-    const amount = parseFloat(amountStr);
-    if (isNaN(amount) || amount <= 0) return;
+  const openGrantDialog = () => {
+    setGrantCustomerId('');
+    setGrantAmount('100');
+    setGrantNote('Promotional credit');
+    setGrantOpen(true);
+  };
 
-    const success = await grantCredit(ventureId, customerId, amount, note);
-    if (success) {
-      addToast({ type: 'success', message: `$${amount} credit granted to ${customerId}` });
-      fetchCredits(ventureId).then(setLedgers);
-    } else {
-      addToast({ type: 'error', message: 'Failed to grant credit' });
+  const submitGrant = async () => {
+    const amount = parseFloat(grantAmount);
+    if (!grantCustomerId.trim() || isNaN(amount) || amount <= 0) return;
+    setGrantSubmitting(true);
+    try {
+      const success = await grantCredit(ventureId, grantCustomerId.trim(), amount, grantNote);
+      if (success) {
+        addToast({ type: 'success', message: `$${amount} credit granted to ${grantCustomerId.trim()}` });
+        fetchCredits(ventureId).then(setLedgers);
+        fetchCreditTransactions(ventureId).then(setTransactions);
+        setGrantOpen(false);
+      } else {
+        addToast({ type: 'error', message: 'Failed to grant credit' });
+      }
+    } finally {
+      setGrantSubmitting(false);
     }
   };
 
@@ -120,8 +137,56 @@ export default function CommerceCreditsView() {
   return (
     <PageShell>
       <PageHeader title="Credits & Wallets" icon={<CreditCard size={20} />} loading={loading}>
-        <Button variant="primary" size="sm" icon={<Plus size={13} />} onClick={handleGrant}>Grant Credit</Button>
+        <Button variant="primary" size="sm" icon={<Plus size={13} />} onClick={openGrantDialog}>Grant Credit</Button>
       </PageHeader>
+
+      <Dialog
+        open={grantOpen}
+        onClose={() => setGrantOpen(false)}
+        size="sm"
+        title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Gift size={16} /> Grant Credit</span>}
+        description="Issue store credit to a customer wallet. The grant posts immediately and shows up in the ledger."
+        footer={
+          <DialogActions>
+            <Button variant="secondary" size="sm" onClick={() => setGrantOpen(false)}>Cancel</Button>
+            <Button
+              variant="primary"
+              size="sm"
+              loading={grantSubmitting}
+              disabled={!grantCustomerId.trim() || !grantAmount || parseFloat(grantAmount) <= 0}
+              onClick={submitGrant}
+            >
+              Grant {grantAmount && parseFloat(grantAmount) > 0 ? `$${parseFloat(grantAmount).toLocaleString()}` : ''}
+            </Button>
+          </DialogActions>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <FormField label="Customer ID" required hint="The id of the customer that will receive the credit">
+            <Input
+              value={grantCustomerId}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGrantCustomerId(e.target.value)}
+              placeholder="cus_…"
+              autoFocus
+            />
+          </FormField>
+          <FormField label="Amount" required hint="USD — supports decimals (e.g. 25.50)">
+            <Input
+              type="number"
+              value={grantAmount}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGrantAmount(e.target.value)}
+              placeholder="0.00"
+            />
+          </FormField>
+          <FormField label="Note" hint="Shown in the ledger entry — e.g. refund reference, promo code">
+            <Input
+              value={grantNote}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGrantNote(e.target.value)}
+              placeholder="Promotional credit"
+            />
+          </FormField>
+        </div>
+      </Dialog>
 
       <motion.div variants={staggerContainer} initial="hidden" animate="show" style={{ marginTop: 12 }}>
         <GridLayout cols={4} gap="md">

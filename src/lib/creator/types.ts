@@ -137,6 +137,10 @@ export const EscrowMilestoneSchema = z.object({
   approvedAt: z.string().datetime().nullable().default(null),
   evidence: z.array(z.string()).default([]),
   createdAt: z.string().datetime(),
+  // Free-form metadata. The dispute-milestone API stashes
+  // dispute_reason + disputed_at here so the EscrowDetailDialog can
+  // surface why a milestone was disputed without a separate fetch.
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 export type EscrowMilestone = z.infer<typeof EscrowMilestoneSchema>;
 

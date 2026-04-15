@@ -54,15 +54,13 @@ export default function CommerceLoansView() {
     }
   };
 
-  const handleRepayment = async (id: string, amount: number) => {
-    const repayAmount = prompt('Repayment amount:', String(amount));
-    if (!repayAmount) return;
-    try {
-      await recordRepayment(ventureId, id, parseFloat(repayAmount));
-      addToast({ type: 'success', message: 'Repayment recorded' });
-    } catch (err) {
-      addToast({ type: 'error', message: err instanceof Error ? err.message : 'Failed' });
-    }
+  // Row-level repayment quick action — routes the user into the detail
+  // dialog (which has a proper amount input + payment-history context)
+  // instead of a single-field native prompt. Detail dialog's RecordPayment
+  // form calls recordRepayment directly so the data path stays the same.
+  const handleRepayment = (id: string, _amount: number) => {
+    setSelectedLoanId(id);
+    void _amount;
   };
 
   return (

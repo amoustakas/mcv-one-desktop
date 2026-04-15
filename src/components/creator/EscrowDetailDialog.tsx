@@ -12,6 +12,13 @@ export interface EscrowMilestone {
   status: 'pending' | 'submitted' | 'approved' | 'released' | 'disputed';
   released_at?: string;
   released_amount?: number;
+  /**
+   * Free-form metadata. Server stashes dispute_reason and disputed_at in
+   * here when a milestone is flipped to 'disputed' so the dialog can
+   * surface "why" the next time it's opened — closes the loop on the
+   * dispute workflow.
+   */
+  metadata?: { dispute_reason?: string; disputed_at?: string; [k: string]: unknown };
 }
 
 export interface EscrowEvent {
@@ -257,7 +264,7 @@ export default function EscrowDetailDialog({
                               </Button>
                             </Tooltip>
                           )}
-                          {m.status !== 'released' && onDispute && (
+                          {m.status !== 'released' && m.status !== 'disputed' && onDispute && (
                             <Button
                               size="sm"
                               variant="ghost"
@@ -268,6 +275,21 @@ export default function EscrowDetailDialog({
                             </Button>
                           )}
                         </div>
+
+                        {m.status === 'disputed' && m.metadata?.dispute_reason && (
+                          <div className="esc-dispute-banner">
+                            <AlertTriangle size={12} className="esc-dispute-banner-icon" />
+                            <div className="esc-dispute-banner-body">
+                              <div className="esc-dispute-banner-head">
+                                <strong>Dispute filed</strong>
+                                {m.metadata.disputed_at && (
+                                  <span className="esc-dispute-banner-when">{timeAgo(m.metadata.disputed_at)}</span>
+                                )}
+                              </div>
+                              <span className="esc-dispute-banner-reason">{m.metadata.dispute_reason}</span>
+                            </div>
+                          </div>
+                        )}
 
                         {disputeFor === m.id && (
                           <div className="esc-dispute-form">
@@ -384,6 +406,12 @@ export default function EscrowDetailDialog({
         .esc-ms-num:focus, .esc-ms-date:focus { outline: none; border-color: var(--cyan); }
         .esc-ms-actions { display: flex; gap: 6px; align-items: center; }
         .esc-dispute-form { display: flex; flex-direction: column; gap: 8px; padding: 10px; background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: var(--radius-sm); margin-top: 4px; }
+        .esc-dispute-banner { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; background: rgba(239, 68, 68, 0.06); border-left: 3px solid var(--error); border-radius: var(--radius-sm); margin-top: 6px; }
+        .esc-dispute-banner-icon { color: var(--error); flex-shrink: 0; margin-top: 2px; }
+        .esc-dispute-banner-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .esc-dispute-banner-head { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; color: var(--error); }
+        .esc-dispute-banner-when { color: var(--text-muted); font-family: var(--font-mono); font-size: 10px; }
+        .esc-dispute-banner-reason { font-size: 11px; color: var(--text-secondary); white-space: pre-wrap; line-height: 1.4; }
 
         .esc-stats { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
         .esc-stats > div { display: flex; justify-content: space-between; gap: 8px; }

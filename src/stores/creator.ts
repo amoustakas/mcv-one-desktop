@@ -135,6 +135,9 @@ function mapEscrowRow(row: Record<string, unknown>): EscrowAgreement {
       approvedAt: (m.approved_at as string | null) ?? null,
       evidence: (m.evidence as string[]) ?? [],
       createdAt: m.created_at as string,
+      // metadata holds dispute_reason + disputed_at — surfaced by
+      // EscrowDetailDialog as a banner under disputed milestones.
+      metadata: (m.metadata as Record<string, unknown> | null) ?? undefined,
     })),
     escrowAccountId: (row.escrow_account_id as string | null) ?? null,
     releaseCondition: row.release_condition as EscrowAgreement['releaseCondition'],
