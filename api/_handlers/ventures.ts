@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { summarizeSnapshot } from '../../src/lib/ventures/snapshot';
 
 async function requireAuth(req: VercelRequest, res: VercelResponse): Promise<string | null> {
   const secretKey = process.env.CLERK_SECRET_KEY;
@@ -36,6 +37,47 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { data, error } = await supabase.from('ventures').select('*').order('tier', { ascending: true }).order('created_at', { ascending: false });
         if (error) throw error;
         return res.json({ ventures: data });
+      }
+      case 'list-snapshots': {
+        // Bulk health/state summary for the entire portfolio — one query per
+        // source table, fold across venture_id client-side. Keeps portfolio
+        // views (VenturesIndexView) at 5 requests total instead of 5×N.
+        const [vRes, aRes, docsRes, qRes] = await Promise.all([
+          supabase.from('ventures').select('id, name, tier, status, clerk_org_id, custom_domains').order('tier', { ascending: true }),
+          supabase.from('venture_assets').select('venture_id, tier, confirmed'),
+          supabase.from('venture_docs').select('venture_id, department, status'),
+          supabase.from('venture_quests').select('venture_id, effective_status'),
+        ]);
+        if (vRes.error) throw vRes.error;
+        if (aRes.error) throw aRes.error;
+        if (docsRes.error) throw docsRes.error;
+        if (qRes.error) throw qRes.error;
+
+        const groupBy = <T extends { venture_id: string }>(rows: T[]): Map<string, T[]> => {
+          const m = new Map<string, T[]>();
+          for (const r of rows) {
+            const list = m.get(r.venture_id) || [];
+            list.push(r);
+            m.set(r.venture_id, list);
+          }
+          return m;
+        };
+
+        const assetsByVenture = groupBy((aRes.data as Array<{ venture_id: string; tier: number; confirmed: boolean }>) || []);
+        const docsByVenture = groupBy((docsRes.data as Array<{ venture_id: string; department: string; status: string }>) || []);
+        const questsByVenture = groupBy((qRes.data as Array<{ venture_id: string; effective_status: string }>) || []);
+
+        type VentureRow = { id: string; name: string; tier?: number; status?: string; clerk_org_id?: string | null; custom_domains?: Array<{ host: string; status?: string }> };
+        const snapshots = ((vRes.data as VentureRow[]) || []).map(v => {
+          const assets = (assetsByVenture.get(v.id) || []).map(a => ({ tier: a.tier, confirmed: a.confirmed }));
+          const domains = (v.custom_domains || []).map(d => ({ status: d.status }));
+          const docs = (docsByVenture.get(v.id) || []).map(d => ({ department: d.department, status: d.status }));
+          const quests = (questsByVenture.get(v.id) || []).map(q => ({ effective_status: q.effective_status }));
+          const summary = summarizeSnapshot({ venture: v, assets, domains, docs, quests });
+          return { id: v.id, name: v.name, tier: v.tier ?? null, status: v.status || 'unknown', summary };
+        });
+
+        return res.json({ snapshots });
       }
       case 'get': {
         const { data, error } = await supabase.from('ventures').select('*').eq('id', req.body.id).single();

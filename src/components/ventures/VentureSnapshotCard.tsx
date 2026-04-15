@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Activity, Package, Globe, FileText, Target, Shield } from 'lucide-react';
 import { GlassCard } from '../ui';
 import { apiPost } from '../../lib/api/client';
-import { summarizeSnapshot, type SnapshotSummary } from '../../lib/kits/builtin/venture-intelligence-kit';
+import { summarizeSnapshot, healthColor, type SnapshotSummary } from '../../lib/ventures/snapshot';
 import type { Venture } from '../../lib/ventures';
 
 // Human-visible rendering of the same composite state the venture_snapshot
@@ -74,9 +74,7 @@ export default function VentureSnapshotCard({ venture }: Props) {
     );
   }
 
-  const healthColor = summary.health_score >= 75 ? '#10B981'
-    : summary.health_score >= 50 ? '#F59E0B'
-    : '#EF4444';
+  const ringColor = healthColor(summary.health_score);
   const circumference = 2 * Math.PI * 42;
   const dashOffset = circumference * (1 - summary.health_score / 100);
 
@@ -100,7 +98,7 @@ export default function VentureSnapshotCard({ venture }: Props) {
             <circle cx="50" cy="50" r="42" fill="none" stroke="var(--bg-input)" strokeWidth="8" />
             <circle
               cx="50" cy="50" r="42" fill="none"
-              stroke={healthColor} strokeWidth="8" strokeLinecap="round"
+              stroke={ringColor} strokeWidth="8" strokeLinecap="round"
               strokeDasharray={circumference}
               strokeDashoffset={dashOffset}
               transform="rotate(-90 50 50)"
@@ -108,7 +106,7 @@ export default function VentureSnapshotCard({ venture }: Props) {
             />
           </svg>
           <div className="vsc-health-center">
-            <div className="vsc-health-val" style={{ color: healthColor }}>{summary.health_score}</div>
+            <div className="vsc-health-val" style={{ color: ringColor }}>{summary.health_score}</div>
             <div className="vsc-health-label">Health</div>
           </div>
         </div>

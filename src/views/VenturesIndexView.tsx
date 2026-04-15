@@ -3,6 +3,9 @@ import { Plus, Layers } from 'lucide-react';
 import { PageShell, PageHeader, GlassCard, Badge, Button, Toggle } from '../components/ui';
 import { ventures as builtinVentures, type Venture, type VentureTier } from '../lib/ventures';
 import { apiPost } from '../lib/api/client';
+import { healthColor, type SnapshotSummary } from '../lib/ventures/snapshot';
+
+interface PortfolioSnapshot { id: string; name: string; tier: number | null; status: string; summary: SnapshotSummary }
 
 const STATUS_COLORS: Record<string, string> = {
   active: '#10B981',
@@ -25,6 +28,7 @@ interface VenturesIndexProps {
 
 export default function VenturesIndexView({ onSelect, onNew }: VenturesIndexProps) {
   const [remote, setRemote] = useState<Venture[] | null>(null);
+  const [snapshots, setSnapshots] = useState<Record<string, PortfolioSnapshot>>({});
   const [tierFilter, setTierFilter] = useState<VentureTier | 'all'>('all');
   const [loading, setLoading] = useState(true);
 
@@ -32,8 +36,17 @@ export default function VenturesIndexView({ onSelect, onNew }: VenturesIndexProp
     let cancelled = false;
     (async () => {
       try {
-        const data = await apiPost<{ ventures: Venture[] }>('/api/ventures', { action: 'list' });
-        if (!cancelled) setRemote(data.ventures || []);
+        // Fire both requests in parallel — the ventures list renders even if
+        // snapshots fail (e.g. RLS issue). Snapshots just add a health badge.
+        const [listData, snapsData] = await Promise.all([
+          apiPost<{ ventures: Venture[] }>('/api/ventures', { action: 'list' }),
+          apiPost<{ snapshots: PortfolioSnapshot[] }>('/api/ventures', { action: 'list-snapshots' }).catch(() => ({ snapshots: [] })),
+        ]);
+        if (cancelled) return;
+        setRemote(listData.ventures || []);
+        const snapMap: Record<string, PortfolioSnapshot> = {};
+        for (const s of snapsData.snapshots || []) snapMap[s.id] = s;
+        setSnapshots(snapMap);
       } catch {
         // Fall back to builtin if API is unavailable
       } finally {
@@ -76,6 +89,8 @@ export default function VenturesIndexView({ onSelect, onNew }: VenturesIndexProp
       <div className="vix-grid">
         {filtered.map(v => {
           const tier = v.tier ?? 1;
+          const snap = snapshots[v.id];
+          const health = snap?.summary.health_score;
           return (
             <GlassCard
               key={v.id}
@@ -88,12 +103,25 @@ export default function VenturesIndexView({ onSelect, onNew }: VenturesIndexProp
                   <div className="vix-title">{v.name}</div>
                   <div className="vix-tagline">{v.tagline}</div>
                 </div>
+                {typeof health === 'number' && (
+                  <div className="vix-health" style={{ borderColor: healthColor(health), color: healthColor(health) }}>
+                    {health}
+                  </div>
+                )}
               </div>
               <div className="vix-meta">
                 <Badge color={STATUS_COLORS[v.status]} variant="outline">{v.status}</Badge>
                 <Badge color={tier === 1 ? '#00F0FF' : tier === 2 ? '#8B5CF6' : '#6B7280'}>Tier {tier}</Badge>
                 {v.clerkOrgId && <Badge color="#10B981" variant="outline">Tenant</Badge>}
               </div>
+              {snap && (
+                <div className="vix-stats">
+                  <span title="Quests done/total">Q {snap.summary.quests.done}/{snap.summary.quests.total}</span>
+                  <span title="Confirmed assets">A {snap.summary.assets.confirmed}</span>
+                  <span title="Verified domains">D {snap.summary.domains.verified}/{snap.summary.domains.total}</span>
+                  <span title="Total docs">Docs {snap.summary.docs.total}</span>
+                </div>
+              )}
               <div className="vix-domain">{v.domain}</div>
             </GlassCard>
           );
@@ -111,6 +139,9 @@ export default function VenturesIndexView({ onSelect, onNew }: VenturesIndexProp
         .vix-title { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px; }
         .vix-tagline { font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .vix-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+        .vix-health { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-full); border: 2px solid; font-size: 12px; font-weight: 700; font-family: var(--font-display); flex-shrink: 0; }
+        .vix-stats { display: flex; gap: 10px; font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); margin-bottom: 6px; }
+        .vix-stats span { letter-spacing: 0.02em; }
         .vix-domain { font-size: 10px; color: var(--text-secondary); font-family: var(--font-mono); }
       `}</style>
     </PageShell>

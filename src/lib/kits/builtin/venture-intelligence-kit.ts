@@ -13,6 +13,9 @@
 //                         domains, team, health) for a single venture
 
 import type { KitManifest, KitToolHandler, KitToolSchema, KitExecutionContext } from '../types';
+import { summarizeSnapshot, type SnapshotSummary } from '../../ventures/snapshot';
+
+export { summarizeSnapshot, type SnapshotSummary };
 
 type Department = 'legal' | 'compliance' | 'research' | 'finance' | 'ops' | 'product';
 
@@ -206,64 +209,8 @@ const ventureSnapshot: KitToolHandler = async (input, ctx) => {
   };
 };
 
-export interface SnapshotSummary {
-  tier: number | null;
-  status: string;
-  clerk_provisioned: boolean;
-  assets: { confirmed: number; discovered: number; byTier: Record<number, number> };
-  domains: { total: number; verified: number; pending: number };
-  docs: { total: number; byDept: Record<string, number>; byStatus: Record<string, number> };
-  quests: { total: number; done: number; in_progress: number; pct: number };
-  health_score: number; // 0-100, weighted composite
-}
-
-export function summarizeSnapshot(args: {
-  venture: { tier?: number; status?: string; clerk_org_id?: string | null };
-  assets: Array<{ tier: number; confirmed: boolean }>;
-  domains: Array<{ status?: string }>;
-  docs: Array<{ department: string; status: string }>;
-  quests: Array<{ effective_status?: string }>;
-}): SnapshotSummary {
-  const assetsConfirmed = args.assets.filter(a => a.confirmed).length;
-  const assetsDiscovered = args.assets.filter(a => !a.confirmed).length;
-  const byTier = args.assets.reduce<Record<number, number>>((acc, a) => {
-    acc[a.tier] = (acc[a.tier] || 0) + 1;
-    return acc;
-  }, {});
-
-  const verifiedDomains = args.domains.filter(d => d.status === 'verified' || d.status === 'active').length;
-  const pendingDomains = args.domains.filter(d => d.status === 'pending' || !d.status).length;
-
-  const byDept = args.docs.reduce<Record<string, number>>((acc, d) => {
-    acc[d.department] = (acc[d.department] || 0) + 1;
-    return acc;
-  }, {});
-  const byStatus = args.docs.reduce<Record<string, number>>((acc, d) => {
-    acc[d.status] = (acc[d.status] || 0) + 1;
-    return acc;
-  }, {});
-
-  const questsDone = args.quests.filter(q => q.effective_status === 'done').length;
-  const questsInProg = args.quests.filter(q => q.effective_status === 'in-progress').length;
-  const questPct = args.quests.length > 0 ? Math.round((questsDone / args.quests.length) * 100) : 0;
-
-  // Composite health: 40% quest completion, 25% asset confirmation, 20% docs coverage, 15% domain verification
-  const assetHealth = args.assets.length > 0 ? (assetsConfirmed / args.assets.length) * 100 : 50;
-  const docHealth = Math.min(100, (args.docs.length / 30) * 100); // 30 docs = "fully papered"
-  const domainHealth = args.domains.length > 0 ? (verifiedDomains / args.domains.length) * 100 : 50;
-  const health = Math.round(0.40 * questPct + 0.25 * assetHealth + 0.20 * docHealth + 0.15 * domainHealth);
-
-  return {
-    tier: args.venture.tier ?? null,
-    status: args.venture.status || 'unknown',
-    clerk_provisioned: !!args.venture.clerk_org_id,
-    assets: { confirmed: assetsConfirmed, discovered: assetsDiscovered, byTier },
-    domains: { total: args.domains.length, verified: verifiedDomains, pending: pendingDomains },
-    docs: { total: args.docs.length, byDept, byStatus },
-    quests: { total: args.quests.length, done: questsDone, in_progress: questsInProg, pct: questPct },
-    health_score: health,
-  };
-}
+// summarizeSnapshot + SnapshotSummary live in src/lib/ventures/snapshot.ts so
+// the UI, API, and NAOS tools all consume the same pure function.
 
 function renderSnapshotMarkdown(
   venture: { id: string; name: string },
