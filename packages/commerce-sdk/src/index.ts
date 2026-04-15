@@ -89,4 +89,15 @@ export type {
   CartServiceOptions,
 } from './cart-service';
 
-export const MCV_COMMERCE_SDK_VERSION = '0.17.0' as const;
+// checkout-service — the orchestration layer. Carries 4 adapters
+// (Ledger / PaymentRouter / Cart / Product). Subpath-only.
+export { createCheckoutService } from './checkout-service';
+export type {
+  CheckoutService,
+  CheckoutServiceOptions,
+  OrderConfirmation,
+  CheckoutEstimate,
+  ConversationalCheckoutSummary,
+} from './checkout-service';
+
+export const MCV_COMMERCE_SDK_VERSION = '0.18.0' as const;
