@@ -103,6 +103,8 @@ export interface PaymentRouterLike {
     amount: number;
     currency: string;
     method: string;
+    ventureId?: string;
+    recipientContactId?: string;
     reference?: string;
     metadata?: Record<string, unknown>;
   }): Promise<{ result: { success: boolean; reference?: string; error?: string }; decision: unknown }>;
@@ -304,6 +306,8 @@ export function createDistributionsService({
               amount: r.amount,
               currency: r.currency,
               method: r.paymentMethod,
+              ventureId: distribution.ventureId,
+              recipientContactId: r.contactId,
               reference: `dist-${distribution.id.slice(0, 8)}-${r.contactId.slice(0, 8)}`,
               metadata: { distribution_id: distribution.id, recipient_id: r.id },
             });

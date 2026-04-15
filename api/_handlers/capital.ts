@@ -9,6 +9,8 @@ import {
   type CommitmentStatus,
   type RoundStatus,
 } from '@mcv/capital-sdk';
+import { makeCapitalLedgerAdapter, makeCapitalPaymentRouterAdapter } from '../../src/lib/capital/adapters';
+import { paymentRouter } from '../../src/lib/payments/router';
 
 async function requireAuth(req: VercelRequest, res: VercelResponse): Promise<string | null> {
   const secretKey = process.env.CLERK_SECRET_KEY;
@@ -28,7 +30,15 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '',
 );
 
-const engine = createCapitalEngine({ supabase });
+// Full ecosystem-wired engine:
+//   - ledger: every distribution auto-posts DR source / CR cash journal entry
+//   - paymentRouter: recipient payouts route through registered processors
+// Adapters bridge the capital-sdk's narrow contracts to the app's richer APIs.
+const engine = createCapitalEngine({
+  supabase,
+  ledger: makeCapitalLedgerAdapter(supabase),
+  paymentRouter: makeCapitalPaymentRouterAdapter(paymentRouter),
+});
 
 // Fire-and-forget notification helper — mirrors api/_handlers/crm.ts:notify.
 // Writes to the shared `notifications` table so the Desktop bell + any
