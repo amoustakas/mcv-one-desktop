@@ -74,12 +74,45 @@ export interface RealtimeSubscribeOptions {
   signal?: AbortSignal;
 }
 
+export interface AuditQuery {
+  ventureId?: string;
+  userId?: string;
+  action?: string;
+  /** ISO timestamp or epoch ms */
+  from?: string | number;
+  /** ISO timestamp or epoch ms */
+  to?: string | number;
+  limit?: number;
+  offset?: number;
+}
+
+export interface AuditEntry {
+  id: string;
+  ventureId: string;
+  userId: string | null;
+  action: string;
+  resourceType: string;
+  resourceId: string | null;
+  metadata: Record<string, unknown> | null;
+  ipAddress: string | null;
+  timestamp: string;
+}
+
+export interface AuditQueryResult {
+  entries: AuditEntry[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 // ── Client ──
 
 export interface FabricClient {
   publish(req: EventPublishRequest): Promise<CoreResponse<EventPublishResult>>;
   enqueue(req: JobEnqueueRequest): Promise<CoreResponse<JobEnqueueResult>>;
   audit(req: AuditWriteRequest): Promise<CoreResponse<{ ok: true }>>;
+  /** Query the audit log; filters are all optional and AND-combined. */
+  queryAudit(query: AuditQuery): Promise<CoreResponse<AuditQueryResult>>;
   storagePut(req: StoragePutRequest): Promise<CoreResponse<StoragePutResult>>;
   storageGetUrl(bucket: string, key: string): Promise<CoreResponse<{ url: string; expiresIn: number }>>;
   subscribe<T = unknown>(opts: RealtimeSubscribeOptions): AsyncIterable<T>;
@@ -162,6 +195,23 @@ export function createFabricClient(config: CoreServiceConfig): FabricClient {
     return { ok: true, data: { ok: true } };
   }
 
+  async function queryAudit(query: AuditQuery): Promise<CoreResponse<AuditQueryResult>> {
+    const normalized: Record<string, string | number | boolean | undefined> = {
+      ventureId: query.ventureId ?? config.ventureId,
+      userId: query.userId,
+      action: query.action,
+      from: typeof query.from === 'number' ? new Date(query.from).toISOString() : query.from,
+      to: typeof query.to === 'number' ? new Date(query.to).toISOString() : query.to,
+      limit: query.limit,
+      offset: query.offset,
+    };
+    return coreHttp<AuditQueryResult>('fabric', config, {
+      method: 'GET',
+      path: '/audit',
+      query: normalized,
+    });
+  }
+
   async function enqueue(_req: JobEnqueueRequest): Promise<CoreResponse<JobEnqueueResult>> {
     // Public Fabric SDK currently has no jobs endpoint — see TRIANGLE_GAPS.
     return {
@@ -197,6 +247,7 @@ export function createFabricClient(config: CoreServiceConfig): FabricClient {
     publish,
     enqueue,
     audit,
+    queryAudit,
     storagePut,
     storageGetUrl,
     subscribe: (opts) => subscribeSse(opts) as AsyncIterable<unknown> as never,

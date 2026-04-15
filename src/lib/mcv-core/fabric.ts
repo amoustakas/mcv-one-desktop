@@ -16,6 +16,9 @@ import {
   type JobEnqueueResult,
   type StoragePutRequest,
   type StoragePutResult,
+  type AuditQuery,
+  type AuditEntry,
+  type AuditQueryResult,
 } from '@mcv/core-triangle/fabric';
 export {
   createFabricClient,
@@ -27,6 +30,9 @@ export {
   type JobEnqueueResult,
   type StoragePutRequest,
   type StoragePutResult,
+  type AuditQuery,
+  type AuditEntry,
+  type AuditQueryResult,
 };
 
 export interface ServerFabricOptions {

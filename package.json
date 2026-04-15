@@ -18,7 +18,8 @@
     "test:coverage": "vitest run --coverage",
     "turbo:build": "turbo run build",
     "turbo:lint": "turbo run lint",
-    "turbo:typecheck": "turbo run typecheck"
+    "turbo:typecheck": "turbo run typecheck",
+    "smoke:triangle": "tsx scripts/triangle-smoke.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",
