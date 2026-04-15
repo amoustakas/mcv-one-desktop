@@ -106,7 +106,7 @@ import { manifest as msAdsManifest, handlers as msAdsHandlers } from '@mcv/kits-
 import { manifest as metaAdsManifest, handlers as metaAdsHandlers } from '@mcv/kits-sdk/builtin/meta-ads-kit';
 import { manifest as tiktokManifest, handlers as tiktokHandlers } from '@mcv/kits-sdk/builtin/tiktok-kit';
 import { manifest as gtmManifest, handlers as gtmHandlers } from '@mcv/kits-sdk/builtin/google-tag-manager-kit';
-import { manifest as paymentsManifest, handlers as paymentsHandlers } from './builtin/payments-kit';
+import { manifest as paymentsManifest, handlers as paymentsHandlers } from '@mcv/kits-sdk/builtin/payments-kit';
 import { manifest as commerceManifest, handlers as commerceHandlers } from '@mcv/kits-sdk/builtin/commerce-kit';
 import { manifest as commerceSurfaceManifest, handlers as commerceSurfaceHandlers } from '@mcv/kits-sdk/builtin/commerce-surface-kit';
 import { manifest as financeManifest, handlers as financeHandlers } from '@mcv/kits-sdk/builtin/finance-kit';

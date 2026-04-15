@@ -161,8 +161,15 @@ const getSavings: KitToolHandler = async (_input, ctx) => {
 // Since kit handlers run in the browser, we can import paymentRouter directly.
 
 const processorHealth: KitToolHandler = async (_input, _ctx) => {
-  // Dynamic import to avoid SSR issues and keep the kit lazy
-  const { paymentRouter } = await import('../../payments/router');
+  const { getSharedPaymentRouter } = await import('@mcv/payments-sdk/shared-router');
+  const paymentRouter = getSharedPaymentRouter();
+  if (!paymentRouter) {
+    return {
+      success: true,
+      data: [],
+      displayMarkdown: 'Payment router not configured in this runtime.',
+    };
+  }
 
   const processors = paymentRouter.getProcessors();
 

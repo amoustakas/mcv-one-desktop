@@ -1,6 +1,6 @@
 {
   "name": "@mcv/payments-sdk",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "MCV unified payment rails — router, 4 processors (Stripe, Plaid ACH, Solana Pay, Platform Credits), and split-engine. Smart routing by cost/speed/reliability/compliance. Split-engine uses DI factory (caller injects Supabase + LedgerAdapter) so any venture's ledger can plug in.",
   "private": true,
   "type": "module",
@@ -13,7 +13,8 @@
     "./split-engine": { "types": "./src/split-engine.ts", "default": "./src/split-engine.ts" },
     "./processors/stripe": { "types": "./src/processors/stripe.ts", "default": "./src/processors/stripe.ts" },
     "./processors/plaid": { "types": "./src/processors/plaid.ts", "default": "./src/processors/plaid.ts" },
-    "./processors/solana": { "types": "./src/processors/solana.ts", "default": "./src/processors/solana.ts" }
+    "./processors/solana": { "types": "./src/processors/solana.ts", "default": "./src/processors/solana.ts" },
+    "./shared-router": { "types": "./src/shared-router.ts", "default": "./src/shared-router.ts" }
   },
   "files": ["src"],
   "dependencies": {

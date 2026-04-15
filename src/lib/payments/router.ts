@@ -23,11 +23,15 @@ export {
 } from '@mcv/payments-sdk';
 
 import { PaymentRouter } from '@mcv/payments-sdk';
+import { setSharedPaymentRouter } from '@mcv/payments-sdk/shared-router';
 import { creditsProcessor } from './processors/credits';
 
 /**
  * MCV Desktop payment router singleton — SDK base + credits processor.
  * Root-app consumers continue to `import { paymentRouter } from '@/lib/payments/router'`.
+ * Registered with the SDK's shared-router so kits and other cross-cutting
+ * code can reach this instance without dynamic imports.
  */
 export const paymentRouter = new PaymentRouter();
 paymentRouter.register(creditsProcessor);
+setSharedPaymentRouter(paymentRouter);
