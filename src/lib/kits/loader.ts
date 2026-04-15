@@ -86,7 +86,7 @@ import {
   handlers as mcpBridgeHandlers,
   getMcpTools,
   getMcpHandlers,
-} from './builtin/mcp-bridge-kit';
+} from '@mcv/kits-sdk/builtin/mcp-bridge-kit';
 import { manifest as deviceManifest, handlers as deviceHandlers } from '@mcv/kits-sdk/builtin/device-kit';
 import { manifest as ledgerManifest, handlers as ledgerHandlers } from '@mcv/kits-sdk/builtin/ledger-kit';
 import { manifest as msTeamsManifest, handlers as msTeamsHandlers } from '@mcv/kits-sdk/builtin/microsoft-teams-kit';

@@ -4,14 +4,14 @@ import type {
   KitToolSchema,
   ToolCallResult,
 } from '../types';
-import type { McpConnectionManager } from '../../mcp/connection-manager';
-import type { McpResourceContent } from '../../mcp/types';
+import type { McpConnectionManager } from '@mcv/mcp-sdk/connection-manager';
+import type { McpResourceContent } from '@mcv/mcp-sdk/types';
 import {
   parseToolName,
   convertServerTools,
   buildResourceTool,
   adaptMcpResult,
-} from '../../mcp/schema-adapter';
+} from '@mcv/mcp-sdk/schema-adapter';
 
 // Module-level reference to the connection manager (set during init)
 let connectionManager: McpConnectionManager | null = null;

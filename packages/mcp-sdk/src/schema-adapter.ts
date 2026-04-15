@@ -1,4 +1,23 @@
-import type { KitToolSchema, ToolCallResult } from '../kits/types';
+// Structurally-identical to @mcv/kits-sdk's `KitToolSchema` and `ToolCallResult`;
+// declared locally to keep mcp-sdk a zero-external-SDK-dep leaf. TS structural
+// typing makes the two interchangeable at any call site.
+interface KitToolSchema {
+  name: string;
+  description: string;
+  input_schema: {
+    type: 'object';
+    properties: Record<string, unknown>;
+    required?: string[];
+  };
+}
+
+interface ToolCallResult {
+  success: boolean;
+  data?: unknown;
+  error?: string;
+  displayMarkdown?: string;
+}
+
 import type { McpTool, McpToolCallResult } from './types';
 
 /** Parse a namespaced tool name into server ID and original tool name */

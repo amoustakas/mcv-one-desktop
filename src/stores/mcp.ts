@@ -8,7 +8,7 @@ import type {
 } from '../lib/mcp/types';
 import { McpConnectionManager } from '../lib/mcp/connection-manager';
 import { McpServerRegistry } from '../lib/mcp/server-registry';
-import { initMcpBridge, getMcpTools } from '../lib/kits/builtin/mcp-bridge-kit';
+import { initMcpBridge, getMcpTools } from '@mcv/kits-sdk/builtin/mcp-bridge-kit';
 import { getPreset } from '../lib/mcp/presets';
 
 // Singleton instances
