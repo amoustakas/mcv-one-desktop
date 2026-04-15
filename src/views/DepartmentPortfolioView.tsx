@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Scale, ShieldCheck, Beaker, DollarSign, Wrench, Rocket, FileText } from 'lucide-react';
-import { PageShell, PageHeader, GlassCard, Badge, EmptyState, Tabs } from '../components/ui';
+import { Scale, ShieldCheck, Beaker, DollarSign, Wrench, Rocket, FileText, Grid, List } from 'lucide-react';
+import { PageShell, PageHeader, GlassCard, Badge, EmptyState, Tabs, Toggle } from '../components/ui';
 import { apiPost } from '../lib/api/client';
 import type { Venture } from '../lib/ventures';
+import type { SnapshotSummary } from '../lib/ventures/snapshot';
+
+interface PortfolioSnapshotRow { id: string; name: string; tier: number | null; status: string; summary: SnapshotSummary }
 
 type Department = 'legal' | 'compliance' | 'research' | 'finance' | 'ops' | 'product';
 
@@ -46,13 +49,36 @@ interface DeptSummary {
  * every venture in the portfolio. Answers the question "where is every venture
  * on compliance / legal / research maturity?" at a glance.
  */
+const DEPT_ORDER: Department[] = ['legal', 'compliance', 'research', 'finance', 'ops', 'product'];
+
 export default function DepartmentPortfolioView() {
+  const [viewMode, setViewMode] = useState<'detail' | 'matrix'>('matrix');
   const [department, setDepartment] = useState<Department>('legal');
   const [ventures, setVentures] = useState<Venture[]>([]);
   const [docs, setDocs] = useState<PortfolioDoc[]>([]);
+  const [matrixSnaps, setMatrixSnaps] = useState<PortfolioSnapshotRow[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Matrix mode loads once via bulk list-snapshots — 1 request instead of N
   useEffect(() => {
+    if (viewMode !== 'matrix') return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const data = await apiPost<{ snapshots: PortfolioSnapshotRow[] }>('/api/ventures', { action: 'list-snapshots' });
+        if (!cancelled) setMatrixSnaps(data.snapshots || []);
+      } catch {
+        if (!cancelled) setMatrixSnaps([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [viewMode]);
+
+  useEffect(() => {
+    if (viewMode !== 'detail') return;
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -75,7 +101,7 @@ export default function DepartmentPortfolioView() {
       }
     })();
     return () => { cancelled = true; };
-  }, [department]);
+  }, [department, viewMode]);
 
   const summaries: DeptSummary[] = useMemo(() => {
     const byVenture = new Map<string, DeptSummary>();
@@ -113,9 +139,28 @@ export default function DepartmentPortfolioView() {
     <PageShell>
       <PageHeader
         title="Department Portfolio"
-        subtitle={`Cross-venture ${DEPT_CONFIG[department].label.toLowerCase()} status — ${portfolioTotals.approved} of ${portfolioTotals.total} docs approved/executed (${portfolioTotals.coverage_pct}% coverage)`}
+        subtitle={viewMode === 'matrix'
+          ? 'Cross-venture × cross-department doc coverage at a glance'
+          : `Cross-venture ${DEPT_CONFIG[department].label.toLowerCase()} status — ${portfolioTotals.approved} of ${portfolioTotals.total} docs approved/executed (${portfolioTotals.coverage_pct}% coverage)`}
         icon={<Icon size={16} style={{ color: DEPT_CONFIG[department].color }} />}
-      />
+      >
+        <div style={{ display: 'flex', gap: 6 }}>
+          <Toggle pressed={viewMode === 'matrix'} onPressedChange={() => setViewMode('matrix')} size="sm">
+            <Grid size={12} /> Matrix
+          </Toggle>
+          <Toggle pressed={viewMode === 'detail'} onPressedChange={() => setViewMode('detail')} size="sm">
+            <List size={12} /> Detail
+          </Toggle>
+        </div>
+      </PageHeader>
+
+      {viewMode === 'matrix' ? (
+        loading ? (
+          <GlassCard className="dp-card"><div className="dp-loading">Loading matrix…</div></GlassCard>
+        ) : (
+          <MatrixGrid snapshots={matrixSnaps} onCellClick={(dept) => { setDepartment(dept); setViewMode('detail'); }} />
+        )
+      ) : (<>
 
       <Tabs
         tabs={(Object.entries(DEPT_CONFIG) as Array<[Department, typeof DEPT_CONFIG['legal']]>).map(([d, c]) => ({
@@ -161,6 +206,8 @@ export default function DepartmentPortfolioView() {
         </div>
       )}
 
+      </>)}
+
       <style>{`
         .dp-tabs { padding: 0 24px 16px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
         .dp-card { padding: 16px; }
@@ -175,7 +222,106 @@ export default function DepartmentPortfolioView() {
         .dp-stat-lbl { font-size: 9px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
         .dp-bar { height: 4px; background: var(--bg-input); border-radius: var(--radius-full); overflow: hidden; }
         .dp-bar-fill { height: 100%; transition: width 0.4s ease; }
+
+        .dp-matrix { padding: 0 24px 24px; overflow-x: auto; }
+        .dp-matrix-table { border-collapse: separate; border-spacing: 4px; min-width: 720px; }
+        .dp-matrix-th { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-family: var(--font-display); padding: 6px 10px; text-align: center; }
+        .dp-matrix-th.dp-venture-col { text-align: left; }
+        .dp-matrix-td { padding: 8px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; transition: all 0.12s; min-width: 70px; text-align: center; }
+        .dp-matrix-td:hover { border-color: var(--border-active); transform: translateY(-1px); }
+        .dp-matrix-td.empty { opacity: 0.35; }
+        .dp-matrix-count { font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--text-primary); }
+        .dp-matrix-venture { font-size: 13px; font-weight: 600; color: var(--text-primary); padding: 8px 12px; background: var(--bg-card); border-radius: var(--radius-sm); min-width: 180px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .dp-matrix-venture-badge { font-family: var(--font-mono); font-size: 11px; padding: 2px 8px; border-radius: var(--radius-full); border: 1px solid; }
       `}</style>
     </PageShell>
+  );
+}
+
+function MatrixGrid({ snapshots, onCellClick }: { snapshots: PortfolioSnapshotRow[]; onCellClick: (dept: Department) => void }) {
+  if (!snapshots.length) {
+    return (
+      <EmptyState
+        icon={<Grid size={18} />}
+        title="No portfolio data yet"
+        description="Create or seed ventures to populate the matrix."
+      />
+    );
+  }
+
+  // Totals row across all ventures per department
+  const deptTotals: Record<Department, number> = {
+    legal: 0, compliance: 0, research: 0, finance: 0, ops: 0, product: 0,
+  };
+  for (const s of snapshots) {
+    for (const d of DEPT_ORDER) {
+      deptTotals[d] += s.summary.docs.byDept[d] || 0;
+    }
+  }
+
+  const healthBadge = (score: number) => {
+    const color = score >= 75 ? '#10B981' : score >= 50 ? '#F59E0B' : '#EF4444';
+    return (
+      <span className="dp-matrix-venture-badge" style={{ color, borderColor: color }}>{score}</span>
+    );
+  };
+
+  return (
+    <div className="dp-matrix">
+      <table className="dp-matrix-table">
+        <thead>
+          <tr>
+            <th className="dp-matrix-th dp-venture-col">Venture</th>
+            {DEPT_ORDER.map(d => {
+              const cfg = DEPT_CONFIG[d];
+              const DeptIcon = cfg.icon;
+              return (
+                <th key={d} className="dp-matrix-th">
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    <DeptIcon size={12} style={{ color: cfg.color }} />
+                    <span>{cfg.label}</span>
+                  </div>
+                </th>
+              );
+            })}
+          </tr>
+        </thead>
+        <tbody>
+          {snapshots.map(s => (
+            <tr key={s.id}>
+              <td>
+                <div className="dp-matrix-venture">
+                  <span>{s.name}</span>
+                  {healthBadge(s.summary.health_score)}
+                </div>
+              </td>
+              {DEPT_ORDER.map(d => {
+                const count = s.summary.docs.byDept[d] || 0;
+                return (
+                  <td
+                    key={d}
+                    className={`dp-matrix-td ${count === 0 ? 'empty' : ''}`}
+                    onClick={() => onCellClick(d)}
+                    title={`${s.name} · ${DEPT_CONFIG[d].label} · ${count} doc${count === 1 ? '' : 's'}`}
+                  >
+                    <span className="dp-matrix-count" style={{ color: count > 0 ? DEPT_CONFIG[d].color : 'var(--text-muted)' }}>
+                      {count || '—'}
+                    </span>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+          <tr>
+            <td><div className="dp-matrix-venture" style={{ background: 'var(--bg-input)', fontWeight: 700 }}>Portfolio Total</div></td>
+            {DEPT_ORDER.map(d => (
+              <td key={d} className="dp-matrix-td" onClick={() => onCellClick(d)} style={{ background: 'var(--bg-input)' }}>
+                <span className="dp-matrix-count" style={{ color: DEPT_CONFIG[d].color }}>{deptTotals[d] || '—'}</span>
+              </td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+    </div>
   );
 }
