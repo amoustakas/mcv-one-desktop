@@ -310,6 +310,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const profile = await engine.contacts.upsertInvestorProfile(params.profile as never);
         return res.json({ profile });
       }
+
+      // ─── Accreditation VC (Epic 11 — portable investor credentials) ───
+      case 'issue-accreditation-vc': {
+        const { issueAccreditationCredential } = await import('../../src/lib/capital/vc-issuer');
+        const vc = issueAccreditationCredential({
+          clerkUserId: (params.clerk_user_id as string) ?? userId,
+          accreditationStatus: params.accreditation_status as never,
+          jurisdiction: (params.jurisdiction as never) ?? 'US',
+          verificationMethod: (params.verification_method as string) ?? 'futurestate-kyc-v2',
+          exemptions: params.exemptions as string[] | undefined,
+          validityDays: params.validity_days as number | undefined,
+        });
+        // Persist to the investor profile metadata.vc. Caller-provided contact_id
+        // or fall back to looking up by clerk_user_id.
+        if (params.contact_id) {
+          const { data: existing } = await supabase
+            .from('capital_investor_profile')
+            .select('metadata')
+            .eq('contact_id', params.contact_id as string)
+            .maybeSingle();
+          const mergedMeta = { ...((existing?.metadata as Record<string, unknown>) ?? {}), vc };
+          await supabase
+            .from('capital_investor_profile')
+            .update({ metadata: mergedMeta })
+            .eq('contact_id', params.contact_id as string);
+        }
+        await publishCapitalEvent('capital.accreditation.issued',
+          `Accreditation VC issued — ${vc.credentialSubject.accreditationStatus}`,
+          { description: `subject ${vc.credentialSubject.id}`, type: 'success' });
+        return res.json({ vc });
+      }
+      case 'verify-accreditation-vc': {
+        const { verifyAccreditationCredential } = await import('../../src/lib/capital/vc-issuer');
+        const result = verifyAccreditationCredential(params.vc as never, params.public_key as string | undefined);
+        return res.json(result);
+      }
       case 'enable-portal': {
         const profile = await engine.contacts.enablePortal(
           params.contact_id as string,
