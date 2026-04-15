@@ -313,12 +313,74 @@ async function reconcileToCapital(evt: PlaidTransferEvent): Promise<void> {
   if (!mapped) return;
   if (!mapped.commitmentId) {
     console.log(`[plaid-webhook] reconciliation flagged for manual review — transfer ${evt.transfer_id}, candidates=${mapped.matchDiagnostics.candidates}`);
+    // Surface unresolved match in notifications so admins can act on it.
+    await emitCapitalReconcileEvent({
+      type: 'review_needed',
+      transferId: evt.transfer_id,
+      amountUsd: mapped.amountUsd,
+      candidates: mapped.matchDiagnostics.candidates,
+      contactId: mapped.contactId,
+    });
     return;
   }
 
   const engine = createCapitalEngine({ supabase });
-  await engine.commitments.recordPayment(mapped.commitmentId, mapped.paymentMethod, mapped.paymentReference);
+  const commitment = await engine.commitments.recordPayment(mapped.commitmentId, mapped.paymentMethod, mapped.paymentReference);
   console.log(`[plaid-webhook] auto-reconciled transfer ${evt.transfer_id} → commitment ${mapped.commitmentId}`);
+
+  // Emit Capital event so notifications fire + Fabric subscribers get the topic.
+  // Realtime postgres_changes on capital_commitments will refresh dashboards
+  // automatically (PR #14), but the explicit notification gives Tony a bell
+  // ping + the chance to fan-out to slack/email via the dispatcher (PR #5/13).
+  await emitCapitalReconcileEvent({
+    type: 'reconciled',
+    transferId: evt.transfer_id,
+    amountUsd: mapped.amountUsd,
+    candidates: 1,
+    contactId: mapped.contactId,
+    commitmentId: mapped.commitmentId,
+    ventureId: commitment.ventureId,
+  });
+}
+
+interface ReconcileEventInput {
+  type: 'reconciled' | 'review_needed';
+  transferId: string;
+  amountUsd: number;
+  candidates: number;
+  contactId: string | null;
+  commitmentId?: string;
+  ventureId?: string;
+}
+
+async function emitCapitalReconcileEvent(input: ReconcileEventInput): Promise<void> {
+  try {
+    const isOk = input.type === 'reconciled';
+    const title = isOk
+      ? `Bank wire auto-reconciled — $${input.amountUsd.toLocaleString()}`
+      : `Wire received but no unique commitment match — $${input.amountUsd.toLocaleString()}`;
+    const description = isOk
+      ? `Plaid transfer ${input.transferId.slice(0, 12)}… → commitment ${input.commitmentId?.slice(0, 8) ?? 'unknown'}`
+      : `Transfer ${input.transferId.slice(0, 12)}… matched ${input.candidates} candidates — manual review required`;
+
+    await supabase.from('notifications').insert({
+      type: isOk ? 'success' : 'warning',
+      title,
+      description,
+      source: 'capital',
+      venture_id: input.ventureId ?? null,
+      metadata: {
+        topic: isOk ? 'capital.commitment.reconciled' : 'capital.commitment.review_needed',
+        transfer_id: input.transferId,
+        amount_usd: input.amountUsd,
+        contact_id: input.contactId,
+        commitment_id: input.commitmentId,
+        candidates: input.candidates,
+      },
+    });
+  } catch (err) {
+    console.warn('[plaid-webhook] reconcile event emit failed:', err instanceof Error ? err.message : err);
+  }
 }
 
 // ─── Handler ────────────────────────────────────────────────────────────
