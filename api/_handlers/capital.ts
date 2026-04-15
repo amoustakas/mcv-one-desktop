@@ -11,6 +11,11 @@ import {
 } from '@mcv/capital-sdk';
 import { makeCapitalLedgerAdapter, makeCapitalPaymentRouterAdapter } from '../../src/lib/capital/adapters';
 import { paymentRouter } from '../../src/lib/payments/router';
+import { createServerFabric } from '../../src/lib/mcv-core/fabric';
+
+// Fabric client (null when FABRIC_URL isn't configured — fire-and-forget
+// publishes degrade gracefully). Instantiated once per serverless cold start.
+const fabric = createServerFabric();
 
 async function requireAuth(req: VercelRequest, res: VercelResponse): Promise<string | null> {
   const secretKey = process.env.CLERK_SECRET_KEY;
@@ -40,9 +45,15 @@ const engine = createCapitalEngine({
   paymentRouter: makeCapitalPaymentRouterAdapter(paymentRouter),
 });
 
-// Fire-and-forget notification helper — mirrors api/_handlers/crm.ts:notify.
-// Writes to the shared `notifications` table so the Desktop bell + any
-// future Fabric consumer sees Capital lifecycle events.
+// Fire-and-forget lifecycle event helper — TWO sinks:
+//   1. `notifications` table: Desktop bell + cron-notifications-dispatch
+//      deliver to slack/email when channels JSON is populated.
+//   2. Fabric event bus (when FABRIC_URL set): real-time fan-out to any
+//      subscriber — portal, investor apps, external webhooks, agents.
+//
+// Both are best-effort. Fabric outages never block the primary mutation.
+// Topic format documented in docs/capital/PROTOCOL.md §Event Schema:
+//   capital.<entity>.<action>  e.g. capital.round.created, capital.distribution.paid
 async function publishCapitalEvent(
   topic: string,
   title: string,
@@ -53,6 +64,7 @@ async function publishCapitalEvent(
     payload?: Record<string, unknown>;
   } = {},
 ) {
+  // Sink 1: notifications row (always attempted)
   try {
     await supabase.from('notifications').insert({
       type: opts.type ?? 'info',
@@ -63,6 +75,24 @@ async function publishCapitalEvent(
     });
   } catch (err) {
     console.warn(`[capital ${topic}] notify failed:`, err instanceof Error ? err.message : err);
+  }
+
+  // Sink 2: Fabric pub-sub (degrades silently when not configured)
+  if (fabric) {
+    try {
+      await fabric.publish({
+        topic,
+        payload: {
+          title,
+          description: opts.description ?? null,
+          type: opts.type ?? 'info',
+          ...(opts.payload ?? {}),
+        },
+        ventureId: opts.ventureId,
+      });
+    } catch (err) {
+      console.warn(`[capital ${topic}] fabric publish failed:`, err instanceof Error ? err.message : err);
+    }
   }
 }
 
