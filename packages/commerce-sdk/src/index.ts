@@ -13,5 +13,6 @@
 
 export * from './types';
 export * from './surface-types';
+export * from './search-engine';
 
-export const MCV_COMMERCE_SDK_VERSION = '0.1.0' as const;
+export const MCV_COMMERCE_SDK_VERSION = '0.2.0' as const;
