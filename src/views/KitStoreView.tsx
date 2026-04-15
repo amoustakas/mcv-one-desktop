@@ -79,9 +79,8 @@ export default function KitStoreView() {
 
   async function handleInstall(kitId: string) {
     try {
-      await installKit(kitId);
+      await installKit(kitId, audit);
       setInstalledIds((prev) => new Set(prev).add(kitId));
-      audit('kit.installed', { kitId });
     } catch {
       // Show error inline
     }
@@ -89,13 +88,12 @@ export default function KitStoreView() {
 
   async function handleUninstall(kitId: string) {
     try {
-      await uninstallKit(kitId);
+      await uninstallKit(kitId, audit);
       setInstalledIds((prev) => {
         const next = new Set(prev);
         next.delete(kitId);
         return next;
       });
-      audit('kit.uninstalled', { kitId });
     } catch {
       // Show error inline
     }
