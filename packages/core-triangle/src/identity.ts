@@ -147,3 +147,70 @@ export async function canOrFallback(
   if (!res.ok) return fallback;
   return res.data.allowed;
 }
+
+// ── Client-side RBAC fallback ────────────────────────────────────────
+//
+// The public Identity SDK has no `/rbac/check` route (see TRIANGLE_GAPS).
+// Until it ships, callers gate UI/actions via canClientSide(session, req)
+// against the already-fetched IdentitySession.
+//
+// Policy (fail-closed):
+//   - Global roles 'admin'/'owner' → allow any action, any venture
+//   - Per-venture role 'owner'/'admin' → allow any action on that ventureId
+//   - 'member' → allow read-family (read|view|list|get|browse|query) on that venture
+//   - 'viewer' → allow read-family only
+//   - no session / unknown role / no matching venture membership → DENY
+//
+// Intentionally conservative. Surfaces needing finer-grained perms should
+// wait for the real /rbac/check endpoint.
+
+const READ_ACTIONS = new Set(['read', 'view', 'list', 'get', 'browse', 'query']);
+
+function isReadAction(action: string): boolean {
+  const last = action.includes('.') ? action.split('.').pop()! : action;
+  return READ_ACTIONS.has(last.toLowerCase());
+}
+
+export function canClientSide(
+  session: IdentitySession | null,
+  req: RbacCheckRequest,
+): RbacCheckResult {
+  if (!session) {
+    return { allowed: false, reason: 'no-session' };
+  }
+
+  const globalRoles = new Set(session.roles.map((r) => r.toLowerCase()));
+  if (globalRoles.has('admin') || globalRoles.has('owner')) {
+    return { allowed: true };
+  }
+
+  if (req.ventureId) {
+    const membership = session.tenants.find((t) => t.id === req.ventureId);
+    if (!membership) {
+      return { allowed: false, reason: 'no-venture-membership' };
+    }
+    const role = membership.role.toLowerCase();
+    if (role === 'owner' || role === 'admin') return { allowed: true };
+    if (role === 'member' && isReadAction(req.action)) return { allowed: true };
+    if (role === 'member') return { allowed: false, reason: 'member-write-requires-server-rbac' };
+    if (role === 'viewer' && isReadAction(req.action)) return { allowed: true };
+    return { allowed: false, reason: `role-${role}-insufficient` };
+  }
+
+  return { allowed: false, reason: 'requires-venture-scope-or-global-role' };
+}
+
+/**
+ * Try server RBAC first (via Identity /rbac/check when it ships); on
+ * CoreNotAvailableError, fall back to the client-side role check against
+ * the current session. This is the recommended helper for UI gates.
+ */
+export async function canWithSessionFallback(
+  client: IdentityClient,
+  session: IdentitySession | null,
+  req: RbacCheckRequest,
+): Promise<RbacCheckResult> {
+  const server = await client.can(req);
+  if (server.ok) return server.data;
+  return canClientSide(session, req);
+}
