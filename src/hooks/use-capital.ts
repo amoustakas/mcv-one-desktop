@@ -7,6 +7,8 @@ import type {
   GlobalSummary, VentureSummary, ContactStage, RoundStatus, CommitmentStatus,
   CreateRoundInput, CreateCommitmentInput, UpsertInvestorProfileInput,
   RoundContentEntry, RoundContentRole, CapitalContentRow, ContentVisibility,
+  Distribution, DistributionRecipient, CreateDistributionInput,
+  DistributionType, DistributionStatus,
 } from '@mcv/capital-sdk';
 
 // ─── Rounds ─────────────────────────────────────────────────────────────
@@ -383,6 +385,89 @@ export function usePublishRoundUpdate() {
       return data.content;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['capital', 'round-updates'] }),
+  });
+}
+
+// ─── Distributions (Capital × Ledger × Payments) ──────────────────────────
+
+export function useDistributionsByRound(
+  ventureId: string | null | undefined,
+  roundId: string | null | undefined,
+  filters?: { status?: DistributionStatus; limit?: number },
+) {
+  return useQuery({
+    queryKey: ['capital', 'distributions', ventureId ?? 'all', roundId ?? 'any', filters?.status ?? 'any', filters?.limit ?? 50],
+    queryFn: async () => {
+      if (!ventureId) return [] as Distribution[];
+      const data = await apiPost<{ distributions: Distribution[] }>('/api/capital', {
+        action: 'list-distributions',
+        venture_id: ventureId,
+        round_id: roundId ?? undefined,
+        status: filters?.status,
+        limit: filters?.limit ?? 50,
+      });
+      return data.distributions;
+    },
+    enabled: Boolean(ventureId),
+  });
+}
+
+export function useDistribution(id: string | null | undefined) {
+  return useQuery({
+    queryKey: ['capital', 'distribution', id],
+    queryFn: async () => {
+      if (!id) return { distribution: null, recipients: [] as DistributionRecipient[] };
+      return apiPost<{ distribution: Distribution | null; recipients: DistributionRecipient[] }>('/api/capital', {
+        action: 'get-distribution',
+        id,
+      });
+    },
+    enabled: Boolean(id),
+  });
+}
+
+export function useCreateDistribution() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreateDistributionInput) => {
+      const data = await apiPost<{ distribution: Distribution }>('/api/capital', {
+        action: 'create-distribution',
+        input,
+      });
+      return data.distribution;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['capital', 'distributions'] }),
+  });
+}
+
+export function useProcessDistribution() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const data = await apiPost<{ distribution: Distribution }>('/api/capital', {
+        action: 'process-distribution',
+        id,
+      });
+      return data.distribution;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['capital', 'distributions'] });
+      qc.invalidateQueries({ queryKey: ['capital', 'distribution'] });
+    },
+  });
+}
+
+export function useCancelDistribution() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const data = await apiPost<{ distribution: Distribution }>('/api/capital', {
+        action: 'cancel-distribution',
+        id,
+      });
+      return data.distribution;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['capital', 'distributions'] }),
   });
 }
 

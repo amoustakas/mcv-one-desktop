@@ -7,6 +7,7 @@ import { useNavigation } from '../stores/navigation';
 import { useRound, useCommitmentsByRound, useDocumentsByRound, useUpdateRoundStatus, useUpdateCommitmentStatus } from '../hooks/use-capital';
 import { PageHeader, PageShell, StatCard, GlassCard, GridLayout, Badge, EmptyState, Button } from '../components/ui';
 import InvestorUpdatesPanel from '../components/capital/InvestorUpdatesPanel';
+import DistributionsPanel from '../components/capital/DistributionsPanel';
 import { formatMoney } from '../lib/utils';
 import {
   COMMITMENT_STATUS_TRANSITIONS,
@@ -180,6 +181,11 @@ export default function CapitalRoundDetailView() {
       {/* Investor Updates (Content OS-backed) */}
       <div style={{ marginTop: 24 }}>
         <InvestorUpdatesPanel ventureId={round.ventureId} roundId={round.id} />
+      </div>
+
+      {/* Distributions (Capital × Ledger × Payments) */}
+      <div style={{ marginTop: 24 }}>
+        <DistributionsPanel ventureId={round.ventureId} roundId={round.id} currency={round.currency} />
       </div>
 
       {/* Documents */}
