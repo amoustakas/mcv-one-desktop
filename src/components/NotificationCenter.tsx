@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bell, Check, Trash2, Zap, GitBranch, Cloud, Users, FileText, MessageSquare, Wrench, ArrowUpRight, Filter } from 'lucide-react';
+import { Bell, Check, Trash2, Zap, GitBranch, Cloud, Users, FileText, MessageSquare, Wrench, ArrowUpRight, Filter, Clock as ClockIcon } from 'lucide-react';
+import { useCommandCenter } from '../stores/command-center';
 import { supabase } from '../lib/supabase';
 import { useNotificationStore, routeNotification } from '../stores/notifications';
 import type { AppNotification } from '../stores/notifications';
@@ -69,6 +70,18 @@ export default function NotificationCenter() {
     setView(view);
     setOpen(false);
   };
+
+  // Reuse the Command Center snooze infrastructure — same id-based map,
+  // works across alerts and notifications without a separate store.
+  const isAlertActive = useCommandCenter((s) => s.isAlertActive);
+  const snoozeAlert = useCommandCenter((s) => s.snoozeAlert);
+  const [snoozeMenuFor, setSnoozeMenuFor] = useState<string | null>(null);
+  const SNOOZE_OPTS: { hrs: number; label: string }[] = [
+    { hrs: 1, label: '1 hour' },
+    { hrs: 4, label: '4 hours' },
+    { hrs: 24, label: '1 day' },
+    { hrs: 24 * 7, label: '1 week' },
+  ];
 
   useEffect(() => {
     loadNotifications();
@@ -140,6 +153,7 @@ export default function NotificationCenter() {
             {(() => {
               const visible = notifications
                 .filter((n) => routeNotification(n) !== 'queue')
+                .filter((n) => isAlertActive(n.id))
                 .filter((n) => (showUnreadOnly ? !n.read : true));
               if (visible.length === 0) {
                 return (
@@ -188,6 +202,35 @@ export default function NotificationCenter() {
                         <span className="nc-item-source">{n.source}</span>
                         <span className="nc-item-time">{timeAgo(n.createdAt)}</span>
                       </span>
+                    </div>
+                    <div className="nc-item-actions" onClick={(e) => e.stopPropagation()}>
+                      <Tooltip content="Snooze">
+                        <button
+                          type="button"
+                          className="nc-icon-btn"
+                          onClick={() => setSnoozeMenuFor(snoozeMenuFor === n.id ? null : n.id)}
+                          aria-label="Snooze notification"
+                        >
+                          <ClockIcon size={11} />
+                        </button>
+                      </Tooltip>
+                      {snoozeMenuFor === n.id && (
+                        <div className="nc-snooze-menu">
+                          {SNOOZE_OPTS.map((opt) => (
+                            <button
+                              key={opt.hrs}
+                              type="button"
+                              className="nc-snooze-item"
+                              onClick={() => {
+                                snoozeAlert(n.id, opt.hrs);
+                                setSnoozeMenuFor(null);
+                              }}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     {!n.read && <span className="nc-unread-dot" />}
                   </div>
@@ -251,6 +294,13 @@ export default function NotificationCenter() {
         .nc-item-jumpable { cursor: pointer; }
         .nc-item-jumpable:hover .nc-jump-icon { opacity: 1; transform: translate(2px, -2px); }
         .nc-jump-icon { color: var(--cyan); margin-left: 4px; opacity: 0; transition: all var(--transition-fast); vertical-align: -1px; }
+
+        .nc-item-actions { position: relative; display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
+        .nc-icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: var(--radius-sm); color: var(--text-muted); transition: all var(--transition-fast); }
+        .nc-icon-btn:hover { background: var(--bg-elevated); color: var(--cyan); }
+        .nc-snooze-menu { position: absolute; right: 0; top: calc(100% + 4px); background: var(--bg-elevated); border: 1px solid var(--border-active); border-radius: var(--radius-sm); box-shadow: var(--elev-3); padding: 4px; min-width: 110px; z-index: 10; display: flex; flex-direction: column; }
+        .nc-snooze-item { text-align: left; padding: 6px 10px; font-size: 11px; color: var(--text-primary); border-radius: var(--radius-sm); transition: background var(--transition-fast); }
+        .nc-snooze-item:hover { background: var(--bg-hover); color: var(--cyan); }
       `}</style>
     </div>
   );

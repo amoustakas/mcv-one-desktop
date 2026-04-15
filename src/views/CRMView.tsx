@@ -282,6 +282,19 @@ export default function CRMView() {
   const toggleDealSelected = (id: string) => {
     setSelectedDealIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
+  const [draggingDealId, setDraggingDealId] = useState<string | null>(null);
+  const [dealDropTarget, setDealDropTarget] = useState<string | null>(null);
+
+  const handleDealDrop = (newStage: string) => {
+    if (!draggingDealId) return;
+    const d = deals.find((x) => x.id === draggingDealId);
+    if (d && d.stage !== newStage) {
+      updateDealMut.mutate({ id: draggingDealId, stage: newStage });
+      toast('success', `${d.title} → ${newStage.replace(/_/g, ' ')}`);
+    }
+    setDraggingDealId(null);
+    setDealDropTarget(null);
+  };
   const toggleAccountSelected = (id: string) => {
     setSelectedAccountIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
@@ -760,7 +773,13 @@ export default function CRMView() {
                 const stageVal = stageDeals.reduce((s, d) => s + (d.value || 0), 0);
                 const stages = Object.keys(STAGE_COLORS);
                 return (
-                  <div key={stage} className="crm-deal-col">
+                  <div
+                    key={stage}
+                    className={cn('crm-deal-col', dealDropTarget === stage && 'crm-deal-col-droptarget')}
+                    onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDealDropTarget(stage); }}
+                    onDragLeave={(e) => { if (e.currentTarget === e.target) setDealDropTarget(null); }}
+                    onDrop={() => handleDealDrop(stage)}
+                  >
                     <div className="crm-deal-col-header" style={{ borderBottomColor: color }}>
                       <span>{stage.replace(/_/g, ' ')}</span>
                       <span className="crm-deal-col-count">{stageDeals.length} &middot; {formatMoney(stageVal)}</span>
@@ -772,8 +791,11 @@ export default function CRMView() {
                           variants={fadeInUp}
                           whileHover={{ y: -2, boxShadow: '0 4px 20px rgba(0,245,255,0.08)' }}
                           transition={{ duration: 0.15 }}
+                          draggable
+                          onDragStart={(e) => { setDraggingDealId(d.id); e.dataTransfer.effectAllowed = 'move'; }}
+                          onDragEnd={() => { setDraggingDealId(null); setDealDropTarget(null); }}
                         >
-                          <GlassCard className={cn('crm-deal-card', selectedDealIds.includes(d.id) && 'crm-deal-card-selected')}>
+                          <GlassCard className={cn('crm-deal-card', selectedDealIds.includes(d.id) && 'crm-deal-card-selected', draggingDealId === d.id && 'crm-deal-card-dragging')}>
                             <div className="crm-deal-card-top">
                               <input
                                 type="checkbox"
@@ -1067,6 +1089,11 @@ export default function CRMView() {
         .crm-pipe-chips { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
         .crm-pipe-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 9px; font-weight: 600; padding: 2px 8px; border-radius: var(--radius-full); border: 1px solid var(--border); color: var(--text-muted); background: var(--bg-card); }
         .crm-pipe-chip-warn { color: var(--warning); border-color: rgba(245, 158, 11, 0.3); }
+        .crm-deal-card { cursor: grab; }
+        .crm-deal-card:active { cursor: grabbing; }
+        .crm-deal-card-dragging { opacity: 0.4; transform: rotate(1deg); }
+        .crm-deal-col { transition: background var(--transition-fast); }
+        .crm-deal-col-droptarget { background: rgba(0, 240, 255, 0.04); box-shadow: inset 0 0 0 2px var(--border-active); }
         .crm-name { font-weight:500; display:flex; align-items:center; gap:8px; }
         .crm-avatar-sm { width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:var(--bg-deep); flex-shrink:0; }
         .crm-role { font-size:10px; color:var(--text-muted); margin-left:4px; }

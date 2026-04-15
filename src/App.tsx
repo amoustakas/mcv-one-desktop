@@ -555,6 +555,11 @@ export default function App() {
         e.preventDefault();
         toggleSplit();
       }
+      // Cmd/Ctrl+, → open Settings (mac convention used everywhere)
+      if ((e.metaKey || e.ctrlKey) && e.key === ',') {
+        e.preventDefault();
+        setView('settings');
+      }
       if (e.key === 'Escape') {
         if (paletteOpen) closePalette();
         if (settingsOpen) setSettingsOpen(false);

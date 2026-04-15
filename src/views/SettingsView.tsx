@@ -1179,6 +1179,7 @@ function ShortcutsSection() {
     { key: 'Ctrl+K', desc: 'Command Palette' },
     { key: 'Ctrl+/', desc: 'Toggle Chat Dock' },
     { key: 'Ctrl+\\', desc: 'Toggle Split Panel' },
+    { key: 'Ctrl+,', desc: 'Open Settings' },
     { key: 'Ctrl+N', desc: 'Quick Capture' },
     { key: 'Ctrl+E', desc: 'Toggle Global/Venture scope' },
     { key: 'Ctrl+1-8', desc: 'Switch Global View' },

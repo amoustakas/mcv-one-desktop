@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckSquare, Plus, Trash2, Clock, AlertTriangle, Circle, CheckCircle2, Ban, ArrowUp, ArrowDown, Minus } from 'lucide-react';
 import { useNavigation } from '../stores/navigation';
@@ -24,6 +24,22 @@ export default function TasksView() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTargetCol, setDropTargetCol] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+
+  // Close context menu on click-outside / esc
+  useEffect(() => {
+    if (!contextMenu) return;
+    const onClick = () => setContextMenu(null);
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setContextMenu(null); };
+    document.addEventListener('click', onClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('click', onClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [contextMenu]);
+
+  const PRIORITIES = ['critical', 'high', 'medium', 'low'] as const;
 
   const handleDropOnColumn = (col: string) => {
     if (!draggingId) return;
@@ -182,6 +198,10 @@ export default function TasksView() {
                     draggable
                     onDragStart={(e) => { setDraggingId(t.id); e.dataTransfer.effectAllowed = 'move'; }}
                     onDragEnd={() => { setDraggingId(null); setDropTargetCol(null); }}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setContextMenu({ id: t.id, x: e.clientX, y: e.clientY });
+                    }}
                   >
                     <div className="tv-card-prio-stripe" style={{ background: PRIO_COLORS[t.priority] || 'var(--text-muted)' }} />
                     <div className="tv-card-top">
@@ -255,6 +275,54 @@ export default function TasksView() {
         )}
       </div>
 
+      {contextMenu && (() => {
+        const t = tasks.find((x: Task) => x.id === contextMenu.id);
+        if (!t) return null;
+        return (
+          <div
+            className="tv-ctx-menu"
+            style={{ top: contextMenu.y, left: contextMenu.x }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="tv-ctx-section">Priority</div>
+            <div className="tv-ctx-row">
+              {PRIORITIES.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  className={`tv-ctx-prio-btn ${t.priority === p ? 'tv-ctx-prio-active' : ''}`}
+                  style={{ borderColor: t.priority === p ? PRIO_COLORS[p] : undefined, color: PRIO_COLORS[p] }}
+                  onClick={() => { updateTask.mutate({ id: t.id, priority: p }); setContextMenu(null); }}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+            <div className="tv-ctx-divider" />
+            <div className="tv-ctx-section">Move to</div>
+            {STATUS_COLS.concat(['blocked']).filter((s) => s !== t.status).map((s) => (
+              <button
+                key={s}
+                type="button"
+                className="tv-ctx-item"
+                onClick={() => { updateTask.mutate({ id: t.id, status: s }); setContextMenu(null); toast('success', `Moved to ${STATUS_LABELS[s] || s}`); }}
+              >
+                <span className="tv-ctx-icon" style={{ color: STATUS_COLORS[s] }}>{STATUS_ICONS[s]}</span>
+                {STATUS_LABELS[s] || s}
+              </button>
+            ))}
+            <div className="tv-ctx-divider" />
+            <button
+              type="button"
+              className="tv-ctx-item tv-ctx-danger"
+              onClick={() => { deleteTask.mutate(t.id); setContextMenu(null); toast('info', 'Task deleted'); }}
+            >
+              <Trash2 size={11} /> Delete
+            </button>
+          </div>
+        );
+      })()}
+
       <style>{`
         .tv-add { display:flex; gap:8px; padding:10px 20px; margin:0 20px; align-items:center; }
 
@@ -302,6 +370,18 @@ export default function TasksView() {
         .tv-blocked-title { font-size:11px; font-weight:600; color:var(--error); display:flex; align-items:center; gap:6px; margin-bottom:8px; }
         .tv-blocked-hint { margin-left:auto; font-size:10px; font-weight:500; color:var(--text-muted); font-style:italic; }
         .tv-blocked-empty { font-size:11px; color:var(--text-muted); padding:8px 0; font-style:italic; }
+        .tv-ctx-menu { position:fixed; z-index:var(--z-popover); background:var(--bg-elevated); border:1px solid var(--border-active); border-radius:var(--radius-md); box-shadow:var(--elev-4); padding:6px; min-width:180px; display:flex; flex-direction:column; gap:2px; animation:fadeIn 0.1s ease; }
+        .tv-ctx-section { font-size:9px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; padding:6px 10px 2px; }
+        .tv-ctx-row { display:flex; gap:4px; padding:0 6px 4px; }
+        .tv-ctx-prio-btn { flex:1; font-size:10px; padding:3px 6px; border:1px solid var(--border); border-radius:var(--radius-sm); background:transparent; text-transform:capitalize; transition:all 0.15s; }
+        .tv-ctx-prio-btn:hover { background:var(--bg-card); }
+        .tv-ctx-prio-active { background:var(--bg-card) !important; }
+        .tv-ctx-divider { height:1px; background:var(--border); margin:4px 0; }
+        .tv-ctx-item { display:flex; align-items:center; gap:8px; padding:6px 10px; font-size:12px; color:var(--text-primary); border-radius:var(--radius-sm); transition:background 0.1s; text-align:left; }
+        .tv-ctx-item:hover { background:var(--bg-hover); }
+        .tv-ctx-icon { display:inline-flex; }
+        .tv-ctx-danger { color:var(--error); }
+        .tv-ctx-danger:hover { background:rgba(239,68,68,0.08); }
       `}</style>
     </PageShell>
   );

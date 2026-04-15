@@ -71,6 +71,7 @@ const SHORTCUTS: ShortcutHint[] = [
   { keys: ['⌘', 'N'],           label: 'Quick Capture',        group: 'app' },
   { keys: ['⌘', 'E'],           label: 'Toggle Global/Venture',group: 'app' },
   { keys: ['⌘', '\\'],          label: 'Toggle Split View',    group: 'app' },
+  { keys: ['⌘', ','],           label: 'Open Settings',        group: 'app' },
   { keys: ['⌘', '1-8'],         label: 'Jump to Global View',  group: 'nav' },
   { keys: ['⌘⇧', '1-9'],        label: 'Switch Venture',       group: 'nav' },
   { keys: ['⌥', '1-3'],         label: 'Workspace Preset',     group: 'nav' },

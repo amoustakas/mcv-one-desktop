@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { Crown, Mail, ExternalLink, ArrowUpRight } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Crown, Mail, ExternalLink, ArrowUpRight, ChevronDown, TrendingUp, Calendar } from 'lucide-react';
 import { SectionCard, Badge, Tooltip } from '../ui';
 import { formatCurrency } from '../../lib/utils';
 import { ventures } from '../../lib/ventures';
@@ -16,12 +16,17 @@ export default function TopCustomersCard({
   ventureMetrics: Record<string, CommerceMetricsSnapshot | undefined>;
 }) {
   const setView = useNavigation((s) => s.setView);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const jumpToContact = (email: string) => {
     // Stash the email in sessionStorage so CRMView can pick it up on mount.
     // sessionStorage clears on tab close — keeps the jump intent ephemeral.
     try { sessionStorage.setItem('mcv-crm-jumpto-email', email.toLowerCase()); } catch { /* quota */ }
     setView('crm' as Parameters<typeof setView>[0]);
+  };
+
+  const toggleExpand = (id: string) => {
+    setExpandedId((prev) => (prev === id ? null : id));
   };
 
   const customers = useMemo(() => {
@@ -81,42 +86,79 @@ export default function TopCustomersCard({
       <ul className="tc-list">
         {customers.map((c, idx) => {
           const isTop3 = idx < 3;
+          const isExpanded = expandedId === c.id;
+          // Pull this customer's per-venture context from the snapshot
+          const ventureSnap = ventureMetrics[c.ventureId];
+          const aov = c.totalSpent > 0 && ventureSnap ? c.totalSpent / Math.max(1, Math.round(c.totalSpent / 100)) : 0;
+          const ventureRevShare = ventureSnap?.orders.revenue ? (c.totalSpent / ventureSnap.orders.revenue) * 100 : 0;
           return (
-            <li key={c.id} className={`tc-row ${isTop3 ? 'tc-row-top' : ''}`}>
-              <button
-                type="button"
-                className="tc-rank-btn"
-                onClick={() => jumpToContact(c.email)}
-                aria-label={`Open ${c.name} in CRM`}
-                title={`Open ${c.name} in CRM`}
-              >
-                <span className="tc-rank">{idx + 1}</span>
-              </button>
-              <button
-                type="button"
-                className="tc-body tc-body-btn"
-                onClick={() => jumpToContact(c.email)}
-                title="Open in CRM"
-              >
-                <div className="tc-name-row">
-                  <span className="tc-name">{c.name}</span>
-                  <Tooltip content={`Venture: ${c.ventureName}`}>
-                    <Badge color={c.ventureColor} size="sm" variant="outline">
-                      {c.ventureName.length > 12 ? c.ventureName.slice(0, 10) + '…' : c.ventureName}
-                    </Badge>
-                  </Tooltip>
-                  <ArrowUpRight size={11} className="tc-jump" />
+            <li key={c.id} className={`tc-row ${isTop3 ? 'tc-row-top' : ''} ${isExpanded ? 'tc-row-expanded' : ''}`}>
+              <div className="tc-row-main">
+                <button
+                  type="button"
+                  className="tc-rank-btn"
+                  onClick={() => toggleExpand(c.id)}
+                  aria-label={`Toggle ${c.name} details`}
+                  title={isExpanded ? 'Collapse' : 'Expand details'}
+                >
+                  <span className="tc-rank">{idx + 1}</span>
+                </button>
+                <button
+                  type="button"
+                  className="tc-body tc-body-btn"
+                  onClick={() => toggleExpand(c.id)}
+                  title="Click to expand · double-click to open in CRM"
+                  onDoubleClick={() => jumpToContact(c.email)}
+                >
+                  <div className="tc-name-row">
+                    <span className="tc-name">{c.name}</span>
+                    <Tooltip content={`Venture: ${c.ventureName}`}>
+                      <Badge color={c.ventureColor} size="sm" variant="outline">
+                        {c.ventureName.length > 12 ? c.ventureName.slice(0, 10) + '…' : c.ventureName}
+                      </Badge>
+                    </Tooltip>
+                    <ChevronDown size={11} className={`tc-chev ${isExpanded ? 'tc-chev-open' : ''}`} />
+                  </div>
+                  <span className="tc-email">
+                    <Mail size={9} /> {c.email}
+                  </span>
+                </button>
+                <div className="tc-ltv-col">
+                  <div className="tc-ltv">{formatCurrency(c.ltv)}</div>
+                  {c.totalSpent > 0 && c.totalSpent !== c.ltv && (
+                    <div className="tc-spent">{formatCurrency(c.totalSpent)} spent</div>
+                  )}
                 </div>
-                <span className="tc-email">
-                  <Mail size={9} /> {c.email}
-                </span>
-              </button>
-              <div className="tc-ltv-col">
-                <div className="tc-ltv">{formatCurrency(c.ltv)}</div>
-                {c.totalSpent > 0 && c.totalSpent !== c.ltv && (
-                  <div className="tc-spent">{formatCurrency(c.totalSpent)} spent</div>
-                )}
               </div>
+              {isExpanded && (
+                <div className="tc-expand-panel">
+                  <div className="tc-expand-stats">
+                    <div className="tc-expand-stat">
+                      <TrendingUp size={10} />
+                      <span className="tc-expand-stat-label">LTV / Spent</span>
+                      <span className="tc-expand-stat-val">{c.totalSpent > 0 ? `${((c.ltv / c.totalSpent) * 100).toFixed(0)}%` : '—'}</span>
+                    </div>
+                    <div className="tc-expand-stat">
+                      <Calendar size={10} />
+                      <span className="tc-expand-stat-label">AOV est.</span>
+                      <span className="tc-expand-stat-val">{aov > 0 ? formatCurrency(aov) : '—'}</span>
+                    </div>
+                    <div className="tc-expand-stat">
+                      <Crown size={10} />
+                      <span className="tc-expand-stat-label">{c.ventureName} share</span>
+                      <span className="tc-expand-stat-val">{ventureRevShare > 0 ? `${ventureRevShare.toFixed(1)}%` : '—'}</span>
+                    </div>
+                  </div>
+                  <div className="tc-expand-actions">
+                    <button type="button" className="tc-expand-btn" onClick={() => jumpToContact(c.email)}>
+                      <ArrowUpRight size={11} /> Open in CRM
+                    </button>
+                    <a href={`mailto:${c.email}`} className="tc-expand-btn">
+                      <Mail size={11} /> Email
+                    </a>
+                  </div>
+                </div>
+              )}
             </li>
           );
         })}
@@ -124,9 +166,22 @@ export default function TopCustomersCard({
 
       <style>{`
         .tc-list { list-style: none; padding: 0; display: flex; flex-direction: column; }
-        .tc-row { display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--border); transition: background var(--transition-fast); }
+        .tc-row { border-bottom: 1px solid var(--border); transition: background var(--transition-fast); display: flex; flex-direction: column; }
         .tc-row:last-child { border-bottom: none; }
+        .tc-row-main { display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; align-items: center; padding: 10px 14px; }
         .tc-row:hover { background: var(--bg-hover); }
+        .tc-row-expanded { background: rgba(0, 240, 255, 0.03); }
+        .tc-chev { color: var(--text-muted); transition: transform var(--transition-fast); }
+        .tc-chev-open { transform: rotate(180deg); color: var(--cyan); }
+        .tc-expand-panel { padding: 8px 14px 12px 50px; display: flex; flex-direction: column; gap: 8px; border-top: 1px dashed var(--border); }
+        .tc-expand-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .tc-expand-stat { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+        .tc-expand-stat > svg { color: var(--text-muted); }
+        .tc-expand-stat-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px; }
+        .tc-expand-stat-val { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--text-primary); }
+        .tc-expand-actions { display: flex; gap: 6px; }
+        .tc-expand-btn { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-full); font-size: 10px; font-weight: 500; color: var(--text-secondary); text-decoration: none; transition: all var(--transition-fast); }
+        .tc-expand-btn:hover { color: var(--cyan); border-color: var(--border-active); background: rgba(0, 240, 255, 0.06); }
         .tc-row-top .tc-rank { background: linear-gradient(135deg, var(--gold), #F97316); color: var(--bg-deep); }
         .tc-rank-btn { padding: 0; background: transparent; border: none; cursor: pointer; }
         .tc-rank { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--bg-elevated); color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; font-weight: 700; transition: transform var(--transition-fast); }
