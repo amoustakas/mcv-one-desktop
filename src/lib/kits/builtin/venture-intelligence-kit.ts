@@ -13,7 +13,7 @@
 //                         domains, team, health) for a single venture
 
 import type { KitManifest, KitToolHandler, KitToolSchema, KitExecutionContext } from '../types';
-import { summarizeSnapshot, type SnapshotSummary } from '../../ventures/snapshot';
+import { summarizeSnapshot, compareSnapshots, type SnapshotSummary, type ComparisonRow, type CategoryWinner } from '../../ventures/snapshot';
 
 export { summarizeSnapshot, type SnapshotSummary };
 
@@ -349,6 +349,96 @@ const findDocs: KitToolHandler = async (input, ctx) => {
 };
 
 // =============================================================================
+// compare_ventures — side-by-side snapshot comparison with per-category winners
+// =============================================================================
+
+interface PortfolioSnapshotRow { id: string; name: string; tier: number | null; status: string; summary: SnapshotSummary }
+
+export function renderCompareMarkdown(
+  rows: ComparisonRow[],
+  winners: CategoryWinner[],
+): string {
+  if (rows.length < 2) {
+    return '**compare_ventures** needs at least 2 ventures to compare.';
+  }
+
+  const header = `| Metric | ${rows.map(r => r.ventureName).join(' | ')} |`;
+  const sep = `| --- | ${rows.map(() => '---').join(' | ')} |`;
+  const winnerNameById = new Map(rows.map(r => [r.ventureId, r.ventureName]));
+
+  const lines: string[] = [
+    `**Comparison:** ${rows.map(r => r.ventureName).join(' vs ')}`,
+    '',
+    header,
+    sep,
+  ];
+
+  for (const w of winners) {
+    const cells = rows.map(r => {
+      const val = w.values.find(v => v.ventureId === r.ventureId)?.value ?? 0;
+      const isWinner = w.winnerId === r.ventureId;
+      return isWinner ? `**${val}** 🏆` : `${val}`;
+    });
+    lines.push(`| ${w.label} | ${cells.join(' | ')} |`);
+  }
+
+  lines.push('');
+  lines.push('### Winners');
+  const winnerCounts = new Map<string, number>();
+  for (const w of winners) {
+    if (w.winnerId) winnerCounts.set(w.winnerId, (winnerCounts.get(w.winnerId) || 0) + 1);
+  }
+  if (winnerCounts.size === 0) {
+    lines.push('_All categories tied — no clear frontrunner._');
+  } else {
+    const ranked = [...winnerCounts.entries()].sort((a, b) => b[1] - a[1]);
+    for (const [id, count] of ranked) {
+      lines.push(`- **${winnerNameById.get(id) || id}**: ${count}/${winners.length} categories`);
+    }
+  }
+  return lines.join('\n');
+}
+
+const compareVentures: KitToolHandler = async (input, ctx) => {
+  const ids = (input.venture_ids as string[] | undefined)?.filter(Boolean) || [];
+  if (ids.length < 2) {
+    return { success: false, error: 'venture_ids needs at least 2 ids', displayMarkdown: '`compare_ventures` needs at least 2 venture ids in `venture_ids`.' };
+  }
+  if (ids.length > 6) {
+    return { success: false, error: 'at most 6 ventures at a time', displayMarkdown: '`compare_ventures` caps at 6 ventures — narrow the list.' };
+  }
+
+  const res = await ctx.fetch('/api/ventures', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'list-snapshots' }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: `snapshots ${res.status}` }));
+    return { success: false, error: err.error || `list-snapshots ${res.status}`, displayMarkdown: `**compare_ventures** failed: ${err.error || res.statusText}` };
+  }
+
+  const data = await res.json() as { snapshots: PortfolioSnapshotRow[] };
+  const idSet = new Set(ids);
+  const matching = (data.snapshots || []).filter(s => idSet.has(s.id));
+  const missing = ids.filter(id => !matching.some(s => s.id === id));
+
+  if (matching.length < 2) {
+    return { success: false, error: `only found ${matching.length} of ${ids.length}; missing: ${missing.join(', ')}`, displayMarkdown: `Found only ${matching.length} matching ventures. Missing: ${missing.join(', ')}` };
+  }
+
+  const rows: ComparisonRow[] = matching.map(s => ({ ventureId: s.id, ventureName: s.name, summary: s.summary }));
+  const winners = compareSnapshots(rows);
+
+  return {
+    success: true,
+    data: { rows, winners, missing },
+    displayMarkdown: renderCompareMarkdown(rows, winners),
+  };
+};
+
+// =============================================================================
 // Manifest
 // =============================================================================
 
@@ -379,6 +469,21 @@ const tools: KitToolSchema[] = [
       properties: {
         venture: { type: 'string', description: 'Venture id. Defaults to current.' },
       },
+    },
+  },
+  {
+    name: 'compare_ventures',
+    description: 'Head-to-head comparison of 2-6 ventures across 5 categories (health, quest %, confirmed assets, docs, verified domains). Returns a per-category winner and a category-count leaderboard. Use when asked "which venture is furthest along?", "compare MCV to BetEdge", or "who\'s leading on docs?".',
+    input_schema: {
+      type: 'object',
+      properties: {
+        venture_ids: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'IDs of 2–6 ventures to compare.',
+        },
+      },
+      required: ['venture_ids'],
     },
   },
   {
@@ -417,8 +522,9 @@ export const manifest: KitManifest = {
 export const handlers: Record<string, KitToolHandler> = {
   consult_departments: consultDepartments,
   venture_snapshot: ventureSnapshot,
+  compare_ventures: compareVentures,
   find_docs: findDocs,
 };
 
 // Exposed for unit tests
-export const __test = { summarizeSnapshot, formatConsultMarkdown, renderSnapshotMarkdown, filterAndDedupeChunks, renderFindDocsMarkdown };
+export const __test = { summarizeSnapshot, formatConsultMarkdown, renderSnapshotMarkdown, filterAndDedupeChunks, renderFindDocsMarkdown, renderCompareMarkdown };

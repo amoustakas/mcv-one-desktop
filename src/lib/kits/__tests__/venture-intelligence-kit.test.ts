@@ -1,7 +1,22 @@
 import { describe, it, expect } from 'vitest';
 import { __test } from '../builtin/venture-intelligence-kit';
+import { compareSnapshots, type ComparisonRow, type SnapshotSummary } from '../../ventures/snapshot';
 
-const { summarizeSnapshot, formatConsultMarkdown, renderSnapshotMarkdown, filterAndDedupeChunks, renderFindDocsMarkdown } = __test;
+const { summarizeSnapshot, formatConsultMarkdown, renderSnapshotMarkdown, filterAndDedupeChunks, renderFindDocsMarkdown, renderCompareMarkdown } = __test;
+
+function makeSummary(override: Partial<SnapshotSummary> = {}): SnapshotSummary {
+  return {
+    tier: 1,
+    status: 'active',
+    clerk_provisioned: true,
+    assets: { confirmed: 0, discovered: 0, byTier: {} },
+    domains: { total: 0, verified: 0, pending: 0 },
+    docs: { total: 0, byDept: {}, byStatus: {} },
+    quests: { total: 0, done: 0, in_progress: 0, pct: 0 },
+    health_score: 50,
+    ...override,
+  };
+}
 
 interface DocChunk {
   id: string;
@@ -349,6 +364,110 @@ describe('venture-intelligence-kit', () => {
       const md = renderFindDocsMarkdown('q', [chunk({ text: 'line one\n\nline two', score: 0.9 })]);
       expect(md).not.toContain('line one\n\nline two');
       expect(md).toContain('line one line two');
+    });
+  });
+
+  describe('compareSnapshots', () => {
+    const mcv: ComparisonRow = {
+      ventureId: 'mcv',
+      ventureName: 'MCV One',
+      summary: makeSummary({ health_score: 82, quests: { total: 20, done: 15, in_progress: 3, pct: 75 }, assets: { confirmed: 12, discovered: 2, byTier: {} }, docs: { total: 24, byDept: {}, byStatus: {} }, domains: { total: 3, verified: 3, pending: 0 } }),
+    };
+    const betedge: ComparisonRow = {
+      ventureId: 'betedge',
+      ventureName: 'BetEdge AI',
+      summary: makeSummary({ health_score: 58, quests: { total: 10, done: 4, in_progress: 2, pct: 40 }, assets: { confirmed: 5, discovered: 0, byTier: {} }, docs: { total: 8, byDept: {}, byStatus: {} }, domains: { total: 1, verified: 0, pending: 1 } }),
+    };
+    const warforge: ComparisonRow = {
+      ventureId: 'warforge',
+      ventureName: 'WarForge',
+      summary: makeSummary({ health_score: 30, quests: { total: 5, done: 1, in_progress: 0, pct: 20 }, assets: { confirmed: 2, discovered: 1, byTier: {} }, docs: { total: 3, byDept: {}, byStatus: {} }, domains: { total: 0, verified: 0, pending: 0 } }),
+    };
+
+    it('identifies a clear winner per metric when values differ', () => {
+      const winners = compareSnapshots([mcv, betedge, warforge]);
+      const byMetric = new Map(winners.map(w => [w.metric, w]));
+      expect(byMetric.get('health')?.winnerId).toBe('mcv');
+      expect(byMetric.get('quests_pct')?.winnerId).toBe('mcv');
+      expect(byMetric.get('assets_confirmed')?.winnerId).toBe('mcv');
+      expect(byMetric.get('docs_total')?.winnerId).toBe('mcv');
+      expect(byMetric.get('domains_verified')?.winnerId).toBe('mcv');
+    });
+
+    it('returns null winnerId on ties', () => {
+      const a: ComparisonRow = { ventureId: 'a', ventureName: 'A', summary: makeSummary({ health_score: 50 }) };
+      const b: ComparisonRow = { ventureId: 'b', ventureName: 'B', summary: makeSummary({ health_score: 50 }) };
+      const winners = compareSnapshots([a, b]);
+      expect(winners.find(w => w.metric === 'health')?.winnerId).toBeNull();
+    });
+
+    it('returns null winnerId when all values are 0', () => {
+      const a: ComparisonRow = { ventureId: 'a', ventureName: 'A', summary: makeSummary({ docs: { total: 0, byDept: {}, byStatus: {} } }) };
+      const b: ComparisonRow = { ventureId: 'b', ventureName: 'B', summary: makeSummary({ docs: { total: 0, byDept: {}, byStatus: {} } }) };
+      const winners = compareSnapshots([a, b]);
+      expect(winners.find(w => w.metric === 'docs_total')?.winnerId).toBeNull();
+    });
+
+    it('exposes raw values so UIs can render bars/tables', () => {
+      const winners = compareSnapshots([mcv, betedge]);
+      const healthWinner = winners.find(w => w.metric === 'health')!;
+      expect(healthWinner.values).toEqual([
+        { ventureId: 'mcv', value: 82 },
+        { ventureId: 'betedge', value: 58 },
+      ]);
+    });
+
+    it('returns all 5 metric categories', () => {
+      const winners = compareSnapshots([mcv, betedge]);
+      expect(winners.map(w => w.metric).sort()).toEqual(['assets_confirmed', 'docs_total', 'domains_verified', 'health', 'quests_pct']);
+    });
+
+    it('assigns winner correctly when smaller but only leader', () => {
+      const only: ComparisonRow = { ventureId: 'only', ventureName: 'Only', summary: makeSummary({ health_score: 1 }) };
+      const zero: ComparisonRow = { ventureId: 'zero', ventureName: 'Zero', summary: makeSummary({ health_score: 0 }) };
+      const winners = compareSnapshots([only, zero]);
+      expect(winners.find(w => w.metric === 'health')?.winnerId).toBe('only');
+    });
+  });
+
+  describe('renderCompareMarkdown', () => {
+    const rows: ComparisonRow[] = [
+      { ventureId: 'a', ventureName: 'Alpha', summary: makeSummary({ health_score: 80, docs: { total: 10, byDept: {}, byStatus: {} } }) },
+      { ventureId: 'b', ventureName: 'Bravo', summary: makeSummary({ health_score: 60, docs: { total: 5, byDept: {}, byStatus: {} } }) },
+    ];
+
+    it('renders a markdown table with one row per metric', () => {
+      const md = renderCompareMarkdown(rows, compareSnapshots(rows));
+      expect(md).toContain('| Alpha | Bravo |');
+      expect(md).toContain('| Health | **80** 🏆 | 60 |');
+      expect(md).toContain('| Docs | **10** 🏆 | 5 |');
+    });
+
+    it('highlights the winning cell with bold + trophy', () => {
+      const md = renderCompareMarkdown(rows, compareSnapshots(rows));
+      expect(md).toMatch(/\*\*80\*\* 🏆/);
+    });
+
+    it('produces a Winners section with category counts', () => {
+      // Alpha wins 2/5: health (80>60) + docs (10>5). Other three metrics are
+      // all zero in both rows so they tie → null winner, not counted.
+      const md = renderCompareMarkdown(rows, compareSnapshots(rows));
+      expect(md).toContain('### Winners');
+      expect(md).toMatch(/Alpha.*2\/5 categories/);
+    });
+
+    it('reports all-tied case gracefully', () => {
+      const tied: ComparisonRow[] = [
+        { ventureId: 'a', ventureName: 'A', summary: makeSummary() },
+        { ventureId: 'b', ventureName: 'B', summary: makeSummary() },
+      ];
+      const md = renderCompareMarkdown(tied, compareSnapshots(tied));
+      expect(md).toContain('All categories tied');
+    });
+
+    it('rejects single-venture input', () => {
+      const md = renderCompareMarkdown([rows[0]], []);
+      expect(md).toContain('needs at least 2 ventures');
     });
   });
 });

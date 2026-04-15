@@ -78,3 +78,43 @@ export function healthColor(score: number): string {
   if (score >= 50) return '#F59E0B';
   return '#EF4444';
 }
+
+export interface ComparisonRow {
+  ventureId: string;
+  ventureName: string;
+  summary: SnapshotSummary;
+}
+
+export type MetricKey = 'health' | 'quests_pct' | 'assets_confirmed' | 'docs_total' | 'domains_verified';
+
+export interface CategoryWinner {
+  metric: MetricKey;
+  label: string;
+  winnerId: string | null; // null when tied or all zero
+  values: Array<{ ventureId: string; value: number }>;
+}
+
+/**
+ * Compare N venture snapshots head-to-head. Returns one winner per category
+ * (ties produce `winnerId: null`) plus the raw values so callers can render
+ * bars, tables, or summary narration.
+ */
+export function compareSnapshots(rows: ComparisonRow[]): CategoryWinner[] {
+  const metrics: Array<{ key: MetricKey; label: string; extract: (s: SnapshotSummary) => number }> = [
+    { key: 'health',            label: 'Health',             extract: (s) => s.health_score },
+    { key: 'quests_pct',        label: 'Quest Completion',   extract: (s) => s.quests.pct },
+    { key: 'assets_confirmed',  label: 'Confirmed Assets',   extract: (s) => s.assets.confirmed },
+    { key: 'docs_total',        label: 'Docs',               extract: (s) => s.docs.total },
+    { key: 'domains_verified',  label: 'Verified Domains',   extract: (s) => s.domains.verified },
+  ];
+
+  return metrics.map(m => {
+    const values = rows.map(r => ({ ventureId: r.ventureId, value: m.extract(r.summary) }));
+    const max = Math.max(...values.map(v => v.value));
+    const leaders = values.filter(v => v.value === max);
+    // Ties (multiple leaders with same value) produce winnerId: null so callers
+    // don't falsely crown one. Also null when the max is 0 across the board.
+    const winnerId = leaders.length === 1 && max > 0 ? leaders[0].ventureId : null;
+    return { metric: m.key, label: m.label, winnerId, values };
+  });
+}
