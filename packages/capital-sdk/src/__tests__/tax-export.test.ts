@@ -65,7 +65,9 @@ describe('createTaxExportService', () => {
     // Tony's box_1a should be dividend(1500) + interest(200) = 1700
     const tonyLine = lines.find((l) => l.includes('c-tony'))!;
     expect(tonyLine).toContain('1700.00');
-    expect(tonyLine).toContain('800.00'); // — wait, this is Devon's. Let me check
+    // Devon: only return_of_capital, so box_3 = 800
+    const devonLine = lines.find((l) => l.includes('c-devon'))!;
+    expect(devonLine).toContain('800.00');
   });
 
   it('produces T5 CSV with eligible-dividend gross-up', async () => {
