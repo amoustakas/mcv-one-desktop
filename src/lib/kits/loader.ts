@@ -110,6 +110,9 @@ import { manifest as platformManifest, handlers as platformHandlers } from './bu
 import { manifest as browserManifest, handlers as browserHandlers } from './builtin/browser-kit';
 import { manifest as epicManifest, handlers as epicHandlers } from './builtin/epic-kit';
 import { manifest as stripeConnectManifest, handlers as stripeConnectHandlers } from './builtin/stripe-connect-kit';
+// Department agents (Cassandra/Atlas/Nova/Mint/Vector/Helix) + cross-cutting intelligence
+import { departmentKits } from './builtin/department-kits';
+import { manifest as ventureIntelManifest, handlers as ventureIntelHandlers } from './builtin/venture-intelligence-kit';
 
 // ---------------------------------------------------------------------------
 // Local Kit Registry
@@ -221,6 +224,10 @@ const builtinKits: KitInstance[] = [
   kit(epicManifest, epicHandlers),
   // Stripe Connect (marketplace payouts per venture)
   kit(stripeConnectManifest, stripeConnectHandlers),
+  // Department agents — 6 named personalities operating over venture_docs
+  ...Object.values(departmentKits).map(({ manifest, handlers }) => kit(manifest, handlers)),
+  // Cross-cutting venture intelligence (consult_departments + venture_snapshot)
+  kit(ventureIntelManifest, ventureIntelHandlers),
 ];
 
 /** Returns all built-in kit instances */
