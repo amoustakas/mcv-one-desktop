@@ -176,6 +176,7 @@ export class PaymentRouter {
       ventureId:       request.ventureId,
       customerId:      request.customerId,
       isRecurring:     false,
+      metadata:        request.metadata,
     };
 
     const decision = await this.route(routingReq, ventureConfig);
@@ -336,8 +337,18 @@ export class PaymentRouter {
     const reliabilityScore = RELIABILITY_SCORES[processor.id] ?? 0.5;
     const complianceScore  = COMPLIANCE_SCORES[processor.id]  ?? 0.5;
 
+    // Preference score sources (in order of specificity):
+    //   1. request.metadata.preferred_processor — explicit per-request hint
+    //      (e.g. from @mcv/capital-sdk payment_processor_config lookups).
+    //      Strongest signal; wins over ventureConfig.preferredRail when set.
+    //   2. ventureConfig.preferredRail — venture-wide default preference.
+    //   3. no hint → neutral 0.5
+    const metadataPreference = (request.metadata as Record<string, unknown> | undefined)?.preferred_processor;
     const preferenceScore =
-      ventureConfig?.preferredRail === processor.id ? 1.0 : 0.5;
+      metadataPreference === processor.id ? 1.0
+      : metadataPreference && metadataPreference !== processor.id ? 0.0  // explicit non-pick
+      : ventureConfig?.preferredRail === processor.id ? 1.0
+      : 0.5;
 
     return (
       costScore        * WEIGHTS.cost        +

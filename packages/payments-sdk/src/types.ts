@@ -97,6 +97,10 @@ export interface RoutingRequest {
   ventureId: string;
   customerId: string | null;
   isRecurring: boolean;
+  /** Optional per-request hints — `preferred_processor` forces the scoring
+   *  layer to weight a specific processor above all others (used by
+   *  Capital payment_processor_config for per-venture per-method routing). */
+  metadata?: Record<string, unknown>;
 }
 
 export interface RoutingDecision {
