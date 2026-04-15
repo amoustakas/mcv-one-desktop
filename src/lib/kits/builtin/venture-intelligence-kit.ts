@@ -206,7 +206,7 @@ const ventureSnapshot: KitToolHandler = async (input, ctx) => {
   };
 };
 
-interface SnapshotSummary {
+export interface SnapshotSummary {
   tier: number | null;
   status: string;
   clerk_provisioned: boolean;
@@ -217,7 +217,7 @@ interface SnapshotSummary {
   health_score: number; // 0-100, weighted composite
 }
 
-function summarizeSnapshot(args: {
+export function summarizeSnapshot(args: {
   venture: { tier?: number; status?: string; clerk_org_id?: string | null };
   assets: Array<{ tier: number; confirmed: boolean }>;
   domains: Array<{ status?: string }>;

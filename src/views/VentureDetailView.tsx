@@ -10,6 +10,7 @@ import VentureSocialsPanel from '../components/ventures/VentureSocialsPanel';
 import VentureDocsPanel from '../components/ventures/VentureDocsPanel';
 import VentureOpsPanel from '../components/ventures/VentureOpsPanel';
 import VentureSettingsPanel from '../components/ventures/VentureSettingsPanel';
+import VentureSnapshotCard from '../components/ventures/VentureSnapshotCard';
 import { Settings as SettingsIcon } from 'lucide-react';
 
 const VentureProfile = lazy(() => import('./VentureProfile'));
@@ -61,7 +62,10 @@ export default function VentureDetailView({ venture }: { venture: Venture }) {
       <div className="vdv-body">
         {tab === 'overview' && (
           <Suspense fallback={<div className="vdv-loading">Loading overview…</div>}>
-            <VentureProfile venture={venture} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <VentureSnapshotCard venture={venture} />
+              <VentureProfile venture={venture} />
+            </div>
           </Suspense>
         )}
 
