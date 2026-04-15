@@ -141,7 +141,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { messages, systemPrompt, stream, tools, model, max_tokens, naos, preRag } = req.body as {
+  const { messages, systemPrompt, stream, tools, model, max_tokens, naos, preRag, useRag, ragCorpora } = req.body as {
     messages: Array<{ role: string; content: unknown }>;
     systemPrompt?: string;
     stream?: boolean;
@@ -150,6 +150,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     max_tokens?: number;
     naos?: { agent_codename?: string; venture_id?: string };
     preRag?: { enabled?: boolean; venture_id?: string; top_k?: number; threshold?: number };
+    /** When true and Intelligence is routed, ask the gateway to fan corpora into RAG retrieval before generation. */
+    useRag?: boolean;
+    ragCorpora?: string[];
   };
 
   if (!messages || !Array.isArray(messages)) {
@@ -231,6 +234,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       maxTokens: max_tokens || 4096,
       ventureId: naos?.venture_id,
       tools: (tools as IntelChatRequest['tools']) || undefined,
+      useRag: useRag || undefined,
+      corpora: ragCorpora,
     };
     // Prepend RAG context to the system message position (Intelligence treats
     // the first 'system' role as the system prompt).
