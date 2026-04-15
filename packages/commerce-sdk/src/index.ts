@@ -17,5 +17,6 @@ export * from './search-engine';
 export * from './wishlist-service';
 export * from './review-service';
 export * from './notification-service';
+export * from './digital-delivery-service';
 
-export const MCV_COMMERCE_SDK_VERSION = '0.5.0' as const;
+export const MCV_COMMERCE_SDK_VERSION = '0.6.0' as const;
