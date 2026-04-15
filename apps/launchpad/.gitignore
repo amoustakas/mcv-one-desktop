@@ -1,0 +1,13 @@
+# Next.js build output
+.next/
+out/
+
+# Next.js generated types
+next-env.d.ts
+
+# Deps (installed from root workspace)
+node_modules/
+
+# Local env
+.env.local
+.env*.local

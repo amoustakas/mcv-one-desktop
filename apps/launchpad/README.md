@@ -39,7 +39,31 @@ npm run build && npm start
 
 ## Deploy
 
-Separate Vercel project, domain `launchpad.mcv.one`. Environment vars set in project settings.
+**Separate Vercel project**, domain `launchpad.mcv.one`. The app cannot share the root `mcv-one-desktop` Vercel project because that one deploys the Vite SPA — Launchpad is a Next.js app with its own lifecycle.
+
+### First-time setup via Vercel dashboard
+
+1. **New Project** → Import Git repo `amoustakas/mcv-one-desktop`
+2. **Root Directory**: `apps/launchpad`
+3. **Framework preset**: Next.js (auto-detected)
+4. **Build command**: defaults ok — `vercel.json` in this dir overrides with `cd ../.. && npm install` to hoist workspace deps, then `npm run build` locally
+5. **Install command**: leave blank (buildCommand handles it)
+6. **Environment variables** (from main Supabase project `kovsdngjojzfebrxulyj`):
+   - `SUPABASE_URL` = project URL
+   - `SUPABASE_ANON_KEY` = anon key (safe for public routes, RLS protects writes)
+   - `NEXT_PUBLIC_SUPABASE_URL` = same URL
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = same anon key
+7. **Custom domain** (after first deploy): `launchpad.mcv.one` → add DNS CNAME per Vercel instructions
+
+### Post-deploy verification
+
+- `/` renders without errors (empty state ok if no public rounds yet)
+- `/p/:venture/:round` returns 404 for non-existent round (good — confirms SSR path works)
+- Headers on `/widget/*` include `X-Frame-Options: ALLOWALL` — iframe embeddable
+
+### Subsequent deploys
+
+Auto-deploy on every push to `master` that touches `apps/launchpad/**`. Preview deploys for every PR.
 
 ## Widget Embed Example
 
