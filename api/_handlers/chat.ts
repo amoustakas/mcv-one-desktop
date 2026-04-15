@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getServiceClient } from './_supabase.js';
 import { embedOne } from './_embeddings.js';
+import { createServerIntelligence, type ChatRequest as IntelChatRequest } from '../../src/lib/mcv-core/intelligence.js';
 
 // Pre-fetch RAG context for the latest user message and return a block to
 // prepend to the system prompt. Returns '' on any failure so chat never breaks.
@@ -168,6 +169,99 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Add tools if provided (Kit system tool-calling)
   if (tools && Array.isArray(tools) && tools.length > 0) {
     params.tools = tools;
+  }
+
+  // ── Triangle routing ────────────────────────────────────────────────
+  // If INTELLIGENCE_URL is set, route through the gateway so cost tracking,
+  // provider failover, and audit observability all happen centrally. Otherwise
+  // fall through to the original direct Anthropic SDK path (graceful fallback).
+  const intelligence = createServerIntelligence({ ventureId: naos?.venture_id });
+
+  if (intelligence) {
+    const intelReq: IntelChatRequest = {
+      messages: messages
+        .filter(m => m.role === 'user' || m.role === 'assistant' || m.role === 'system')
+        .map(m => ({
+          role: m.role as 'user' | 'assistant' | 'system',
+          content: typeof m.content === 'string'
+            ? m.content
+            : Array.isArray(m.content)
+              ? (m.content as Array<{ type?: string; text?: string }>)
+                  .filter(b => b.type === 'text')
+                  .map(b => b.text || '')
+                  .join('')
+              : String(m.content),
+        })),
+      provider: 'anthropic',
+      model: model || 'claude-sonnet-4-20250514',
+      maxTokens: max_tokens || 4096,
+      ventureId: naos?.venture_id,
+      tools: (tools as IntelChatRequest['tools']) || undefined,
+    };
+    // Prepend RAG context to the system message position (Intelligence treats
+    // the first 'system' role as the system prompt).
+    intelReq.messages = [{ role: 'system', content: effectiveSystem }, ...intelReq.messages];
+
+    try {
+      if (stream) {
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        const final = await intelligence.chatStream(intelReq, (chunk) => {
+          res.write(`data: ${JSON.stringify({ type: 'text', text: chunk })}\n\n`);
+        });
+        for (const tc of final.toolCalls ?? []) {
+          res.write(`data: ${JSON.stringify({ type: 'tool_use', id: tc.id, name: tc.name, input: tc.input })}\n\n`);
+        }
+        res.write(`data: ${JSON.stringify({ type: 'message_end', stop_reason: final.finishReason })}\n\n`);
+        res.write('data: [DONE]\n\n');
+        res.end();
+        if (naos?.agent_codename) {
+          const lastUser = [...messages].reverse().find(m => m.role === 'user');
+          const userText = typeof lastUser?.content === 'string' ? lastUser.content : JSON.stringify(lastUser?.content || '');
+          void logNaosInteraction({
+            agentCodename: naos.agent_codename,
+            userId: userId || 'unknown',
+            ventureId: naos.venture_id,
+            userMessage: userText,
+            assistantResponse: final.content,
+          });
+        }
+        return;
+      } else {
+        const result = await intelligence.chat(intelReq);
+        if (!result.ok) {
+          // Triangle reachable but call failed — surface the error rather than silent fallback.
+          return res.status(502).json({ error: `intelligence: ${result.error.message}` });
+        }
+        const final = result.data;
+        if (naos?.agent_codename) {
+          const lastUser = [...messages].reverse().find(m => m.role === 'user');
+          const userText = typeof lastUser?.content === 'string' ? lastUser.content : JSON.stringify(lastUser?.content || '');
+          void logNaosInteraction({
+            agentCodename: naos.agent_codename,
+            userId: userId || 'unknown',
+            ventureId: naos.venture_id,
+            userMessage: userText,
+            assistantResponse: final.content,
+          });
+        }
+        if ((final.toolCalls?.length ?? 0) > 0) {
+          return res.status(200).json({
+            content: final.content,
+            stop_reason: final.finishReason,
+            tool_calls: final.toolCalls,
+          });
+        }
+        return res.status(200).json({ content: final.content });
+      }
+    } catch (err) {
+      // Network-level failure on Intelligence — fall through to direct SDK so
+      // chat keeps working. Log so the operator notices.
+      // eslint-disable-next-line no-console
+      console.warn('[chat] Intelligence stream failed, falling back to direct Anthropic SDK:', (err as Error).message);
+      // fall through
+    }
   }
 
   try {
