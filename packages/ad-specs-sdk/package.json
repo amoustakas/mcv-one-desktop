@@ -1,0 +1,21 @@
+{
+  "name": "@mcv/ad-specs-sdk",
+  "version": "0.1.0",
+  "description": "MCV Ad Specs — cross-platform ad format registry + creative validation. Covers Google Ads, Meta, TikTok, LinkedIn, Twitter/X, YouTube, Microsoft Ads, Google Display Network. Pure types + data tables + validation rules; zero external deps.",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".":            { "types": "./src/index.ts",       "default": "./src/index.ts" },
+    "./types":      { "types": "./src/types.ts",       "default": "./src/types.ts" },
+    "./registry":   { "types": "./src/registry.ts",    "default": "./src/registry.ts" },
+    "./validation": { "types": "./src/validation.ts",  "default": "./src/validation.ts" },
+    "./platforms/*":{ "types": "./src/platforms/*.ts", "default": "./src/platforms/*.ts" }
+  },
+  "files": ["src"],
+  "scripts": {
+    "lint": "echo 'no lint yet'",
+    "test": "echo 'no tests yet'"
+  }
+}

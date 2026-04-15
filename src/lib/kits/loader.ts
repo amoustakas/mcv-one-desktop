@@ -79,7 +79,7 @@ import { manifest as storageLocalManifest, handlers as storageLocalHandlers } fr
 import { manifest as storageGdriveManifest, handlers as storageGdriveHandlers } from '@mcv/kits-sdk/builtin/storage-gdrive-kit';
 import { manifest as storageAiManifest, handlers as storageAiHandlers } from '@mcv/kits-sdk/builtin/storage-ai-kit';
 import { manifest as googleRagManifest, handlers as googleRagHandlers } from '@mcv/kits-sdk/builtin/google-rag-kit';
-import { manifest as adStudioManifest, handlers as adStudioHandlers } from './builtin/ad-studio-kit';
+import { manifest as adStudioManifest, handlers as adStudioHandlers } from '@mcv/kits-sdk/builtin/ad-studio-kit';
 import { manifest as naosCommandManifest, handlers as naosCommandHandlers } from '@mcv/kits-sdk/builtin/naos-command-kit';
 import {
   manifest as mcpBridgeManifest,

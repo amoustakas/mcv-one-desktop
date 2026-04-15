@@ -1,7 +1,7 @@
 import type { KitManifest, KitToolHandler } from '../types';
-import { filterFormats, getFormatById, getAllFormats } from '../../ad-specs/registry';
-import { validateCreative, suggestFormatsForAsset, getGenerationParams } from '../../ad-specs/validation';
-import type { AdPlatform, AdMediaType, CreativeAsset } from '../../ad-specs/types';
+import { filterFormats, getFormatById, getAllFormats } from '@mcv/ad-specs-sdk/registry';
+import { validateCreative, suggestFormatsForAsset, getGenerationParams } from '@mcv/ad-specs-sdk/validation';
+import type { AdPlatform, AdMediaType, CreativeAsset } from '@mcv/ad-specs-sdk/types';
 
 const listFormats: KitToolHandler = async (input, _ctx) => {
   const formats = await filterFormats({
