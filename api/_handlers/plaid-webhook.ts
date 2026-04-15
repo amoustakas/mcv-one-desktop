@@ -160,6 +160,7 @@ interface PlaidTransferEvent {
   account_id?: string;
   transfer_id: string;
   transfer_amount?: string;
+  transfer_type?: 'debit' | 'credit';
   failure_reason?: { description?: string } | null;
 }
 
@@ -268,12 +269,56 @@ async function syncTransferEvents(): Promise<{ processed: number; emitted: numbe
       });
       emitted++;
       afterId = Math.max(afterId, evt.event_id);
+
+      // ── Capital reconciliation hook (Epic 13 S1 → live) ──
+      // For settled inbound credits, attempt to auto-match a Capital
+      // commitment via the PlaidAdapter and call recordPayment when
+      // unambiguous. Failures are logged but never block payment_events.
+      if (evt.event_type === 'settled' && evt.transfer_type === 'credit') {
+        try {
+          await reconcileToCapital(evt);
+        } catch (err) {
+          console.warn('[plaid-webhook] capital reconciliation failed:', err instanceof Error ? err.message : err);
+        }
+      }
     }
 
     await writeCursor(afterId);
   }
 
   return { processed, emitted };
+}
+
+// ── Capital reconciliation ──────────────────────────────────────────────
+// Composes the PlaidAdapter (Epic 13 S1) with the capital-sdk's
+// commitments service. Pure best-effort; webhook still ACKs even if
+// reconciliation can't find a unique match (admin reconciles manually).
+
+async function reconcileToCapital(evt: PlaidTransferEvent): Promise<void> {
+  if (!evt.account_id || !evt.transfer_amount) return;
+  const { createPlaidAdapter } = await import('../../src/lib/capital/adapters/plaid-adapter');
+  const { createCapitalEngine } = await import('@mcv/capital-sdk');
+
+  const adapter = createPlaidAdapter({ supabase, amountToleranceCents: 100 /* $1 wire fee tolerance */ });
+  const mapped = await adapter.fromForeign({
+    transfer_id: evt.transfer_id,
+    account_id: evt.account_id,
+    amount: evt.transfer_amount,
+    iso_currency_code: 'USD',
+    type: 'credit',
+    status: 'settled',
+    posted_at: evt.timestamp,
+  });
+
+  if (!mapped) return;
+  if (!mapped.commitmentId) {
+    console.log(`[plaid-webhook] reconciliation flagged for manual review — transfer ${evt.transfer_id}, candidates=${mapped.matchDiagnostics.candidates}`);
+    return;
+  }
+
+  const engine = createCapitalEngine({ supabase });
+  await engine.commitments.recordPayment(mapped.commitmentId, mapped.paymentMethod, mapped.paymentReference);
+  console.log(`[plaid-webhook] auto-reconciled transfer ${evt.transfer_id} → commitment ${mapped.commitmentId}`);
 }
 
 // ─── Handler ────────────────────────────────────────────────────────────
