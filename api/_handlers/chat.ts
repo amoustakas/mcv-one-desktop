@@ -3,6 +3,30 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getServiceClient } from './_supabase.js';
 import { embedOne } from './_embeddings.js';
 import { createServerIntelligence, type ChatRequest as IntelChatRequest } from '../../src/lib/mcv-core/intelligence.js';
+import { createServerFabric } from '../../src/lib/mcv-core/fabric.js';
+
+// Server-side Fabric publisher. Lazy singleton — null when FABRIC_URL unset.
+const fabric = createServerFabric();
+
+function publishChatAudit(opts: {
+  type: 'chat.sent' | 'chat.completed' | 'chat.failed';
+  userId: string;
+  ventureId?: string;
+  correlationId: string;
+  meta?: Record<string, unknown>;
+}): void {
+  if (!fabric) return;
+  void fabric
+    .publish({
+      topic: 'chat',
+      payload: { type: opts.type, userId: opts.userId, ...opts.meta },
+      traceId: opts.correlationId,
+      ventureId: opts.ventureId,
+    })
+    .catch(() => {
+      // audit must never break chat
+    });
+}
 
 // Pre-fetch RAG context for the latest user message and return a block to
 // prepend to the system prompt. Returns '' on any failure so chat never breaks.
@@ -136,6 +160,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
   }
 
+  // Correlate chat.sent → chat.completed across the streaming SSE flow.
+  const correlationId = `chat_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  publishChatAudit({
+    type: 'chat.sent',
+    userId,
+    ventureId: naos?.venture_id,
+    correlationId,
+    meta: { agent: naos?.agent_codename, model: model || 'claude-sonnet-4-20250514', stream: !!stream },
+  });
+
   // Optional: pre-fetch RAG context and prepend it to the system prompt so
   // Aegis has grounded facts without needing a separate tool-use round trip.
   let effectiveSystem = systemPrompt || 'You are a helpful assistant.';
@@ -216,6 +250,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         res.write(`data: ${JSON.stringify({ type: 'message_end', stop_reason: final.finishReason })}\n\n`);
         res.write('data: [DONE]\n\n');
         res.end();
+        publishChatAudit({
+          type: 'chat.completed',
+          userId,
+          ventureId: naos?.venture_id,
+          correlationId,
+          meta: {
+            via: 'intelligence',
+            provider: final.provider,
+            model: final.model,
+            inputTokens: final.usage.inputTokens,
+            outputTokens: final.usage.outputTokens,
+            costUsd: final.usage.costUsd,
+            toolCalls: (final.toolCalls?.length ?? 0),
+            finishReason: final.finishReason,
+          },
+        });
         if (naos?.agent_codename) {
           const lastUser = [...messages].reverse().find(m => m.role === 'user');
           const userText = typeof lastUser?.content === 'string' ? lastUser.content : JSON.stringify(lastUser?.content || '');
@@ -313,6 +363,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         res.write(`data: ${JSON.stringify({ type: 'message_end', stop_reason: stopReason })}\n\n`);
         res.write('data: [DONE]\n\n');
         res.end();
+        publishChatAudit({
+          type: 'chat.completed',
+          userId,
+          ventureId: naos?.venture_id,
+          correlationId,
+          meta: { via: 'direct-anthropic', model: params.model, finishReason: stopReason },
+        });
         // Fire-and-forget NAOS interaction log (streaming path)
         if (naos?.agent_codename) {
           const lastUser = [...messages].reverse().find(m => m.role === 'user');
@@ -333,6 +390,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       response.on('error', (error) => {
         res.write(`data: ${JSON.stringify({ type: 'error', error: error.message })}\n\n`);
         res.end();
+        publishChatAudit({
+          type: 'chat.failed',
+          userId,
+          ventureId: naos?.venture_id,
+          correlationId,
+          meta: { via: 'direct-anthropic', error: error.message },
+        });
       });
     } else {
       const response = await client.messages.create(params);
