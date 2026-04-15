@@ -22,5 +22,7 @@ export * from './sandbox';
 export * from './bridge';
 export * from './shared-context';
 export * from './registry-client';
+export * from './loader';
+export * from './orchestrator';
 
-export const MCV_KITS_SDK_VERSION = '0.1.0' as const;
+export const MCV_KITS_SDK_VERSION = '0.3.0' as const;

@@ -1,6 +1,6 @@
 {
   "name": "@mcv/kits-sdk",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "MCV Agent-First Kit primitives — types, capability-based permissions, Web Worker sandbox, runtime bridge, registry client, shared key-value context. The portable substrate of the MCV orchestration shell. Loader, orchestrator and notifications stay in the app shell until their DI boundaries are established.",
   "private": true,
   "type": "module",
@@ -13,7 +13,9 @@
     "./permissions":     { "types": "./src/permissions.ts",          "default": "./src/permissions.ts" },
     "./bridge":          { "types": "./src/bridge.ts",               "default": "./src/bridge.ts" },
     "./shared-context":  { "types": "./src/shared-context.ts",       "default": "./src/shared-context.ts" },
-    "./registry-client": { "types": "./src/registry-client.ts",      "default": "./src/registry-client.ts" }
+    "./registry-client": { "types": "./src/registry-client.ts",      "default": "./src/registry-client.ts" },
+    "./loader":          { "types": "./src/loader.ts",               "default": "./src/loader.ts" },
+    "./orchestrator":    { "types": "./src/orchestrator.ts",         "default": "./src/orchestrator.ts" }
   },
   "files": ["src"],
   "scripts": {
