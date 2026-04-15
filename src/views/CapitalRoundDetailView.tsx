@@ -128,6 +128,20 @@ export default function CapitalRoundDetailView() {
         </GlassCard>
       )}
 
+      {/* Accreditation status — surfaces the VC gate enforced by PR #12 */}
+      {round.accreditedOnly && (
+        <GlassCard style={{ padding: 12, marginTop: 16, borderLeft: '3px solid var(--amber, #F59E0B)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Badge color="#F59E0B">Accredited only</Badge>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+              Commitments require a valid AccreditedInvestorCredential.
+              Investors without a VC are rejected at commit time (HTTP 403 <code style={{ color: 'var(--text)' }}>VC_REQUIRED</code>).
+              {round.regulatoryFramework && <> Jurisdiction: <strong style={{ color: 'var(--text)' }}>{round.regulatoryFramework.toUpperCase()}</strong>.</>}
+            </div>
+          </div>
+        </GlassCard>
+      )}
+
       {/* Round details */}
       <div style={{ marginTop: 16 }}><GridLayout cols={2} gap="md">
         <GlassCard style={{ padding: 16 }}>
