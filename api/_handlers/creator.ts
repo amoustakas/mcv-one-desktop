@@ -101,6 +101,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(201).json({ data: { ...agreement, royalty_splits: splits } });
       }
 
+      case 'update-agreement': {
+        const input = req.body ?? {};
+        const id = input.id as string;
+        if (!id) return res.status(400).json({ error: 'id is required' });
+
+        // Top-level patch only — splits modification is intentionally out of
+        // scope here because (a) the dialog and DB use different shapes and
+        // (b) replacing splits has financial implications that warrant a
+        // dedicated workflow. The dialog passes splits through but the
+        // server ignores them; UI shows a toast indicating splits are
+        // managed separately.
+        const patch: Record<string, unknown> = {};
+        if (input.product_name !== undefined) patch.product_name = input.product_name;
+        if (input.minimum_guarantee !== undefined) patch.minimum_payout = input.minimum_guarantee;
+        if (input.payout_frequency !== undefined) patch.payout_frequency = input.payout_frequency;
+        if (input.transparency_level !== undefined) patch.transparency_level = input.transparency_level;
+        if (input.status !== undefined) patch.status = input.status;
+        if (input.effective_date !== undefined) patch.effective_date = input.effective_date;
+        if (input.termination_date !== undefined) patch.termination_date = input.termination_date;
+        if (input.recoupable !== undefined) patch.recoupable = input.recoupable;
+        if (input.auto_renew !== undefined) patch.auto_renew = input.auto_renew;
+        if (input.tags !== undefined) patch.tags = input.tags;
+        // Resale royalty stored as percent on the row.
+        if (input.rate !== undefined) patch.resale_royalty_percent = input.rate;
+        else if (input.percent !== undefined) patch.resale_royalty_percent = input.percent;
+
+        const { data, error } = await _supabase
+          .from('royalty_agreements')
+          .update(patch)
+          .eq('id', id)
+          .eq('venture_id', ventureId)
+          .select('*, royalty_splits(*)')
+          .single();
+
+        if (error) throw error;
+        if (!data) return res.status(404).json({ error: 'Agreement not found' });
+        return res.json({ data });
+      }
+
       case 'distribute-royalties': {
         const { productId, transactionAmount, isResale, transactionId } = req.body ?? {};
         if (!productId || transactionAmount == null || !transactionId) {
@@ -291,6 +330,90 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .update({ status: 'approved', approved_at: new Date().toISOString() })
           .eq('id', milestoneId)
           .eq('agreement_id', agreementId);
+
+        const { data } = await _supabase
+          .from('escrow_agreements')
+          .select('*, escrow_milestones(*)')
+          .eq('id', agreementId)
+          .single();
+        return res.json({ data });
+      }
+
+      case 'update-escrow': {
+        const input = req.body ?? {};
+        const id = input.id as string;
+        if (!id) return res.status(400).json({ error: 'id is required' });
+
+        // Like update-agreement: top-level fields only (amount, expires_at,
+        // metadata). Per-milestone edits go through submit/approve/dispute
+        // milestone actions where status transitions are auditable.
+        const patch: Record<string, unknown> = {};
+        if (input.amount !== undefined) patch.amount = input.amount;
+        if (input.currency !== undefined) patch.currency = input.currency;
+        if (input.expires_at !== undefined) patch.expires_at = input.expires_at;
+        if (input.completion_date !== undefined) patch.completion_date = input.completion_date;
+        if (input.release_condition !== undefined) patch.release_condition = input.release_condition;
+        if (input.notes !== undefined || input.metadata !== undefined) {
+          // Merge into existing metadata so we don't clobber sibling keys.
+          const { data: existing } = await _supabase
+            .from('escrow_agreements')
+            .select('metadata')
+            .eq('id', id)
+            .single();
+          const prev = (existing?.metadata as Record<string, unknown>) ?? {};
+          patch.metadata = {
+            ...prev,
+            ...(input.metadata as Record<string, unknown> | undefined),
+            ...(input.notes !== undefined ? { notes: input.notes } : {}),
+          };
+        }
+
+        const { data, error } = await _supabase
+          .from('escrow_agreements')
+          .update(patch)
+          .eq('id', id)
+          .eq('venture_id', ventureId)
+          .select('*, escrow_milestones(*)')
+          .single();
+
+        if (error) throw error;
+        if (!data) return res.status(404).json({ error: 'Escrow not found' });
+        return res.json({ data });
+      }
+
+      case 'dispute-milestone': {
+        const { agreementId, milestoneId, reason } = req.body ?? {};
+        if (!agreementId || !milestoneId) {
+          return res.status(400).json({ error: 'agreementId and milestoneId are required' });
+        }
+
+        // Flip milestone to disputed and stash the reason in metadata.
+        // Also flip agreement status to disputed so reporting/queries can
+        // surface it without joining milestones.
+        const { data: existingMs } = await _supabase
+          .from('escrow_milestones')
+          .select('metadata')
+          .eq('id', milestoneId)
+          .eq('agreement_id', agreementId)
+          .single();
+        const prevMs = (existingMs?.metadata as Record<string, unknown>) ?? {};
+
+        const { error: msErr } = await _supabase
+          .from('escrow_milestones')
+          .update({
+            status: 'disputed',
+            metadata: { ...prevMs, dispute_reason: reason ?? null, disputed_at: new Date().toISOString() },
+          })
+          .eq('id', milestoneId)
+          .eq('agreement_id', agreementId);
+
+        if (msErr) throw msErr;
+
+        await _supabase
+          .from('escrow_agreements')
+          .update({ status: 'disputed' })
+          .eq('id', agreementId)
+          .eq('venture_id', ventureId);
 
         const { data } = await _supabase
           .from('escrow_agreements')

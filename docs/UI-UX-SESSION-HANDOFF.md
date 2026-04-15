@@ -96,9 +96,10 @@ optimistic vs. server-persisted.
 | `ConversationDetailDialog` | `useTwilio.sendSms` / `makeCall` | server ✓ |
 | `DunningCampaignDetailDialog` | `useComplianceStore.saveDunningCampaign` / `triggerDunningRun` | server ✓ |
 | `RoyaltyAgreementDetailDialog` (new) | `useCreatorStore.createRoyaltyAgreement` | server ✓ |
-| `RoyaltyAgreementDetailDialog` (update) | optimistic local — toast says "API pending" | local |
+| `RoyaltyAgreementDetailDialog` (update) | `useCreatorStore.updateRoyaltyAgreement` → POST `update-agreement` (top-level fields; splits stay non-editable, surfaced via warning toast) | server ✓ (partial) |
 | `EscrowDetailDialog` (release/approve milestone) | `useCreatorStore.approveMilestone` + auto `releaseEscrow` when all approved | server ✓ |
-| `EscrowDetailDialog` (save/dispute) | toast says "API pending" | local |
+| `EscrowDetailDialog` (save) | `useCreatorStore.updateEscrowAgreement` → POST `update-escrow` (amount/expires_at/notes; milestones via approve/dispute) | server ✓ (partial) |
+| `EscrowDetailDialog` (dispute) | `useCreatorStore.disputeMilestone` → POST `dispute-milestone` (sets milestone.status='disputed', flips agreement.status='disputed', stashes reason in metadata) | server ✓ |
 | `FraudRuleDetailDialog` (new) | `useComplianceStore.upsertFraudRule` → POST `create-fraud-rule` | server ✓ |
 | `FraudRuleDetailDialog` (update) | POST `update-fraud-rule` (full or partial) | server ✓ |
 | `FraudRuleDetailDialog` (toggle) | POST `update-fraud-rule` with `enabled` only — optimistic flip + rollback | server ✓ |

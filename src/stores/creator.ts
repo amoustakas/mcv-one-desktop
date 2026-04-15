@@ -30,15 +30,18 @@ interface CreatorState {
   // Actions — Royalties
   fetchRoyaltyAgreements: (ventureId: string) => Promise<void>;
   createRoyaltyAgreement: (ventureId: string, input: Record<string, unknown>) => Promise<RoyaltyAgreement>;
+  updateRoyaltyAgreement: (ventureId: string, input: Record<string, unknown>) => Promise<RoyaltyAgreement | null>;
   distributeRoyalties: (ventureId: string, productId: string, transactionAmount: number, isResale: boolean, transactionId: string) => Promise<unknown>;
   getCreatorEarnings: (ventureId: string, creatorId: string) => Promise<{ totalEarned: number; pendingPayout: number; distributions: unknown[] }>;
 
   // Actions — Escrow
   fetchEscrowAgreements: (ventureId: string) => Promise<void>;
   createEscrowAgreement: (ventureId: string, input: Record<string, unknown>) => Promise<EscrowAgreement>;
+  updateEscrowAgreement: (ventureId: string, input: Record<string, unknown>) => Promise<EscrowAgreement | null>;
   fundEscrow: (ventureId: string, agreementId: string) => Promise<EscrowAgreement>;
   submitMilestone: (ventureId: string, agreementId: string, milestoneId: string, evidence: string[]) => Promise<EscrowAgreement>;
   approveMilestone: (ventureId: string, agreementId: string, milestoneId: string) => Promise<EscrowAgreement>;
+  disputeMilestone: (ventureId: string, agreementId: string, milestoneId: string, reason: string) => Promise<EscrowAgreement>;
   releaseEscrow: (ventureId: string, agreementId: string) => Promise<EscrowAgreement>;
 
   // Actions — Transactions
@@ -177,6 +180,21 @@ export const useCreatorStore = create<CreatorState>((set) => ({
     return mapped;
   },
 
+  updateRoyaltyAgreement: async (ventureId, input) => {
+    try {
+      const { data } = await apiPost<{ data: Record<string, unknown> }>(
+        'update-agreement', ventureId, input
+      );
+      const mapped = mapRoyaltyRow(data);
+      set((state) => ({
+        royaltyAgreements: state.royaltyAgreements.map((r) => r.id === mapped.id ? mapped : r),
+      }));
+      return mapped;
+    } catch {
+      return null;
+    }
+  },
+
   distributeRoyalties: async (ventureId, productId, transactionAmount, isResale, transactionId) => {
     const { data } = await apiPost<{ data: unknown }>(
       'distribute-royalties', ventureId,
@@ -215,6 +233,21 @@ export const useCreatorStore = create<CreatorState>((set) => ({
     return mapped;
   },
 
+  updateEscrowAgreement: async (ventureId, input) => {
+    try {
+      const { data } = await apiPost<{ data: Record<string, unknown> }>(
+        'update-escrow', ventureId, input
+      );
+      const mapped = mapEscrowRow(data);
+      set((state) => ({
+        escrowAgreements: state.escrowAgreements.map((e) => e.id === mapped.id ? mapped : e),
+      }));
+      return mapped;
+    } catch {
+      return null;
+    }
+  },
+
   fundEscrow: async (ventureId, agreementId) => {
     const { data } = await apiPost<{ data: Record<string, unknown> }>(
       'fund-escrow', ventureId, { agreementId }
@@ -240,6 +273,17 @@ export const useCreatorStore = create<CreatorState>((set) => ({
   approveMilestone: async (ventureId, agreementId, milestoneId) => {
     const { data } = await apiPost<{ data: Record<string, unknown> }>(
       'approve-milestone', ventureId, { agreementId, milestoneId }
+    );
+    const mapped = mapEscrowRow(data);
+    set((state) => ({
+      escrowAgreements: state.escrowAgreements.map(e => e.id === mapped.id ? mapped : e),
+    }));
+    return mapped;
+  },
+
+  disputeMilestone: async (ventureId, agreementId, milestoneId, reason) => {
+    const { data } = await apiPost<{ data: Record<string, unknown> }>(
+      'dispute-milestone', ventureId, { agreementId, milestoneId, reason }
     );
     const mapped = mapEscrowRow(data);
     set((state) => ({

@@ -23,7 +23,8 @@ export default function CreatorHubView() {
     escrowAgreements, escrowAgreementsLoading,
     transactions, transactionsLoading,
     fetchRoyaltyAgreements, fetchEscrowAgreements, fetchTransactions,
-    createRoyaltyAgreement, releaseEscrow, approveMilestone,
+    createRoyaltyAgreement, updateRoyaltyAgreement,
+    releaseEscrow, approveMilestone, updateEscrowAgreement, disputeMilestone,
   } = useCreatorStore();
   const { toast } = useToast();
 
@@ -256,7 +257,17 @@ export default function CreatorHubView() {
                   await createRoyaltyAgreement(ventureId, draft);
                   toast('success', 'Royalty agreement created');
                 } else {
-                  toast('info', 'Saved locally — agreement update API pending');
+                  const result = await updateRoyaltyAgreement(ventureId, draft);
+                  if (result) {
+                    // Splits are out of scope for this update endpoint — surface that
+                    // explicitly so a user editing splits doesn't think they saved.
+                    const editedSplits = Array.isArray(draft.splits) && draft.splits !== (selectedRoyalty as { splits?: unknown })?.splits;
+                    toast(editedSplits ? 'warning' : 'success', editedSplits
+                      ? 'Saved — splits unchanged (managed via dedicated splits API)'
+                      : 'Agreement updated');
+                  } else {
+                    toast('error', 'Update failed — check server logs');
+                  }
                 }
               } catch (err) {
                 toast('error', err instanceof Error ? err.message : 'Save failed');
@@ -288,13 +299,29 @@ export default function CreatorHubView() {
                 toast('error', err instanceof Error ? err.message : 'Action failed');
               }
             }}
-            onDispute={(escrowId, milestoneId, reason) => {
-              toast('warning', `Dispute filed (local) — ${reason.slice(0, 40)}`);
-              void escrowId; void milestoneId;
+            onDispute={async (escrowId, milestoneId, reason) => {
+              try {
+                await disputeMilestone(ventureId, escrowId, milestoneId, reason);
+                toast('warning', `Dispute filed — ${reason.slice(0, 40)}${reason.length > 40 ? '…' : ''}`);
+              } catch (err) {
+                toast('error', err instanceof Error ? err.message : 'Dispute failed');
+              }
             }}
-            onSave={(updated) => {
-              toast('info', 'Saved locally — escrow update API pending');
-              void updated;
+            onSave={async (updated) => {
+              const draft = updated as unknown as Record<string, unknown>;
+              try {
+                const result = await updateEscrowAgreement(ventureId, draft);
+                if (result) {
+                  const editedMilestones = Array.isArray(draft.milestones) && draft.milestones !== (selectedEscrow as { milestones?: unknown })?.milestones;
+                  toast(editedMilestones ? 'warning' : 'success', editedMilestones
+                    ? 'Saved — milestone edits go through approve/dispute actions'
+                    : 'Escrow updated');
+                } else {
+                  toast('error', 'Update failed — check server logs');
+                }
+              } catch (err) {
+                toast('error', err instanceof Error ? err.message : 'Save failed');
+              }
               setSelectedEscrowId(null);
             }}
           />
