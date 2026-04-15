@@ -42,6 +42,7 @@ import ContextSidebar from './components/ContextSidebar';
 import { useInstanceRegistration } from './hooks/use-instance-registration';
 import { useWhiteLabel } from './hooks/use-white-label';
 import { useClerkVentureSync } from './hooks/use-clerk-venture-sync';
+import { useVentureFromClerk } from './hooks/use-venture-from-clerk';
 import { ventures as builtinVentures } from './lib/ventures';
 
 // Lazy-loaded views (code splitting)
@@ -524,6 +525,7 @@ export default function App() {
   useProactiveIntelligence(); // Background monitoring: email age, meeting prep, overdue tasks
   useWhiteLabel(builtinVentures); // Apply per-venture brand tokens when on custom domains
   useClerkVentureSync();    // Flip Clerk active org to match activeVenture when venture has clerk_org_id
+  useVentureFromClerk();    // Reverse: if Clerk active org changes externally, flip activeVenture to match
   const [presenceCardOpen, setPresenceCardOpen] = useState(false);
   const [contextSidebarOpen, setContextSidebarOpen] = useState(false);
   const [contextEntity, setContextEntity] = useState<{ type: string; id: string; name: string } | null>(null);
