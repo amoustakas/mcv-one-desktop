@@ -20,4 +20,11 @@ export * from './notification-service';
 export * from './digital-delivery-service';
 export * from './commerce-analytics';
 
-export const MCV_COMMERCE_SDK_VERSION = '0.7.0' as const;
+// product-service.searchProducts collides with search-engine.searchProducts
+// (raw CRUD vs faceted analytics-instrumented). Both are intentional
+// — consumers import product-service via its subpath
+// (@mcv/commerce-sdk/product-service) when they want the direct path.
+export { createProductService, mapProductRow } from './product-service';
+export type { ProductService, ProductServiceOptions, ListProductsFilters } from './product-service';
+
+export const MCV_COMMERCE_SDK_VERSION = '0.8.0' as const;
