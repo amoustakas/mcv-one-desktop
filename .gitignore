@@ -30,3 +30,7 @@ dist-ssr
 
 .vercel
 .env*.local
+
+# Claude Code scratch state — don't commit
+.claude/scheduled_tasks.lock
+.claude/sessions/
