@@ -58,6 +58,26 @@ interface ComplianceActions {
   ) => Promise<LocalizedPrice | null>;
   clearTaxCache: () => void;
   reset: () => void;
+
+  // Fraud rule mutations.
+  // - upsert: POSTs `create-fraud-rule` for new rules (id starts with "rule_" sentinel
+  //   or no matching DB row); existing rules are merged optimistically since the
+  //   API does not yet expose an update endpoint. The returned boolean reports
+  //   whether the change was persisted server-side.
+  upsertFraudRule: (ventureId: string, rule: Record<string, unknown>) => Promise<boolean>;
+  toggleFraudRule: (ventureId: string, ruleId: string, enabled: boolean) => Promise<boolean>;
+  deleteFraudRule: (ventureId: string, ruleId: string) => Promise<boolean>;
+
+  // Nexus alert workflow — local-only until the API surfaces a state-machine endpoint.
+  updateNexusStatus: (
+    ventureId: string,
+    alertId: string,
+    status: 'acknowledged' | 'registered' | 'exempt',
+  ) => Promise<boolean>;
+
+  // Dunning campaign config + manual run.
+  saveDunningCampaign: (ventureId: string, partial: Record<string, unknown>) => Promise<boolean>;
+  triggerDunningRun: (ventureId: string, campaignId: string) => Promise<boolean>;
 }
 
 // ─────────────────────────────────────────────────────────
@@ -204,6 +224,91 @@ export const useComplianceStore = create<ComplianceState & ComplianceActions>()(
       clearTaxCache: () => set({ taxCache: [], lastTaxBreakdown: null }),
 
       reset: () => set({ ...initialState, localizedPrices: new Map() }),
+
+      upsertFraudRule: async (ventureId, rule) => {
+        const id = String(rule.id ?? '');
+        // "rule_" prefix is the dialog's sentinel for unsaved drafts.
+        const isNew = id.startsWith('rule_') || !get().fraudRules.some((r) => String((r as unknown as Record<string, unknown>).id) === id);
+
+        if (isNew) {
+          const created = await compliancePost<FraudRule>('create-fraud-rule', ventureId, {
+            name: rule.name,
+            condition: rule.custom_expression ?? `${rule.trigger_type ?? 'velocity'}:${rule.threshold ?? 0}`,
+            ruleAction: rule.action,
+            scoreImpact: rule.risk_score,
+            enabled: rule.enabled !== false,
+          });
+          if (created) {
+            set((s) => ({ fraudRules: [created, ...s.fraudRules] }));
+            return true;
+          }
+          return false;
+        }
+
+        // Optimistic local merge — server update endpoint pending.
+        set((s) => ({
+          fraudRules: s.fraudRules.map((r) =>
+            String((r as unknown as Record<string, unknown>).id) === id
+              ? ({ ...(r as unknown as Record<string, unknown>), ...rule } as unknown as FraudRule)
+              : r,
+          ),
+        }));
+        return false;
+      },
+
+      toggleFraudRule: async (_ventureId, ruleId, enabled) => {
+        set((s) => ({
+          fraudRules: s.fraudRules.map((r) =>
+            String((r as unknown as Record<string, unknown>).id) === ruleId
+              ? ({ ...(r as unknown as Record<string, unknown>), enabled } as unknown as FraudRule)
+              : r,
+          ),
+        }));
+        return false; // No persistent endpoint yet.
+      },
+
+      deleteFraudRule: async (_ventureId, ruleId) => {
+        set((s) => ({
+          fraudRules: s.fraudRules.filter((r) => String((r as unknown as Record<string, unknown>).id) !== ruleId),
+        }));
+        return false;
+      },
+
+      updateNexusStatus: async (_ventureId, alertId, status) => {
+        set((s) => ({
+          nexusAlerts: s.nexusAlerts.map((a) =>
+            String((a as unknown as Record<string, unknown>).id) === alertId
+              ? ({ ...(a as unknown as Record<string, unknown>), status } as unknown as NexusAlert)
+              : a,
+          ),
+        }));
+        return false;
+      },
+
+      saveDunningCampaign: async (ventureId, partial) => {
+        const updated = await compliancePost<unknown>('update-dunning-config', ventureId, partial);
+        if (updated) {
+          // Dunning stats are derived; refresh after a config change to surface new state.
+          await get().fetchDunningStats(ventureId);
+          return true;
+        }
+        return false;
+      },
+
+      triggerDunningRun: async (ventureId, campaignId) => {
+        try {
+          const res = await fetch('/api/dunning-cron/run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ventureId, campaign_id: campaignId }),
+          });
+          if (!res.ok) return false;
+          await get().fetchDunningStats(ventureId);
+          return true;
+        } catch {
+          return false;
+        }
+      },
     }),
     { name: 'compliance-store' },
   ),

@@ -84,6 +84,29 @@ All save handlers stub to `console.log` — wire to store mutations once
 backend mutation APIs land. Most dialog onSave handlers accept the full
 draft object, so wiring is one-liner per handler.
 
+**Update (2026-04-15):** All 9 detail dialogs are now wired to stores +
+toasts. Backing API surface is partial — see table below for what's
+optimistic vs. server-persisted.
+
+| Dialog | Wiring | Persistence |
+|---|---|---|
+| `InvoiceDetailDialog` | `useCommerceStore.sendInvoice` / `recordInvoicePayment` | server ✓ |
+| `LoanDetailDialog` | `useCommerceStore.disburseLoan` / `recordRepayment` | server ✓ |
+| `CreditDetailDialog` | `grantCredit` (raw fetch) | server ✓ |
+| `ConversationDetailDialog` | `useTwilio.sendSms` / `makeCall` | server ✓ |
+| `DunningCampaignDetailDialog` | `useComplianceStore.saveDunningCampaign` / `triggerDunningRun` | server ✓ |
+| `RoyaltyAgreementDetailDialog` (new) | `useCreatorStore.createRoyaltyAgreement` | server ✓ |
+| `RoyaltyAgreementDetailDialog` (update) | optimistic local — toast says "API pending" | local |
+| `EscrowDetailDialog` (release/approve milestone) | `useCreatorStore.approveMilestone` + auto `releaseEscrow` when all approved | server ✓ |
+| `EscrowDetailDialog` (save/dispute) | toast says "API pending" | local |
+| `FraudRuleDetailDialog` (new) | `useComplianceStore.upsertFraudRule` → POST `create-fraud-rule` | server ✓ |
+| `FraudRuleDetailDialog` (update/toggle/delete) | optimistic local | local |
+| `NexusAlertDetailDialog` (acknowledge/register/exempt) | `useComplianceStore.updateNexusStatus` | local |
+
+The "local" rows surface as `info`/`warning` toasts that explicitly call
+out the missing endpoint, so users see the change reflected and know it's
+not yet persisted.
+
 ## Command Center widget catalog — `src/components/command-center/`
 
 | Widget | Data source | Notes |

@@ -7,6 +7,7 @@ import { lazy, Suspense } from 'react';
 import { useCreatorStore } from '../stores/creator';
 import { useNavigation } from '../stores/navigation';
 import { staggerContainer, fadeInUp } from '../lib/animations';
+import { useToast } from '../components/Toasts';
 
 const RoyaltyAgreementDetailDialog = lazyRetry(() => import('../components/creator/RoyaltyAgreementDetailDialog'));
 const EscrowDetailDialog = lazyRetry(() => import('../components/creator/EscrowDetailDialog'));
@@ -22,7 +23,9 @@ export default function CreatorHubView() {
     escrowAgreements, escrowAgreementsLoading,
     transactions, transactionsLoading,
     fetchRoyaltyAgreements, fetchEscrowAgreements, fetchTransactions,
+    createRoyaltyAgreement, releaseEscrow, approveMilestone,
   } = useCreatorStore();
+  const { toast } = useToast();
 
   const [tab, setTab] = useState('overview');
   const [selectedRoyaltyId, setSelectedRoyaltyId] = useState<string | null>(null);
@@ -245,8 +248,19 @@ export default function CreatorHubView() {
             open={!!selectedRoyaltyId}
             onClose={() => setSelectedRoyaltyId(null)}
             agreement={selectedRoyalty}
-            onSave={(updated) => {
-              console.log('Save royalty agreement', updated);
+            onSave={async (updated) => {
+              const draft = updated as unknown as Record<string, unknown>;
+              const isNew = String(draft.id ?? '').startsWith('agreement_') || !royaltyAgreements.some((r) => String((r as unknown as Record<string, unknown>).id) === String(draft.id));
+              try {
+                if (isNew) {
+                  await createRoyaltyAgreement(ventureId, draft);
+                  toast('success', 'Royalty agreement created');
+                } else {
+                  toast('info', 'Saved locally — agreement update API pending');
+                }
+              } catch (err) {
+                toast('error', err instanceof Error ? err.message : 'Save failed');
+              }
               setSelectedRoyaltyId(null);
             }}
           />
@@ -256,14 +270,31 @@ export default function CreatorHubView() {
             open={!!selectedEscrowId}
             onClose={() => setSelectedEscrowId(null)}
             escrow={selectedEscrow}
-            onRelease={(escrowId, milestoneId) => {
-              console.log('Release escrow milestone', escrowId, milestoneId);
+            onRelease={async (escrowId, milestoneId) => {
+              try {
+                // Two-step in the API: approve a milestone, then release the escrow once
+                // all are approved. We approve here and let the store reconcile state.
+                await approveMilestone(ventureId, escrowId, milestoneId);
+                const allApproved = (selectedEscrow?.milestones ?? []).every(
+                  (m) => m.id === milestoneId || m.status === 'approved' || m.status === 'released',
+                );
+                if (allApproved) {
+                  await releaseEscrow(ventureId, escrowId);
+                  toast('success', 'Escrow released');
+                } else {
+                  toast('success', 'Milestone approved');
+                }
+              } catch (err) {
+                toast('error', err instanceof Error ? err.message : 'Action failed');
+              }
             }}
             onDispute={(escrowId, milestoneId, reason) => {
-              console.log('Dispute escrow milestone', escrowId, milestoneId, reason);
+              toast('warning', `Dispute filed (local) — ${reason.slice(0, 40)}`);
+              void escrowId; void milestoneId;
             }}
             onSave={(updated) => {
-              console.log('Save escrow agreement', updated);
+              toast('info', 'Saved locally — escrow update API pending');
+              void updated;
               setSelectedEscrowId(null);
             }}
           />

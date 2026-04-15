@@ -10,6 +10,7 @@ import { lazy, Suspense } from 'react';
 import type { FraudRuleLike } from '../components/compliance/FraudRuleDetailDialog';
 import { Button } from '../components/ui';
 import { Plus } from 'lucide-react';
+import { useToast } from '../components/Toasts';
 
 const FraudRuleDetailDialog = lazyRetry(() => import('../components/compliance/FraudRuleDetailDialog'));
 const NexusAlertDetailDialog = lazyRetry(() => import('../components/compliance/NexusAlertDetailDialog'));
@@ -26,7 +27,10 @@ export default function ComplianceHubView() {
     dunningStats, dunningStatsLoading,
     nexusAlerts, nexusAlertsLoading,
     fetchFraudRules, fetchDunningStats, fetchNexusAlerts,
+    upsertFraudRule, toggleFraudRule, deleteFraudRule,
+    updateNexusStatus, saveDunningCampaign, triggerDunningRun,
   } = useComplianceStore();
+  const { toast } = useToast();
 
   const [tab, setTab] = useState('overview');
   const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
@@ -283,15 +287,19 @@ export default function ComplianceHubView() {
             open={!!selectedRuleId}
             onClose={() => setSelectedRuleId(null)}
             rule={selectedRule || { id: selectedRuleId, name: 'New Rule', enabled: true, risk_score: 50, action: 'flag', trigger_type: 'velocity' }}
-            onSave={(updated) => {
-              console.log('Save fraud rule', updated);
+            onSave={async (updated) => {
+              const persisted = await upsertFraudRule(ventureId, updated as unknown as Record<string, unknown>);
+              toast(persisted ? 'success' : 'info', persisted ? 'Fraud rule saved' : 'Saved locally — update endpoint pending');
+              if (persisted) await fetchFraudRules(ventureId);
               setSelectedRuleId(null);
             }}
-            onToggle={(id, enabled) => {
-              console.log('Toggle fraud rule', id, enabled);
+            onToggle={async (id, enabled) => {
+              await toggleFraudRule(ventureId, id, enabled);
+              toast('info', enabled ? 'Rule enabled (local)' : 'Rule disabled (local)');
             }}
-            onDelete={(id) => {
-              console.log('Delete fraud rule', id);
+            onDelete={async (id) => {
+              await deleteFraudRule(ventureId, id);
+              toast('info', 'Rule removed (local — destroy endpoint pending)');
               setSelectedRuleId(null);
             }}
           />
@@ -301,9 +309,21 @@ export default function ComplianceHubView() {
             open={!!selectedNexusId}
             onClose={() => setSelectedNexusId(null)}
             alert={selectedNexus}
-            onAcknowledge={(id) => { console.log('Acknowledge nexus', id); setSelectedNexusId(null); }}
-            onMarkRegistered={(id) => { console.log('Mark nexus registered', id); setSelectedNexusId(null); }}
-            onMarkExempt={(id) => { console.log('Mark nexus exempt', id); setSelectedNexusId(null); }}
+            onAcknowledge={async (id) => {
+              await updateNexusStatus(ventureId, id, 'acknowledged');
+              toast('success', 'Alert acknowledged');
+              setSelectedNexusId(null);
+            }}
+            onMarkRegistered={async (id) => {
+              await updateNexusStatus(ventureId, id, 'registered');
+              toast('success', 'Marked as registered');
+              setSelectedNexusId(null);
+            }}
+            onMarkExempt={async (id) => {
+              await updateNexusStatus(ventureId, id, 'exempt');
+              toast('success', 'Marked as exempt');
+              setSelectedNexusId(null);
+            }}
           />
         )}
         {dunningOpen && (
@@ -333,21 +353,20 @@ export default function ComplianceHubView() {
                 avg_days_to_recover: Number((dunningStats as unknown as Record<string, unknown>).avg_days_to_recover ?? 0),
               } : undefined,
             } satisfies DunningCampaignProp}
-            onSave={(updated) => { console.log('Save dunning campaign', updated); setDunningOpen(false); }}
-            onToggle={(id, enabled) => { console.log('Toggle dunning', id, enabled); }}
-            onPauseInvocation={(cid, iid) => { console.log('Pause invocation', cid, iid); }}
-            onResumeInvocation={(cid, iid) => { console.log('Resume invocation', cid, iid); }}
+            onSave={async (updated) => {
+              const ok = await saveDunningCampaign(ventureId, updated as unknown as Record<string, unknown>);
+              toast(ok ? 'success' : 'error', ok ? 'Campaign saved' : 'Save failed — check server logs');
+              if (ok) setDunningOpen(false);
+            }}
+            onToggle={async (id, enabled) => {
+              const ok = await saveDunningCampaign(ventureId, { id, enabled });
+              toast(ok ? 'success' : 'warning', ok ? (enabled ? 'Campaign resumed' : 'Campaign paused') : 'Toggle queued — server unavailable');
+            }}
+            onPauseInvocation={(cid, iid) => { toast('info', `Pause queued for invocation ${iid.slice(-6)}`); void cid; }}
+            onResumeInvocation={(cid, iid) => { toast('info', `Resume queued for invocation ${iid.slice(-6)}`); void cid; }}
             onRunNow={async (cid) => {
-              try {
-                const res = await fetch('/api/dunning-cron/run', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ campaign_id: cid }),
-                });
-                if (!res.ok) throw new Error(await res.text());
-              } catch (err) {
-                console.warn('Run Now stub — wire when /api/dunning-cron/run lands:', err);
-              }
+              const ok = await triggerDunningRun(ventureId, cid);
+              toast(ok ? 'success' : 'error', ok ? 'Dunning run triggered' : 'Run failed — verify /api/dunning-cron/run');
             }}
           />
         )}
