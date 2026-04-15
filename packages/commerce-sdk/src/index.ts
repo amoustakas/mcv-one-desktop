@@ -46,4 +46,12 @@ export type {
 
 export * from './inventory-manager';
 
-export const MCV_COMMERCE_SDK_VERSION = '0.12.0' as const;
+// gift-card-service also declares LedgerAdapter + a new CreditAdapter.
+// Subpath-only for the same reason as fulfillment-service.
+export { createGiftCardService } from './gift-card-service';
+export type {
+  GiftCardService,
+  GiftCardServiceOptions,
+} from './gift-card-service';
+
+export const MCV_COMMERCE_SDK_VERSION = '0.13.0' as const;
