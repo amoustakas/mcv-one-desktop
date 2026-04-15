@@ -1,6 +1,6 @@
 {
   "name": "@mcv/commerce-sdk",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "description": "MCV Commerce & Financial OS — types + (progressively) service factories. First slice ships the canonical type system (products, orders, subscriptions, invoices, loans, fulfillment, discounts, inventory, gift cards, reviews, wishlists, search, analytics). Service engines will land as incremental DI factories composed on @mcv/ledger-sdk + @mcv/payments-sdk.",
   "private": true,
   "type": "module",
@@ -24,7 +24,8 @@
     "./gift-card-service": { "types": "./src/gift-card-service.ts", "default": "./src/gift-card-service.ts" },
     "./invoice-engine": { "types": "./src/invoice-engine.ts", "default": "./src/invoice-engine.ts" },
     "./loan-engine": { "types": "./src/loan-engine.ts", "default": "./src/loan-engine.ts" },
-    "./subscription-engine": { "types": "./src/subscription-engine.ts", "default": "./src/subscription-engine.ts" }
+    "./subscription-engine": { "types": "./src/subscription-engine.ts", "default": "./src/subscription-engine.ts" },
+    "./cart-service": { "types": "./src/cart-service.ts", "default": "./src/cart-service.ts" }
   },
   "files": ["src"],
   "dependencies": {

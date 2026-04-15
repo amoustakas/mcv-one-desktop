@@ -81,4 +81,12 @@ export type {
   OverageResult,
 } from './subscription-engine';
 
-export const MCV_COMMERCE_SDK_VERSION = '0.16.0' as const;
+// cart-service — carries TaxAdapter + ProductAdapter. Subpath-only so
+// those adapter names stay scoped to their consumer.
+export { createCartService, mapCartRow, mapCartItemRow } from './cart-service';
+export type {
+  CartService,
+  CartServiceOptions,
+} from './cart-service';
+
+export const MCV_COMMERCE_SDK_VERSION = '0.17.0' as const;
