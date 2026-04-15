@@ -23,6 +23,7 @@ import type { BulkAction } from '../components/ui';
 import { Tag as TagIcon, ArrowRightCircle, AlertTriangle } from 'lucide-react';
 import { timeAgo, formatMoney, formatDate, cn } from '../lib/utils';
 import ContextCommsMenu from '../components/ContextCommsMenu';
+import InvestorsPanel from '../components/crm/InvestorsPanel';
 
 // ── Constants ──
 const TYPE_COLORS: Record<string, string> = { lead: '#F59E0B', prospect: '#00F0FF', client: '#10B981', partner: '#8B5CF6', investor: '#3B82F6', vendor: '#6B7280' };
@@ -37,6 +38,7 @@ const CRM_TABS = [
   { id: 'deals', label: 'Deals' },
   { id: 'pipeline', label: 'Pipeline' },
   { id: 'activities', label: 'Activity' },
+  { id: 'investors', label: 'Investors' },
 ];
 
 // ═══════════════════════════════════════════
@@ -255,7 +257,7 @@ function ContactDetail({ contact, onClose, onDelete }: {
 // Main CRM View
 // ═══════════════════════════════════════════
 export default function CRMView() {
-  const [tab, setTab] = useState<'contacts' | 'deals' | 'accounts' | 'activities' | 'pipeline'>('contacts');
+  const [tab, setTab] = useState<'contacts' | 'deals' | 'accounts' | 'activities' | 'pipeline' | 'investors'>('contacts');
   const [showAdd, setShowAdd] = useState(false);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -1025,6 +1027,9 @@ export default function CRMView() {
               </div>
             </div>
           )}
+
+          {/* ── Investors Tab (EdgeIQ Capital) ── */}
+          {tab === 'investors' && <InvestorsPanel />}
         </div>
 
         {/* Contact Detail Panel */}

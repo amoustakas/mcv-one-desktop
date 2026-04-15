@@ -61,8 +61,15 @@ const EpicBoardView = lazyRetry(() => import('./views/EpicBoardView'));
 const SuiteView = lazyRetry(() => import('./views/suites/SuiteView'));
 const VentureIntegrationsView = lazyRetry(() => import('./views/VentureIntegrationsView'));
 const CRMView = lazyRetry(() => import('./views/CRMView'));
+const CapitalGlobalView = lazyRetry(() => import('./views/CapitalGlobalView'));
+const CapitalVentureView = lazyRetry(() => import('./views/CapitalVentureView'));
+const CapitalRoundDetailView = lazyRetry(() => import('./views/CapitalRoundDetailView'));
 const ForgeView = lazyRetry(() => import('./views/ForgeView'));
 const DocsHub = lazyRetry(() => import('./views/DocsHub'));
+const BlogAdmin = lazyRetry(() => import('./views/BlogAdmin'));
+const VentureSiteAdmin = lazyRetry(() => import('./views/VentureSiteAdmin'));
+const AnnouncementsAdmin = lazyRetry(() => import('./views/AnnouncementsAdmin'));
+const TaxonomyAdmin = lazyRetry(() => import('./views/TaxonomyAdmin'));
 const AIStudioView = lazyRetry(() => import('./views/AIStudioView'));
 const SessionsView = lazyRetry(() => import('./views/SessionsView'));
 const PromptComposer = lazyRetry(() => import('./views/PromptComposer'));
@@ -216,12 +223,26 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <SuiteView suiteId="arcade-lab" />;
     case 'crm':
       return <CRMView />;
+    case 'capital':
+      return <CapitalGlobalView />;
+    case 'capital-venture':
+      return <CapitalVentureView />;
+    case 'capital-round-detail':
+      return <CapitalRoundDetailView />;
     case 'comms-hub':
       return <CommsHub />;
     case 'forge':
       return <ForgeView />;
     case 'docs':
       return <DocsHub />;
+    case 'blog':
+      return <BlogAdmin />;
+    case 'venture-site':
+      return <VentureSiteAdmin />;
+    case 'announcements':
+      return <AnnouncementsAdmin />;
+    case 'taxonomy':
+      return <TaxonomyAdmin />;
     case 'ai-studio':
       return <AIStudioView />;
     case 'sessions':
@@ -484,7 +505,22 @@ function Breadcrumbs() {
 // LayoutPicker moved to src/components/LayoutPicker.tsx
 
 
+// Public surface bypass — renders /p/:venture/... outside the authenticated
+// app shell (no NavRail, no ChatDock, no settings). Keeps published pages
+// SSR-friendly later, and prevents the heavy dashboard chrome from flashing
+// on a visitor's first paint.
+const PublicRoute = lazyRetry(() => import('./views/public/PublicRoute'));
+
 export default function App() {
+  // Public content bypass — check before any app shell mounts.
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/p/')) {
+    return (
+      <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.6 }}>Loading…</div>}>
+        <PublicRoute pathname={window.location.pathname} />
+      </Suspense>
+    );
+  }
+
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
   const { chatDocked, toggleChatDock, setView, toggleSplit, mode, switchToGlobal, switchToVenture, goBack, goForward } = useNavigation();

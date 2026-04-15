@@ -1,11 +1,19 @@
 import { useEffect, useState } from 'react';
-import { Activity, Package, Globe, FileText, Target, Shield, MessageSquare } from 'lucide-react';
+import { Activity, Package, Globe, FileText, Target, Shield, MessageSquare, Check } from 'lucide-react';
 import { GlassCard, Button } from '../ui';
 import { apiPost } from '../../lib/api/client';
 import { summarizeSnapshot, healthColor, type SnapshotSummary } from '../../lib/ventures/snapshot';
 import type { Venture } from '../../lib/ventures';
 import { useNavigation } from '../../stores/navigation';
 import { useChatStore } from '../../stores/chat';
+
+interface UnconfirmedAsset {
+  id: string;
+  kind: string;
+  name: string;
+  url?: string | null;
+  tier: number;
+}
 
 // Human-visible rendering of the same composite state the venture_snapshot
 // NAOS tool returns — reuses summarizeSnapshot() so the health-score math
@@ -29,7 +37,110 @@ export default function VentureSnapshotCard({ venture }: Props) {
   const chatDocked = useNavigation(s => s.chatDocked);
   const toggleChatDock = useNavigation(s => s.toggleChatDock);
   const setChatVenture = useNavigation(s => s.setChatVenture);
+  const openVentureDetailTab = useNavigation(s => s.openVentureDetailTab);
+  const switchToVenture = useNavigation(s => s.switchToVenture);
   const setInputText = useChatStore(s => s.setInputText);
+
+  // For complex workflows (DNS verification, team invitations, etc.) we
+  // jump to the relevant tab in VentureDetailView rather than inlining a
+  // stubbed mini-flow that would lie about what it actually does.
+  function jumpToTab(tab: string) {
+    switchToVenture(venture.id);
+    openVentureDetailTab(tab);
+  }
+
+  // Inline asset confirmation picker state
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pending, setPending] = useState<UnconfirmedAsset[]>([]);
+  const [pickerLoading, setPickerLoading] = useState(false);
+  const [confirmingIds, setConfirmingIds] = useState<Set<string>>(new Set());
+
+  // Inline apply-templates picker state — for empty-docs shortcut
+  const [applyPickerOpen, setApplyPickerOpen] = useState(false);
+  const [applyingDept, setApplyingDept] = useState<string | null>(null);
+
+  async function applyTemplatesForDept(dept: string) {
+    if (applyingDept) return;
+    setApplyingDept(dept);
+    try {
+      const result = await apiPost<{ count: number }>('/api/ventures', {
+        action: 'apply-doc-template',
+        venture_id: venture.id,
+        department: dept,
+      });
+      // Optimistic: bump the docs total on the card so the user sees immediate
+      // impact. Real byDept breakdown will reconcile on next full refresh.
+      const added = result?.count ?? 0;
+      setSummary(prev => prev ? {
+        ...prev,
+        docs: {
+          ...prev.docs,
+          total: prev.docs.total + added,
+          byDept: { ...prev.docs.byDept, [dept]: (prev.docs.byDept[dept] || 0) + added },
+        },
+      } : prev);
+      setApplyPickerOpen(false);
+    } catch {
+      // keep picker open so user can retry or pick a different dept
+    } finally {
+      setApplyingDept(null);
+    }
+  }
+
+  async function openConfirmPicker() {
+    if (pickerOpen) { setPickerOpen(false); return; }
+    setPickerOpen(true);
+    setPickerLoading(true);
+    try {
+      const data = await apiPost<{ assets: (UnconfirmedAsset & { confirmed: boolean })[] }>(
+        '/api/ventures',
+        { action: 'list-assets', venture_id: venture.id },
+      );
+      setPending((data.assets || []).filter(a => !a.confirmed));
+    } catch {
+      setPending([]);
+    } finally {
+      setPickerLoading(false);
+    }
+  }
+
+  async function confirmOne(id: string) {
+    if (confirmingIds.has(id)) return;
+    setConfirmingIds(prev => new Set(prev).add(id));
+    try {
+      await apiPost('/api/ventures', { action: 'confirm-asset', id, confirmed: true });
+      // Optimistic: remove from pending list + bump summary counts so the
+      // card's tile updates immediately. Backend quest/stats refresh happens
+      // via list-snapshots next time the view reloads.
+      setPending(prev => prev.filter(a => a.id !== id));
+      setSummary(prev => prev ? {
+        ...prev,
+        assets: {
+          ...prev.assets,
+          confirmed: prev.assets.confirmed + 1,
+          discovered: Math.max(0, prev.assets.discovered - 1),
+        },
+      } : prev);
+    } catch {
+      // leave in list so user can retry
+    } finally {
+      setConfirmingIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  }
+
+  async function confirmAll() {
+    const ids = pending.map(a => a.id);
+    for (const id of ids) {
+      // sequential to avoid slamming /api/ventures; ids.length usually small
+      // eslint-disable-next-line no-await-in-loop
+      await confirmOne(id);
+    }
+    setPickerOpen(false);
+  }
 
   // "Ask Aegis" — pre-scopes the chat to this venture, pre-fills the prompt
   // with a question grounded in the live snapshot, and opens the chat dock
@@ -159,6 +270,115 @@ export default function VentureSnapshotCard({ venture }: Props) {
         </div>
       </div>
 
+      {summary.assets.discovered > 0 && (
+        <div className="vsc-confirm-row">
+          <button className="vsc-confirm-toggle" onClick={openConfirmPicker} type="button">
+            <Package size={11} />
+            <span>
+              <strong>{summary.assets.discovered}</strong> discovered asset{summary.assets.discovered === 1 ? '' : 's'} awaiting confirmation
+            </span>
+            <span className="vsc-confirm-cta">{pickerOpen ? 'Collapse' : 'Review'}</span>
+          </button>
+        </div>
+      )}
+
+      {summary.docs.total === 0 && (
+        <div className="vsc-confirm-row">
+          <button
+            className="vsc-confirm-toggle vsc-doc-cta"
+            onClick={() => setApplyPickerOpen(o => !o)}
+            type="button"
+          >
+            <FileText size={11} />
+            <span>No documentation yet — seed a department to get started</span>
+            <span className="vsc-confirm-cta">{applyPickerOpen ? 'Collapse' : 'Seed'}</span>
+          </button>
+        </div>
+      )}
+
+      {summary.domains.pending > 0 && (
+        <div className="vsc-confirm-row">
+          <button
+            className="vsc-confirm-toggle vsc-domain-cta"
+            onClick={() => jumpToTab('domains')}
+            type="button"
+            title="Open the Domains tab to run DNS verification"
+          >
+            <Globe size={11} />
+            <span>
+              <strong>{summary.domains.pending}</strong> domain{summary.domains.pending === 1 ? '' : 's'} pending DNS verification
+            </span>
+            <span className="vsc-confirm-cta">Verify →</span>
+          </button>
+        </div>
+      )}
+
+      {applyPickerOpen && summary.docs.total === 0 && (
+        <div className="vsc-picker" role="region" aria-label="Seed department templates">
+          <div className="vsc-picker-head">
+            <span>Pick a department to seed</span>
+            {applyingDept && <span style={{ color: 'var(--cyan)' }}>Applying {applyingDept}…</span>}
+          </div>
+          <div className="vsc-picker-chips">
+            {(['legal', 'compliance', 'research', 'finance', 'ops', 'product'] as const).map(d => (
+              <button
+                key={d}
+                className="vsc-picker-chip vsc-dept-chip"
+                onClick={() => applyTemplatesForDept(d)}
+                disabled={!!applyingDept}
+              >
+                <span className="vsc-chip-name">{d.charAt(0).toUpperCase() + d.slice(1)}</span>
+                <span className="vsc-chip-action">
+                  {applyingDept === d ? '…' : <Check size={11} />}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {pickerOpen && (
+        <div className="vsc-picker" role="region" aria-label="Confirm discovered assets">
+          {pickerLoading && <div className="vsc-picker-loading">Loading discoveries…</div>}
+          {!pickerLoading && pending.length === 0 && (
+            <div className="vsc-picker-empty">No unconfirmed assets remain — refresh the page to recount.</div>
+          )}
+          {!pickerLoading && pending.length > 0 && (
+            <>
+              <div className="vsc-picker-head">
+                <span>{pending.length} to review · click to confirm</span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  icon={<Check size={11} />}
+                  onClick={confirmAll}
+                  disabled={confirmingIds.size > 0}
+                >
+                  Confirm all
+                </Button>
+              </div>
+              <div className="vsc-picker-chips">
+                {pending.map(a => (
+                  <button
+                    key={a.id}
+                    className="vsc-picker-chip"
+                    onClick={() => confirmOne(a.id)}
+                    disabled={confirmingIds.has(a.id)}
+                    title={a.url || `${a.kind} · tier ${a.tier}`}
+                  >
+                    <span className="vsc-chip-kind">{a.kind}</span>
+                    <span className="vsc-chip-name">{a.name}</span>
+                    <span className="vsc-chip-action">
+                      {confirmingIds.has(a.id) ? '…' : <Check size={11} />}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       <div className="vsc-footer">
         <div className="vsc-weights">
           <Shield size={11} style={{ color: 'var(--text-muted)' }} />
@@ -230,4 +450,31 @@ const styles = `
   .vsc-tile-secondary { font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); }
   .vsc-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 8px; border-top: 1px solid var(--border); flex-wrap: wrap; }
   .vsc-weights { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); flex: 1; min-width: 200px; }
+  .vsc-confirm-row { padding: 2px 0; }
+  .vsc-confirm-toggle { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; background: rgba(139, 92, 246, 0.08); border: 1px dashed rgba(139, 92, 246, 0.35); color: var(--text-secondary); font-size: 12px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.12s; text-align: left; }
+  .vsc-confirm-toggle:hover { background: rgba(139, 92, 246, 0.16); border-color: rgba(139, 92, 246, 0.6); color: var(--text-primary); }
+  .vsc-confirm-toggle strong { color: var(--text-primary); font-weight: 700; font-family: var(--font-mono); }
+  .vsc-confirm-toggle svg { color: #8B5CF6; flex-shrink: 0; }
+  .vsc-confirm-toggle > span:first-of-type { flex: 1; }
+  .vsc-confirm-cta { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #8B5CF6; font-family: var(--font-display); }
+  .vsc-picker { padding: 10px 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); display: flex; flex-direction: column; gap: 8px; animation: vsc-picker-in 0.15s ease-out; }
+  @keyframes vsc-picker-in { from { transform: translateY(-4px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .vsc-picker-loading, .vsc-picker-empty { padding: 8px; font-size: 11px; color: var(--text-muted); text-align: center; }
+  .vsc-picker-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); font-family: var(--font-display); }
+  .vsc-picker-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .vsc-picker-chip { display: flex; align-items: center; gap: 6px; padding: 6px 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-full); color: var(--text-secondary); font-size: 11px; cursor: pointer; transition: all 0.12s; max-width: 100%; }
+  .vsc-picker-chip:hover:not(:disabled) { border-color: #10B981; color: var(--text-primary); background: rgba(16, 185, 129, 0.10); }
+  .vsc-picker-chip:disabled { opacity: 0.55; cursor: wait; }
+  .vsc-chip-kind { font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); font-family: var(--font-mono); }
+  .vsc-chip-name { font-weight: 600; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .vsc-chip-action { display: flex; align-items: center; color: #10B981; }
+  .vsc-doc-cta { background: rgba(245, 158, 11, 0.08); border-color: rgba(245, 158, 11, 0.35); }
+  .vsc-doc-cta:hover { background: rgba(245, 158, 11, 0.16); border-color: rgba(245, 158, 11, 0.6); }
+  .vsc-doc-cta svg { color: #F59E0B; }
+  .vsc-doc-cta .vsc-confirm-cta { color: #F59E0B; }
+  .vsc-dept-chip:hover:not(:disabled) { border-color: #F59E0B; background: rgba(245, 158, 11, 0.10); }
+  .vsc-domain-cta { background: rgba(16, 185, 129, 0.08); border-color: rgba(16, 185, 129, 0.35); }
+  .vsc-domain-cta:hover { background: rgba(16, 185, 129, 0.16); border-color: rgba(16, 185, 129, 0.6); }
+  .vsc-domain-cta svg { color: #10B981; }
+  .vsc-domain-cta .vsc-confirm-cta { color: #10B981; }
 `;
