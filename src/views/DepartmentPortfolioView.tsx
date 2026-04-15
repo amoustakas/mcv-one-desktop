@@ -233,6 +233,10 @@ export default function DepartmentPortfolioView() {
         .dp-matrix-count { font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--text-primary); }
         .dp-matrix-venture { font-size: 13px; font-weight: 600; color: var(--text-primary); padding: 8px 12px; background: var(--bg-card); border-radius: var(--radius-sm); min-width: 180px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
         .dp-matrix-venture-badge { font-family: var(--font-mono); font-size: 11px; padding: 2px 8px; border-radius: var(--radius-full); border: 1px solid; }
+        .dp-matrix-legend { display: flex; align-items: center; gap: 8px; padding: 12px 4px 0; font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); flex-wrap: wrap; }
+        .dp-legend-label { color: var(--text-secondary); margin-right: 4px; }
+        .dp-legend-chip { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; padding: 4px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border); font-weight: 700; }
+        .dp-legend-note { color: var(--text-muted); font-style: italic; margin-left: 6px; }
       `}</style>
     </PageShell>
   );
@@ -253,10 +257,32 @@ function MatrixGrid({ snapshots, onCellClick }: { snapshots: PortfolioSnapshotRo
   const deptTotals: Record<Department, number> = {
     legal: 0, compliance: 0, research: 0, finance: 0, ops: 0, product: 0,
   };
+  let maxCellCount = 0;
   for (const s of snapshots) {
     for (const d of DEPT_ORDER) {
-      deptTotals[d] += s.summary.docs.byDept[d] || 0;
+      const count = s.summary.docs.byDept[d] || 0;
+      deptTotals[d] += count;
+      if (count > maxCellCount) maxCellCount = count;
     }
+  }
+  // Coverage baseline: 5 docs = "fully papered" per dept. Cells normalize
+  // against max(maxCell, 5) so one outlier venture doesn't wash out the rest,
+  // but a heavily-documented portfolio still saturates its top cells.
+  const normalizer = Math.max(maxCellCount, 5);
+
+  // Compose a cell background from the department's color tinted at an
+  // opacity derived from `count / normalizer`. 0 intensity yields a flat
+  // surface (visually: "missing documentation"); 1.0 is near-full color.
+  function heatmapStyle(count: number, hex: string): React.CSSProperties {
+    if (count === 0) return {};
+    const intensity = Math.min(count / normalizer, 1);
+    // rgba from hex — #RRGGBB → r,g,b
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    const bg = `rgba(${r}, ${g}, ${b}, ${0.08 + intensity * 0.28})`;
+    const border = `rgba(${r}, ${g}, ${b}, ${0.3 + intensity * 0.4})`;
+    return { background: bg, borderColor: border };
   }
 
   const healthBadge = (score: number) => {
@@ -297,10 +323,12 @@ function MatrixGrid({ snapshots, onCellClick }: { snapshots: PortfolioSnapshotRo
               </td>
               {DEPT_ORDER.map(d => {
                 const count = s.summary.docs.byDept[d] || 0;
+                const cellStyle = heatmapStyle(count, DEPT_CONFIG[d].color);
                 return (
                   <td
                     key={d}
                     className={`dp-matrix-td ${count === 0 ? 'empty' : ''}`}
+                    style={cellStyle}
                     onClick={() => onCellClick(d)}
                     title={`${s.name} · ${DEPT_CONFIG[d].label} · ${count} doc${count === 1 ? '' : 's'}`}
                   >
@@ -322,6 +350,20 @@ function MatrixGrid({ snapshots, onCellClick }: { snapshots: PortfolioSnapshotRo
           </tr>
         </tbody>
       </table>
+
+      <div className="dp-matrix-legend">
+        <span className="dp-legend-label">Coverage (relative to max {normalizer}):</span>
+        {[0, 1, 2, 3, 5].map(n => (
+          <span
+            key={n}
+            className="dp-legend-chip"
+            style={heatmapStyle(n, '#00F0FF')}
+          >
+            {n === 0 ? 'empty' : n}
+          </span>
+        ))}
+        <span className="dp-legend-note">Higher saturation = more documentation</span>
+      </div>
     </div>
   );
 }
