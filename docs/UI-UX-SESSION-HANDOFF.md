@@ -106,6 +106,17 @@ optimistic vs. server-persisted.
 | `FraudRuleDetailDialog` (delete) | POST `delete-fraud-rule` — optimistic remove + restore on failure | server ✓ |
 | `NexusAlertDetailDialog` (acknowledge/register/exempt) | `useComplianceStore.updateNexusStatus` | local (needs migration for `nexus_alert_status` column) |
 
+**Invoice PDF download wired end-to-end (client-side).** `InvoiceDetailDialog`
+"Download PDF" button now opens a print-ready HTML invoice in a new
+window via `src/lib/invoice-print.ts` and auto-triggers the browser's
+print dialog. Users save as PDF from there. Implementation uses a Blob
+URL via `URL.createObjectURL` for proper document loading. The HTML
+template includes line items, totals with tax/balance breakdown, payment
+history, status pill, and brand-color accent — works offline and respects
+venture branding when the brand prop is supplied. When a real
+`/api/invoice-pdf` endpoint ships with server-side PDF generation and
+signed download URLs, swap the call site without touching the dialog.
+
 **Review moderation wired end-to-end.** `CommerceReviews` Approve/Reject
 buttons call `useCommerceSurfaceStore.moderateReview` → POST
 `moderate-review` (new action in `commerce-surface.ts`). The handler does

@@ -9,6 +9,7 @@ import { useCommerceStore } from '../stores/commerce';
 import { useNavigation } from '../stores/navigation';
 import { staggerContainer, fadeInUp } from '../lib/animations';
 import { useToast } from '../components/Toasts';
+import { printInvoice } from '../lib/invoice-print';
 const InvoiceDetailDialog = lazyRetry(() => import('../components/commerce/InvoiceDetailDialog'));
 
 export default function CommerceInvoicesView() {
@@ -259,7 +260,19 @@ export default function CommerceInvoicesView() {
             invoice={selectedInvoice}
             onSend={async (id) => { await handleSend(id); setSelectedInvoiceId(null); }}
             onMarkPaid={async (id, amount) => { await handleMarkPaid(id, amount); setSelectedInvoiceId(null); }}
-            onDownload={(id) => addToast({ type: 'info', message: `PDF export queued for ${id.slice(0, 8)} (server-side rendering pending)` })}
+            onDownload={(id) => {
+              const inv = invoices.find((x) => String((x as unknown as Record<string, unknown>).id) === id) as unknown as Parameters<typeof printInvoice>[0] | undefined;
+              if (!inv) {
+                addToast({ type: 'error', message: 'Invoice not found' });
+                return;
+              }
+              const opened = printInvoice(inv);
+              if (opened) {
+                addToast({ type: 'info', message: 'Opened print preview — use your browser dialog to save as PDF' });
+              } else {
+                addToast({ type: 'warning', message: 'Print window blocked — allow popups for this site' });
+              }
+            }}
           />
         )}
       </Suspense>
