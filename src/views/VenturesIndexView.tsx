@@ -49,7 +49,9 @@ export default function VenturesIndexView({ onSelect, onNew }: VenturesIndexProp
   const [contextMenu, setContextMenu] = useState<{ venture: Venture; x: number; y: number } | null>(null);
   const [promoteDialogOpen, setPromoteDialogOpen] = useState(false);
   const [promoting, setPromoting] = useState(false);
-  const [promoteResult, setPromoteResult] = useState<{ success: number; skipped: number; failed: number } | null>(null);
+  const [promoteResult, setPromoteResult] = useState<{ success: number; skipped: number; failed: number; promotedIds: string[] } | null>(null);
+  const [undoingPromote, setUndoingPromote] = useState(false);
+  const [promoteCountdown, setPromoteCountdown] = useState(0);
 
   // Exit compare mode cleans selection so the next entry starts fresh
   function toggleCompareMode() {
@@ -181,19 +183,23 @@ export default function VenturesIndexView({ onSelect, onNew }: VenturesIndexProp
     const toPromote = ids.filter(id => !remote?.find(v => v.id === id)?.clerkOrgId);
     const skipped = ids.length - toPromote.length;
 
+    // Capture venture_ids for successful promotions so Undo can unlink them.
+    // We pair the id with the result so a partial-success run doesn't undo
+    // ventures that failed to provision in the first place.
     const results = await Promise.all(toPromote.map(venture_id =>
       apiPost<{ clerk_org_id: string }>('/api/ventures', {
         action: 'provision-org',
         venture_id,
         mirror_members: true,
-      }).then(() => ({ ok: true as const }))
-        .catch(() => ({ ok: false as const }))
+      }).then(() => ({ ok: true as const, venture_id }))
+        .catch(() => ({ ok: false as const, venture_id }))
     ));
 
     const success = results.filter(r => r.ok).length;
     const failed = results.length - success;
+    const promotedIds = results.filter(r => r.ok).map(r => r.venture_id);
     setPromoting(false);
-    setPromoteResult({ success, skipped, failed });
+    setPromoteResult({ success, skipped, failed, promotedIds });
 
     // Refresh ventures list so new clerk_org_id values populate + Tenant
     // badges appear on the newly-promoted cards
@@ -204,7 +210,43 @@ export default function VenturesIndexView({ onSelect, onNew }: VenturesIndexProp
       // ignore
     }
 
-    setTimeout(() => setPromoteResult(null), 10000);
+    // Longer undo window than apply-templates (15s → 20s) because tenant
+    // promotion is a higher-stakes, more-external action. Operator should
+    // have extra beats to notice and reverse.
+    setPromoteCountdown(20);
+  }
+
+  // Tick the promote-undo countdown
+  useEffect(() => {
+    if (promoteCountdown <= 0) return;
+    const id = setTimeout(() => {
+      if (promoteCountdown <= 1) {
+        setPromoteResult(null);
+        setPromoteCountdown(0);
+      } else {
+        setPromoteCountdown(c => c - 1);
+      }
+    }, 1000);
+    return () => clearTimeout(id);
+  }, [promoteCountdown]);
+
+  async function undoLastPromote() {
+    if (!promoteResult || undoingPromote || promoteResult.promotedIds.length === 0) return;
+    setUndoingPromote(true);
+    try {
+      // Parallel unlink — idempotent server-side (unlink-org just nulls
+      // clerk_org_id). Per-venture failures don't abort the run.
+      await Promise.all(promoteResult.promotedIds.map(venture_id =>
+        apiPost<{ venture: Venture }>('/api/ventures', { action: 'unlink-org', venture_id })
+          .catch(() => null)
+      ));
+      const data = await apiPost<{ ventures: Venture[] }>('/api/ventures', { action: 'list' });
+      setRemote(data.ventures || []);
+    } finally {
+      setUndoingPromote(false);
+      setPromoteResult(null);
+      setPromoteCountdown(0);
+    }
   }
 
   useEffect(() => {
@@ -418,7 +460,19 @@ export default function VenturesIndexView({ onSelect, onNew }: VenturesIndexProp
             {promoteResult.skipped > 0 && ` · ${promoteResult.skipped} already provisioned`}
             {promoteResult.failed > 0 && ` · ${promoteResult.failed} failed`}
           </span>
-          <button className="vix-toast-close" onClick={() => setPromoteResult(null)}><X size={12} /></button>
+          {promoteResult.promotedIds.length > 0 && (
+            <button
+              className="vix-toast-undo"
+              onClick={undoLastPromote}
+              disabled={undoingPromote}
+              title="Unlink just-promoted ventures — Clerk org records remain in the Clerk dashboard until cleaned manually"
+            >
+              {undoingPromote ? 'Undoing…' : `Undo${promoteCountdown > 0 ? ` · ${promoteCountdown}s` : ''}`}
+            </button>
+          )}
+          <button className="vix-toast-close" onClick={() => { setPromoteResult(null); setPromoteCountdown(0); }}>
+            <X size={12} />
+          </button>
         </div>
       )}
 
