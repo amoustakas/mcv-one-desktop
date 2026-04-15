@@ -8,6 +8,8 @@ import { useKitStore } from '../stores/kits';
 import { useCommsActions } from '../stores/comms-actions';
 import { cn } from '../lib/utils';
 import { scoreItem, getRecentIds, pushRecentId } from '../lib/palette-scoring';
+import { SETTINGS_REGISTRY } from '../lib/settings/registry';
+import { Settings as SettingsIcon } from 'lucide-react';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -21,7 +23,7 @@ interface PaletteItem {
   category: Category;
 }
 
-type Category = 'Views' | 'Ventures' | 'Comms' | 'Documents' | 'Tasks' | 'Contacts' | 'Commands' | 'Kits' | 'Recent';
+type Category = 'Views' | 'Ventures' | 'Comms' | 'Documents' | 'Tasks' | 'Contacts' | 'Commands' | 'Kits' | 'Settings' | 'Recent';
 
 interface CachedData {
   docs: PaletteItem[];
@@ -77,7 +79,7 @@ const SHORTCUTS: ShortcutHint[] = [
 
 /* ─── Category order & icons ─────────────────────────────────────── */
 
-const CATEGORY_ORDER: Category[] = ['Recent', 'Views', 'Ventures', 'Comms', 'Kits', 'Documents', 'Tasks', 'Contacts', 'Commands'];
+const CATEGORY_ORDER: Category[] = ['Recent', 'Views', 'Ventures', 'Comms', 'Kits', 'Documents', 'Tasks', 'Contacts', 'Settings', 'Commands'];
 
 const CATEGORY_ICONS: Record<Category, React.ReactNode> = {
   Recent: <Clock size={11} />,
@@ -89,6 +91,7 @@ const CATEGORY_ICONS: Record<Category, React.ReactNode> = {
   Contacts: <Users size={11} />,
   Commands: <Slash size={11} />,
   Kits: <Wrench size={11} />,
+  Settings: <SettingsIcon size={11} />,
 };
 
 /* ─── Component ──────────────────────────────────────────────────── */
@@ -270,6 +273,22 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
     { id: 'comms-call', label: 'Make Call', sublabel: 'Voice call via Twilio', category: 'Comms', icon: <Phone size={14} />, action: () => { openFab('call'); } },
   ];
 
+  // Settings deep-links — each registered setting becomes a palette result
+  // that opens Settings on its section + highlights the row briefly.
+  const settingsItems: PaletteItem[] = SETTINGS_REGISTRY.map((s) => ({
+    id: `setting-${s.id}`,
+    label: s.label,
+    sublabel: s.description || `Settings · ${s.section}`,
+    icon: <SettingsIcon size={14} />,
+    category: 'Settings' as Category,
+    action: () => {
+      // Build a URL with the deep-link params SettingsView already handles
+      const params = new URLSearchParams({ tab: s.section, setting: s.id });
+      window.history.pushState({}, '', `${window.location.pathname}?${params}`);
+      setView('settings');
+    },
+  }));
+
   const allItems = [
     ...staticItems,
     ...commsItems,
@@ -277,6 +296,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
     ...cacheRef.current.docs,
     ...cacheRef.current.tasks,
     ...cacheRef.current.contacts,
+    ...settingsItems,
     ...commandItems,
   ];
 

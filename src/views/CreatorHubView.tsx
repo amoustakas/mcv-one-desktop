@@ -104,7 +104,11 @@ export default function CreatorHubView() {
                 );
               })}
               {royaltyAgreements.length === 0 && (
-                <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>No royalty agreements yet.</p>
+                <EmptyState
+                  icon={<Award size={20} />}
+                  title="No royalty agreements yet"
+                  description="Create one to track creator payouts, splits, and resale royalties"
+                />
               )}
             </GlassCard>
 
@@ -123,7 +127,11 @@ export default function CreatorHubView() {
                 );
               })}
               {escrowAgreements.length === 0 && (
-                <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>No escrow agreements yet.</p>
+                <EmptyState
+                  icon={<DollarSign size={20} />}
+                  title="No escrow agreements yet"
+                  description="Create milestone-based deals with automated payments on completion"
+                />
               )}
             </GlassCard>
           </div>

@@ -1,9 +1,9 @@
-import { Sparkles, TrendingUp, AlertTriangle, CheckSquare } from 'lucide-react';
+import { Sparkles, TrendingUp, AlertTriangle, CheckSquare, DollarSign, Users, ShoppingBag, Activity } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { SectionCard, Badge, GlassCard } from '../ui';
+import { SectionCard, Badge, GlassCard, Tooltip } from '../ui';
 import { ventures } from '../../lib/ventures';
 import { staggerContainer, staggerItem } from '../../lib/motion/variants';
-import { useNavigation } from '../../stores/navigation';
+import { useNavigation, type ViewId } from '../../stores/navigation';
 import { useTheme } from '../../stores/theme';
 import SparkLine from '../charts/SparkLine';
 
@@ -30,12 +30,27 @@ interface Props {
 
 export default function VentureRollupGrid({ rollups = {}, revenueTrends = {} }: Props) {
   const switchToVenture = useNavigation((s) => s.switchToVenture);
+  const setView = useNavigation((s) => s.setView);
   const applyVentureTheme = useTheme((s) => s.applyVentureTheme);
 
   const enterVenture = (slug: string) => {
     switchToVenture(slug);
     applyVentureTheme(slug);
   };
+
+  const enterVentureView = (slug: string, view: ViewId) => {
+    switchToVenture(slug);
+    applyVentureTheme(slug);
+    setView(view);
+  };
+
+  // Quick-jump targets per rollup card. Each chip = enter venture + open view.
+  const QUICK_JUMPS: { view: ViewId; label: string; icon: typeof DollarSign; tip: string }[] = [
+    { view: 'commerce' as ViewId, label: 'Commerce', icon: ShoppingBag, tip: 'Orders & products' },
+    { view: 'crm' as ViewId, label: 'CRM', icon: Users, tip: 'Contacts & deals' },
+    { view: 'financials-dashboard' as ViewId, label: 'Financials', icon: DollarSign, tip: 'P&L & cash' },
+    { view: 'signals' as ViewId, label: 'Signals', icon: Activity, tip: 'Live activity' },
+  ];
 
   const activeCount = ventures.filter((v) => v.status === 'active' || v.status === 'development').length;
 
@@ -104,6 +119,26 @@ export default function VentureRollupGrid({ rollups = {}, revenueTrends = {} }: 
                     <span className="vrg-m-l">alerts</span>
                   </div>
                 </div>
+
+                {/* Quick-jump chips — bypass the card's main click-handler */}
+                <div className="vrg-jumps" onClick={(e) => e.stopPropagation()}>
+                  {QUICK_JUMPS.map((j) => {
+                    const Icon = j.icon;
+                    return (
+                      <Tooltip key={j.view} content={`${v.name} → ${j.tip}`}>
+                        <button
+                          type="button"
+                          className="vrg-jump-btn"
+                          onClick={() => enterVentureView(v.id, j.view)}
+                          aria-label={`Open ${v.name} ${j.label}`}
+                        >
+                          <Icon size={10} />
+                          <span>{j.label}</span>
+                        </button>
+                      </Tooltip>
+                    );
+                  })}
+                </div>
               </GlassCard>
             </motion.div>
           );
@@ -128,6 +163,9 @@ export default function VentureRollupGrid({ rollups = {}, revenueTrends = {} }: 
         .vrg-spark-wrap { flex: 1; min-width: 0; display: flex; align-items: center; }
         .vrg-spark-delta { font-size: 11px; font-weight: 600; font-family: var(--font-mono); white-space: nowrap; }
         .vrg-spark-label { color: var(--text-muted); font-weight: 400; font-size: 9px; text-transform: uppercase; letter-spacing: 0.3px; }
+        .vrg-jumps { display: flex; flex-wrap: wrap; gap: 4px; padding-top: 8px; border-top: 1px dashed var(--border); }
+        .vrg-jump-btn { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; font-size: 10px; font-weight: 500; color: var(--text-muted); background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-full); transition: all var(--transition-fast); }
+        .vrg-jump-btn:hover { color: var(--cyan); border-color: var(--border-active); background: rgba(0, 240, 255, 0.06); transform: translateY(-1px); }
       `}</style>
     </SectionCard>
   );

@@ -196,7 +196,11 @@ export default function ContactCenterView() {
                   <Badge color={m.status === 'delivered' ? '#10B981' : '#F59E0B'}>{String(m.status || 'sent')}</Badge>
                 </div>
               )) ?? (
-                <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>No messages yet. Check Twilio is connected in Settings.</p>
+                <EmptyState
+                  icon={<MessageSquare size={20} />}
+                  title="No messages yet"
+                  description="Check Twilio is connected in Settings → Integrations"
+                />
               )}
             </GlassCard>
 
@@ -216,7 +220,11 @@ export default function ContactCenterView() {
                   <Badge>{String(c.status || 'queued')}</Badge>
                 </div>
               )) ?? (
-                <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>No calls yet.</p>
+                <EmptyState
+                  icon={<Phone size={20} />}
+                  title="No calls yet"
+                  description="Initiate a call from the Compose tab"
+                />
               )}
             </GlassCard>
           </div>

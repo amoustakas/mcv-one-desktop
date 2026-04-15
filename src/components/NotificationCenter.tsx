@@ -3,7 +3,7 @@ import { Bell, Check, Trash2, Zap, GitBranch, Cloud, Users, FileText, MessageSqu
 import { supabase } from '../lib/supabase';
 import { useNotificationStore, routeNotification } from '../stores/notifications';
 import type { AppNotification } from '../stores/notifications';
-import { GlassCard, Button, Badge, Tooltip } from './ui';
+import { GlassCard, Button, Badge, Tooltip, Popover, EmptyState } from './ui';
 import { cn, timeAgo } from '../lib/utils';
 import { useNavigation, type ViewId } from '../stores/navigation';
 
@@ -52,7 +52,7 @@ function mapToStore(row: SupabaseNotification): AppNotification {
 export default function NotificationCenter() {
   const [open, setOpen] = useState(false);
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const setView = useNavigation((s) => s.setView);
 
   const notifications = useNotificationStore((s) => s.notifications);
@@ -76,13 +76,8 @@ export default function NotificationCenter() {
     return () => clearInterval(id);
   }, []);
 
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    if (open) document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [open]);
+  // Click-outside + esc-to-close handled by the Popover primitive — no
+  // local listener needed since the swap from absolute-positioned div.
 
   async function loadNotifications() {
     if (!supabase) return;
@@ -109,13 +104,13 @@ export default function NotificationCenter() {
   }
 
   return (
-    <div className="nc" ref={ref}>
-      <button className="nc-bell" onClick={() => setOpen(!open)} title="Notifications">
+    <div className="nc">
+      <button ref={triggerRef} className="nc-bell" onClick={() => setOpen(!open)} title="Notifications">
         <Bell size={15} />
         {unreadCount > 0 && <Badge color="var(--error)" size="sm" className="nc-badge">{unreadCount > 9 ? '9+' : unreadCount}</Badge>}
       </button>
 
-      {open && (
+      <Popover open={open} onClose={() => setOpen(false)} anchorRef={triggerRef} side="bottom" align="end" className="nc-popover">
         <GlassCard variant="neural" className="nc-dropdown">
           <div className="nc-header">
             <span className="nc-title">Notifications</span>
@@ -147,7 +142,13 @@ export default function NotificationCenter() {
                 .filter((n) => routeNotification(n) !== 'queue')
                 .filter((n) => (showUnreadOnly ? !n.read : true));
               if (visible.length === 0) {
-                return <div className="nc-empty">{showUnreadOnly ? 'All caught up' : 'No notifications'}</div>;
+                return (
+                  <EmptyState
+                    icon={<Bell size={20} />}
+                    title={showUnreadOnly ? 'All caught up' : 'No notifications'}
+                    description={showUnreadOnly ? 'Switch to All to see read history' : 'Activity will appear here as it happens'}
+                  />
+                );
               }
               return visible.map((n) => {
                 const Icon = SOURCE_ICONS[n.source] || Bell;
@@ -195,10 +196,12 @@ export default function NotificationCenter() {
             })()}
           </div>
         </GlassCard>
-      )}
+      </Popover>
 
       <style>{`
         .nc { position:relative; }
+        .nc-popover { padding: 0; background: transparent; border: none; box-shadow: none; }
+        .nc-popover .mcv-glass-card { width: 380px; max-width: calc(100vw - 32px); }
 
         .nc-bell { width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:var(--radius-sm); color:var(--text-muted); transition:all 0.15s; position:relative; }
         .nc-bell:hover { background:var(--bg-card); color:var(--text-primary); }
@@ -206,11 +209,10 @@ export default function NotificationCenter() {
         .nc-badge { position:absolute; top:2px; right:2px; min-width:14px; height:14px; font-size:8px; font-weight:700; background:var(--error); color:white; border-radius:var(--radius-full); display:flex; align-items:center; justify-content:center; padding:0 3px; line-height:1; }
 
         .nc-dropdown {
-          position:absolute; top:calc(100% + 8px); right:0;
-          width:380px; max-height:500px;
+          width:100%; max-height:500px;
           border-radius:var(--radius-lg);
           box-shadow:0 20px 60px rgba(0,0,0,0.6), 0 0 30px rgba(0,240,255,0.03);
-          z-index:200; overflow:hidden;
+          overflow:hidden;
           animation:ncIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         }
         @keyframes ncIn { from { opacity:0; transform:translateY(-6px) scale(0.98); } to { opacity:1; transform:translateY(0) scale(1); } }
