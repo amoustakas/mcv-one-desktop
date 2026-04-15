@@ -6,6 +6,7 @@ import { Briefcase, Target, Calendar, ArrowLeft, Users, FileText } from 'lucide-
 import { useNavigation } from '../stores/navigation';
 import { useRound, useCommitmentsByRound, useDocumentsByRound, useUpdateRoundStatus, useUpdateCommitmentStatus } from '../hooks/use-capital';
 import { PageHeader, PageShell, StatCard, GlassCard, GridLayout, Badge, EmptyState, Button } from '../components/ui';
+import InvestorUpdatesPanel from '../components/capital/InvestorUpdatesPanel';
 import { formatMoney } from '../lib/utils';
 import {
   COMMITMENT_STATUS_TRANSITIONS,
@@ -174,6 +175,11 @@ export default function CapitalRoundDetailView() {
             </table>
           </GlassCard>
         )}
+      </div>
+
+      {/* Investor Updates (Content OS-backed) */}
+      <div style={{ marginTop: 24 }}>
+        <InvestorUpdatesPanel ventureId={round.ventureId} roundId={round.id} />
       </div>
 
       {/* Documents */}

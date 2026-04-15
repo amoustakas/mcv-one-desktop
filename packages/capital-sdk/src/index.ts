@@ -17,6 +17,12 @@ export { createActivitiesService, mapActivityRow } from './activities-service';
 export type { ActivitiesService, ActivitiesServiceOptions, ListActivitiesFilters } from './activities-service';
 export { createDashboardService } from './dashboard-service';
 export type { DashboardService, DashboardServiceOptions } from './dashboard-service';
+export { createContentIntegrationService } from './content-integration';
+export type {
+  ContentIntegrationService, ContentIntegrationServiceOptions,
+  RoundContentRole, CapitalContentType, RoundContentLink, RoundContentEntry,
+  CapitalContentRow, CreateRoundContentInput, ContentVisibility, ContentStatus,
+} from './content-integration';
 export { createCapitalEngine } from './create-capital-engine';
 export type { CapitalEngine, CapitalEngineOpts } from './create-capital-engine';
 

@@ -1,28 +1,42 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
+import type { ReactNode } from 'react';
 import { getCapitalEngine } from '../../../../lib/capital';
 
 export const revalidate = 60;
 
 type Params = { ventureSlug: string; roundSlug: string };
 
-async function loadRound(params: Params) {
+async function loadRoundAndContent(params: Params) {
   const engine = getCapitalEngine();
   const round = await engine.rounds.getRoundBySlug(params.ventureSlug, params.roundSlug);
   if (!round || !round.isPublic || (round.status !== 'open' && round.status !== 'closing')) return null;
-  return round;
+
+  const [description, updates] = await Promise.all([
+    engine.content.getRoundDescription(round.id).catch(() => null),
+    engine.content.listRoundUpdates(round.id, { limit: 10 }).catch(() => []),
+  ]);
+
+  const publicUpdates = updates.filter((u) => u.content.visibility === 'public' || u.content.visibility === 'published');
+  return { round, description, publicUpdates };
 }
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const resolved = await params;
-  const round = await loadRound(resolved);
-  if (!round) return { title: 'Raise not found' };
+  const data = await loadRoundAndContent(resolved);
+  if (!data) return { title: 'Raise not found' };
+  const { round, description } = data;
+  const seoTitle = (description?.seo as { title?: string })?.title ?? round.name;
+  const seoDesc = description?.excerpt
+    ?? (description?.seo as { description?: string })?.description
+    ?? round.description
+    ?? `Raising ${round.targetRaise.toLocaleString('en-US', { style: 'currency', currency: round.currency })}`;
   return {
-    title: `${round.name} · MCV Capital`,
-    description: round.description ?? `Raising ${round.targetRaise.toLocaleString('en-US', { style: 'currency', currency: round.currency })}`,
+    title: `${seoTitle} · MCV Capital`,
+    description: seoDesc,
     openGraph: {
-      title: round.name,
-      description: round.description ?? '',
+      title: seoTitle,
+      description: seoDesc,
       url: `https://launchpad.mcv.one/p/${resolved.ventureSlug}/${resolved.roundSlug}`,
       type: 'website',
     },
@@ -33,10 +47,40 @@ function usd(value: number, currency = 'USD') {
   return value.toLocaleString('en-US', { style: 'currency', currency, maximumFractionDigits: 0 });
 }
 
+// Minimal markdown → React renderer. Handles #/##/### headings, - lists, paragraphs.
+// React auto-escapes all text, so no XSS surface.
+function renderMarkdown(md: string): ReactNode {
+  const lines = md.split(/\r?\n/);
+  const blocks: ReactNode[] = [];
+  let listBuf: string[] = [];
+  let key = 0;
+
+  const flushList = () => {
+    if (listBuf.length) {
+      blocks.push(<ul key={key++} style={{ paddingLeft: 24, marginBottom: 16 }}>{listBuf.map((li, i) => <li key={i}>{li}</li>)}</ul>);
+      listBuf = [];
+    }
+  };
+
+  for (const raw of lines) {
+    const t = raw.trim();
+    if (!t) { flushList(); continue; }
+    if (t.startsWith('### ')) { flushList(); blocks.push(<h3 key={key++} style={{ marginTop: 24, marginBottom: 8 }}>{t.slice(4)}</h3>); continue; }
+    if (t.startsWith('## ')) { flushList(); blocks.push(<h2 key={key++} style={{ marginTop: 32, marginBottom: 12, fontSize: 24 }}>{t.slice(3)}</h2>); continue; }
+    if (t.startsWith('# ')) { flushList(); blocks.push(<h1 key={key++} style={{ marginTop: 40, marginBottom: 16, fontSize: 32 }}>{t.slice(2)}</h1>); continue; }
+    if (t.startsWith('- ') || t.startsWith('* ')) { listBuf.push(t.slice(2)); continue; }
+    flushList();
+    blocks.push(<p key={key++} style={{ marginBottom: 12 }}>{t}</p>);
+  }
+  flushList();
+  return blocks;
+}
+
 export default async function RoundPage({ params }: { params: Promise<Params> }) {
   const resolved = await params;
-  const round = await loadRound(resolved);
-  if (!round) notFound();
+  const data = await loadRoundAndContent(resolved);
+  if (!data) notFound();
+  const { round, description, publicUpdates } = data;
 
   const progress = round.targetRaise > 0 ? Math.min(100, (round.totalCommitted / round.targetRaise) * 100) : 0;
 
@@ -47,7 +91,7 @@ export default async function RoundPage({ params }: { params: Promise<Params> })
       </div>
       <h1 style={{ fontSize: 48, margin: '0 0 16px', lineHeight: 1.1 }}>{round.name}</h1>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
         <span className={`lp-badge lp-badge-${round.raiseLane}`}>{round.raiseLane}</span>
         <span className="lp-badge lp-badge-open">{round.status}</span>
         {round.regulatoryFramework && (
@@ -79,6 +123,14 @@ export default async function RoundPage({ params }: { params: Promise<Params> })
         <div className="lp-progress-label"><span>{progress.toFixed(0)}% complete</span><span>{usd(round.allocationRemaining ?? 0, round.currency)} remaining</span></div>
       </div>
 
+      {description?.bodyMarkdown && (
+        <section style={{ marginBottom: 48 }}>
+          <article style={{ fontSize: 16, lineHeight: 1.7 }}>
+            {renderMarkdown(description.bodyMarkdown)}
+          </article>
+        </section>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 32 }}>
         <div>
           <h3 style={{ fontSize: 14, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Terms</h3>
@@ -100,6 +152,25 @@ export default async function RoundPage({ params }: { params: Promise<Params> })
           )}
         </div>
       </div>
+
+      {publicUpdates.length > 0 && (
+        <section style={{ marginBottom: 48 }}>
+          <h3 style={{ fontSize: 14, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 16 }}>
+            Recent Updates
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {publicUpdates.map((u) => (
+              <div key={u.contentId} style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: 16 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>{u.content.title}</div>
+                {u.content.excerpt && <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>{u.content.excerpt}</div>}
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                  {u.content.publishedAt ? new Date(u.content.publishedAt).toLocaleDateString() : 'draft'}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div style={{ textAlign: 'center', padding: '32px 0' }}>
         <a

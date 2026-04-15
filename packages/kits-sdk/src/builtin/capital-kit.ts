@@ -253,6 +253,83 @@ const distributeTokens: KitToolHandler = async (input, ctx) => {
   };
 };
 
+// ─── 13. publish_investor_update ────────────────────────────────────────
+
+const publishInvestorUpdate: KitToolHandler = async (input, ctx) => {
+  const data = await postJson('/api/capital', {
+    action: 'create-round-content',
+    input: {
+      ventureId: input.venture_id,
+      roundId: input.round_id,
+      role: 'update',
+      contentType: 'capital_investor_update',
+      title: input.title,
+      bodyMarkdown: input.body_markdown,
+      excerpt: input.excerpt,
+      visibility: input.visibility || 'internal',
+      status: 'approved',
+      publishImmediately: !input.scheduled_for,
+      scheduledFor: input.scheduled_for,
+      tags: ['investor-update'],
+      author: input.author,
+    },
+  }, ctx);
+  const e = data.entry;
+  return {
+    success: true,
+    data: e,
+    displayMarkdown: `**Investor update ${e?.content?.publishedAt ? 'published' : 'scheduled'}:** ${e?.content?.title}`,
+  };
+};
+
+// ─── 14. get_round_updates ──────────────────────────────────────────────
+
+const getRoundUpdates: KitToolHandler = async (input, ctx) => {
+  const data = await postJson('/api/capital', {
+    action: 'list-round-updates',
+    round_id: input.round_id,
+    include_drafts: input.include_drafts === true,
+    limit: input.limit,
+  }, ctx);
+  const updates = data.updates ?? [];
+  if (!updates.length) return { success: true, data: [], displayMarkdown: 'No updates yet.' };
+  let md = `## Round Updates\n\n`;
+  for (const u of updates) {
+    const when = u.content?.publishedAt ? new Date(u.content.publishedAt).toLocaleDateString() : 'draft';
+    md += `- **${u.content?.title}** _(${when})_ — ${u.content?.excerpt ?? ''}\n`;
+  }
+  return { success: true, data: updates, displayMarkdown: md };
+};
+
+// ─── 15. draft_round_description ────────────────────────────────────────
+
+const draftRoundDescription: KitToolHandler = async (input, ctx) => {
+  const data = await postJson('/api/capital', {
+    action: 'create-round-content',
+    input: {
+      ventureId: input.venture_id,
+      roundId: input.round_id,
+      role: 'description',
+      contentType: 'capital_round_description',
+      title: input.title,
+      bodyMarkdown: input.body_markdown,
+      excerpt: input.excerpt,
+      visibility: input.publish ? 'public' : 'private',
+      status: input.publish ? 'approved' : 'draft',
+      isPrimary: true,
+      publishImmediately: input.publish === true,
+      tags: ['round-description'],
+      author: input.author,
+    },
+  }, ctx);
+  const e = data.entry;
+  return {
+    success: true,
+    data: e,
+    displayMarkdown: `**Round description ${input.publish ? 'published' : 'drafted'}:** ${e?.content?.title} (content \`${e?.contentId?.slice(0, 8)}\`)`,
+  };
+};
+
 // ─── Manifest ───────────────────────────────────────────────────────────
 
 export const manifest: KitManifest = {
@@ -385,6 +462,54 @@ export const manifest: KitManifest = {
         properties: { round_id: { type: 'string' }, commitment_id: { type: 'string' } },
       },
     },
+    {
+      name: 'publish_investor_update',
+      description: 'Publish (or schedule) an investor update for a round — content-backed, versioned, surfaces in portal timeline.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          venture_id: { type: 'string' },
+          round_id: { type: 'string' },
+          title: { type: 'string' },
+          body_markdown: { type: 'string', description: 'Full markdown body of the update' },
+          excerpt: { type: 'string', description: 'One-line summary surfaced in the timeline' },
+          visibility: { type: 'string', enum: ['internal', 'published', 'public'], description: 'Default internal = investor-portal-gated' },
+          scheduled_for: { type: 'string', description: 'ISO timestamp. Omit to publish immediately.' },
+          author: { type: 'string' },
+        },
+        required: ['venture_id', 'round_id', 'title', 'body_markdown'],
+      },
+    },
+    {
+      name: 'get_round_updates',
+      description: 'List investor updates for a round (ordered by published_at desc). Used by NAOS to summarize the update timeline.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          round_id: { type: 'string' },
+          include_drafts: { type: 'boolean' },
+          limit: { type: 'number' },
+        },
+        required: ['round_id'],
+      },
+    },
+    {
+      name: 'draft_round_description',
+      description: 'Create the long-form round description content (rendered on the public launchpad page). Draft by default; pass publish=true to ship live.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          venture_id: { type: 'string' },
+          round_id: { type: 'string' },
+          title: { type: 'string' },
+          body_markdown: { type: 'string' },
+          excerpt: { type: 'string' },
+          publish: { type: 'boolean', description: 'If true, visibility=public + status=approved immediately' },
+          author: { type: 'string' },
+        },
+        required: ['venture_id', 'round_id', 'title', 'body_markdown'],
+      },
+    },
   ],
 };
 
@@ -401,4 +526,7 @@ export const handlers: Record<string, KitToolHandler> = {
   send_docusign: sendDocusign,
   record_payment: recordPayment,
   distribute_tokens: distributeTokens,
+  publish_investor_update: publishInvestorUpdate,
+  get_round_updates: getRoundUpdates,
+  draft_round_description: draftRoundDescription,
 };

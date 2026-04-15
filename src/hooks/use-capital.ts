@@ -6,6 +6,7 @@ import type {
   Round, Commitment, InvestorProfile, Activity, Organization, CapitalDocument,
   GlobalSummary, VentureSummary, ContactStage, RoundStatus, CommitmentStatus,
   CreateRoundInput, CreateCommitmentInput, UpsertInvestorProfileInput,
+  RoundContentEntry, RoundContentRole, CapitalContentRow, ContentVisibility,
 } from '@mcv/capital-sdk';
 
 // ─── Rounds ─────────────────────────────────────────────────────────────
@@ -298,6 +299,90 @@ export function usePipelineFunnel(ventureId?: string) {
       });
       return data.funnel;
     },
+  });
+}
+
+// ─── Content Integration ────────────────────────────────────────────────
+
+export function useRoundContent(roundId: string | null | undefined, role?: RoundContentRole) {
+  return useQuery({
+    queryKey: ['capital', 'round-content', roundId, role],
+    queryFn: async () => {
+      if (!roundId) return [] as RoundContentEntry[];
+      const data = await apiPost<{ entries: RoundContentEntry[] }>('/api/capital', {
+        action: 'list-round-content',
+        round_id: roundId,
+        role,
+      });
+      return data.entries;
+    },
+    enabled: Boolean(roundId),
+  });
+}
+
+export function useRoundDescription(roundId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['capital', 'round-description', roundId],
+    queryFn: async () => {
+      if (!roundId) return null;
+      const data = await apiPost<{ description: CapitalContentRow | null }>('/api/capital', {
+        action: 'get-round-description',
+        round_id: roundId,
+      });
+      return data.description;
+    },
+    enabled: Boolean(roundId),
+  });
+}
+
+export function useRoundUpdates(roundId: string | null | undefined, opts?: { includeDrafts?: boolean; limit?: number }) {
+  return useQuery({
+    queryKey: ['capital', 'round-updates', roundId, opts],
+    queryFn: async () => {
+      if (!roundId) return [] as RoundContentEntry[];
+      const data = await apiPost<{ updates: RoundContentEntry[] }>('/api/capital', {
+        action: 'list-round-updates',
+        round_id: roundId,
+        include_drafts: opts?.includeDrafts,
+        limit: opts?.limit,
+      });
+      return data.updates;
+    },
+    enabled: Boolean(roundId),
+  });
+}
+
+export function useCreateRoundContent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      ventureId: string; roundId: string; role: RoundContentRole;
+      contentType: string; title: string; bodyMarkdown?: string; excerpt?: string;
+      visibility?: ContentVisibility; isPrimary?: boolean; publishImmediately?: boolean;
+      scheduledFor?: string; author?: string;
+    }) => {
+      const data = await apiPost<{ entry: RoundContentEntry }>('/api/capital', {
+        action: 'create-round-content',
+        input,
+      });
+      return data.entry;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['capital'] }),
+  });
+}
+
+export function usePublishRoundUpdate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: { contentId: string; visibility?: ContentVisibility }) => {
+      const data = await apiPost<{ content: CapitalContentRow }>('/api/capital', {
+        action: 'publish-round-update',
+        content_id: args.contentId,
+        visibility: args.visibility,
+      });
+      return data.content;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['capital', 'round-updates'] }),
   });
 }
 

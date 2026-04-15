@@ -9,6 +9,7 @@ import { createOrganizationsService, type OrganizationsService } from './organiz
 import { createDocumentsService, type DocumentsService } from './documents-service';
 import { createActivitiesService, type ActivitiesService } from './activities-service';
 import { createDashboardService, type DashboardService } from './dashboard-service';
+import { createContentIntegrationService, type ContentIntegrationService } from './content-integration';
 
 export interface CapitalEngine {
   rounds: RoundsService;
@@ -18,6 +19,7 @@ export interface CapitalEngine {
   documents: DocumentsService;
   activities: ActivitiesService;
   dashboard: DashboardService;
+  content: ContentIntegrationService;
 }
 
 export interface CapitalEngineOpts {
@@ -33,5 +35,6 @@ export function createCapitalEngine({ supabase }: CapitalEngineOpts): CapitalEng
     documents: createDocumentsService({ supabase }),
     activities: createActivitiesService({ supabase }),
     dashboard: createDashboardService({ supabase }),
+    content: createContentIntegrationService({ supabase }),
   };
 }

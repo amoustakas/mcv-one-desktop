@@ -317,6 +317,63 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.json({ followups });
       }
 
+      // ─── Content integration (Capital × Content OS) ────────────────
+      case 'list-round-content': {
+        const entries = await engine.content.listRoundContent(params.round_id as string, {
+          role: params.role as never,
+          visibilityMin: params.visibility_min as never,
+        });
+        return res.json({ entries });
+      }
+      case 'get-round-description': {
+        const description = await engine.content.getRoundDescription(params.round_id as string);
+        return res.json({ description });
+      }
+      case 'list-round-updates': {
+        const updates = await engine.content.listRoundUpdates(params.round_id as string, {
+          includeDrafts: params.include_drafts === true,
+          limit: params.limit ? Number(params.limit) : undefined,
+        });
+        return res.json({ updates });
+      }
+      case 'create-round-content': {
+        const entry = await engine.content.createRoundContent(params.input as never);
+        await engine.activities.recordActivity({
+          ventureId: (params.input as { ventureId: string }).ventureId,
+          roundId: (params.input as { roundId: string }).roundId,
+          activityType: 'system',
+          title: `Content attached: ${entry.content.title}`,
+          actorId: userId,
+          actorType: 'user',
+          metadata: { content_id: entry.contentId, role: entry.role },
+        });
+        return res.json({ entry });
+      }
+      case 'publish-round-update': {
+        const content = await engine.content.publishUpdate(
+          params.content_id as string,
+          params.visibility as never,
+        );
+        return res.json({ content });
+      }
+      case 'attach-content-to-round': {
+        const link = await engine.content.attachContent(
+          params.round_id as string,
+          params.content_id as string,
+          params.role as never,
+          { isPrimary: params.is_primary as boolean, ordinal: params.ordinal as number },
+        );
+        return res.json({ link });
+      }
+      case 'detach-content-from-round': {
+        await engine.content.detachContent(
+          params.round_id as string,
+          params.content_id as string,
+          params.role as never,
+        );
+        return res.json({ success: true });
+      }
+
       default:
         return res.status(400).json({ error: `Unknown action: ${action}` });
     }
