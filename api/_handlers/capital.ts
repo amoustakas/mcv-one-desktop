@@ -401,6 +401,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         );
         return res.json({ profile });
       }
+      case 'link-stripe-customer': {
+        // Stamps `crm_contacts.metadata.stripe_customer_id` so the
+        // StripeAdapter (Epic 13 S2) can auto-match payment_intent.succeeded
+        // events to this investor when the PaymentIntent doesn't carry an
+        // explicit capital_commitment_id. Called by StripeCustomerLinkButton
+        // after /api/stripe action=create-customer succeeds.
+        const contactId = params.contact_id as string;
+        const stripeCustomerId = params.stripe_customer_id as string;
+        if (!contactId || !stripeCustomerId) {
+          return res.status(400).json({ error: 'contact_id and stripe_customer_id required' });
+        }
+        const { data: existing } = await supabase
+          .from('crm_contacts')
+          .select('metadata')
+          .eq('id', contactId)
+          .maybeSingle();
+        const merged = { ...((existing?.metadata as Record<string, unknown>) ?? {}), stripe_customer_id: stripeCustomerId };
+        const { error: updErr } = await supabase
+          .from('crm_contacts')
+          .update({ metadata: merged })
+          .eq('id', contactId);
+        if (updErr) return res.status(500).json({ error: updErr.message });
+        return res.json({ ok: true, contact_id: contactId, stripe_customer_id: stripeCustomerId });
+      }
       case 'link-plaid-account': {
         // Stamps `crm_contacts.metadata.plaid_account_id` so the PlaidAdapter
         // (Epic 13 S1) can match incoming settled credits to this investor.
