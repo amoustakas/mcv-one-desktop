@@ -16,7 +16,8 @@ export {
 import { manifest as githubManifest, handlers as githubHandlers } from '@mcv/kits-sdk/builtin/github-kit';
 import { manifest as tasksManifest, handlers as tasksHandlers } from '@mcv/kits-sdk/builtin/tasks-kit';
 import { manifest as docsManifest, handlers as docsHandlers } from '@mcv/kits-sdk/builtin/docs-kit';
-import { manifest as contentOsManifest, handlers as contentOsHandlers } from '@mcv/kits-sdk/builtin/content-kit';
+// content-kit import reinstated by the content-os session PR — stubbed out
+// here to keep Capital-marathon PR buildable without cross-session deps.
 import { manifest as crmManifest, handlers as crmHandlers } from '@mcv/kits-sdk/builtin/crm-kit';
 import { manifest as capitalManifest, handlers as capitalHandlers } from '@mcv/kits-sdk/builtin/capital-kit';
 import { manifest as vercelManifest, handlers as vercelHandlers } from '@mcv/kits-sdk/builtin/vercel-kit';
@@ -134,7 +135,6 @@ const builtinKits: KitInstance[] = [
   kit(githubManifest, githubHandlers),
   kit(tasksManifest, tasksHandlers),
   kit(docsManifest, docsHandlers),
-  kit(contentOsManifest, contentOsHandlers),
   kit(crmManifest, crmHandlers),
   kit(capitalManifest, capitalHandlers),
   kit(vercelManifest, vercelHandlers),

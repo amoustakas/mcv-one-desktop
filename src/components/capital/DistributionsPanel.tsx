@@ -87,7 +87,7 @@ export default function DistributionsPanel({ ventureId, roundId, currency = 'USD
   const [recipients, setRecipients] = useState<RecipientRow[]>([]);
 
   const fundedCommitments = useMemo(
-    () => commitments.filter((c) => c.status === 'funded' || c.status === 'paid'),
+    () => commitments.filter((c) => c.status === 'funded' || c.status === 'token_distributed'),
     [commitments],
   );
   const fundedTotal = useMemo(

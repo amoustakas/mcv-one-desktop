@@ -58,7 +58,8 @@ export function makeCapitalPaymentRouterAdapter(router: PaymentRouter): PaymentR
         customerId: request.recipientContactId ?? 'capital-system',
         customerCountry: 'US',
         ventureId: request.ventureId ?? 'capital',
-        metadata: request.metadata,
+        description: request.reference ?? `capital distribution`,
+        metadata: request.metadata ?? {},
       });
       return { result: res.result, decision: res.decision };
     },
