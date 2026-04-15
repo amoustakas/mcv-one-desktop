@@ -5,6 +5,7 @@ import { ventures as builtinVentures, type Venture, type VentureTier } from '../
 import { apiPost } from '../lib/api/client';
 import { healthColor, type SnapshotSummary } from '../lib/ventures/snapshot';
 import VentureCompareDrawer from '../components/ventures/VentureCompareDrawer';
+import VentureContextMenu from '../components/ventures/VentureContextMenu';
 
 interface PortfolioSnapshot { id: string; name: string; tier: number | null; status: string; summary: SnapshotSummary }
 
@@ -43,6 +44,7 @@ export default function VenturesIndexView({ onSelect, onNew }: VenturesIndexProp
   const [applying, setApplying] = useState<Department | null>(null);
   const [applyResult, setApplyResult] = useState<{ dept: Department; success: number; total: number; docs: number } | null>(null);
   const applyMenuRef = useRef<HTMLDivElement>(null);
+  const [contextMenu, setContextMenu] = useState<{ venture: Venture; x: number; y: number } | null>(null);
 
   // Exit compare mode cleans selection so the next entry starts fresh
   function toggleCompareMode() {
@@ -188,8 +190,15 @@ export default function VenturesIndexView({ onSelect, onNew }: VenturesIndexProp
           const isSelected = selected.has(v.id);
           const atCap = !isSelected && selected.size >= COMPARE_CAP;
           return (
-            <GlassCard
+            <div
               key={v.id}
+              onContextMenu={(e: React.MouseEvent) => {
+                if (compareMode) return;
+                e.preventDefault();
+                setContextMenu({ venture: v, x: e.clientX, y: e.clientY });
+              }}
+            >
+            <GlassCard
               className={`vix-card ${compareMode ? 'vix-compare-mode' : ''} ${isSelected ? 'vix-selected' : ''} ${atCap ? 'vix-disabled' : ''}`}
               onClick={() => {
                 if (compareMode) {
@@ -231,6 +240,7 @@ export default function VenturesIndexView({ onSelect, onNew }: VenturesIndexProp
               )}
               <div className="vix-domain">{v.domain}</div>
             </GlassCard>
+            </div>
           );
         })}
       </div>
@@ -291,6 +301,15 @@ export default function VenturesIndexView({ onSelect, onNew }: VenturesIndexProp
         <VentureCompareDrawer
           ventureIds={[...selected]}
           onClose={() => setDrawerOpen(false)}
+        />
+      )}
+
+      {contextMenu && (
+        <VentureContextMenu
+          venture={contextMenu.venture}
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(null)}
         />
       )}
 
