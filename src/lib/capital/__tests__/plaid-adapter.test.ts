@@ -125,7 +125,10 @@ describe('PlaidAdapter', () => {
   it('detects wire based on description keyword', async () => {
     const adapter = createPlaidAdapter({ supabase: makeStub({}) as never });
     const result = await adapter.fromForeign(sample({ description: 'Wire from Fidelity' }));
-    expect(result!.paymentMethod).toBe('wire');
+    // paymentMethod must match the capital_commitments.payment_method CHECK
+    // constraint — 'wire' alone was a latent bug; 'wire_usd' is the correct
+    // enum value for USD wires (Epic 13 S2 types unification).
+    expect(result!.paymentMethod).toBe('wire_usd');
   });
 
   it('adapter id is "plaid" (legacy registry key)', () => {

@@ -11,6 +11,11 @@
 //     → single open commitment tuple; multi-match → flag for manual review
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { LegacyAdapter, CapitalPaymentEvent } from './types';
+
+// Re-export for back-compat with existing imports of these names from
+// plaid-adapter. New adapters should import from './types' directly.
+export type { LegacyAdapter, CapitalPaymentEvent };
 
 /** Shape of a Plaid Transfer event we care about (settled ACH / wire inbound). */
 export interface PlaidTransferSettled {
@@ -24,31 +29,6 @@ export interface PlaidTransferSettled {
   metadata?: Record<string, string>;
   posted_at: string;            // ISO
   authorization_id?: string;
-}
-
-/** The MCV-shaped event this adapter emits to Capital. */
-export interface CapitalPaymentEvent {
-  commitmentId: string | null;   // null when no unambiguous match → manual review
-  contactId: string | null;
-  amountUsd: number;
-  paymentMethod: 'ach' | 'wire';
-  paymentReference: string;       // transfer_id — durable reconciliation key
-  postedAt: string;
-  rawEvent: PlaidTransferSettled;
-  matchDiagnostics: {
-    strategy: 'plaid-account+amount+date';
-    candidates: number;
-    unambiguous: boolean;
-  };
-}
-
-/** LegacyAdapter contract — mirrors docs/capital/INTEROP.md §LegacyAdapter. */
-export interface LegacyAdapter<TForeign, TMCV> {
-  id: string;
-  /** Map foreign event → MCV event (inbound path). Null = skip. */
-  fromForeign(event: TForeign): Promise<TMCV | null>;
-  /** Map MCV event → foreign payload (outbound). Optional — some adapters are read-only. */
-  toForeign?(event: TMCV): Promise<unknown>;
 }
 
 export interface PlaidAdapterOptions {
@@ -75,8 +55,10 @@ export function createPlaidAdapter(
       if (event.iso_currency_code !== 'USD') return null;
 
       const amountUsd = Number(event.amount);
-      const paymentMethod: 'ach' | 'wire' =
-        (event.description ?? '').toLowerCase().includes('wire') ? 'wire' : 'ach';
+      // Wire descriptors map to the USD-specific enum value ('wire_usd')
+      // required by the capital_commitments.payment_method CHECK constraint.
+      const paymentMethod: 'wire_usd' | 'ach' =
+        (event.description ?? '').toLowerCase().includes('wire') ? 'wire_usd' : 'ach';
 
       let commitmentId: string | null = null;
       let contactId: string | null = null;

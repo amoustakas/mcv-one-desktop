@@ -303,7 +303,55 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 
+  // ── Capital reconciliation hook (Epic 13 S2) ──
+  // On payment_intent.succeeded, try to auto-match an open Capital
+  // commitment via the StripeAdapter. Commerce-owned intents carry
+  // metadata.commerce_order_id and are skipped inside the adapter.
+  // Failures are logged; webhook still ACKs 200 so Stripe doesn't retry.
+  if (event.type === 'payment_intent.succeeded') {
+    try {
+      await reconcileStripeToCapital(event);
+    } catch (err) {
+      console.warn('[stripe-webhook] capital reconciliation failed:', err instanceof Error ? err.message : err);
+    }
+  }
+
   // Always 200 so Stripe stops retrying. Unhandled event types are recorded
   // only in the response body for inspection.
   return res.status(200).json({ received: true, handled: !!mapped, type: event.type });
+}
+
+// ── Capital reconciliation ──────────────────────────────────────────────
+// Composes the StripeAdapter (Epic 13 S2) with the shared reconcile
+// helper. Mirrors api/plaid-webhook.ts: adapter maps → recordPayment +
+// notification fan-out. Best-effort; never blocks the webhook ACK.
+
+async function reconcileStripeToCapital(event: Stripe.Event): Promise<void> {
+  const pi = event.data.object as Stripe.PaymentIntent;
+  if (!pi?.id || pi.object !== 'payment_intent') return;
+
+  const { createStripeAdapter } = await import('../../src/lib/capital/adapters/stripe-adapter');
+  const { reconcileCapitalPayment } = await import('../../src/lib/capital/reconcile');
+
+  const adapter = createStripeAdapter({ supabase });
+  const mapped = await adapter.fromForeign({
+    id: pi.id,
+    object: 'payment_intent',
+    amount: pi.amount,
+    amount_received: pi.amount_received,
+    currency: pi.currency,
+    status: pi.status,
+    customer: typeof pi.customer === 'string' ? pi.customer : (pi.customer?.id ?? null),
+    payment_method_types: pi.payment_method_types,
+    created: pi.created,
+    metadata: pi.metadata ?? null,
+    latest_charge: typeof pi.latest_charge === 'string' ? pi.latest_charge : (pi.latest_charge?.id ?? null),
+    livemode: pi.livemode,
+  });
+
+  await reconcileCapitalPayment(mapped, {
+    supabase,
+    source: 'stripe',
+    refLabel: 'Stripe payment',
+  });
 }
