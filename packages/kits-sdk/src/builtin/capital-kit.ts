@@ -416,6 +416,23 @@ const notifyInvestors: KitToolHandler = async (input, ctx) => {
   };
 };
 
+// ─── 21. request_accreditation_verification ─────────────────────────────
+
+const requestAccreditationVerification: KitToolHandler = async (input, ctx) => {
+  const data = await postJson('/api/capital', {
+    action: 'initiate-accreditation-verification',
+    contact_id: input.contact_id,
+    return_url: input.return_url,
+  }, ctx);
+  const r = data.request;
+  if (!r) return { success: false, error: 'verification request produced no response' };
+  let md = `## Accreditation verification requested\n\n`;
+  md += `**Contact:** ${r.contactId}\n**Vendor request id:** \`${r.requestId}\`\n**Status:** ${r.status}\n\n`;
+  md += `**Hosted URL (send to investor):**\n\`${r.hostedUrl}\`\n\n`;
+  md += `_Completion will arrive at the VerifyInvestor webhook; an AccreditedInvestorCredential VC issues automatically on verified status._`;
+  return { success: true, data: r, displayMarkdown: md };
+};
+
 // ─── 20. screen_investor_ofac ───────────────────────────────────────────
 
 const screenInvestorOfac: KitToolHandler = async (input, ctx) => {
@@ -672,6 +689,18 @@ export const manifest: KitManifest = {
       },
     },
     {
+      name: 'request_accreditation_verification',
+      description: 'Start a VerifyInvestor accreditation flow for a Capital contact. Returns a hosted URL the investor visits. Completion webhook auto-issues an AccreditedInvestorCredential VC and stamps it on the investor profile.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          contact_id: { type: 'string', description: 'crm_contacts.id of the investor to verify.' },
+          return_url: { type: 'string', description: 'Optional redirect URL after the investor completes the flow.' },
+        },
+        required: ['contact_id'],
+      },
+    },
+    {
       name: 'screen_investor_ofac',
       description: 'Run an OFAC SDN screening on a Capital investor contact. Stamps capital_investor_profile.metadata.compliance.ofac and emits a capital.compliance.match / review_needed notification when non-clear.',
       input_schema: {
@@ -722,4 +751,5 @@ export const handlers: Record<string, KitToolHandler> = {
   list_distributions: listDistributions,
   notify_investors: notifyInvestors,
   screen_investor_ofac: screenInvestorOfac,
+  request_accreditation_verification: requestAccreditationVerification,
 };
