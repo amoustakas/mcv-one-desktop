@@ -24,7 +24,8 @@
     "./tax-export":         { "types": "./src/tax-export.ts",            "default": "./src/tax-export.ts" },
     "./events":             { "types": "./src/events.ts",                "default": "./src/events.ts" },
     "./venture-adapter":    { "types": "./src/venture-adapter.ts",       "default": "./src/venture-adapter.ts" },
-    "./event-publisher":    { "types": "./src/event-publisher.ts",       "default": "./src/event-publisher.ts" }
+    "./event-publisher":    { "types": "./src/event-publisher.ts",       "default": "./src/event-publisher.ts" },
+    "./foundation-types":   { "types": "./src/foundation-types.ts",      "default": "./src/foundation-types.ts" }
   },
   "files": ["src"],
   "dependencies": {

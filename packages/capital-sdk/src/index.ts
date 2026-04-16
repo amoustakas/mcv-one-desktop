@@ -46,6 +46,7 @@ export { createCapitalEngine } from './create-capital-engine';
 export type { CapitalEngine, CapitalEngineOpts } from './create-capital-engine';
 
 // ─── v0.2 — cross-venture event contract + adapter factory ─────────────
+export * from './foundation-types';
 export {
   CapitalEvent, CAPITAL_EVENT_TOPICS,
   composePublishers, nullEventPublisher,
