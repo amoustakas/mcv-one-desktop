@@ -5,6 +5,7 @@
 import { useMemo, useState } from 'react';
 import { Users, Network, Activity, Briefcase, GraduationCap, UserPlus } from 'lucide-react';
 import { useAgents, type AgentPersona } from '../hooks/use-agents';
+import { useNavigation } from '../stores/navigation';
 import { PageHeader, PageShell, GlassCard, Badge, EmptyState } from '../components/ui';
 
 type AgentsTab = 'roster' | 'org-chart' | 'activity' | 'workflows' | 'training' | 'hiring';
@@ -156,6 +157,7 @@ function RosterTab() {
 }
 
 function AgentCard({ agent }: { agent: AgentPersona }) {
+  const openAgentProfile = useNavigation((s) => s.openAgentProfile);
   const accent = agent.accent_color ?? '#64748B';
   const initials = agent.full_name
     .split(' ')
@@ -165,7 +167,13 @@ function AgentCard({ agent }: { agent: AgentPersona }) {
     .toUpperCase();
 
   return (
-    <GlassCard>
+    <div
+      onClick={() => openAgentProfile(agent.handle)}
+      style={{ cursor: 'pointer', transition: 'transform 120ms' }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)'; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)'; }}
+    >
+      <GlassCard>
       <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
         {/* Avatar — gradient placeholder; Session A.5 swaps in Gemini portraits */}
         <div
@@ -218,6 +226,7 @@ function AgentCard({ agent }: { agent: AgentPersona }) {
         </div>
       </div>
     </GlassCard>
+    </div>
   );
 }
 

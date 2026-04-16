@@ -135,6 +135,7 @@ export type ViewId =
   | 'capital-launchpad-admin'
   | 'capital-foundation'
   | 'agents'
+  | 'agent-profile'
   | 'platform-api-keys'
   // Departmental Command Suites (global toolbox + dedicated per-department surfaces)
   | 'suite-command-bridge'
@@ -169,8 +170,11 @@ interface NavigationState {
   // One-shot detail-tab request — consumed by VentureDetailView then cleared.
   // Lets a caller say "navigate to venture-detail and open the Docs tab".
   pendingDetailTab: string | null;
+  // Active agent handle for agent-profile view (and future chat routing).
+  activeAgentHandle: string | null;
 
   setView: (view: ViewId) => void;
+  openAgentProfile: (handle: string) => void;
   openVentureDetailTab: (tab: string) => void;
   consumePendingDetailTab: () => string | null;
   switchToGlobal: () => void;
@@ -241,6 +245,7 @@ const VIEW_LABELS: Record<string, string> = {
   'capital-launchpad-admin': 'Launchpad',
   'capital-foundation': 'Foundation',
   agents: 'The Team',
+  'agent-profile': 'Agent',
   'platform-api-keys': 'API Keys',
 };
 
@@ -259,6 +264,19 @@ export const useNavigation = create<NavigationState>()(
       history: ['command-center'],
       historyIndex: 0,
       pendingDetailTab: null,
+      activeAgentHandle: null,
+
+      openAgentProfile: (handle: string) =>
+        set((s) => {
+          const newHistory = [...s.history.slice(0, s.historyIndex + 1), 'agent-profile' as ViewId].slice(-50);
+          return {
+            activeView: 'agent-profile' as ViewId,
+            previousView: s.activeView,
+            activeAgentHandle: handle,
+            history: newHistory,
+            historyIndex: newHistory.length - 1,
+          };
+        }),
 
       openVentureDetailTab: (tab) =>
         set((s) => {
