@@ -208,6 +208,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
     { id: 'v-people', label: 'People', sublabel: 'People you track + communicate with', category: 'Views', action: () => { setView('people'); } },
     { id: 'v-prospects', label: 'Onboarding Funnel', sublabel: 'Automated journey monitor (Phase 2)', category: 'Views', action: () => { setView('prospects'); } },
     { id: 'v-crm', label: 'CRM', sublabel: 'Contacts & deals', category: 'Views', action: () => { setView('crm'); } },
+    { id: 'v-signing-inbox', label: 'Signing Inbox', sublabel: 'MCV Sign envelope status', category: 'Views', action: () => { setView('signing-inbox'); } },
     { id: 'v-comms', label: 'Communications Hub', sublabel: 'Unified messaging & social', category: 'Views', action: () => { setView('comms-hub'); } },
     { id: 'v-sessions', label: 'Sessions', sublabel: 'API & agent sessions', category: 'Views', action: () => { setView('sessions'); } },
     { id: 'v-signals', label: 'Signals', sublabel: 'Market intelligence', category: 'Views', action: () => { setView('signals'); } },

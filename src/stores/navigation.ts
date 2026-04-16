@@ -144,6 +144,8 @@ export type ViewId =
   | 'ladder'
   | 'hit-squad'
   | 'platform-api-keys'
+  // MCV Sign — protocol-native signing rail operator inbox
+  | 'signing-inbox'
   // Phase 2 — Prospect funnel + onboarding admin
   | 'prospects'
   | 'prospect-profile'
@@ -278,6 +280,7 @@ const VIEW_LABELS: Record<string, string> = {
   'agent-chat': 'Agent Chat',
   ladder: 'Ladder',
   'platform-api-keys': 'API Keys',
+  'signing-inbox': 'Signing Inbox',
   prospects: 'Onboarding Funnel',
   'prospect-profile': 'Prospect',
   people: 'People',
