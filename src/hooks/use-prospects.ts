@@ -37,9 +37,47 @@ export interface StepWithAgent extends ProspectJourneyStep {
   agent: EmbeddedAgent | null;
 }
 
+// Ecosystem rows produced by journey completion (set by the
+// runJourneyCompletionEffects executor in the API handler). Null when
+// effects haven't been applied yet (active/abandoned journeys).
+export interface EcosystemContact {
+  id: string;
+  name: string;
+  email: string | null;
+  type: string;
+  status: string;
+  lifecycle_stage: string | null;
+  lead_score: number | null;
+  source: string | null;
+  venture_id: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface EcosystemInvestorProfile {
+  contact_id: string;
+  venture_id: string;
+  contact_type: string;
+  stage: string;
+  accreditation_status: string;
+  kyc_status: string;
+  portal_enabled: boolean;
+  lead_score: number;
+  total_committed_usd: string;  // numeric → string in supabase-js
+  total_funded_usd: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface EcosystemLinks {
+  contact: EcosystemContact | null;
+  investor_profile: EcosystemInvestorProfile | null;
+}
+
 export interface JourneyDetail {
   journey: JourneyWithProfile;
   steps: StepWithAgent[];
+  ecosystem: EcosystemLinks | null;
 }
 
 export function useProspects(filters?: { status?: JourneyStatus; track?: TrackName }) {

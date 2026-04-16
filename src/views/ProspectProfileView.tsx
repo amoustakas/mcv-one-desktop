@@ -3,8 +3,8 @@
 // and a stub chat column that Session B's chat routing will wire up.
 // Plan: C:\Users\moust\.claude\plans\nifty-launching-turtle.md
 
-import { ArrowLeft, Sparkles, MessageCircle, CheckCircle2, Clock, Circle, SkipForward, XCircle } from 'lucide-react';
-import { useProspectJourney, type EmbeddedAgent, type StepWithAgent } from '../hooks/use-prospects';
+import { ArrowLeft, Sparkles, MessageCircle, CheckCircle2, Clock, Circle, SkipForward, XCircle, ArrowRight, Users, Wallet } from 'lucide-react';
+import { useProspectJourney, type EmbeddedAgent, type StepWithAgent, type EcosystemLinks } from '../hooks/use-prospects';
 import { useNavigation } from '../stores/navigation';
 import { PageShell, GlassCard, Badge, EmptyState } from '../components/ui';
 import { STEPS, TRACKS, type StepName, type TrackName } from '@mcv/onboarding-sdk';
@@ -30,7 +30,7 @@ export default function ProspectProfileView() {
   if (isLoading) return <PageShell><p style={{ color: 'var(--text-muted)' }}>Loading journey…</p></PageShell>;
   if (!data) return <PageShell><EmptyState title="Journey not found" description="This journey may have been deleted." /></PageShell>;
 
-  const { journey, steps } = data;
+  const { journey, steps, ecosystem } = data;
   const profile = journey.prospect_profile;
   const assignedAgent = journey.agent;
   const trackMeta = TRACKS[journey.track as TrackName];
@@ -81,6 +81,11 @@ export default function ProspectProfileView() {
           )}
         </div>
       </GlassCard>
+
+      {/* Phase 2 → Phase 3 bridge: ecosystem rows produced by completion. */}
+      {ecosystem && (ecosystem.contact || ecosystem.investor_profile) && (
+        <EcosystemBridge ecosystem={ecosystem} setView={setView} />
+      )}
 
       {/* Two-column: timeline + chat stub */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, marginTop: 16 }}>
@@ -214,3 +219,106 @@ const backLinkStyle: React.CSSProperties = {
   background: 'var(--surface-elevated)', color: 'var(--text-secondary)',
   border: '1px solid var(--border-subtle)', cursor: 'pointer',
 };
+
+// ───────────────────────────────────────────────────────────────────────────
+// Ecosystem bridge — surfaces the contact + investor_profile rows produced
+// by runJourneyCompletionEffects when this journey completed. Closes the
+// loop visually: prospect → journey → ecosystem actors.
+// ───────────────────────────────────────────────────────────────────────────
+
+function EcosystemBridge({
+  ecosystem, setView,
+}: {
+  ecosystem: EcosystemLinks;
+  setView: (v: 'crm' | 'capital') => void;
+}) {
+  const { contact, investor_profile } = ecosystem;
+
+  return (
+    <GlassCard>
+      <div style={{ padding: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+          <Sparkles className="w-4 h-4" style={{ color: '#6EE7B7' }} />
+          <h3 style={{
+            fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', margin: 0,
+            textTransform: 'uppercase', letterSpacing: 0.6,
+          }}>
+            Ecosystem rows produced
+          </h3>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+            — completed journeys feed downstream surfaces
+          </span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: investor_profile ? '1fr 1fr' : '1fr', gap: 12 }}>
+          {contact && (
+            <div style={ecoCardStyle('#6EE7B7')}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <Users className="w-4 h-4" style={{ color: '#6EE7B7' }} />
+                <span style={ecoCardLabelStyle}>CRM Contact</span>
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
+                {contact.name}
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                <Badge>{contact.type}</Badge>
+                <Badge>{contact.status}</Badge>
+                {contact.lifecycle_stage && <Badge>{contact.lifecycle_stage}</Badge>}
+                {contact.lead_score != null && <Badge>score {contact.lead_score}</Badge>}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 12 }}>
+                {contact.email} · created {new Date(contact.created_at).toLocaleString()}
+              </div>
+              <button onClick={() => setView('crm')} style={ctaStyle('#6EE7B7')}>
+                Open in CRM <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          {investor_profile && (
+            <div style={ecoCardStyle('var(--color-brand-electric)')}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <Wallet className="w-4 h-4" style={{ color: 'var(--color-brand-electric)' }} />
+                <span style={ecoCardLabelStyle}>Capital Investor Profile</span>
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
+                {investor_profile.venture_id} · {investor_profile.contact_type}
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                <Badge>stage: {investor_profile.stage}</Badge>
+                <Badge>kyc: {investor_profile.kyc_status}</Badge>
+                <Badge>{investor_profile.accreditation_status}</Badge>
+                <Badge>score {investor_profile.lead_score}</Badge>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 12 }}>
+                committed ${Number(investor_profile.total_committed_usd).toLocaleString()} · funded ${Number(investor_profile.total_funded_usd).toLocaleString()} · created {new Date(investor_profile.created_at).toLocaleString()}
+              </div>
+              <button onClick={() => setView('capital')} style={ctaStyle('var(--color-brand-electric)')}>
+                Open in Capital <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </GlassCard>
+  );
+}
+
+const ecoCardStyle = (accent: string): React.CSSProperties => ({
+  padding: 14,
+  borderRadius: 10,
+  border: `1px solid ${accent}33`,
+  background: 'var(--surface-elevated)',
+});
+
+const ecoCardLabelStyle: React.CSSProperties = {
+  fontSize: 10, color: 'var(--text-muted)',
+  textTransform: 'uppercase', letterSpacing: 0.6, fontWeight: 600,
+};
+
+const ctaStyle = (accent: string): React.CSSProperties => ({
+  display: 'inline-flex', alignItems: 'center', gap: 4,
+  padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+  background: accent, color: 'var(--surface-base)',
+  border: 'none', cursor: 'pointer',
+});

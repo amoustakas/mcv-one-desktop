@@ -471,7 +471,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ]);
         if (jErr || !journey) return res.status(404).json({ error: 'journey not found' });
         if (sErr) throw sErr;
-        return res.json({ journey, steps: steps ?? [] });
+
+        // Ecosystem rows produced by the journey (null until completion).
+        // Lookup by metadata->>prospect_id (set by completion-effects helper)
+        // and follow the contact_id PK into capital_investor_profile.
+        let ecosystem: { contact: unknown; investor_profile: unknown } | null = null;
+        if (journey.metadata?.effects_applied) {
+          const prospectId = (journey as { prospect_id: string }).prospect_id;
+          const { data: contact } = await supabase
+            .from('contacts')
+            .select('id, name, email, type, status, lifecycle_stage, lead_score, source, venture_id, metadata, created_at')
+            .filter('metadata->>prospect_id', 'eq', prospectId)
+            .limit(1)
+            .maybeSingle();
+
+          let investorProfile: unknown = null;
+          if (contact?.id) {
+            const { data: inv } = await supabase
+              .from('capital_investor_profile')
+              .select('contact_id, venture_id, contact_type, stage, accreditation_status, kyc_status, portal_enabled, lead_score, total_committed_usd, total_funded_usd, metadata, created_at')
+              .eq('contact_id', contact.id)
+              .maybeSingle();
+            investorProfile = inv ?? null;
+          }
+          ecosystem = { contact: contact ?? null, investor_profile: investorProfile };
+        }
+
+        return res.json({ journey, steps: steps ?? [], ecosystem });
       }
 
       case 'get_prospect': {
