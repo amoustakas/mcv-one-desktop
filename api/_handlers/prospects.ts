@@ -19,6 +19,8 @@ import { getServiceClient } from './_supabase';
 import {
   startJourney as sdkStartJourney,
   advanceStep as sdkAdvanceStep,
+  runJourneyCompletionEffects,
+  effectsAlreadyApplied,
   TRACKS,
   STEPS,
   AGENT_HANDLES,
@@ -27,6 +29,9 @@ import {
   type StepStatus,
   type VentureId,
   type AgentHandle,
+  type CompletionIntent,
+  type ProspectJourney,
+  type ProspectProfile,
 } from '@mcv/onboarding-sdk';
 
 const supabase = getServiceClient();
@@ -76,6 +81,114 @@ async function logActivity(params: {
   } catch (err) {
     console.warn('[prospects] activity log failed:', err instanceof Error ? err.message : err);
   }
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Completion-effects executor
+// Translates the SDK's pure intents into actual ecosystem-table writes:
+//   upsert_contact          → contacts (idempotent by metadata.prospect_id)
+//   upsert_investor_profile → capital_investor_profile (idempotent by contact_id)
+// Sets journey.metadata.effects_applied = true on success so retries no-op.
+// ───────────────────────────────────────────────────────────────────────────
+
+async function applyCompletionEffects(
+  journey: ProspectJourney,
+  profile: ProspectProfile,
+  ventureId: VentureId,
+): Promise<{ contact_id: string | null; investor_profile_created: boolean }> {
+  if (effectsAlreadyApplied(journey)) {
+    return { contact_id: null, investor_profile_created: false };
+  }
+
+  const intents = runJourneyCompletionEffects({ journey, profile, venture_id: ventureId });
+  let contactId: string | null = null;
+  let investorProfileCreated = false;
+
+  for (const intent of intents) {
+    if (intent.kind === 'upsert_contact') {
+      // Idempotency: find existing by metadata->>prospect_id, else insert.
+      const { data: existing } = await supabase
+        .from('contacts')
+        .select('id')
+        .filter('metadata->>prospect_id', 'eq', intent.prospect_id)
+        .limit(1)
+        .maybeSingle();
+
+      if (existing?.id) {
+        contactId = existing.id as string;
+      } else {
+        const { data: inserted, error } = await supabase
+          .from('contacts')
+          .insert({
+            user_id: intent.user_id,
+            venture_id: intent.venture_id,
+            name: intent.name,
+            email: intent.email,
+            type: intent.type,
+            status: intent.status,
+            source: intent.source,
+            lifecycle_stage: intent.lifecycle_stage,
+            lead_score: intent.lead_score,
+            metadata: intent.metadata,
+          })
+          .select('id')
+          .single();
+        if (error) {
+          console.warn('[prospects] upsert_contact failed:', error.message);
+          continue;
+        }
+        contactId = inserted.id as string;
+      }
+    } else if (intent.kind === 'upsert_investor_profile') {
+      if (!contactId) {
+        console.warn('[prospects] upsert_investor_profile has no contact_id — skipping');
+        continue;
+      }
+      // Idempotency: contact_id is the PK on capital_investor_profile.
+      const { data: existing } = await supabase
+        .from('capital_investor_profile')
+        .select('contact_id')
+        .eq('contact_id', contactId)
+        .maybeSingle();
+      if (existing) continue;
+
+      const { error } = await supabase
+        .from('capital_investor_profile')
+        .insert({
+          contact_id: contactId,
+          venture_id: intent.venture_id,
+          contact_type: intent.contact_type,
+          stage: intent.stage,
+          accreditation_status: intent.accreditation_status,
+          kyc_status: intent.kyc_status,
+          portal_enabled: intent.portal_enabled,
+          lead_score: intent.lead_score,
+          total_committed_usd: 0,
+          total_funded_usd: 0,
+          metadata: intent.metadata,
+        });
+      if (error) {
+        console.warn('[prospects] upsert_investor_profile failed:', error.message);
+        continue;
+      }
+      investorProfileCreated = true;
+    }
+  }
+
+  // Mark applied so re-completion calls are no-ops.
+  await supabase
+    .from('prospect_journey')
+    .update({
+      metadata: {
+        ...journey.metadata,
+        effects_applied: true,
+        effects_applied_at: new Date().toISOString(),
+        effects_contact_id: contactId,
+      },
+    })
+    .eq('id', journey.id);
+
+  return { contact_id: contactId, investor_profile_created: investorProfileCreated };
 }
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -283,7 +396,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           venture_id: ventureId,
         });
 
-        return res.json({ journey: updatedJourney, next_step: intent.next_step });
+        // Run completion effects on transition to 'completed' — produces
+        // contacts + (for investor tracks) capital_investor_profile rows.
+        // Idempotent via journey.metadata.effects_applied.
+        let effects: { contact_id: string | null; investor_profile_created: boolean } | null = null;
+        if (intent.new_journey_status === 'completed') {
+          const { data: profile } = await supabase
+            .from('prospect_profile')
+            .select('*')
+            .eq('id', updatedJourney.prospect_id)
+            .single();
+          if (profile) {
+            effects = await applyCompletionEffects(
+              updatedJourney as ProspectJourney,
+              profile as ProspectProfile,
+              ventureId,
+            );
+            await logActivity({
+              agent_id: updatedJourney.agent_id ?? journey.agent_id,
+              journey_id: journeyId,
+              sub_kind: 'journey_complete',
+              input: { trigger: 'completion_effects' },
+              output: effects,
+              venture_id: ventureId,
+            });
+          }
+        }
+
+        return res.json({ journey: updatedJourney, next_step: intent.next_step, effects });
       }
 
       // ─── Admin reads ────────────────────────────────────────────────────

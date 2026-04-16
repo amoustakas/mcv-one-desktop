@@ -12,7 +12,8 @@
     "./steps":       { "types": "./src/steps.ts",        "default": "./src/steps.ts" },
     "./tracks":      { "types": "./src/tracks.ts",       "default": "./src/tracks.ts" },
     "./assignments": { "types": "./src/assignments.ts",  "default": "./src/assignments.ts" },
-    "./orchestrator":{ "types": "./src/orchestrator.ts", "default": "./src/orchestrator.ts" }
+    "./orchestrator":{ "types": "./src/orchestrator.ts", "default": "./src/orchestrator.ts" },
+    "./completion-effects": { "types": "./src/completion-effects.ts", "default": "./src/completion-effects.ts" }
   },
   "files": ["src"],
   "scripts": {

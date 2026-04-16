@@ -7,3 +7,4 @@ export * from './steps';
 export * from './tracks';
 export * from './assignments';
 export * from './orchestrator';
+export * from './completion-effects';
