@@ -59,3 +59,39 @@ export interface CapitalPaymentEvent {
     unambiguous: boolean;
   };
 }
+
+/** The MCV-shaped compliance event emitted by non-payment inbound
+ *  adapters that perform investor screening (OFAC, sanctions lists,
+ *  AccreditedInvestor verification, KYC vendors…).
+ *
+ *  Not a payment. Not commitment-scoped. Contact-scoped. Result lands
+ *  on `capital_investor_profile.metadata.compliance.<source>` via the
+ *  reconcile helper so downstream gates (commit creation, distribution
+ *  eligibility, portal access) can read a consolidated status without
+ *  hitting each source individually. */
+export interface CapitalComplianceEvent {
+  contactId: string;
+  /** 'clear' | 'match' | 'review' — distilled across all hit/score rules.
+   *  Gates can branch on this without parsing per-source semantics. */
+  outcome: 'clear' | 'match' | 'review';
+  /** Screener-specific raw score (0-1 for fuzzy matches; boolean-like
+   *  screeners emit 0 or 1). */
+  score: number;
+  /** Source adapter id, e.g. 'ofac', 'verify-investor', 'jumio'. */
+  source: string;
+  /** Human-readable match record when outcome !== 'clear'. */
+  matchedRecord?: {
+    name?: string;
+    dob?: string;
+    list?: string;              // e.g. 'SDN', 'ConsolidatedSanctions'
+    programs?: string[];        // e.g. ['CUBA', 'NARCOTICS']
+    sourceEntryId?: string;     // vendor's primary key
+  };
+  screenedAt: string;           // ISO timestamp
+  rawEvent: unknown;
+  matchDiagnostics: {
+    strategy: string;           // e.g. 'ofac-fuzzy-name+dob'
+    threshold: number;          // score >= threshold → outcome !== clear
+    alternates?: number;        // count of other candidates scored above 0.5 but below threshold
+  };
+}
