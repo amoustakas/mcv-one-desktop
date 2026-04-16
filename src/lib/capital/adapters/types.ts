@@ -95,3 +95,46 @@ export interface CapitalComplianceEvent {
     alternates?: number;        // count of other candidates scored above 0.5 but below threshold
   };
 }
+
+/** The MCV-shaped signing event emitted by signing-rail adapters when
+ *  a contract envelope completes (signed, declined, voided, expired).
+ *  Adapters: DocuSign today, MCV Sign next (Epic 9), eIDAS vendors
+ *  (eu-sign, etc.) over time.
+ *
+ *  This shape is **vendor-neutral on purpose** — the rail-specific
+ *  envelope id, signer details, and receipt artifacts are passed
+ *  through `rawEvent`. Downstream handlers transition the commitment
+ *  status (signed → pending_wire) and stamp the signed PDF receipt
+ *  via the Content OS so the same audit trail works regardless of
+ *  which signing rail produced it. */
+export interface CapitalSigningEvent {
+  commitmentId: string;
+  /** 'signed'   = all signers completed; binding contract
+   *  'declined' = signer rejected; commitment can be re-sent or withdrawn
+   *  'voided'   = sender cancelled the envelope before completion
+   *  'expired'  = envelope hit its expiration without all signatures */
+  outcome: 'signed' | 'declined' | 'voided' | 'expired';
+  /** Rail-issued envelope id, durable across rail-side reissues. */
+  envelopeId: string;
+  /** Source adapter id — 'docusign' | 'mcv-sign' | 'eu-sign' | … */
+  source: string;
+  /** Per-signer state. Empty for non-completion outcomes. */
+  signers?: Array<{
+    name?: string;
+    email?: string;
+    role?: string;
+    signedAt?: string;
+    ipAddress?: string;
+  }>;
+  /** Storage hint for the signed-PDF receipt — adapter populates one
+   *  of {downloadUrl, contentId, base64Pdf}. signing-reconcile picks
+   *  the available route to persist into Content OS. */
+  receipt?: {
+    downloadUrl?: string;       // pre-signed URL valid for download
+    contentId?: string;         // already in Content OS
+    base64Pdf?: string;         // inlined for small templates
+    contentType?: string;       // 'application/pdf' default
+  };
+  completedAt: string;          // ISO
+  rawEvent: unknown;
+}

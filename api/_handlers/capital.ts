@@ -343,23 +343,375 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
         return res.json({ commitment });
       }
-      case 'send-docusign': {
-        // TODO: real DocuSign integration in Epic 3
-        const envelopeId = `mock-envelope-${Date.now()}`;
-        const commitment = await engine.commitments.attachDocuSign(
-          params.commitment_id as string,
-          envelopeId,
+      case 'send-signing-envelope': {
+        // Rail-aware envelope send (Epic 9 v0). Reads signing_rail_config
+        // for the venture and delegates to the picked rail:
+        //   - 'mcv-sign' → createEnvelope from src/lib/capital/sign/envelope.ts
+        //   - 'docusign' → reuses send-docusign path (mock until PR #30 lands real)
+        //   - 'eu-sign'  → not wired yet; falls back to docusign + logs warning
+        //
+        // Callers pass commitment_id + template_id (docusign) OR
+        // content_id (mcv-sign). The router converts one to the other
+        // when possible (e.g. a docusign template can seed a content
+        // row during mcv-sign migration).
+        const commitmentId = params.commitment_id as string;
+        if (!commitmentId) return res.status(400).json({ error: 'commitment_id required' });
+
+        const { data: commitmentRow } = await supabase
+          .from('capital_commitments')
+          .select('id, contact_id, venture_id, amount_usd')
+          .eq('id', commitmentId)
+          .maybeSingle();
+        if (!commitmentRow) return res.status(404).json({ error: 'commitment not found' });
+
+        const { pickSigningRail } = await import('../../src/lib/capital/sign/rail-router');
+        const rail = await pickSigningRail(supabase, commitmentRow.venture_id as string | undefined);
+
+        if (rail === 'mcv-sign') {
+          const contentId = params.content_id as string | undefined;
+          if (!contentId) {
+            return res.status(400).json({
+              error: 'content_id required when venture is on MCV Sign rail',
+              rail,
+              hint: 'Call create-round-content first to mint the signable content, then pass content_id to send-signing-envelope.',
+            });
+          }
+
+          const { data: contact } = await supabase
+            .from('crm_contacts')
+            .select('id, full_name, email')
+            .eq('id', commitmentRow.contact_id)
+            .maybeSingle();
+          if (!contact?.email || !contact?.full_name) {
+            return res.status(400).json({ error: 'contact missing full_name or email — cannot address envelope' });
+          }
+
+          const { createEnvelope: createMcvEnvelope } = await import('../../src/lib/capital/sign/envelope');
+          try {
+            const envelope = await createMcvEnvelope(supabase, {
+              commitmentId,
+              contentId,
+              ventureId: commitmentRow.venture_id as string | undefined,
+              subject: (params.subject as string | undefined) ?? `Subscription agreement — commitment ${commitmentId.slice(0, 8)}`,
+              signers: [{
+                email: contact.email as string,
+                name: contact.full_name as string,
+                role: 'Investor',
+                contactId: contact.id as string,
+              }],
+              expiresInDays: (params.expires_in_days as number | undefined) ?? undefined,
+              createdBy: userId,
+            });
+
+            await engine.activities.recordActivity({
+              ventureId: commitmentRow.venture_id as string,
+              commitmentId,
+              activityType: 'doc_sent',
+              title: `MCV Sign envelope sent — ${envelope.publicId}`,
+              actorId: userId,
+              actorType: 'user',
+              metadata: {
+                rail: 'mcv-sign',
+                envelope_public_id: envelope.publicId,
+                content_id: contentId,
+                signing_url: envelope.signers[0]?.signingUrl,
+              },
+            });
+
+            await publishCapitalEvent(
+              'capital.commitment.envelope_sent',
+              `MCV Sign envelope sent to ${contact.full_name}`,
+              {
+                description: `Commitment ${commitmentId.slice(0, 8)} · envelope ${envelope.publicId} · MCV Sign rail`,
+                ventureId: commitmentRow.venture_id as string | undefined,
+                type: 'info',
+              },
+            );
+
+            return res.json({
+              rail,
+              envelope_public_id: envelope.publicId,
+              content_hash: envelope.contentHash,
+              signers: envelope.signers,
+              expires_at: envelope.expiresAt,
+            });
+          } catch (err) {
+            return res.status(500).json({ error: err instanceof Error ? err.message : 'envelope creation failed' });
+          }
+        }
+
+        // DocuSign rail (or eu-sign fallback): reuse send-docusign
+        // logic by recursively dispatching. Keeps the existing mock +
+        // (once PR #30 lands) real DocuSign path as-is.
+        if (rail === 'eu-sign') {
+          console.warn('[send-signing-envelope] eu-sign rail requested but not yet implemented; falling back to docusign');
+        }
+        req.body = { ...(req.body || {}), action: 'send-docusign' };
+        return handler(req, res);
+      }
+      case 'mcv-sign-create': {
+        // Direct MCV Sign envelope creation — bypasses the rail router.
+        // Useful for non-commitment envelopes (NDAs, board resolutions,
+        // etc.) that don't have a Capital commitment to route off of.
+        const contentId = params.content_id as string;
+        const signers = params.signers as Array<{ email: string; name?: string; role?: string; contactId?: string }> | undefined;
+        if (!contentId) return res.status(400).json({ error: 'content_id required' });
+        if (!Array.isArray(signers) || signers.length === 0) {
+          return res.status(400).json({ error: 'signers (array) required' });
+        }
+
+        const { createEnvelope: createMcvEnvelope } = await import('../../src/lib/capital/sign/envelope');
+        try {
+          const envelope = await createMcvEnvelope(supabase, {
+            commitmentId: params.commitment_id as string | undefined,
+            contentId,
+            ventureId: params.venture_id as string | undefined,
+            subject: params.subject as string | undefined,
+            message: params.message as string | undefined,
+            expiresInDays: (params.expires_in_days as number | undefined) ?? undefined,
+            signers,
+            createdBy: userId,
+          });
+          return res.json({
+            rail: 'mcv-sign',
+            envelope_public_id: envelope.publicId,
+            content_hash: envelope.contentHash,
+            signers: envelope.signers,
+            expires_at: envelope.expiresAt,
+          });
+        } catch (err) {
+          return res.status(500).json({ error: err instanceof Error ? err.message : 'envelope creation failed' });
+        }
+      }
+      case 'mcv-sign-apply': {
+        // Signer applies their signature. Called by the signing page
+        // after the investor views + accepts the ESIGN consent.
+        // Unauthenticated at the Clerk layer — token IS the auth.
+        const envelopePublicId = params.envelope_public_id as string;
+        const token = params.token as string;
+        const acceptedTerms = Boolean(params.accepted_terms);
+        if (!envelopePublicId || !token) {
+          return res.status(400).json({ error: 'envelope_public_id and token required' });
+        }
+        const { applySignature } = await import('../../src/lib/capital/sign/apply');
+        try {
+          const result = await applySignature(supabase, {
+            envelopePublicId,
+            token,
+            signerInfo: {
+              ipAddress: (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim()
+                ?? (req.socket?.remoteAddress as string | undefined),
+              userAgent: req.headers['user-agent'] as string | undefined,
+              acceptedTerms,
+            },
+          });
+
+          // When this was the final signer, fire CapitalSigningEvent
+          // through the shared reconcile helper so commitment
+          // transitions, notifications, Fabric topics happen
+          // identically to the DocuSign path.
+          if (result.outcome === 'signed' && result.completion) {
+            const { data: envelope } = await supabase
+              .from('signing_envelopes')
+              .select('id, public_id, commitment_id, content_id, completed_at')
+              .eq('id', result.envelopeId)
+              .maybeSingle();
+            const { data: signerRows } = await supabase
+              .from('signing_envelope_signers')
+              .select('name, email, role, signed_at, ip_address')
+              .eq('envelope_id', result.envelopeId);
+
+            const { createMCVSignAdapter } = await import('../../src/lib/capital/adapters/mcv-sign-adapter');
+            const { reconcileCapitalSigning } = await import('../../src/lib/capital/signing-reconcile');
+            const adapter = createMCVSignAdapter();
+            const mapped = await adapter.fromForeign({
+              envelopePublicId: (envelope?.public_id as string | null) ?? envelopePublicId,
+              envelopeId: result.envelopeId,
+              status: 'signed',
+              contentId: (envelope?.content_id as string | null) ?? null,
+              commitmentId: (envelope?.commitment_id as string | null) ?? null,
+              completedAt: (envelope?.completed_at as string | null) ?? new Date().toISOString(),
+              signers: (signerRows ?? []).map((s) => ({
+                name: (s.name as string | null) ?? undefined,
+                email: (s.email as string | null) ?? undefined,
+                role: (s.role as string | null) ?? undefined,
+                signedAt: (s.signed_at as string | null) ?? undefined,
+                ipAddress: (s.ip_address as string | null) ?? undefined,
+              })),
+            });
+            if (mapped) {
+              await reconcileCapitalSigning(mapped, { supabase });
+            }
+          }
+
+          return res.json(result);
+        } catch (err) {
+          return res.status(400).json({ error: err instanceof Error ? err.message : 'signature apply failed' });
+        }
+      }
+      case 'mcv-sign-get-envelope': {
+        // Read-only envelope view for admin + signer UI. Includes
+        // signer list + audit trail.
+        const publicId = params.envelope_public_id as string;
+        if (!publicId) return res.status(400).json({ error: 'envelope_public_id required' });
+        const { data: envelope } = await supabase
+          .from('signing_envelopes')
+          .select('*')
+          .eq('public_id', publicId)
+          .maybeSingle();
+        if (!envelope) return res.status(404).json({ error: 'envelope not found' });
+        const [{ data: signers }, { data: audit }] = await Promise.all([
+          supabase.from('signing_envelope_signers')
+            .select('id, ordinal, email, name, role, status, signed_at, ip_address, user_agent')
+            .eq('envelope_id', envelope.id)
+            .order('ordinal'),
+          supabase.from('signing_envelope_audit')
+            .select('event_type, actor, actor_type, payload, created_at')
+            .eq('envelope_id', envelope.id)
+            .order('created_at'),
+        ]);
+        return res.json({ envelope, signers: signers ?? [], audit: audit ?? [] });
+      }
+      case 'mcv-sign-list-envelopes': {
+        // Admin listing. Scoped by venture_id + optional status filter.
+        const ventureId = params.venture_id as string | undefined;
+        const status = params.status as string | undefined;
+        let q = supabase
+          .from('signing_envelopes')
+          .select('id, public_id, adapter, status, subject, commitment_id, venture_id, created_at, completed_at')
+          .order('created_at', { ascending: false })
+          .limit(100);
+        if (ventureId) q = q.eq('venture_id', ventureId);
+        if (status) q = q.eq('status', status);
+        const { data } = await q;
+        return res.json({ envelopes: data ?? [] });
+      }
+      case 'signing-rail-set': {
+        // Admin action — pin a venture to a specific signing rail.
+        // Pre-requisite for rolling out MCV Sign: flip the venture's
+        // rail to 'mcv-sign' before sending its next envelope.
+        const ventureId = params.venture_id as string;
+        const rail = params.rail as 'mcv-sign' | 'docusign' | 'eu-sign';
+        if (!ventureId || !rail) return res.status(400).json({ error: 'venture_id and rail required' });
+        if (!['mcv-sign', 'docusign', 'eu-sign'].includes(rail)) {
+          return res.status(400).json({ error: 'rail must be mcv-sign, docusign, or eu-sign' });
+        }
+        const { error } = await supabase
+          .from('signing_rail_config')
+          .upsert({
+            venture_id: ventureId,
+            rail,
+            updated_at: new Date().toISOString(),
+            updated_by: userId,
+          }, { onConflict: 'venture_id' });
+        if (error) return res.status(500).json({ error: error.message });
+        await publishCapitalEvent(
+          'capital.signing.rail_changed',
+          `Venture signing rail set to ${rail}`,
+          { description: `venture ${ventureId.slice(0, 8)}`, ventureId, type: 'info' },
         );
-        await engine.activities.recordActivity({
-          ventureId: commitment.ventureId,
-          commitmentId: commitment.id,
-          activityType: 'doc_sent',
-          title: `DocuSign envelope sent`,
-          actorId: userId,
-          actorType: 'user',
-          metadata: { envelope_id: envelopeId },
-        });
-        return res.json({ envelope_id: envelopeId, commitment });
+        return res.json({ ok: true, venture_id: ventureId, rail });
+      }
+      case 'signing-rail-get': {
+        const ventureId = params.venture_id as string;
+        if (!ventureId) return res.status(400).json({ error: 'venture_id required' });
+        const { pickSigningRail } = await import('../../src/lib/capital/sign/rail-router');
+        const rail = await pickSigningRail(supabase, ventureId);
+        return res.json({ venture_id: ventureId, rail });
+      }
+      case 'send-docusign': {
+        // Real DocuSign envelope creation (Epic 13 S3). Resolves the
+        // commitment + linked contact, calls createEnvelope which uses
+        // the JWT-grant flow when DOCUSIGN_INTEGRATION_KEY is set and
+        // falls back to a deterministic mock when not. Persists the
+        // envelope row to docusign_envelopes for idempotent webhook
+        // handling + audit.
+        const commitmentId = params.commitment_id as string;
+        const templateId = (params.template_id as string) || process.env.DOCUSIGN_DEFAULT_TEMPLATE_ID || 'mock-template';
+        const returnUrl = params.return_url as string | undefined;
+        if (!commitmentId) return res.status(400).json({ error: 'commitment_id required' });
+
+        const { data: commitmentRow } = await supabase
+          .from('capital_commitments')
+          .select('id, contact_id, venture_id, amount_usd')
+          .eq('id', commitmentId)
+          .maybeSingle();
+        if (!commitmentRow) return res.status(404).json({ error: 'commitment not found' });
+
+        const { data: contact } = await supabase
+          .from('crm_contacts')
+          .select('id, full_name, email')
+          .eq('id', commitmentRow.contact_id)
+          .maybeSingle();
+        if (!contact?.email || !contact?.full_name) {
+          return res.status(400).json({ error: 'contact missing full_name or email — cannot address envelope' });
+        }
+
+        const { createEnvelope } = await import('../../src/lib/capital/adapters/docusign-adapter');
+        try {
+          const envelope = await createEnvelope({
+            commitmentId,
+            templateId,
+            returnUrl,
+            signers: [{
+              name: contact.full_name as string,
+              email: contact.email as string,
+              roleName: 'Investor',
+              embedded: Boolean(returnUrl),
+            }],
+          });
+
+          // Audit row — idempotent on envelope_id; webhook upserts the
+          // same row when completion arrives.
+          await supabase.from('docusign_envelopes').upsert({
+            envelope_id: envelope.envelopeId,
+            commitment_id: commitmentId,
+            adapter: envelope.source === 'docusign-mock' ? 'docusign' : 'docusign',
+            template_id: templateId,
+            signers_json: [{ email: contact.email, name: contact.full_name, role: 'Investor' }],
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'envelope_id' });
+
+          // SDK call to stamp envelope id on the commitment + record
+          // activity. Pre-existing markSigned / attachDocuSign methods.
+          const commitment = await engine.commitments.attachDocuSign(commitmentId, envelope.envelopeId);
+          await engine.activities.recordActivity({
+            ventureId: commitment.ventureId,
+            commitmentId: commitment.id,
+            activityType: 'doc_sent',
+            title: envelope.source === 'docusign-mock'
+              ? `DocuSign envelope MOCKED (no creds): ${envelope.envelopeId}`
+              : `DocuSign envelope sent: ${envelope.envelopeId}`,
+            actorId: userId,
+            actorType: 'user',
+            metadata: {
+              envelope_id: envelope.envelopeId,
+              template_id: templateId,
+              source: envelope.source,
+              hosted_recipient_urls: envelope.hostedRecipientUrls ?? [],
+            },
+          });
+
+          await publishCapitalEvent(
+            'capital.commitment.envelope_sent',
+            `Subscription envelope sent to ${contact.full_name}`,
+            {
+              description: `Commitment ${commitmentId.slice(0, 8)} · template ${templateId} · adapter ${envelope.source}`,
+              ventureId: commitment.ventureId,
+              type: 'info',
+            },
+          );
+
+          return res.json({
+            envelope_id: envelope.envelopeId,
+            status: envelope.status,
+            source: envelope.source,
+            hosted_recipient_urls: envelope.hostedRecipientUrls ?? [],
+            commitment,
+          });
+        } catch (err) {
+          return res.status(500).json({ error: err instanceof Error ? err.message : 'envelope creation failed' });
+        }
       }
       case 'distribute-tokens': {
         // TODO: real Solana distribution in Epic 5
