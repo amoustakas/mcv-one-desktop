@@ -35,7 +35,8 @@ CREATE TABLE IF NOT EXISTS signing_envelopes (
   -- commitment link is the primary correlation today; other use cases
   -- (non-commitment envelopes for e.g. NDAs) leave it null.
   commitment_id      UUID REFERENCES capital_commitments(id) ON DELETE SET NULL,
-  venture_id         UUID REFERENCES ventures(id) ON DELETE SET NULL,
+  -- ventures.id is TEXT in Desktop schema (e.g. 'futurestate'), not UUID.
+  venture_id         TEXT REFERENCES ventures(id) ON DELETE SET NULL,
   -- Hash-binds the signed document to a Content OS row. If the content
   -- body changes after envelope creation, signatures become unverifiable
   -- (advanced-electronic-signature property — eIDAS AdES-level).
@@ -151,7 +152,8 @@ CREATE TRIGGER signing_envelope_audit_no_delete
 
 -- 4. Per-venture rail config ---------------------------------------
 CREATE TABLE IF NOT EXISTS signing_rail_config (
-  venture_id         UUID PRIMARY KEY REFERENCES ventures(id) ON DELETE CASCADE,
+  -- ventures.id is TEXT in Desktop schema.
+  venture_id         TEXT PRIMARY KEY REFERENCES ventures(id) ON DELETE CASCADE,
   rail               TEXT NOT NULL DEFAULT 'docusign'
                        CHECK (rail IN ('docusign', 'mcv-sign', 'eu-sign')),
   -- Overrides for the default template, subject, expiration days etc.
