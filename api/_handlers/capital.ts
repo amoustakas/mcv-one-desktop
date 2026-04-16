@@ -344,22 +344,98 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.json({ commitment });
       }
       case 'send-docusign': {
-        // TODO: real DocuSign integration in Epic 3
-        const envelopeId = `mock-envelope-${Date.now()}`;
-        const commitment = await engine.commitments.attachDocuSign(
-          params.commitment_id as string,
-          envelopeId,
-        );
-        await engine.activities.recordActivity({
-          ventureId: commitment.ventureId,
-          commitmentId: commitment.id,
-          activityType: 'doc_sent',
-          title: `DocuSign envelope sent`,
-          actorId: userId,
-          actorType: 'user',
-          metadata: { envelope_id: envelopeId },
-        });
-        return res.json({ envelope_id: envelopeId, commitment });
+        // Real DocuSign envelope creation (Epic 13 S3). Resolves the
+        // commitment + linked contact, calls createEnvelope which uses
+        // the JWT-grant flow when DOCUSIGN_INTEGRATION_KEY is set and
+        // falls back to a deterministic mock when not. Persists the
+        // envelope row to docusign_envelopes for idempotent webhook
+        // handling + audit.
+        const commitmentId = params.commitment_id as string;
+        const templateId = (params.template_id as string) || process.env.DOCUSIGN_DEFAULT_TEMPLATE_ID || 'mock-template';
+        const returnUrl = params.return_url as string | undefined;
+        if (!commitmentId) return res.status(400).json({ error: 'commitment_id required' });
+
+        const { data: commitmentRow } = await supabase
+          .from('capital_commitments')
+          .select('id, contact_id, venture_id, amount_usd')
+          .eq('id', commitmentId)
+          .maybeSingle();
+        if (!commitmentRow) return res.status(404).json({ error: 'commitment not found' });
+
+        const { data: contact } = await supabase
+          .from('crm_contacts')
+          .select('id, full_name, email')
+          .eq('id', commitmentRow.contact_id)
+          .maybeSingle();
+        if (!contact?.email || !contact?.full_name) {
+          return res.status(400).json({ error: 'contact missing full_name or email — cannot address envelope' });
+        }
+
+        const { createEnvelope } = await import('../../src/lib/capital/adapters/docusign-adapter');
+        try {
+          const envelope = await createEnvelope({
+            commitmentId,
+            templateId,
+            returnUrl,
+            signers: [{
+              name: contact.full_name as string,
+              email: contact.email as string,
+              roleName: 'Investor',
+              embedded: Boolean(returnUrl),
+            }],
+          });
+
+          // Audit row — idempotent on envelope_id; webhook upserts the
+          // same row when completion arrives.
+          await supabase.from('docusign_envelopes').upsert({
+            envelope_id: envelope.envelopeId,
+            commitment_id: commitmentId,
+            adapter: envelope.source === 'docusign-mock' ? 'docusign' : 'docusign',
+            template_id: templateId,
+            signers_json: [{ email: contact.email, name: contact.full_name, role: 'Investor' }],
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'envelope_id' });
+
+          // SDK call to stamp envelope id on the commitment + record
+          // activity. Pre-existing markSigned / attachDocuSign methods.
+          const commitment = await engine.commitments.attachDocuSign(commitmentId, envelope.envelopeId);
+          await engine.activities.recordActivity({
+            ventureId: commitment.ventureId,
+            commitmentId: commitment.id,
+            activityType: 'doc_sent',
+            title: envelope.source === 'docusign-mock'
+              ? `DocuSign envelope MOCKED (no creds): ${envelope.envelopeId}`
+              : `DocuSign envelope sent: ${envelope.envelopeId}`,
+            actorId: userId,
+            actorType: 'user',
+            metadata: {
+              envelope_id: envelope.envelopeId,
+              template_id: templateId,
+              source: envelope.source,
+              hosted_recipient_urls: envelope.hostedRecipientUrls ?? [],
+            },
+          });
+
+          await publishCapitalEvent(
+            'capital.commitment.envelope_sent',
+            `Subscription envelope sent to ${contact.full_name}`,
+            {
+              description: `Commitment ${commitmentId.slice(0, 8)} · template ${templateId} · adapter ${envelope.source}`,
+              ventureId: commitment.ventureId,
+              type: 'info',
+            },
+          );
+
+          return res.json({
+            envelope_id: envelope.envelopeId,
+            status: envelope.status,
+            source: envelope.source,
+            hosted_recipient_urls: envelope.hostedRecipientUrls ?? [],
+            commitment,
+          });
+        } catch (err) {
+          return res.status(500).json({ error: err instanceof Error ? err.message : 'envelope creation failed' });
+        }
       }
       case 'distribute-tokens': {
         // TODO: real Solana distribution in Epic 5
