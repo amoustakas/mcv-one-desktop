@@ -2,8 +2,8 @@
 import { useState } from 'react';
 import type { StepProps } from '../StepRenderer';
 
-export default function StepIdentityCapture({ journey, loading, onStart, onAdvance }: StepProps) {
-  const [email, setEmail] = useState('');
+export default function StepIdentityCapture({ journey, prefillEmail, loading, onStart, onAdvance }: StepProps) {
+  const [email, setEmail] = useState(prefillEmail ?? '');
   const [fullName, setFullName] = useState('');
   const [country, setCountry] = useState('US');
 

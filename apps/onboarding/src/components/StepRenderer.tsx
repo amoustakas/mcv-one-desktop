@@ -24,6 +24,7 @@ export interface StepProps {
   steps: ProspectJourneyStep[];
   track: TrackName;
   ventureId: string | null | undefined;
+  prefillEmail?: string | null;
   loading: boolean;
   onStart: (payload: { email: string; full_name?: string; country?: string }) => Promise<void>;
   onAdvance: (opts?: { status?: StepStatus; outputs?: Record<string, unknown> }) => Promise<void>;

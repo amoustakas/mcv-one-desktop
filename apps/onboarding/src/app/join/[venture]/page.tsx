@@ -26,9 +26,10 @@ export default async function JoinPage({ params, searchParams }: Props) {
   const { venture } = await params;
   const sp = (await searchParams) ?? {};
   const override = typeof sp.track === 'string' ? sp.track : undefined;
+  const prefill = typeof sp.prefill === 'string' ? sp.prefill : null;
 
   const brand = getVentureBrand(venture);
   const track = defaultTrack(venture, override);
 
-  return <WizardShell track={track} ventureId={brand.id} />;
+  return <WizardShell track={track} ventureId={brand.id} prefillEmail={prefill} />;
 }

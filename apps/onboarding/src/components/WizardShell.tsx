@@ -21,6 +21,8 @@ export interface WizardInitialState {
   ventureId?: string | null;
   track: TrackName;
   inviteToken?: string | null;
+  // Email prefill from ?prefill=... query param on invite links.
+  prefillEmail?: string | null;
   assignedAgent?: { handle: string; full_name: string; title: string; accent_color: string | null } | null;
   stepAgents?: Array<{ step_name: string; handle: string; full_name: string; title: string } | null>;
 }
@@ -124,6 +126,7 @@ export default function WizardShell(props: WizardInitialState) {
           steps={steps}
           track={props.track}
           ventureId={props.ventureId}
+          prefillEmail={props.prefillEmail ?? null}
           loading={loading}
           onStart={startJourney}
           onAdvance={advanceStep}
