@@ -205,6 +205,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           [k: string]: unknown;
         };
 
+        // OFAC gate (Epic 13 Story 6 follow-up): screen every commitment
+        // regardless of round — sanctions compliance isn't round-scoped.
+        // Reads the normalized outcome from
+        // capital_investor_profile.metadata.compliance.ofac stamped by
+        // reconcileCapitalCompliance. 'review' allows with flag +
+        // activity entry; 'match' hard-blocks with 403 OFAC_MATCH.
+        const { checkOfacGate } = await import('../../src/lib/capital/compliance-gate');
+        const ofacGate = await checkOfacGate({ supabase, contactId: commitmentInput.contactId });
+        if (!ofacGate.allow) {
+          return res.status(403).json({
+            error: ofacGate.error,
+            code: ofacGate.code,
+            matched_record: 'matchedRecord' in ofacGate ? ofacGate.matchedRecord : undefined,
+          });
+        }
+        const ofacFlag = ofacGate.flag; // 'review' | 'unscreened' | undefined
+
         // VC gate (Epic 11 Story 5): if the round requires accreditation and
         // the investor profile has a VC on file, verify it. Non-accredited
         // status or invalid signatures are rejected. No VC on file =
@@ -254,12 +271,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           roundId: commitment.roundId,
           commitmentId: commitment.id,
           activityType: 'system',
-          title: `Commitment created: ${commitment.amountUsd} USD`,
+          title: ofacFlag
+            ? `Commitment created (OFAC flag: ${ofacFlag}): ${commitment.amountUsd} USD`
+            : `Commitment created: ${commitment.amountUsd} USD`,
           newValue: commitment.status,
           actorId: userId,
           actorType: 'user',
         });
-        return res.json({ commitment });
+        // When OFAC gate surfaced a non-clear-but-allowed result, emit
+        // a warning notification so compliance + Tony see the flag
+        // alongside the activity entry. Matches pattern used by the
+        // compliance-reconcile helper but scoped to the commit event.
+        if (ofacFlag) {
+          await publishCapitalEvent(
+            'capital.compliance.review_needed',
+            `Commitment created with OFAC flag '${ofacFlag}' — review required`,
+            {
+              description: `Commitment ${commitment.id.slice(0, 8)} for contact ${commitment.contactId.slice(0, 8)} · amount ${commitment.amountUsd} USD`,
+              type: 'warning',
+              ventureId: commitment.ventureId,
+            },
+          );
+        }
+        return res.json({ commitment, ofac_flag: ofacFlag ?? null });
       }
       case 'update-commitment': {
         const { id, ...updates } = params;
