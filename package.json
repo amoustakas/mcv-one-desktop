@@ -20,7 +20,8 @@
     "turbo:build": "turbo run build",
     "turbo:lint": "turbo run lint",
     "turbo:typecheck": "turbo run typecheck",
-    "smoke:triangle": "tsx scripts/triangle-smoke.ts"
+    "smoke:triangle": "tsx scripts/triangle-smoke.ts",
+    "seed:prospects": "tsx scripts/seed-prospects.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",
@@ -45,6 +46,7 @@
     "@mcv/ledger-sdk": "*",
     "@mcv/mcp-sdk": "*",
     "@mcv/naos-sdk": "*",
+    "@mcv/onboarding-sdk": "*",
     "@mcv/payments-sdk": "*",
     "@mcv/storage-sdk": "*",
     "@mcv/ventures-sdk": "*",
