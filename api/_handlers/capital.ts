@@ -866,20 +866,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Creates a vendor-side request, returns the hosted URL for
         // the investor to complete. Completion arrives asynchronously
         // at /api/verify-investor-webhook which auto-issues the VC.
+        // Falls back to a mocked hostedUrl when VERIFY_INVESTOR_API_KEY
+        // is not configured (see verify-investor-adapter:createVerificationRequest).
         const contactId = params.contact_id as string;
         const returnUrl = params.return_url as string | undefined;
         if (!contactId) return res.status(400).json({ error: 'contact_id required' });
 
+        // Schema reality: prod uses `contacts` (not `crm_contacts` — that
+        // was a stale assumption when the action shipped). Same row shape;
+        // `name` not `full_name`, plus the contact has `portal_user_id`
+        // hung off the investor profile rather than its own clerk_user_id.
         const { data: contact } = await supabase
-          .from('crm_contacts')
-          .select('id, full_name, email, metadata')
+          .from('contacts')
+          .select('id, name, email, metadata')
           .eq('id', contactId)
           .maybeSingle();
         if (!contact) return res.status(404).json({ error: 'contact not found' });
 
         const { data: profile } = await supabase
           .from('capital_investor_profile')
-          .select('clerk_user_id')
+          .select('portal_user_id')
           .eq('contact_id', contactId)
           .maybeSingle();
 
@@ -887,7 +893,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         try {
           const request = await createVerificationRequest({
             contactId,
-            clerkUserId: profile?.clerk_user_id as string | undefined,
+            clerkUserId: profile?.portal_user_id as string | undefined,
             email: contact.email as string | undefined,
             returnUrl,
           });
@@ -902,17 +908,73 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             verify_investor_request_id: request.requestId,
             verify_investor_request_at: request.createdAt,
           };
-          await supabase.from('crm_contacts').update({ metadata: mergedMeta }).eq('id', contactId);
+          await supabase.from('contacts').update({ metadata: mergedMeta }).eq('id', contactId);
+
+          // Also flip the investor profile to a 'pending' kyc state so
+          // the UI surfaces "verification in flight" without waiting
+          // for the webhook (which may take seconds-to-minutes for
+          // the live vendor and never arrives in mocked mode).
+          await supabase
+            .from('capital_investor_profile')
+            .update({ accreditation_status: 'unknown', kyc_status: 'in_review' })
+            .eq('contact_id', contactId);
 
           await publishCapitalEvent(
             'capital.accreditation.verification_requested',
-            `Accreditation verification requested for ${contact.full_name ?? contactId}`,
+            `Accreditation verification requested for ${contact.name ?? contactId}`,
             { description: `VerifyInvestor request ${request.requestId.slice(0, 12)}…`, type: 'info' },
           );
           return res.json({ request });
         } catch (err) {
           return res.status(500).json({ error: err instanceof Error ? err.message : 'verification request failed' });
         }
+      }
+
+      case 'simulate-accreditation-verification': {
+        // Dev/admin path: skip the vendor round-trip and stamp a verified
+        // outcome directly. Useful for:
+        //   - local testing without VERIFY_INVESTOR_API_KEY configured
+        //   - admin override when an investor is verified out-of-band
+        //   - demo flows that need a green state without waiting for webhook
+        // Mirrors the side-effects the webhook would produce (status flip
+        // + audit event) but skips VC issuance — that needs the live signing
+        // chain, which is a separate Epic 11 surface.
+        const contactId = params.contact_id as string;
+        const outcome = (params.outcome as 'verified_accredited' | 'self_certified' | 'not_accredited') ?? 'verified_accredited';
+        const basis = params.basis as string | undefined;
+        if (!contactId) return res.status(400).json({ error: 'contact_id required' });
+
+        const { data: contact } = await supabase
+          .from('contacts').select('id, name, email').eq('id', contactId).maybeSingle();
+        if (!contact) return res.status(404).json({ error: 'contact not found' });
+
+        // Update the investor profile.
+        const now = new Date().toISOString();
+        const expiry = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+        const { data: updated, error: updateErr } = await supabase
+          .from('capital_investor_profile')
+          .update({
+            accreditation_status: outcome,
+            accreditation_expiry: outcome === 'verified_accredited' ? expiry : null,
+            kyc_status: outcome === 'verified_accredited' ? 'approved' : 'rejected',
+            kyc_completed_at: now,
+          })
+          .eq('contact_id', contactId)
+          .select()
+          .single();
+        if (updateErr) return res.status(500).json({ error: updateErr.message });
+
+        await publishCapitalEvent(
+          'capital.accreditation.simulated',
+          `Accreditation simulated → ${outcome} for ${contact.name ?? contactId}`,
+          {
+            description: basis ? `basis: ${basis}` : undefined,
+            type: outcome === 'verified_accredited' ? 'success' : 'warning',
+            payload: { contact_id: contactId, outcome, basis, simulated: true },
+          },
+        );
+
+        return res.json({ profile: updated, simulated: true });
       }
       case 'link-stripe-customer': {
         // Stamps `crm_contacts.metadata.stripe_customer_id` so the
