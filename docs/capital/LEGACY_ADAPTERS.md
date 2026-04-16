@@ -23,7 +23,11 @@ every adapter should be incrementally growing toward the INTEROP shape.
 | `stripe`  | payment     | inbound    | `CapitalPaymentEvent`    | [src/lib/capital/adapters/stripe-adapter.ts](../../src/lib/capital/adapters/stripe-adapter.ts) |
 | `ofac`    | compliance  | inbound    | `CapitalComplianceEvent` | [src/lib/capital/adapters/ofac-adapter.ts](../../src/lib/capital/adapters/ofac-adapter.ts) |
 | `verify-investor` | compliance  | bidirectional | `CapitalComplianceEvent` | [src/lib/capital/adapters/verify-investor-adapter.ts](../../src/lib/capital/adapters/verify-investor-adapter.ts) |
+<<<<<<< HEAD
 | `docusign` | signing     | bidirectional | `CapitalSigningEvent` | [src/lib/capital/adapters/docusign-adapter.ts](../../src/lib/capital/adapters/docusign-adapter.ts) |
+=======
+| `mcv-sign` | signing     | native        | `CapitalSigningEvent` | [src/lib/capital/adapters/mcv-sign-adapter.ts](../../src/lib/capital/adapters/mcv-sign-adapter.ts) · see [MCV_SIGN.md](./MCV_SIGN.md) |
+>>>>>>> 5ceb08c (feat(capital): MCV Sign v0 — protocol-native signing rail (Epic 9))
 
 Outbound payment movement (distributions, payouts) does **not** live
 here — it routes through `@mcv/payments-sdk`'s `PaymentProcessor`
