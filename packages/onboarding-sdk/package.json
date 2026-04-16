@@ -1,0 +1,22 @@
+{
+  "name": "@mcv/onboarding-sdk",
+  "version": "0.1.0",
+  "description": "MCV Onboarding primitives — prospect journey types, 12 reusable step definitions, 7 track compositions (investor_retail, investor_accredited, partner, creator, team_member, ally, waitlist), and track+venture→agent assignment rules. The journey orchestrator is DB-agnostic; API handlers do the writes. Phase 2 of the ecosystem build sequence.",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".":             { "types": "./src/index.ts",        "default": "./src/index.ts" },
+    "./types":       { "types": "./src/types.ts",        "default": "./src/types.ts" },
+    "./steps":       { "types": "./src/steps.ts",        "default": "./src/steps.ts" },
+    "./tracks":      { "types": "./src/tracks.ts",       "default": "./src/tracks.ts" },
+    "./assignments": { "types": "./src/assignments.ts",  "default": "./src/assignments.ts" },
+    "./orchestrator":{ "types": "./src/orchestrator.ts", "default": "./src/orchestrator.ts" }
+  },
+  "files": ["src"],
+  "scripts": {
+    "lint": "echo 'no lint yet'",
+    "test": "echo 'no tests yet'"
+  }
+}
