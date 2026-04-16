@@ -25,7 +25,9 @@
     "./events":             { "types": "./src/events.ts",                "default": "./src/events.ts" },
     "./venture-adapter":    { "types": "./src/venture-adapter.ts",       "default": "./src/venture-adapter.ts" },
     "./event-publisher":    { "types": "./src/event-publisher.ts",       "default": "./src/event-publisher.ts" },
-    "./foundation-types":   { "types": "./src/foundation-types.ts",      "default": "./src/foundation-types.ts" }
+    "./foundation-types":   { "types": "./src/foundation-types.ts",      "default": "./src/foundation-types.ts" },
+    "./compliance-evaluator": { "types": "./src/compliance-evaluator.ts", "default": "./src/compliance-evaluator.ts" },
+    "./royalty-walker":     { "types": "./src/royalty-walker.ts",        "default": "./src/royalty-walker.ts" }
   },
   "files": ["src"],
   "dependencies": {

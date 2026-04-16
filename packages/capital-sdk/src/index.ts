@@ -48,6 +48,17 @@ export type { CapitalEngine, CapitalEngineOpts } from './create-capital-engine';
 // ─── v0.2 — cross-venture event contract + adapter factory ─────────────
 export * from './foundation-types';
 export {
+  evaluateCompliance,
+  isComplianceAllow, isComplianceBlock, isComplianceReview,
+} from './compliance-evaluator';
+export type {
+  EvaluateInput, InvestorContext, TreasuryContext, FlowContext,
+} from './compliance-evaluator';
+export { computeRoyaltyLegs } from './royalty-walker';
+export type {
+  RoyaltyContext, ComputedLeg, WalkInput, WalkResult,
+} from './royalty-walker';
+export {
   CapitalEvent, CAPITAL_EVENT_TOPICS,
   composePublishers, nullEventPublisher,
 } from './events';
