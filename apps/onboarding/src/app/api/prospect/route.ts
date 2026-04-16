@@ -23,11 +23,13 @@ import {
   type AgentHandle,
 } from '@mcv/onboarding-sdk';
 
-const supabase = getServiceSupabase();
+// Lazy Supabase accessor — never called at module-load so Next.js page-data
+// collection can run the route without env vars.
+const supabase = () => getServiceSupabase();
 
 async function resolveAgentId(handle: AgentHandle | null): Promise<string | null> {
   if (!handle) return null;
-  const { data } = await supabase.from('agent_persona').select('id').eq('handle', handle).maybeSingle();
+  const { data } = await supabase().from('agent_persona').select('id').eq('handle', handle).maybeSingle();
   return (data?.id as string) ?? null;
 }
 
@@ -40,7 +42,7 @@ async function logActivity(params: {
   venture_id?: VentureId;
 }) {
   try {
-    await supabase.from('agent_activity_log').insert({
+    await supabase().from('agent_activity_log').insert({
       agent_id: params.agent_id,
       session_id: params.journey_id,
       action_kind: params.sub_kind === 'handoff' ? 'handoff' : 'workflow_run',
@@ -70,7 +72,7 @@ export async function POST(req: Request) {
       case 'create_capture': {
         const email = ((body.email as string) || '').trim().toLowerCase();
         if (!email) return NextResponse.json({ error: 'email required' }, { status: 400 });
-        const { data, error } = await supabase
+        const { data, error } = await supabase()
           .from('prospect_capture')
           .upsert({
             email,
@@ -92,7 +94,7 @@ export async function POST(req: Request) {
         if (!track || !TRACKS[track]) return NextResponse.json({ error: 'valid track required' }, { status: 400 });
         if (!email) return NextResponse.json({ error: 'email required' }, { status: 400 });
 
-        const { data: profile, error: profileErr } = await supabase
+        const { data: profile, error: profileErr } = await supabase()
           .from('prospect_profile')
           .upsert({
             email,
@@ -117,7 +119,7 @@ export async function POST(req: Request) {
         const atlasId = await resolveAgentId(intent.initial_agent_handle);
         const firstStepAgentId = await resolveAgentId(intent.first_step_agent_handle);
 
-        const { data: journey, error: journeyErr } = await supabase
+        const { data: journey, error: journeyErr } = await supabase()
           .from('prospect_journey')
           .insert({
             prospect_id: profile.id,
@@ -139,7 +141,7 @@ export async function POST(req: Request) {
           started_at: idx === 0 ? new Date().toISOString() : null,
           agent_id: idx === 0 ? firstStepAgentId : null,
         }));
-        await supabase.from('prospect_journey_step').insert(stepRows);
+        await supabase().from('prospect_journey_step').insert(stepRows);
 
         await logActivity({
           agent_id: atlasId,
@@ -159,7 +161,7 @@ export async function POST(req: Request) {
         const outputs = (body.outputs as Record<string, unknown>) ?? {};
         if (!journeyId) return NextResponse.json({ error: 'journey_id required' }, { status: 400 });
 
-        const { data: journey, error: journeyErr } = await supabase
+        const { data: journey, error: journeyErr } = await supabase()
           .from('prospect_journey')
           .select('*')
           .eq('id', journeyId)
@@ -182,7 +184,7 @@ export async function POST(req: Request) {
 
         const now = new Date().toISOString();
 
-        await supabase
+        await supabase()
           .from('prospect_journey_step')
           .update({ status: intent.from_step_final_status, completed_at: now, outputs: intent.from_step_outputs })
           .eq('journey_id', journeyId).eq('step_name', intent.from_step).eq('status', 'in_progress');
@@ -200,7 +202,7 @@ export async function POST(req: Request) {
         if (newJourneyAgentId !== undefined) journeyUpdate.agent_id = newJourneyAgentId;
         if (intent.new_journey_status === 'completed') journeyUpdate.completed_at = now;
 
-        const { data: updatedJourney } = await supabase
+        const { data: updatedJourney } = await supabase()
           .from('prospect_journey')
           .update(journeyUpdate)
           .eq('id', journeyId)
@@ -209,7 +211,7 @@ export async function POST(req: Request) {
 
         if (intent.next_step) {
           const nextAgentId = await resolveAgentId(intent.next_step_agent_handle);
-          await supabase
+          await supabase()
             .from('prospect_journey_step')
             .update({ status: 'in_progress', started_at: now, agent_id: nextAgentId })
             .eq('journey_id', journeyId).eq('step_name', intent.next_step);
@@ -234,12 +236,12 @@ export async function POST(req: Request) {
         const journeyId = body.id as string;
         if (!journeyId) return NextResponse.json({ error: 'id required' }, { status: 400 });
         const [{ data: journey }, { data: steps }] = await Promise.all([
-          supabase
+          supabase()
             .from('prospect_journey')
             .select('*, agent:agent_id(handle, full_name, title, accent_color), prospect_profile!inner(*)')
             .eq('id', journeyId)
             .single(),
-          supabase
+          supabase()
             .from('prospect_journey_step')
             .select('*, agent:agent_id(handle, full_name, title, accent_color)')
             .eq('journey_id', journeyId)
