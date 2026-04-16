@@ -77,7 +77,10 @@ CREATE TABLE IF NOT EXISTS signing_envelope_signers (
   name               TEXT,
   role               TEXT,                 -- 'Investor' | 'Issuer' | 'Witness' | …
   -- Signer-side contact linkage for CRM hookup. Optional.
-  contact_id         UUID REFERENCES crm_contacts(id) ON DELETE SET NULL,
+  -- NOTE: points to real `contacts` table (Desktop schema). Session 10+
+  -- capital code has lingering `.from('crm_contacts')` references that
+  -- silently 404 — tracked as Wave-5D cleanup sweep for the marathon.
+  contact_id         UUID REFERENCES contacts(id) ON DELETE SET NULL,
   -- Short-lived JWT-like token the signer clicks to apply their
   -- signature. Issued at envelope creation; verified at apply time.
   token_hash         TEXT NOT NULL,        -- sha256 of the raw token (never store raw)
