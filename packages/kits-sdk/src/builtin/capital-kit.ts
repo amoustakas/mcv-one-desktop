@@ -727,7 +727,144 @@ export const manifest: KitManifest = {
         required: ['venture_id', 'round_id', 'message'],
       },
     },
+    // ─── Foundation tools (Phase 3 primitives across all ventures) ───
+    {
+      name: 'list_treasuries',
+      description: 'List capital_treasury rows (the per-venture, per-currency, per-jurisdiction money sources). Filter by venture_id to scope to a single venture. Covers Stripe Connect, SPL tokens, trust accounts, multi-sig, ACH, and escrow.',
+      input_schema: {
+        type: 'object',
+        properties: { venture_id: { type: 'string', description: 'Optional: scope to one venture (futurestate, betedge, warforge, mcvgg, arq, edgeiq-markets, mcv-platform)' } },
+      },
+    },
+    {
+      name: 'list_royalty_graphs',
+      description: 'List capital_royalty_graph rows + their capital_royalty_graph_layer children. Shows who receives rake at each layer for each venture. EdgeIQ Holdings is universally layer 1. Useful for answering "who gets paid when X flow happens at venture Y".',
+      input_schema: {
+        type: 'object',
+        properties: { venture_id: { type: 'string', description: 'Optional: scope to one venture.' } },
+      },
+    },
+    {
+      name: 'list_distribution_configs',
+      description: 'List capital_distribution_config rows — the billing-mode × payee-strategy configuration for every (venture, capital flow kind) combination. Answers "how are bills generated for BetEdge referral rewards?" etc.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          venture_id: { type: 'string', description: 'Optional filter.' },
+          flow_kind: { type: 'string', description: 'Optional filter: re_yield_distribution, token_presale, referral_reward, etc. (see CapitalFlow enum)' },
+        },
+      },
+    },
+    {
+      name: 'list_compliance_rule_sets',
+      description: 'List capital_compliance_rule_set rows + their capital_compliance_rule children. Each set is scoped to a (venture, jurisdiction). Rules cover securities (Reg CF/D, accreditation, hold periods), iGaming (age, wager limits, responsible gaming, cooling-off), crypto (jurisdiction allow/block, VPN), and AML (OFAC, AML score).',
+      input_schema: {
+        type: 'object',
+        properties: { venture_id: { type: 'string', description: 'Optional filter.' } },
+      },
+    },
+    {
+      name: 'list_legal_entities',
+      description: 'List capital_legal_entity rows — EdgeIQ Holdings and the parent-child graph of venture operating entities. Use when answering "who owns Futurestate?" or "what jurisdiction is BetEdge incorporated in?".',
+      input_schema: { type: 'object', properties: {} },
+    },
+    {
+      name: 'simulate_royalty_walk',
+      description: "DRY-RUN a royalty graph application: given venture_id + flow_kind + amount + currency (+ optional jurisdiction), returns the exact per-layer payout legs that would be generated, including EdgeIQ Holdings rake, venture treasury rake, and all conditional layers (creator_share on ENGAGEMENT_PAYOUT, affiliate on REFERRAL_REWARD, etc.). Uses the same computeRoyaltyLegs function that runs in production — this is the authoritative answer.",
+      input_schema: {
+        type: 'object',
+        properties: {
+          venture_id: { type: 'string' },
+          flow_kind: { type: 'string', description: 'CapitalFlow enum value (e.g. re_yield_distribution, token_presale)' },
+          amount: { type: 'number' },
+          currency: { type: 'string', description: 'Defaults to CAD.' },
+          jurisdiction: { type: 'string', description: 'Optional: used to filter jurisdiction-scoped layers.' },
+        },
+        required: ['venture_id', 'flow_kind', 'amount'],
+      },
+    },
   ],
+};
+
+// ─── Foundation tools (Treasury / RoyaltyGraph / DistributionConfig / ComplianceRuleSet / LegalEntity) ───
+
+const listTreasuries: KitToolHandler = async (input, ctx) => {
+  const data = await postJson('/api/capital', { action: 'foundation-list-treasuries', venture_id: input.venture_id }, ctx);
+  const treasuries = data.treasuries ?? [];
+  if (!treasuries.length) return { success: true, data: [], displayMarkdown: 'No treasuries found.' };
+  let md = `## Treasuries${input.venture_id ? ` — ${input.venture_id}` : ''}\n\n| Venture | Label | Kind | Currency | Jurisdiction | Custodian |\n|---|---|---|---|---|---|\n`;
+  for (const t of treasuries) md += `| ${t.venture_id} | ${t.label} | ${t.kind} | ${t.currency} | ${t.jurisdiction} | ${t.custodian ?? '—'} |\n`;
+  return { success: true, data: treasuries, displayMarkdown: md };
+};
+
+const listRoyaltyGraphs: KitToolHandler = async (input, ctx) => {
+  const data = await postJson('/api/capital', { action: 'foundation-list-royalty-graphs', venture_id: input.venture_id }, ctx);
+  const graphs = data.graphs ?? [];
+  const layers = data.layers ?? [];
+  if (!graphs.length) return { success: true, data: { graphs, layers }, displayMarkdown: 'No active royalty graphs found.' };
+  let md = `## Royalty Graphs${input.venture_id ? ` — ${input.venture_id}` : ''}\n\n`;
+  for (const g of graphs) {
+    md += `### ${g.venture_id} · ${g.label} v${g.version}\n| # | Layer | Kind | Recipient | bps | Condition |\n|---|---|---|---|---|---|\n`;
+    for (const l of layers.filter((x: { graph_id: string }) => x.graph_id === g.id)) {
+      md += `| ${l.sequence} | ${l.label} | ${l.kind} | ${l.recipient_type}/${l.recipient_id} | ${l.bps} | ${l.condition_expr ?? '—'} |\n`;
+    }
+    md += '\n';
+  }
+  return { success: true, data: { graphs, layers }, displayMarkdown: md };
+};
+
+const listDistributionConfigs: KitToolHandler = async (input, ctx) => {
+  const data = await postJson('/api/capital', {
+    action: 'foundation-list-distribution-configs',
+    venture_id: input.venture_id, flow_kind: input.flow_kind,
+  }, ctx);
+  const configs = data.configs ?? [];
+  if (!configs.length) return { success: true, data: [], displayMarkdown: 'No distribution configs.' };
+  let md = `## Distribution Configs${input.venture_id ? ` — ${input.venture_id}` : ''}\n\n| Venture | Flow | Billing | Payee | Currency | Allowed |\n|---|---|---|---|---|---|\n`;
+  for (const c of configs) md += `| ${c.venture_id} | ${c.flow_kind} | ${c.billing_mode} | ${c.default_payee_strategy} | ${c.default_currency} | ${(c.allowed_currencies || []).join(',')} |\n`;
+  return { success: true, data: configs, displayMarkdown: md };
+};
+
+const listComplianceRuleSets: KitToolHandler = async (input, ctx) => {
+  const data = await postJson('/api/capital', { action: 'foundation-list-compliance-rule-sets', venture_id: input.venture_id }, ctx);
+  const sets = data.rule_sets ?? [];
+  const rules = data.rules ?? [];
+  if (!sets.length) return { success: true, data: { sets, rules }, displayMarkdown: 'No compliance rule sets.' };
+  let md = `## Compliance Rule Sets\n\n`;
+  for (const s of sets) {
+    md += `### ${s.venture_id} · ${s.label} (${s.jurisdiction})\n| Rule | Scope | Priority | Config |\n|---|---|---|---|\n`;
+    for (const r of rules.filter((x: { rule_set_id: string }) => x.rule_set_id === s.id)) {
+      md += `| ${r.rule_type} | ${r.scope} | ${r.priority} | \`${JSON.stringify(r.config)}\` |\n`;
+    }
+    md += '\n';
+  }
+  return { success: true, data: { sets, rules }, displayMarkdown: md };
+};
+
+const listLegalEntities: KitToolHandler = async (_input, ctx) => {
+  const data = await postJson('/api/capital', { action: 'foundation-list-legal-entities' }, ctx);
+  const entities = data.entities ?? [];
+  if (!entities.length) return { success: true, data: [], displayMarkdown: 'No legal entities.' };
+  let md = `## Legal Entity Graph\n\n| ID | Label | Jurisdiction | Type | Parent |\n|---|---|---|---|---|\n`;
+  for (const e of entities) md += `| ${e.id} | ${e.label} | ${e.jurisdiction} | ${e.entity_type} | ${e.parent_entity_id ?? '—'} |\n`;
+  return { success: true, data: entities, displayMarkdown: md };
+};
+
+const simulateRoyaltyWalk: KitToolHandler = async (input, ctx) => {
+  const data = await postJson('/api/capital', {
+    action: 'foundation-simulate-royalty-walk',
+    venture_id: input.venture_id,
+    amount: input.amount,
+    flow_kind: input.flow_kind,
+    currency: input.currency,
+    jurisdiction: input.jurisdiction,
+  }, ctx);
+  const sim = data.simulation;
+  if (!sim || !sim.legs) return { success: false, displayMarkdown: 'Simulation returned no legs.' };
+  let md = `## Royalty Walk — ${input.venture_id} · ${input.flow_kind} · ${input.amount} ${sim.currency}\n\n| # | Layer | Kind | Recipient | bps | Amount |\n|---|---|---|---|---|---|\n`;
+  for (const leg of sim.legs) md += `| ${leg.sequence} | ${leg.label} | ${leg.kind} | ${leg.recipientType}/${leg.recipientId} | ${leg.bpsApplied} | ${leg.amount} ${leg.currency} |\n`;
+  md += `\n**Total royalty**: ${sim.totalRoyalty} ${sim.currency}\n**Residual to primary**: ${sim.residualToPrimary} ${sim.currency}\n`;
+  return { success: true, data: sim, displayMarkdown: md };
 };
 
 export const handlers: Record<string, KitToolHandler> = {
@@ -752,4 +889,10 @@ export const handlers: Record<string, KitToolHandler> = {
   notify_investors: notifyInvestors,
   screen_investor_ofac: screenInvestorOfac,
   request_accreditation_verification: requestAccreditationVerification,
+  list_treasuries: listTreasuries,
+  list_royalty_graphs: listRoyaltyGraphs,
+  list_distribution_configs: listDistributionConfigs,
+  list_compliance_rule_sets: listComplianceRuleSets,
+  list_legal_entities: listLegalEntities,
+  simulate_royalty_walk: simulateRoyaltyWalk,
 };

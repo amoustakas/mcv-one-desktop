@@ -64,6 +64,10 @@ const CRMView = lazyRetry(() => import('./views/CRMView'));
 const CapitalGlobalView = lazyRetry(() => import('./views/CapitalGlobalView'));
 const CapitalVentureView = lazyRetry(() => import('./views/CapitalVentureView'));
 const CapitalRoundDetailView = lazyRetry(() => import('./views/CapitalRoundDetailView'));
+const CapitalFoundationView = lazyRetry(() => import('./views/CapitalFoundationView'));
+const AgentsView = lazyRetry(() => import('./views/AgentsView'));
+const AgentProfileView = lazyRetry(() => import('./views/AgentProfileView'));
+const AgentChatView = lazyRetry(() => import('./views/AgentChatView'));
 const PlatformApiKeysView = lazyRetry(() => import('./views/PlatformApiKeysView'));
 const ProspectsView = lazyRetry(() => import('./views/ProspectsView'));
 const ProspectProfileView = lazyRetry(() => import('./views/ProspectProfileView'));
@@ -232,6 +236,14 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <CapitalVentureView />;
     case 'capital-round-detail':
       return <CapitalRoundDetailView />;
+    case 'capital-foundation':
+      return <CapitalFoundationView />;
+    case 'agents':
+      return <AgentsView />;
+    case 'agent-profile':
+      return <AgentProfileView />;
+    case 'agent-chat':
+      return <AgentChatView />;
     case 'platform-api-keys':
       return <PlatformApiKeysView />;
     case 'prospects':

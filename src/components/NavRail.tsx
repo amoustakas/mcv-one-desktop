@@ -26,11 +26,27 @@ const globalSections: NavSection[] = [
     ],
   },
   {
+    label: 'The Team', key: 'team',
+    items: [
+      { id: 'agents', label: 'Agent Roster' },
+      { id: 'agent-chat', label: 'Agent Chat' },
+    ],
+  },
+  {
     label: 'Ventures', key: 'ventures',
     items: [
       { id: 'ventures-index', label: 'All Ventures', badge: 'NEW' },
       { id: 'department-portfolio', label: 'Departments', badge: 'NEW' },
       { id: 'venture-onboarding', label: 'New Venture' },
+    ],
+  },
+  {
+    label: 'Capital', key: 'capital',
+    items: [
+      { id: 'capital-foundation', label: 'Foundation' },
+      { id: 'capital', label: 'Cap Table' },
+      { id: 'capital-launchpad-admin', label: 'Launchpad Admin' },
+      { id: 'platform-api-keys', label: 'API Keys' },
     ],
   },
   {

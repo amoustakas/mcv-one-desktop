@@ -45,4 +45,35 @@ export type {
 export { createCapitalEngine } from './create-capital-engine';
 export type { CapitalEngine, CapitalEngineOpts } from './create-capital-engine';
 
-export const MCV_CAPITAL_SDK_VERSION = '0.1.0' as const;
+// ─── v0.2 — cross-venture event contract + adapter factory ─────────────
+export * from './foundation-types';
+export {
+  evaluateCompliance,
+  isComplianceAllow, isComplianceBlock, isComplianceReview,
+} from './compliance-evaluator';
+export type {
+  EvaluateInput, InvestorContext, TreasuryContext, FlowContext,
+} from './compliance-evaluator';
+export { computeRoyaltyLegs } from './royalty-walker';
+export type {
+  RoyaltyContext, ComputedLeg, WalkInput, WalkResult,
+} from './royalty-walker';
+export {
+  CapitalEvent, CAPITAL_EVENT_TOPICS,
+  composePublishers, nullEventPublisher,
+} from './events';
+export type {
+  CapitalEventPublisher, CapitalEventTopic, EventActor,
+} from './events';
+export { createVentureAdapter } from './venture-adapter';
+export type { VentureAdapter, VentureAdapterOptions, EmitOptions } from './venture-adapter';
+export {
+  createSupabasePublisher, createFabricPublisher,
+  createConsolePublisher, createDefaultPublisher,
+} from './event-publisher';
+export type {
+  SupabasePublisherOptions, FabricPublisherOptions,
+  ConsolePublisherOptions, DefaultPublisherConfig,
+} from './event-publisher';
+
+export const MCV_CAPITAL_SDK_VERSION = '0.2.0' as const;

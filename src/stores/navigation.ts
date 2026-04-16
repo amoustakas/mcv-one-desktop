@@ -133,6 +133,10 @@ export type ViewId =
   | 'capital-round-detail'
   | 'capital-contact-detail'
   | 'capital-launchpad-admin'
+  | 'capital-foundation'
+  | 'agents'
+  | 'agent-profile'
+  | 'agent-chat'
   | 'platform-api-keys'
   // Phase 2 — Prospect funnel + onboarding admin
   | 'prospects'
@@ -173,9 +177,12 @@ interface NavigationState {
   // Phase 2 — selected prospect journey for ProspectProfileView. Set by
   // ProspectsView row click, consumed by ProspectProfileView.
   selectedProspectJourneyId: string | null;
+  // Active agent handle for agent-profile view (and future chat routing).
+  activeAgentHandle: string | null;
 
   setView: (view: ViewId) => void;
   selectProspectJourney: (id: string) => void;
+  openAgentProfile: (handle: string) => void;
   openVentureDetailTab: (tab: string) => void;
   consumePendingDetailTab: () => string | null;
   switchToGlobal: () => void;
@@ -244,6 +251,10 @@ const VIEW_LABELS: Record<string, string> = {
   'capital-round-detail': 'Round',
   'capital-contact-detail': 'Investor',
   'capital-launchpad-admin': 'Launchpad',
+  'capital-foundation': 'Foundation',
+  agents: 'The Team',
+  'agent-profile': 'Agent',
+  'agent-chat': 'Agent Chat',
   'platform-api-keys': 'API Keys',
   prospects: 'Prospects',
   'prospect-profile': 'Prospect',
@@ -265,6 +276,7 @@ export const useNavigation = create<NavigationState>()(
       historyIndex: 0,
       pendingDetailTab: null,
       selectedProspectJourneyId: null,
+      activeAgentHandle: null,
 
       selectProspectJourney: (id) =>
         set((s) => {
@@ -273,6 +285,18 @@ export const useNavigation = create<NavigationState>()(
             activeView: 'prospect-profile' as ViewId,
             previousView: s.activeView,
             selectedProspectJourneyId: id,
+            history: newHistory,
+            historyIndex: newHistory.length - 1,
+          };
+        }),
+
+      openAgentProfile: (handle: string) =>
+        set((s) => {
+          const newHistory = [...s.history.slice(0, s.historyIndex + 1), 'agent-profile' as ViewId].slice(-50);
+          return {
+            activeView: 'agent-profile' as ViewId,
+            previousView: s.activeView,
+            activeAgentHandle: handle,
             history: newHistory,
             historyIndex: newHistory.length - 1,
           };
