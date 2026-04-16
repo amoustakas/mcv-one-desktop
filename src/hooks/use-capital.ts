@@ -592,3 +592,72 @@ export function useRoyaltyWalkSimulation(
     enabled: Boolean(ventureId && flowKind && amount && amount > 0),
   });
 }
+
+// ─── Accreditation Flow (Phase 3) ─────────────────────────────────────────
+// VerifyInvestor adapter (Epic 13 S9) outbound + simulated paths.
+
+export interface AccreditationRequest {
+  requestId: string;
+  contactId: string;
+  hostedUrl: string;
+  status: 'pending';
+  createdAt: string;
+}
+
+/**
+ * Initiates a real verification request via the VerifyInvestor adapter.
+ * Falls back to a mocked hostedUrl if VERIFY_INVESTOR_API_KEY is unset
+ * (dev/preview behavior — see verify-investor-adapter.ts).
+ * Side-effect: investor profile flips to kyc=in_review pending the webhook.
+ */
+export function useInitiateAccreditation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { contactId: string; returnUrl?: string }): Promise<AccreditationRequest> => {
+      const data = await apiPost<{ request: AccreditationRequest }>('/api/capital', {
+        action: 'initiate-accreditation-verification',
+        contact_id: input.contactId,
+        return_url: input.returnUrl,
+      });
+      return data.request;
+    },
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ['capital', 'investor-position', variables.contactId] });
+      qc.invalidateQueries({ queryKey: ['capital', 'investors'] });
+      qc.invalidateQueries({ queryKey: ['prospects'] });
+    },
+  });
+}
+
+/**
+ * Admin/dev path: skip the vendor round-trip and stamp the verification
+ * outcome directly on the investor profile. Used by:
+ *   - the AccreditationFlow modal's "simulate" button (dev mode)
+ *   - admin override when an investor was verified out-of-band
+ *   - demo flows
+ * Webhook stays the canonical source of truth in production; this is a
+ * deliberate bypass that reuses the same DB columns.
+ */
+export function useSimulateAccreditation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      contactId: string;
+      outcome?: 'verified_accredited' | 'self_certified' | 'not_accredited';
+      basis?: 'income' | 'net_worth' | 'entity' | 'professional' | 'qualified_purchaser';
+    }): Promise<{ profile: InvestorProfile; simulated: true }> => {
+      const data = await apiPost<{ profile: InvestorProfile; simulated: true }>('/api/capital', {
+        action: 'simulate-accreditation-verification',
+        contact_id: input.contactId,
+        outcome: input.outcome ?? 'verified_accredited',
+        basis: input.basis,
+      });
+      return data;
+    },
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ['capital', 'investor-position', variables.contactId] });
+      qc.invalidateQueries({ queryKey: ['capital', 'investors'] });
+      qc.invalidateQueries({ queryKey: ['prospects'] });
+    },
+  });
+}

@@ -3,11 +3,14 @@
 // and a stub chat column that Session B's chat routing will wire up.
 // Plan: C:\Users\moust\.claude\plans\nifty-launching-turtle.md
 
-import { ArrowLeft, Sparkles, MessageCircle, CheckCircle2, Clock, Circle, SkipForward, XCircle, ArrowRight, Users, Wallet } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowLeft, Sparkles, MessageCircle, CheckCircle2, Clock, Circle, SkipForward, XCircle, ArrowRight, Users, Wallet, Shield } from 'lucide-react';
 import { useProspectJourney, type EmbeddedAgent, type StepWithAgent, type EcosystemLinks } from '../hooks/use-prospects';
+import { useInvestorPosition } from '../hooks/use-capital';
 import { useNavigation } from '../stores/navigation';
 import { PageShell, GlassCard, Badge, EmptyState } from '../components/ui';
 import { STEPS, TRACKS, type StepName, type TrackName } from '@mcv/onboarding-sdk';
+import AccreditationFlowModal from '../components/capital/AccreditationFlowModal';
 
 export default function ProspectProfileView() {
   const setView = useNavigation((s) => s.setView);
@@ -234,6 +237,19 @@ function EcosystemBridge({
   const { contact, investor_profile } = ecosystem;
   const openCrmContact = useNavigation((s) => s.openCrmContact);
   const openCapitalContact = useNavigation((s) => s.openCapitalContact);
+  const [verifyModalOpen, setVerifyModalOpen] = useState(false);
+
+  // Fetch the camelCase InvestorProfile for the modal's mutation cache.
+  // The ecosystem.investor_profile shape is snake_case from the get_journey
+  // response; the modal needs the SDK shape so React Query can invalidate
+  // the right ['capital','investor-position', contactId] key on mutation.
+  const { data: investorPosition } = useInvestorPosition(
+    investor_profile?.contact_id ?? null,
+  );
+  const fullInvestorProfile = investorPosition?.profile ?? null;
+  const isVerified = investor_profile
+    && (investor_profile.accreditation_status === 'verified_accredited'
+      || investor_profile.accreditation_status === 'qualified_purchaser');
 
   return (
     <GlassCard>
@@ -294,13 +310,30 @@ function EcosystemBridge({
               <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 12 }}>
                 committed ${Number(investor_profile.total_committed_usd).toLocaleString()} · funded ${Number(investor_profile.total_funded_usd).toLocaleString()} · created {new Date(investor_profile.created_at).toLocaleString()}
               </div>
-              <button onClick={() => openCapitalContact(investor_profile.contact_id)} style={ctaStyle('var(--color-brand-electric)')}>
-                Open in Capital <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {!isVerified && (
+                  <button onClick={() => setVerifyModalOpen(true)} style={{ ...ctaStyle('#A78BFA'), background: '#A78BFA' }}>
+                    <Shield className="w-3.5 h-3.5" /> Verify accreditation
+                  </button>
+                )}
+                <button onClick={() => openCapitalContact(investor_profile.contact_id)} style={ctaStyle('var(--color-brand-electric)')}>
+                  Open in Capital <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           )}
         </div>
       </div>
+
+      {investor_profile && contact && (
+        <AccreditationFlowModal
+          open={verifyModalOpen}
+          onClose={() => setVerifyModalOpen(false)}
+          contactId={investor_profile.contact_id}
+          contactName={contact.name}
+          profile={fullInvestorProfile}
+        />
+      )}
     </GlassCard>
   );
 }

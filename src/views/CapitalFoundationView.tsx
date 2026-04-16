@@ -14,6 +14,7 @@ import {
 import { useContact } from '../hooks/use-crm';
 import { useNavigation } from '../stores/navigation';
 import { PageHeader, PageShell, GlassCard, Badge, EmptyState } from '../components/ui';
+import AccreditationFlowModal from '../components/capital/AccreditationFlowModal';
 
 type FoundationTab = 'treasuries' | 'royalties' | 'distributions' | 'compliance' | 'entities' | 'simulator';
 
@@ -422,9 +423,12 @@ function PinnedInvestorBanner({
   const { data: contactData, isLoading: contactLoading } = useContact(contactId);
   const { data: position, isLoading: positionLoading } = useInvestorPosition(contactId);
   const selectProspectJourney = useNavigation((s) => s.selectProspectJourney);
+  const [verifyModalOpen, setVerifyModalOpen] = useState(false);
 
   const contact = contactData?.contact;
   const profile = position?.profile ?? null;
+  const accreditationStatus = profile?.accreditationStatus ?? 'unknown';
+  const isVerified = accreditationStatus === 'verified_accredited' || accreditationStatus === 'qualified_purchaser';
 
   // Check for the journey reverse-link in BOTH metadatas — contact's
   // metadata.completion_journey_id is the canonical pointer; profile's
@@ -496,24 +500,50 @@ function PinnedInvestorBanner({
               </div>
             )}
 
-            {journeyId && (
-              <button
-                onClick={() => selectProspectJourney(journeyId)}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 4,
-                  padding: '8px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                  background: 'rgba(110, 231, 183, 0.15)', color: '#6EE7B7',
-                  border: '1px solid rgba(110, 231, 183, 0.3)', cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                View {fromTrack ?? 'onboarding'} journey
-                <ArrowRight size={13} />
-              </button>
-            )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {!isVerified && profile && (
+                <button
+                  onClick={() => setVerifyModalOpen(true)}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '8px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                    background: 'var(--color-brand-electric)', color: 'var(--surface-base)',
+                    border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+                  }}
+                >
+                  <Shield size={13} />
+                  Verify accreditation
+                </button>
+              )}
+              {journeyId && (
+                <button
+                  onClick={() => selectProspectJourney(journeyId)}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '8px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                    background: 'rgba(110, 231, 183, 0.15)', color: '#6EE7B7',
+                    border: '1px solid rgba(110, 231, 183, 0.3)', cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  View {fromTrack ?? 'onboarding'} journey
+                  <ArrowRight size={13} />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </GlassCard>
+
+      {profile && (
+        <AccreditationFlowModal
+          open={verifyModalOpen}
+          onClose={() => setVerifyModalOpen(false)}
+          contactId={contactId}
+          contactName={contact.name}
+          profile={profile}
+        />
+      )}
     </div>
   );
 }
