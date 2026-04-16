@@ -156,3 +156,77 @@
 **Timeline**: ~2–3 sessions (schema changes + 3 code phases + integration testing)
 
 **Bridge View**: NOT RECOMMENDED (cannot add computed columns; blocks FK; masks issue)
+
+---
+
+## 7. Resolution (Session 13e, 2026-04-16)
+
+**Decision**: Reverse the original direction. Instead of renaming 20 files of
+application code to match the DB, **rename the DB table to match the code**
+and leave a backward-compat view for pre-Session-10 callers.
+
+**Trigger**: Tony's edit to `supabase/migration-mcv-sign.sql` reverted the
+`signing_envelope_signers.contact_id` FK target from `contacts(id)` back to
+`crm_contacts(id)`. That FK direction is a tell — the canonical name going
+forward is `crm_contacts`.
+
+### Why this beats the 20-file rename plan
+
+| Axis | 20-file code rename | DB rename + view (this) |
+| --- | --- | --- |
+| Diff surface | 20 files, 40+ edits | 1 SQL file |
+| Test churn | Update every mock | Zero mock changes |
+| Risk of missed call site | High | Zero — view catches them |
+| Schema gaps (full_name, country) | Still need separate migration | Rolled into same migration |
+| Rollback | Revert 20 commits | `DROP VIEW` + `ALTER TABLE RENAME` |
+| Time to ship | 2–3 sessions | 1 session |
+
+### Migration file
+
+`supabase/migration-rename-contacts-to-crm-contacts.sql` — a single
+transactional migration that:
+
+1. `ALTER TABLE contacts RENAME TO crm_contacts` — preserves all 3 inbound
+   FKs (activities, deals, signing_envelope_signers), RLS policy, realtime
+   publication membership, and indexes. Postgres `RENAME` is oid-stable.
+2. `ADD COLUMN full_name TEXT GENERATED ALWAYS AS (name) STORED` — zero-drift
+   mirror; single source of truth remains `name`; no write-path triggers.
+3. `ADD COLUMN country TEXT` — nullable jurisdiction code for tax export
+   (1099/T5). Callers backfill; null-safe in tax-export.ts already.
+4. `CREATE OR REPLACE VIEW contacts AS SELECT * FROM crm_contacts` —
+   simple single-table view; Postgres marks it auto-updatable, so legacy
+   `.from('contacts').insert(...)` / `.update(...)` / `.delete(...)` all
+   keep working unchanged.
+
+### What this invalidates from sections 1–6 above
+
+- **Section 4 "Safe Rename Order"** — DROPPED. No code rename needed. All
+  40+ call sites continue to work because `crm_contacts` now exists and
+  `contacts` is a view.
+- **Section 5 "Integration Test Strategy"** — update to verify the view
+  write-through path instead of changing mocks.
+- **Section 6 "Execution Checklist"** — collapsed to: apply migration,
+  smoke-test both names, monitor prod for missing-column errors on
+  `full_name` / `country` callers.
+- **"Bridge View: NOT RECOMMENDED"** note — reversed. The view IS
+  recommended because:
+  - Postgres auto-updatable simple views support write-through natively
+  - `full_name` as a GENERATED column (not a view-computed column) means
+    the FK-blocking concern doesn't apply — the FK lives on the base
+    table `crm_contacts`, which now has all columns code expects
+
+### Residual cleanup (non-blocking, future session)
+
+- Pre-Session-10 code that writes `.from('contacts').insert(...)` should
+  eventually migrate to the canonical name. Optional trigger to log such
+  writes to an advisory table is sketched in the migration comments but
+  not implemented — add only if Tony wants visibility into the migration
+  tail.
+- Consider tightening RLS past the current `USING (true)` permissive
+  policy once Clerk JWT bridge is exercised broadly (tracked separately).
+
+### Apply status
+
+- **PR branch**: `marathon-13e-contacts-to-crm-contacts`
+- **Not yet applied to prod**. Migration is staged for Tony's manual apply
+  via Supabase MCP after PR review.
