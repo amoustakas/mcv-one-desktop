@@ -1,7 +1,7 @@
 {
   "name": "@mcv/voice-sdk",
-  "version": "0.1.0",
-  "description": "MCV voice stack — router + Gemini Live adapter types + Deepgram/ElevenLabs helpers. Dual-stack voice selection for any MCV venture app.",
+  "version": "0.2.0",
+  "description": "MCV enterprise-lego voice SDK — provider-agnostic router + FallbackChain + 6 provider adapters (ElevenLabs, Gemini Live, Deepgram, Vapi, OpenAI Realtime, Azure) + agent_persona.voice_profile bridge. Consumable by every MCV venture + agent.",
   "private": true,
   "type": "module",
   "main": "./src/index.ts",
@@ -14,6 +14,54 @@
     "./router": {
       "types": "./src/router.ts",
       "default": "./src/router.ts"
+    },
+    "./router/voice-router": {
+      "types": "./src/router/VoiceRouter.ts",
+      "default": "./src/router/VoiceRouter.ts"
+    },
+    "./router/fallback-chain": {
+      "types": "./src/router/FallbackChain.ts",
+      "default": "./src/router/FallbackChain.ts"
+    },
+    "./providers": {
+      "types": "./src/providers/ProviderContract.ts",
+      "default": "./src/providers/ProviderContract.ts"
+    },
+    "./providers/registry": {
+      "types": "./src/providers/registry.ts",
+      "default": "./src/providers/registry.ts"
+    },
+    "./providers/elevenlabs": {
+      "types": "./src/providers/ElevenLabsProvider.ts",
+      "default": "./src/providers/ElevenLabsProvider.ts"
+    },
+    "./providers/gemini-live": {
+      "types": "./src/providers/GeminiLiveProvider.ts",
+      "default": "./src/providers/GeminiLiveProvider.ts"
+    },
+    "./providers/deepgram": {
+      "types": "./src/providers/DeepgramProvider.ts",
+      "default": "./src/providers/DeepgramProvider.ts"
+    },
+    "./providers/vapi": {
+      "types": "./src/providers/VapiProvider.ts",
+      "default": "./src/providers/VapiProvider.ts"
+    },
+    "./providers/openai-realtime": {
+      "types": "./src/providers/OpenAIRealtimeProvider.ts",
+      "default": "./src/providers/OpenAIRealtimeProvider.ts"
+    },
+    "./providers/azure": {
+      "types": "./src/providers/AzureProvider.ts",
+      "default": "./src/providers/AzureProvider.ts"
+    },
+    "./session": {
+      "types": "./src/session/VoiceSession.ts",
+      "default": "./src/session/VoiceSession.ts"
+    },
+    "./integrations/agent-persona": {
+      "types": "./src/integrations/agent-persona-bridge.ts",
+      "default": "./src/integrations/agent-persona-bridge.ts"
     }
   },
   "files": [
@@ -21,6 +69,6 @@
   ],
   "scripts": {
     "lint": "echo 'no lint yet'",
-    "test": "echo 'no tests yet'"
+    "test": "vitest run"
   }
 }
