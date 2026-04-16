@@ -509,6 +509,59 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           });
         }
       }
+      case 'initiate-accreditation-verification': {
+        // Outbound leg of the VerifyInvestor adapter (Epic 13 S9).
+        // Creates a vendor-side request, returns the hosted URL for
+        // the investor to complete. Completion arrives asynchronously
+        // at /api/verify-investor-webhook which auto-issues the VC.
+        const contactId = params.contact_id as string;
+        const returnUrl = params.return_url as string | undefined;
+        if (!contactId) return res.status(400).json({ error: 'contact_id required' });
+
+        const { data: contact } = await supabase
+          .from('crm_contacts')
+          .select('id, full_name, email, metadata')
+          .eq('id', contactId)
+          .maybeSingle();
+        if (!contact) return res.status(404).json({ error: 'contact not found' });
+
+        const { data: profile } = await supabase
+          .from('capital_investor_profile')
+          .select('clerk_user_id')
+          .eq('contact_id', contactId)
+          .maybeSingle();
+
+        const { createVerificationRequest } = await import('../../src/lib/capital/adapters/verify-investor-adapter');
+        try {
+          const request = await createVerificationRequest({
+            contactId,
+            clerkUserId: profile?.clerk_user_id as string | undefined,
+            email: contact.email as string | undefined,
+            returnUrl,
+          });
+          // Stamp the vendor request id on the contact so the webhook
+          // can correlate back when completion arrives. The adapter's
+          // fromForeign already uses subject.contactId (passed via the
+          // vendor's external_id field) as the primary linkage, but
+          // having the pending request id visible here lets admins +
+          // UI show "verification in flight" state.
+          const mergedMeta = {
+            ...((contact.metadata as Record<string, unknown>) ?? {}),
+            verify_investor_request_id: request.requestId,
+            verify_investor_request_at: request.createdAt,
+          };
+          await supabase.from('crm_contacts').update({ metadata: mergedMeta }).eq('id', contactId);
+
+          await publishCapitalEvent(
+            'capital.accreditation.verification_requested',
+            `Accreditation verification requested for ${contact.full_name ?? contactId}`,
+            { description: `VerifyInvestor request ${request.requestId.slice(0, 12)}…`, type: 'info' },
+          );
+          return res.json({ request });
+        } catch (err) {
+          return res.status(500).json({ error: err instanceof Error ? err.message : 'verification request failed' });
+        }
+      }
       case 'link-stripe-customer': {
         // Stamps `crm_contacts.metadata.stripe_customer_id` so the
         // StripeAdapter (Epic 13 S2) can auto-match payment_intent.succeeded

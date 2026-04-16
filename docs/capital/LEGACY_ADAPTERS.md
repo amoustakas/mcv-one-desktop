@@ -22,6 +22,7 @@ every adapter should be incrementally growing toward the INTEROP shape.
 | `plaid`   | payment     | inbound    | `CapitalPaymentEvent`    | [src/lib/capital/adapters/plaid-adapter.ts](../../src/lib/capital/adapters/plaid-adapter.ts) |
 | `stripe`  | payment     | inbound    | `CapitalPaymentEvent`    | [src/lib/capital/adapters/stripe-adapter.ts](../../src/lib/capital/adapters/stripe-adapter.ts) |
 | `ofac`    | compliance  | inbound    | `CapitalComplianceEvent` | [src/lib/capital/adapters/ofac-adapter.ts](../../src/lib/capital/adapters/ofac-adapter.ts) |
+| `verify-investor` | compliance  | bidirectional | `CapitalComplianceEvent` | [src/lib/capital/adapters/verify-investor-adapter.ts](../../src/lib/capital/adapters/verify-investor-adapter.ts) |
 
 Outbound payment movement (distributions, payouts) does **not** live
 here — it routes through `@mcv/payments-sdk`'s `PaymentProcessor`
@@ -195,6 +196,33 @@ commitment, no amount) and returns a tri-state outcome instead of a
 match/null binary. `review` exists so name-only collisions (strong
 name match but DOB absent or disagreeing) can be surfaced without
 hard-blocking transactions.
+
+**Outcome semantics generalize beyond sanctions.** For OFAC, `match`
+means "matched a sanctioned entity." For VerifyInvestor (Epic 13 S9),
+`match` means "vendor verified non-accredited" — the rule is "matched
+a disqualifying state." The gate treats `match` as a hard block in
+either case, so both adapters plug into the same
+[compliance-gate](../../src/lib/capital/compliance-gate.ts) without
+per-vendor branching.
+
+### Outbound-then-webhook compliance adapters (VerifyInvestor pattern)
+
+VerifyInvestor is bidirectional: outbound request creation + inbound
+webhook completion. The outbound leg (`createVerificationRequest`)
+returns a hosted URL the investor visits; the webhook completion fires
+through the same `fromForeign` → `reconcileCapitalCompliance` path
+OFAC uses, plus a **VC auto-issuance step** when
+`outcome === 'clear'` — the webhook handler calls
+`issueAccreditationCredential` (Epic 11) and stamps
+`capital_investor_profile.metadata.vc` so the Epic 11 VC gate passes
+on accredited-only rounds. Closes the loop between Epic 13 and
+Epic 11.
+
+When DocuSign and future outbound adapters ship, this pattern
+(outbound factory function + inbound webhook mapping through
+`fromForeign`) becomes the standard. A future refactor can fold the
+outbound factory into the `LegacyAdapter` contract as a typed
+`toRequest` method.
 
 ### reconcileCapitalCompliance helper
 
