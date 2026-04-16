@@ -501,3 +501,94 @@ export function useUpcomingFollowUps(daysAhead = 7) {
     },
   });
 }
+
+// ─── Foundation primitives (Phase 3: Treasury / Royalty / Distribution / Compliance / LegalEntity) ───
+
+export function useTreasuries(ventureId?: string) {
+  return useQuery({
+    queryKey: ['capital', 'foundation', 'treasuries', ventureId ?? 'all'],
+    queryFn: async () => {
+      const data = await apiPost<{ treasuries: unknown[] }>('/api/capital', {
+        action: 'foundation-list-treasuries',
+        venture_id: ventureId,
+      });
+      return data.treasuries;
+    },
+  });
+}
+
+export function useRoyaltyGraphs(ventureId?: string) {
+  return useQuery({
+    queryKey: ['capital', 'foundation', 'royalty-graphs', ventureId ?? 'all'],
+    queryFn: async () => {
+      const data = await apiPost<{ graphs: unknown[]; layers: unknown[] }>('/api/capital', {
+        action: 'foundation-list-royalty-graphs',
+        venture_id: ventureId,
+      });
+      return data;
+    },
+  });
+}
+
+export function useDistributionConfigs(ventureId?: string, flowKind?: string) {
+  return useQuery({
+    queryKey: ['capital', 'foundation', 'dist-configs', ventureId ?? 'all', flowKind ?? 'any'],
+    queryFn: async () => {
+      const data = await apiPost<{ configs: unknown[] }>('/api/capital', {
+        action: 'foundation-list-distribution-configs',
+        venture_id: ventureId,
+        flow_kind: flowKind,
+      });
+      return data.configs;
+    },
+  });
+}
+
+export function useComplianceRuleSets(ventureId?: string) {
+  return useQuery({
+    queryKey: ['capital', 'foundation', 'rule-sets', ventureId ?? 'all'],
+    queryFn: async () => {
+      const data = await apiPost<{ rule_sets: unknown[]; rules: unknown[] }>('/api/capital', {
+        action: 'foundation-list-compliance-rule-sets',
+        venture_id: ventureId,
+      });
+      return data;
+    },
+  });
+}
+
+export function useLegalEntities() {
+  return useQuery({
+    queryKey: ['capital', 'foundation', 'legal-entities'],
+    queryFn: async () => {
+      const data = await apiPost<{ entities: unknown[] }>('/api/capital', {
+        action: 'foundation-list-legal-entities',
+      });
+      return data.entities;
+    },
+  });
+}
+
+export function useRoyaltyWalkSimulation(
+  ventureId: string | null,
+  flowKind: string | null,
+  amount: number | null,
+  currency: string = 'CAD',
+  jurisdiction?: string,
+) {
+  return useQuery({
+    queryKey: ['capital', 'foundation', 'simulate-walk', ventureId, flowKind, amount, currency, jurisdiction ?? 'any'],
+    queryFn: async () => {
+      const data = await apiPost<{ simulation: unknown }>('/api/capital', {
+        action: 'foundation-simulate-royalty-walk',
+        venture_id: ventureId,
+        flow_kind: flowKind,
+        amount,
+        currency,
+        jurisdiction,
+      });
+      return data.simulation;
+    },
+    enabled: Boolean(ventureId && flowKind && amount && amount > 0),
+  });
+}
