@@ -34,7 +34,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       case 'list': {
         let q = supabase
           .from('agent_persona')
-          .select('id, handle, full_name, title, department, seniority, scope_kind, scope_value, reports_to_agent_id, interaction_mode, persona_bio, voice_profile, kit_allowlist, data_scopes, avatar_url, accent_color, active, hired_at, metadata')
+          .select('id, handle, full_name, title, department, seniority, scope_kind, scope_value, reports_to_agent_id, interaction_mode, persona_bio, voice_profile, kit_allowlist, tool_allowlist, data_scopes, avatar_url, accent_color, active, hired_at, metadata')
           .eq('active', true)
           .order('seniority', { ascending: true })
           .order('department', { ascending: true })
@@ -77,6 +77,115 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { data, error } = await q;
         if (error) return res.status(500).json({ error: error.message });
         return res.json({ activity: data ?? [] });
+      }
+      // ── start-conversation: wires chat to an agent persona ──────────
+      // Creates an agent_conversation row + a matching conversations row
+      // so the chat UI can stream through its existing /api/chat pipeline
+      // while still carrying the agent_id on every message.
+      case 'start-conversation': {
+        const handle = params.handle as string | undefined;
+        const ventureId = (params.venture_id as string | undefined) ?? null;
+        const title = (params.title as string | undefined) ?? 'New conversation';
+        if (!handle) return res.status(400).json({ error: 'handle required' });
+
+        const { data: agent, error: agentErr } = await supabase
+          .from('agent_persona')
+          .select('id, handle, full_name, title, accent_color, avatar_url, system_prompt, kit_allowlist, tool_allowlist, scope_value, metadata')
+          .eq('handle', handle)
+          .eq('active', true)
+          .maybeSingle();
+        if (agentErr) return res.status(500).json({ error: agentErr.message });
+        if (!agent) return res.status(404).json({ error: `Agent ${handle} not found` });
+
+        const convVentureId = ventureId || (agent.scope_value as string | null) || 'mcv';
+
+        const { data: agentConv, error: agentConvErr } = await supabase
+          .from('agent_conversation')
+          .insert({
+            agent_id: agent.id,
+            user_id: userId,
+            venture_id: convVentureId,
+            title,
+          })
+          .select('id')
+          .single();
+        if (agentConvErr) return res.status(500).json({ error: agentConvErr.message });
+
+        const { data: conv, error: convErr } = await supabase
+          .from('conversations')
+          .insert({
+            venture_id: convVentureId,
+            title,
+            agent_id: agent.id,
+            agent_conversation_id: agentConv.id,
+            user_id: userId,
+          })
+          .select('id, title, venture_id, created_at')
+          .single();
+        if (convErr) return res.status(500).json({ error: convErr.message });
+
+        // Audit: first chat_turn is logged on first user message; the
+        // start-conversation event itself is a 'system' action. Wrapped in
+        // try/catch because audit must never break the conversation flow.
+        try {
+          await supabase.from('agent_activity_log').insert({
+            agent_id: agent.id,
+            actor_user_id: userId,
+            session_id: agentConv.id,
+            action_kind: 'system',
+            input: { event: 'conversation_started', conversation_id: conv.id },
+            output: {},
+            venture_id: convVentureId,
+          });
+        } catch { /* non-fatal */ }
+
+        return res.json({
+          conversation_id: conv.id,
+          agent_conversation_id: agentConv.id,
+          venture_id: convVentureId,
+          agent: {
+            id: agent.id,
+            handle: agent.handle,
+            full_name: agent.full_name,
+            title: agent.title,
+            accent_color: agent.accent_color,
+            avatar_url: agent.avatar_url,
+            kit_allowlist: agent.kit_allowlist,
+            tool_allowlist: agent.tool_allowlist,
+            // Model is runtime — exposed so the client can pass it to /api/chat.
+            // See CLAUDE invariant: "The persona is data. The model is runtime."
+            model: (agent.metadata as Record<string, unknown> | null)?.model ?? null,
+          },
+          system_prompt: agent.system_prompt,
+        });
+      }
+      // ── list-conversations: recent threads with this agent ──────────
+      case 'list-conversations': {
+        const handle = params.handle as string | undefined;
+        const agentIdParam = params.agent_id as string | undefined;
+        const limit = Math.min(Number(params.limit ?? 25), 100);
+
+        let agentId = agentIdParam;
+        if (!agentId && handle) {
+          const { data: a } = await supabase
+            .from('agent_persona')
+            .select('id')
+            .eq('handle', handle)
+            .eq('active', true)
+            .maybeSingle();
+          agentId = a?.id;
+        }
+        if (!agentId) return res.status(400).json({ error: 'handle or agent_id required' });
+
+        const { data, error } = await supabase
+          .from('conversations')
+          .select('id, title, venture_id, agent_id, agent_conversation_id, created_at, updated_at')
+          .eq('agent_id', agentId)
+          .eq('user_id', userId)
+          .order('updated_at', { ascending: false })
+          .limit(limit);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.json({ conversations: data ?? [] });
       }
       default:
         return res.status(400).json({ error: `Unknown action: ${action}` });

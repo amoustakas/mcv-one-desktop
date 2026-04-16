@@ -3,10 +3,14 @@
 // tool belt, understand their data scope. Future: start a conversation,
 // schedule a workflow, review activity.
 
-import { ArrowLeft, MessageCircle, Settings2, Clock, Zap, Shield, Briefcase } from 'lucide-react';
-import { useAgent, useAgents } from '../hooks/use-agents';
+import { useState } from 'react';
+import { ArrowLeft, MessageCircle, Settings2, Clock, Zap, Shield, Briefcase, Loader2 } from 'lucide-react';
+import { useAgent, useAgents, useAgentConversations } from '../hooks/use-agents';
 import { useNavigation } from '../stores/navigation';
+import { useAgentChat } from '../stores/agent-chat';
+import { startAgentConversation } from '../lib/agents/chat';
 import { PageShell, GlassCard, Badge, EmptyState } from '../components/ui';
+import { useQueryClient } from '@tanstack/react-query';
 
 const DEPARTMENT_LABEL: Record<string, string> = {
   chief_of_staff: 'Chief of Staff',
@@ -36,6 +40,56 @@ export default function AgentProfileView() {
   const openAgentProfile = useNavigation((s) => s.openAgentProfile);
   const { data: agent, isLoading } = useAgent(activeHandle);
   const { data: allAgents } = useAgents();
+  const { data: recentConvs } = useAgentConversations(activeHandle);
+  const openAgentConversation = useAgentChat((s) => s.openAgentConversation);
+  const queryClient = useQueryClient();
+  const [starting, setStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
+
+  async function handleStartConversation() {
+    if (!activeHandle || starting) return;
+    setStarting(true);
+    setStartError(null);
+    try {
+      const result = await startAgentConversation({ handle: activeHandle });
+      openAgentConversation({
+        agent: result.agent,
+        conversationId: result.conversation_id,
+        agentConversationId: result.agent_conversation_id,
+        systemPrompt: result.system_prompt,
+      });
+      // Invalidate the recent-conversations cache so the next visit shows it.
+      queryClient.invalidateQueries({ queryKey: ['agents', 'conversations', activeHandle] });
+      setView('agent-chat');
+    } catch (err) {
+      setStartError(err instanceof Error ? err.message : 'Failed to start conversation');
+    } finally {
+      setStarting(false);
+    }
+  }
+
+  async function handleResumeConversation(conv: { id: string; title: string; agent_conversation_id: string | null }) {
+    if (!agent) return;
+    openAgentConversation({
+      agent: {
+        id: agent.id,
+        handle: agent.handle,
+        full_name: agent.full_name,
+        title: agent.title,
+        accent_color: agent.accent_color,
+        avatar_url: agent.avatar_url,
+        kit_allowlist: agent.kit_allowlist,
+        tool_allowlist: (agent as { tool_allowlist?: string[] | null }).tool_allowlist ?? null,
+        model: (agent.metadata as Record<string, unknown> | null)?.model as string | null ?? null,
+      },
+      conversationId: conv.id,
+      agentConversationId: conv.agent_conversation_id ?? conv.id,
+      // Full system prompt lives on agent_persona — chat endpoint reloads it
+      // server-side anyway, so null here is safe.
+      systemPrompt: '',
+    });
+    setView('agent-chat');
+  }
 
   if (!activeHandle) {
     return (
@@ -135,18 +189,21 @@ export default function AgentProfileView() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 180 }}>
           <button
-            disabled
+            onClick={handleStartConversation}
+            disabled={starting}
             style={{
               padding: '10px 14px', borderRadius: 10, fontSize: 13, fontWeight: 600,
               background: accent, color: 'var(--surface-base)', border: 'none',
-              cursor: 'not-allowed', opacity: 0.6,
+              cursor: starting ? 'wait' : 'pointer', opacity: starting ? 0.7 : 1,
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             }}
-            title="Session B will wire full chat routing"
           >
-            <MessageCircle className="w-4 h-4" /> Start conversation
-            <span style={{ fontSize: 10, opacity: 0.8 }}>(Session B)</span>
+            {starting ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />}
+            {starting ? 'Starting…' : 'Start conversation'}
           </button>
+          {startError && (
+            <div style={{ fontSize: 11, color: '#EF4444', marginTop: 2 }}>{startError}</div>
+          )}
           <button
             disabled
             style={{
@@ -241,6 +298,41 @@ export default function AgentProfileView() {
                   <code key={p} style={{ fontSize: 11, padding: '2px 6px', borderRadius: 4, background: 'var(--surface-elevated)' }}>{p}</code>
                 ))}
               </div>
+            </div>
+          )}
+        </GlassCard>
+
+        {/* Recent conversations */}
+        <GlassCard>
+          <SectionHead icon={<MessageCircle className="w-4 h-4" />} label="Recent Conversations" />
+          {!recentConvs || recentConvs.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+              No conversations yet. Hit "Start conversation" to open the first thread.
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {recentConvs.slice(0, 8).map((c) => (
+                <div
+                  key={c.id}
+                  onClick={() => handleResumeConversation(c)}
+                  style={{
+                    cursor: 'pointer', padding: '8px 10px', borderRadius: 8,
+                    background: 'var(--surface-elevated)',
+                    border: `1px solid ${accent}22`,
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
+                  }}
+                >
+                  <div style={{
+                    fontSize: 13, fontWeight: 500,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
+                  }}>
+                    {c.title || 'Untitled thread'}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>
+                    {new Date(c.updated_at).toLocaleDateString()}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </GlassCard>

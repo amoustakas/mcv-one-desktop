@@ -136,6 +136,7 @@ export type ViewId =
   | 'capital-foundation'
   | 'agents'
   | 'agent-profile'
+  | 'agent-chat'
   | 'platform-api-keys'
   // Departmental Command Suites (global toolbox + dedicated per-department surfaces)
   | 'suite-command-bridge'
@@ -246,6 +247,7 @@ const VIEW_LABELS: Record<string, string> = {
   'capital-foundation': 'Foundation',
   agents: 'The Team',
   'agent-profile': 'Agent',
+  'agent-chat': 'Agent Chat',
   'platform-api-keys': 'API Keys',
 };
 

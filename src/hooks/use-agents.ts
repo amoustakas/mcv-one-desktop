@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { apiPost } from '../lib/api/client';
+import { listAgentConversations, type AgentConversationSummary } from '../lib/agents/chat';
 
 export interface AgentPersona {
   id: string;
@@ -17,6 +18,9 @@ export interface AgentPersona {
   persona_bio: string;
   voice_profile: Record<string, unknown>;
   kit_allowlist: string[];
+  /** Optional narrowing inside kit_allowlist — null/undefined means "all
+   *  tools from the allowed kits". */
+  tool_allowlist?: string[] | null;
   data_scopes: Record<string, unknown>;
   avatar_url: string | null;
   accent_color: string | null;
@@ -90,5 +94,22 @@ export function useAgentActivity(agentId: string | null | undefined, limit = 50)
       });
       return data.activity;
     },
+  });
+}
+
+/**
+ * Recent conversations the current user has had with a specific agent.
+ * Session B — powers the "Recent conversations with [Agent]" sidebar on
+ * the Agent Profile view.
+ */
+export function useAgentConversations(agentHandle: string | null | undefined, limit = 25) {
+  return useQuery({
+    queryKey: ['agents', 'conversations', agentHandle ?? 'none', limit],
+    queryFn: async (): Promise<AgentConversationSummary[]> => {
+      if (!agentHandle) return [];
+      const data = await listAgentConversations({ handle: agentHandle, limit });
+      return data.conversations;
+    },
+    enabled: Boolean(agentHandle),
   });
 }
