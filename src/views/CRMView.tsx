@@ -20,7 +20,7 @@ import {
 import type { Contact } from '../lib/schemas/crm';
 import { PageHeader, Button, GlassCard, Badge, StatCard, Tabs, EmptyState, GridLayout, BulkActionBar, Tooltip, Dialog, DialogActions, FormField, Input, Select } from '../components/ui';
 import type { BulkAction } from '../components/ui';
-import { Tag as TagIcon, ArrowRightCircle, AlertTriangle } from 'lucide-react';
+import { Tag as TagIcon, ArrowRightCircle, AlertTriangle, Sparkles } from 'lucide-react';
 import { timeAgo, formatMoney, formatDate, cn } from '../lib/utils';
 import ContextCommsMenu from '../components/ContextCommsMenu';
 import InvestorsPanel from '../components/crm/InvestorsPanel';
@@ -44,6 +44,44 @@ const CRM_TABS = [
 // ═══════════════════════════════════════════
 // Contact Detail Panel (right side drawer)
 // ═══════════════════════════════════════════
+// Reverse-link banner: shown when this contact was created by the
+// completion-effects hook (Phase 2 onboarding journey). Reads journey id
+// from contact.metadata.completion_journey_id (set by runJourneyCompletionEffects).
+function FromOnboardingLink({ contact }: { contact: Contact }) {
+  // Contact schema doesn't surface metadata, but the underlying row carries
+  // jsonb metadata that completion-effects writes prospect_id + completion_journey_id into.
+  const meta = ((contact as unknown as { metadata?: Record<string, unknown> }).metadata ?? {}) as {
+    prospect_id?: string; completion_journey_id?: string; track?: string;
+  };
+  if (!meta.prospect_id || !meta.completion_journey_id) return null;
+
+  const selectProspectJourney = useNavigation((s) => s.selectProspectJourney);
+
+  return (
+    <div
+      onClick={() => selectProspectJourney(meta.completion_journey_id!)}
+      style={{
+        marginTop: 10, padding: '10px 12px', borderRadius: 8,
+        background: 'rgba(110, 231, 183, 0.08)',
+        border: '1px solid rgba(110, 231, 183, 0.25)',
+        display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
+        transition: 'background 0.15s ease',
+      }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(110, 231, 183, 0.14)'; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(110, 231, 183, 0.08)'; }}
+    >
+      <Sparkles size={14} style={{ color: '#6EE7B7', flexShrink: 0 }} />
+      <div style={{ flex: 1, fontSize: 12 }}>
+        <div style={{ fontWeight: 600, color: '#6EE7B7' }}>From onboarding</div>
+        <div style={{ color: 'var(--text-muted)' }}>
+          Created by completed{meta.track ? ` ${meta.track}` : ''} journey · click to view
+        </div>
+      </div>
+      <ArrowRight size={14} style={{ color: '#6EE7B7' }} />
+    </div>
+  );
+}
+
 function ContactDetail({ contact, onClose, onDelete }: {
   contact: Contact; onClose: () => void;
   onDelete: (id: string) => void;
@@ -163,6 +201,10 @@ function ContactDetail({ contact, onClose, onDelete }: {
             <span className="cd-time-badge"><Clock size={10} /> Added {timeAgo(contact.created_at)}</span>
             {contact.last_contacted && <span className="cd-time-badge"><MessageSquare size={10} /> Last contact {timeAgo(contact.last_contacted)}</span>}
           </div>
+
+          {/* Phase 2 reverse-link: this contact was constructed by a completed
+              onboarding journey. Surface the link so user can jump back. */}
+          <FromOnboardingLink contact={contact} />
         </div>
 
         {/* Tags */}
@@ -267,6 +309,7 @@ export default function CRMView() {
   const [dealForm, setDealForm] = useState({ title: '', value: 0, stage: 'discovery', venture_id: '', contact_id: '', probability: 20, expected_close: '' });
   const [accountForm, setAccountForm] = useState({ name: '', domain: '', industry: '', size: '', type: 'prospect', venture_id: '' });
   const { mode, activeVenture } = useNavigation();
+  const consumeCrmContactId = useNavigation((s) => s.consumeCrmContactId);
   const { toast } = useToast();
 
   const ventureFilter = mode === 'venture' ? activeVenture : undefined;
@@ -330,7 +373,21 @@ export default function CRMView() {
       toast('info', `No exact contact for ${pendingJumpEmail} — filtered list`);
     }
     setPendingJumpEmail(null);
-  }, [pendingJumpEmail, contacts]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pendingJumpEmail, contacts, toast]);
+
+  // Cross-surface jump #2: navigation pointer set by ProspectProfileView's
+  // "Open in CRM" CTA. Consume + clear on mount once contacts are loaded.
+  useEffect(() => {
+    if (contacts.length === 0) return;
+    const id = consumeCrmContactId();
+    if (!id) return;
+    const match = contacts.find((c: Contact) => c.id === id);
+    if (match) {
+      setTab('contacts');
+      setSelectedContact(match);
+      toast('info', `Opened ${match.name} from onboarding journey`);
+    }
+  }, [contacts, consumeCrmContactId, toast]);
 
   // Bulk-action prompts moved to a single in-app Dialog. The action handler
   // stages the work in `bulkPrompt` (mode + ids + initial value), the Dialog

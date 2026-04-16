@@ -179,10 +179,20 @@ interface NavigationState {
   selectedProspectJourneyId: string | null;
   // Active agent handle for agent-profile view (and future chat routing).
   activeAgentHandle: string | null;
+  // Deep-link pointers: set by ProspectProfileView "Open in X" CTAs,
+  // consumed by the destination view on mount, then cleared.
+  selectedCrmContactId: string | null;
+  selectedCapitalContactId: string | null;
 
   setView: (view: ViewId) => void;
   selectProspectJourney: (id: string) => void;
   openAgentProfile: (handle: string) => void;
+  openCrmContact: (contactId: string) => void;
+  openCapitalContact: (contactId: string) => void;
+  /** Consume + clear the CRM deep-link pointer. Returns the stashed id. */
+  consumeCrmContactId: () => string | null;
+  /** Consume + clear the Capital deep-link pointer. Returns the stashed id. */
+  consumeCapitalContactId: () => string | null;
   openVentureDetailTab: (tab: string) => void;
   consumePendingDetailTab: () => string | null;
   switchToGlobal: () => void;
@@ -277,6 +287,44 @@ export const useNavigation = create<NavigationState>()(
       pendingDetailTab: null,
       selectedProspectJourneyId: null,
       activeAgentHandle: null,
+      selectedCrmContactId: null,
+      selectedCapitalContactId: null,
+
+      openCrmContact: (contactId) =>
+        set((s) => {
+          const newHistory = [...s.history.slice(0, s.historyIndex + 1), 'crm' as ViewId].slice(-50);
+          return {
+            activeView: 'crm' as ViewId,
+            previousView: s.activeView,
+            selectedCrmContactId: contactId,
+            history: newHistory,
+            historyIndex: newHistory.length - 1,
+          };
+        }),
+
+      openCapitalContact: (contactId) =>
+        set((s) => {
+          const newHistory = [...s.history.slice(0, s.historyIndex + 1), 'capital-foundation' as ViewId].slice(-50);
+          return {
+            activeView: 'capital-foundation' as ViewId,
+            previousView: s.activeView,
+            selectedCapitalContactId: contactId,
+            history: newHistory,
+            historyIndex: newHistory.length - 1,
+          };
+        }),
+
+      consumeCrmContactId: () => {
+        const id = get().selectedCrmContactId;
+        if (id) set({ selectedCrmContactId: null });
+        return id;
+      },
+
+      consumeCapitalContactId: () => {
+        const id = get().selectedCapitalContactId;
+        if (id) set({ selectedCapitalContactId: null });
+        return id;
+      },
 
       selectProspectJourney: (id) =>
         set((s) => {
