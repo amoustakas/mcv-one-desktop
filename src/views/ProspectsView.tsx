@@ -4,7 +4,7 @@
 // Plan: C:\Users\moust\.claude\plans\nifty-launching-turtle.md
 
 import { useMemo, useState } from 'react';
-import { Users, UserPlus, CheckCircle2, Clock, AlertTriangle, Inbox, Link2, Copy, Check } from 'lucide-react';
+import { Users, UserPlus, CheckCircle2, Clock, AlertTriangle, Inbox, Link2, Copy, Check, Sparkles } from 'lucide-react';
 import { useProspects, useCaptures, type JourneyWithProfile, type EmbeddedAgent } from '../hooks/use-prospects';
 import { useNavigation } from '../stores/navigation';
 import { PageHeader, PageShell, GlassCard, Badge, EmptyState, Modal } from '../components/ui';
@@ -208,6 +208,16 @@ function ProspectRow({ journey, agent }: { journey: JourneyWithProfile; agent: E
             <Badge>{journey.status}</Badge>
             {journey.prospect_profile.source_venture_id && (
               <Badge>{journey.prospect_profile.source_venture_id}</Badge>
+            )}
+            {Boolean((journey.metadata as { effects_applied?: boolean }).effects_applied) && (
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 600,
+                background: 'rgba(110, 231, 183, 0.15)', color: '#6EE7B7',
+                border: '1px solid rgba(110, 231, 183, 0.3)',
+              }}>
+                <Sparkles className="w-3 h-3" /> ecosystem
+              </span>
             )}
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', gap: 12 }}>
