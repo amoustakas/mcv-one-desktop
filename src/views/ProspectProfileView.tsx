@@ -84,7 +84,7 @@ export default function ProspectProfileView() {
 
       {/* Phase 2 → Phase 3 bridge: ecosystem rows produced by completion. */}
       {ecosystem && (ecosystem.contact || ecosystem.investor_profile) && (
-        <EcosystemBridge ecosystem={ecosystem} setView={setView} />
+        <EcosystemBridge ecosystem={ecosystem} />
       )}
 
       {/* Two-column: timeline + chat stub */}
@@ -227,12 +227,13 @@ const backLinkStyle: React.CSSProperties = {
 // ───────────────────────────────────────────────────────────────────────────
 
 function EcosystemBridge({
-  ecosystem, setView,
+  ecosystem,
 }: {
   ecosystem: EcosystemLinks;
-  setView: (v: 'crm' | 'capital') => void;
 }) {
   const { contact, investor_profile } = ecosystem;
+  const openCrmContact = useNavigation((s) => s.openCrmContact);
+  const openCapitalContact = useNavigation((s) => s.openCapitalContact);
 
   return (
     <GlassCard>
@@ -269,7 +270,7 @@ function EcosystemBridge({
               <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 12 }}>
                 {contact.email} · created {new Date(contact.created_at).toLocaleString()}
               </div>
-              <button onClick={() => setView('crm')} style={ctaStyle('#6EE7B7')}>
+              <button onClick={() => openCrmContact(contact.id)} style={ctaStyle('#6EE7B7')}>
                 Open in CRM <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -293,7 +294,7 @@ function EcosystemBridge({
               <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 12 }}>
                 committed ${Number(investor_profile.total_committed_usd).toLocaleString()} · funded ${Number(investor_profile.total_funded_usd).toLocaleString()} · created {new Date(investor_profile.created_at).toLocaleString()}
               </div>
-              <button onClick={() => setView('capital')} style={ctaStyle('var(--color-brand-electric)')}>
+              <button onClick={() => openCapitalContact(investor_profile.contact_id)} style={ctaStyle('var(--color-brand-electric)')}>
                 Open in Capital <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>

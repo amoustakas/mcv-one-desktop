@@ -4,12 +4,15 @@
 // production computeRoyaltyLegs via /api/capital action=foundation-simulate-royalty-walk.
 // SPEC-EQC-001 Phase 3 · Plan: luminous-mapping-globe.md
 
-import { useMemo, useState } from 'react';
-import { Building2, Wallet, Receipt, Shield, Sparkles, Calculator } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Building2, Wallet, Receipt, Shield, Sparkles, Calculator, ArrowRight, X as XIcon } from 'lucide-react';
 import {
   useTreasuries, useRoyaltyGraphs, useDistributionConfigs,
   useComplianceRuleSets, useLegalEntities, useRoyaltyWalkSimulation,
+  useInvestorPosition,
 } from '../hooks/use-capital';
+import { useContact } from '../hooks/use-crm';
+import { useNavigation } from '../stores/navigation';
 import { PageHeader, PageShell, GlassCard, Badge, EmptyState } from '../components/ui';
 
 type FoundationTab = 'treasuries' | 'royalties' | 'distributions' | 'compliance' | 'entities' | 'simulator';
@@ -36,6 +39,16 @@ export default function CapitalFoundationView() {
   const [tab, setTab] = useState<FoundationTab>('treasuries');
   const [ventureFilter, setVentureFilter] = useState<string>('');
 
+  // Phase 2 deep-link consumer: ProspectProfileView "Open in Capital" CTA
+  // sets selectedCapitalContactId; we stash a copy locally so the banner
+  // persists even after the navigation pointer is consumed.
+  const consumeCapitalContactId = useNavigation((s) => s.consumeCapitalContactId);
+  const [pinnedContactId, setPinnedContactId] = useState<string | null>(null);
+  useEffect(() => {
+    const id = consumeCapitalContactId();
+    if (id) setPinnedContactId(id);
+  }, [consumeCapitalContactId]);
+
   const tabs: Array<{ id: FoundationTab; label: string; icon: React.ComponentType<{ className?: string }>; count?: number }> = [
     { id: 'treasuries',    label: 'Treasuries',       icon: Wallet },
     { id: 'royalties',     label: 'Royalty Graphs',   icon: Sparkles },
@@ -51,6 +64,13 @@ export default function CapitalFoundationView() {
         title="Capital Foundation"
         subtitle="The five-tuple primitive powering every venture's monetization — live data from capital_treasury, capital_royalty_graph, capital_distribution_config, capital_compliance_rule_set, and capital_legal_entity."
       />
+
+      {pinnedContactId && (
+        <PinnedInvestorBanner
+          contactId={pinnedContactId}
+          onDismiss={() => setPinnedContactId(null)}
+        />
+      )}
 
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
         {tabs.map((t) => {
@@ -388,3 +408,119 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
     </div>
   );
 }
+
+// ───────────────────────────────────────────────────────────────────────────
+// Pinned investor banner — Phase 2 deep-link target.
+// Shown at the top of CapitalFoundationView when arriving via the
+// ProspectProfileView "Open in Capital" CTA. Renders the contact +
+// investor profile summary and a reverse-link back to the journey.
+// ───────────────────────────────────────────────────────────────────────────
+
+function PinnedInvestorBanner({
+  contactId, onDismiss,
+}: { contactId: string; onDismiss: () => void }) {
+  const { data: contactData, isLoading: contactLoading } = useContact(contactId);
+  const { data: position, isLoading: positionLoading } = useInvestorPosition(contactId);
+  const selectProspectJourney = useNavigation((s) => s.selectProspectJourney);
+
+  const contact = contactData?.contact;
+  const profile = position?.profile ?? null;
+
+  // Check for the journey reverse-link in BOTH metadatas — contact's
+  // metadata.completion_journey_id is the canonical pointer; profile's
+  // is a backup if contact metadata is empty.
+  const contactMeta = (((contact as unknown) as { metadata?: Record<string, unknown> } | undefined)?.metadata ?? {}) as { prospect_id?: string; completion_journey_id?: string; track?: string };
+  const profileMeta = (profile?.metadata ?? {}) as { completion_journey_id?: string; track?: string };
+  const journeyId = contactMeta.completion_journey_id ?? profileMeta.completion_journey_id ?? null;
+  const fromTrack = contactMeta.track ?? profileMeta.track ?? null;
+
+  if (contactLoading || positionLoading) {
+    return (
+      <GlassCard>
+        <div style={{ padding: 14, color: 'var(--text-muted)', fontSize: 13 }}>Loading pinned investor…</div>
+      </GlassCard>
+    );
+  }
+
+  if (!contact) {
+    return (
+      <GlassCard>
+        <div style={{ padding: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Pinned investor not found.</span>
+          <button onClick={onDismiss} style={dismissBtnStyle}><XIcon size={14} /></button>
+        </div>
+      </GlassCard>
+    );
+  }
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <GlassCard>
+        <div style={{ padding: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <Sparkles className="w-4 h-4" style={{ color: 'var(--color-brand-electric)' }} />
+            <span style={{
+              fontSize: 11, color: 'var(--text-muted)',
+              textTransform: 'uppercase', letterSpacing: 0.6, fontWeight: 600,
+            }}>
+              Pinned investor — opened from prospect journey
+            </span>
+            <button onClick={onDismiss} style={{ ...dismissBtnStyle, marginLeft: 'auto' }} aria-label="Dismiss">
+              <XIcon size={14} />
+            </button>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: profile ? '1fr 1fr auto' : '1fr auto', gap: 14, alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
+                {contact.name}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <span>{contact.email ?? '—'}</span>
+                <Badge>{contact.type}</Badge>
+                {contact.lifecycle_stage && <Badge>{contact.lifecycle_stage}</Badge>}
+              </div>
+            </div>
+
+            {profile && (
+              <div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>
+                  {profile.ventureId} · investor profile
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <Badge>stage: {profile.stage}</Badge>
+                  <Badge>kyc: {profile.kycStatus}</Badge>
+                  <Badge>{profile.accreditationStatus}</Badge>
+                  <Badge>committed ${Number(profile.totalCommittedUsd ?? 0).toLocaleString()}</Badge>
+                </div>
+              </div>
+            )}
+
+            {journeyId && (
+              <button
+                onClick={() => selectProspectJourney(journeyId)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '8px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                  background: 'rgba(110, 231, 183, 0.15)', color: '#6EE7B7',
+                  border: '1px solid rgba(110, 231, 183, 0.3)', cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                View {fromTrack ?? 'onboarding'} journey
+                <ArrowRight size={13} />
+              </button>
+            )}
+          </div>
+        </div>
+      </GlassCard>
+    </div>
+  );
+}
+
+const dismissBtnStyle: React.CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+  width: 24, height: 24, borderRadius: 6,
+  background: 'transparent', color: 'var(--text-muted)',
+  border: '1px solid var(--border-subtle)', cursor: 'pointer',
+};
