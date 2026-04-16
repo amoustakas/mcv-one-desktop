@@ -821,6 +821,76 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.json({ success: true });
       }
 
+      // ─── Foundation primitives (Treasury / RoyaltyGraph / DistributionConfig / ComplianceRuleSet / LegalEntity) ───
+      case 'foundation-list-treasuries': {
+        let q = supabase.from('capital_treasury').select().order('venture_id').order('label');
+        if (params.venture_id) q = q.eq('venture_id', params.venture_id as string);
+        const { data, error } = await q;
+        if (error) return res.status(500).json({ error: error.message });
+        return res.json({ treasuries: data ?? [] });
+      }
+      case 'foundation-list-royalty-graphs': {
+        let gq = supabase.from('capital_royalty_graph').select().is('superseded_at', null).order('venture_id');
+        if (params.venture_id) gq = gq.eq('venture_id', params.venture_id as string);
+        const { data: graphs, error: gErr } = await gq;
+        if (gErr) return res.status(500).json({ error: gErr.message });
+        const graphIds = (graphs ?? []).map((g: { id: string }) => g.id);
+        const { data: layers } = graphIds.length
+          ? await supabase.from('capital_royalty_graph_layer').select().in('graph_id', graphIds).order('sequence')
+          : { data: [] };
+        return res.json({ graphs: graphs ?? [], layers: layers ?? [] });
+      }
+      case 'foundation-list-distribution-configs': {
+        let q = supabase.from('capital_distribution_config').select().eq('active', true).order('venture_id').order('flow_kind');
+        if (params.venture_id) q = q.eq('venture_id', params.venture_id as string);
+        if (params.flow_kind) q = q.eq('flow_kind', params.flow_kind as string);
+        const { data, error } = await q;
+        if (error) return res.status(500).json({ error: error.message });
+        return res.json({ configs: data ?? [] });
+      }
+      case 'foundation-list-compliance-rule-sets': {
+        let sq = supabase.from('capital_compliance_rule_set').select().eq('active', true).order('venture_id');
+        if (params.venture_id) sq = sq.eq('venture_id', params.venture_id as string);
+        const { data: sets, error: sErr } = await sq;
+        if (sErr) return res.status(500).json({ error: sErr.message });
+        const setIds = (sets ?? []).map((s: { id: string }) => s.id);
+        const { data: rules } = setIds.length
+          ? await supabase.from('capital_compliance_rule').select().in('rule_set_id', setIds).eq('active', true).order('priority')
+          : { data: [] };
+        return res.json({ rule_sets: sets ?? [], rules: rules ?? [] });
+      }
+      case 'foundation-list-legal-entities': {
+        const { data, error } = await supabase.from('capital_legal_entity').select().eq('active', true).order('id');
+        if (error) return res.status(500).json({ error: error.message });
+        return res.json({ entities: data ?? [] });
+      }
+      case 'foundation-simulate-royalty-walk': {
+        const ventureId = params.venture_id as string;
+        const amount = Number(params.amount);
+        const flowKind = params.flow_kind as string;
+        const jurisdiction = params.jurisdiction as string | undefined;
+        const currency = (params.currency as string) || 'CAD';
+        if (!ventureId || !amount || !flowKind) return res.status(400).json({ error: 'venture_id, amount, flow_kind required' });
+        const { data: graph } = await supabase.from('capital_royalty_graph').select().eq('venture_id', ventureId).is('superseded_at', null).order('version', { ascending: false }).limit(1).maybeSingle();
+        if (!graph) return res.status(404).json({ error: `No active royalty graph for venture ${ventureId}` });
+        const { data: layers } = await supabase.from('capital_royalty_graph_layer').select().eq('graph_id', graph.id).order('sequence');
+        const { computeRoyaltyLegs } = await import('@mcv/capital-sdk/royalty-walker');
+        const result = computeRoyaltyLegs({
+          graph: {
+            id: graph.id, ventureId: graph.venture_id, label: graph.label, version: graph.version,
+            effectiveAt: graph.effective_at, supersededAt: graph.superseded_at, metadata: graph.metadata, createdAt: graph.created_at,
+          } as never,
+          layers: (layers ?? []).map((l: Record<string, unknown>) => ({
+            id: l.id, graphId: l.graph_id, sequence: l.sequence, label: l.label,
+            recipientType: l.recipient_type, recipientId: l.recipient_id, bps: l.bps,
+            kind: l.kind, conditionExpr: l.condition_expr, jurisdiction: l.jurisdiction, metadata: l.metadata,
+          })) as never,
+          context: { flowKind: flowKind as never, amount, currency, jurisdiction },
+          primaryRecipient: { recipientType: 'investor', recipientId: 'primary', label: 'primary_payout' },
+        });
+        return res.json({ simulation: result });
+      }
+
       default:
         return res.status(400).json({ error: `Unknown action: ${action}` });
     }
