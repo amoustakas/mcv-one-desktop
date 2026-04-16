@@ -23,6 +23,7 @@ every adapter should be incrementally growing toward the INTEROP shape.
 | `stripe`  | payment     | inbound    | `CapitalPaymentEvent`    | [src/lib/capital/adapters/stripe-adapter.ts](../../src/lib/capital/adapters/stripe-adapter.ts) |
 | `ofac`    | compliance  | inbound    | `CapitalComplianceEvent` | [src/lib/capital/adapters/ofac-adapter.ts](../../src/lib/capital/adapters/ofac-adapter.ts) |
 | `verify-investor` | compliance  | bidirectional | `CapitalComplianceEvent` | [src/lib/capital/adapters/verify-investor-adapter.ts](../../src/lib/capital/adapters/verify-investor-adapter.ts) |
+| `docusign` | signing     | bidirectional | `CapitalSigningEvent` | [src/lib/capital/adapters/docusign-adapter.ts](../../src/lib/capital/adapters/docusign-adapter.ts) |
 
 Outbound payment movement (distributions, payouts) does **not** live
 here — it routes through `@mcv/payments-sdk`'s `PaymentProcessor`
@@ -247,6 +248,99 @@ single branch:
 | clear   | allow         | allow        | allow         |
 | review  | allow w/ flag | allow w/ flag| allow         |
 | match   | 403 block     | 403 block    | read-only     |
+
+---
+
+## Signing Adapters (CapitalSigningEvent)
+
+DocuSign (Epic 13 S3) is the first signing-rail adapter. The
+`CapitalSigningEvent` shape is **vendor-neutral** so MCV Sign (Epic 9,
+native Ed25519 ESIGN/eIDAS replacement) and future eIDAS vendors plug
+in as peer adapters without changing the reconcile path.
+
+### CapitalSigningEvent shape
+
+```typescript
+export interface CapitalSigningEvent {
+  commitmentId: string;
+  outcome: 'signed' | 'declined' | 'voided' | 'expired';
+  envelopeId: string;             // rail-issued, durable
+  source: string;                 // 'docusign' | 'mcv-sign' | 'eu-sign' | …
+  signers?: Array<{ name?; email?; role?; signedAt?; ipAddress? }>;
+  receipt?: {                     // adapter populates one of:
+    downloadUrl?: string;         //   pre-signed URL
+    contentId?: string;           //   already in Content OS
+    base64Pdf?: string;           //   inlined for small templates
+    contentType?: string;
+  };
+  completedAt: string;
+  rawEvent: unknown;
+}
+```
+
+The receipt union is intentional — DocuSign Connect can ship the
+signed PDF inline as base64 (when "Include Documents" is enabled),
+MCV Sign will produce a contentId directly because the document
+lives in the Content OS, and eIDAS vendors typically return a
+pre-signed downloadUrl. The reconcile helper picks whichever route
+the adapter populated.
+
+### reconcileCapitalSigning helper
+
+[src/lib/capital/signing-reconcile.ts](../../src/lib/capital/signing-reconcile.ts) is the
+signing-side counterpart to `reconcileCapitalPayment` /
+`reconcileCapitalCompliance`. It:
+
+- Resolves `commitmentId` from the event OR from the
+  `docusign_envelopes` table when the event lacks the custom-field
+  stamp (older templates).
+- On `outcome='signed'`: calls `engine.commitments.markSigned`
+  (transitions `signed → pending_wire` per state machine), stamps
+  `docusign_envelope_id` + `docusign_status` on the commitment, and
+  upserts the envelope row for audit.
+- On `declined` / `voided` / `expired`: stamps status without
+  transitioning the commitment, fires a warning notification, and
+  records an activity entry.
+- Notifications fan out to `capital.commitment.signed` /
+  `capital.commitment.declined` / `capital.commitment.voided` /
+  `capital.commitment.expired` topics.
+
+### Outbound flow (template-based envelopes)
+
+DocuSign uses JWT-grant authentication with the integration key + RSA
+private key + impersonated user. Templates are pre-configured in the
+DocuSign account (subscription agreement variants per venture). The
+caller picks the right `templateId`; signers + custom fields are
+stamped programmatically.
+
+When `DOCUSIGN_INTEGRATION_KEY` is absent, `createEnvelope` returns a
+deterministic mock envelope so dev/preview/tests work without
+procurement. The mock path keeps the same `EnvelopeSummary` shape so
+swap-in is invisible to callers.
+
+### Toward MCV Sign (Epic 9)
+
+`CapitalSigningEvent` was deliberately designed before MCV Sign so
+the migration plan is structural, not a rewrite:
+
+1. MCV Sign ships as `src/lib/capital/adapters/mcv-sign-adapter.ts`
+   implementing the same `LegacyAdapter<MCVSignEvent, CapitalSigningEvent>`
+   contract.
+2. A per-venture `signing_rail_config` row picks the adapter at runtime
+   (`adapter: 'docusign' | 'mcv-sign'`) — same way payment routing
+   works today.
+3. The `docusign_envelopes` table is renamed to `signing_envelopes` in
+   a follow-up migration; the `adapter` column already supports
+   `mcv-sign` (CHECK constraint).
+4. The `send-docusign` Capital action becomes `send-signing-envelope`
+   with vendor selection delegated to the rail config.
+5. Existing `engine.commitments.markSigned` + `attachDocuSign` SDK
+   methods stay; `attachDocuSign` may rename to `attachEnvelope` once
+   ≥2 rails are live but the column itself can keep its current name.
+
+This keeps the cutover path purely additive — old DocuSign-signed
+commitments continue to work; new commitments route to whichever rail
+the venture configured.
 
 ---
 
