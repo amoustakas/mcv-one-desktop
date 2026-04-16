@@ -1,7 +1,7 @@
 {
   "name": "@mcv/capital-sdk",
-  "version": "0.1.0",
-  "description": "EdgeIQ Capital primitives — types + DI factory services for rounds, commitments, investor profiles, organizations, documents, activities, dashboard. SPEC-EQC-001.",
+  "version": "0.2.0",
+  "description": "EdgeIQ Capital primitives — types + DI factory services for rounds, commitments, investor profiles, organizations, documents, activities, dashboard, plus v0.2 cross-venture VentureAdapter + typed CapitalEvent contract. SPEC-EQC-001.",
   "private": true,
   "type": "module",
   "main": "./src/index.ts",
@@ -21,7 +21,10 @@
     "./ecosystem-bridges":  { "types": "./src/ecosystem-bridges.ts",     "default": "./src/ecosystem-bridges.ts" },
     "./waterfall":          { "types": "./src/waterfall.ts",             "default": "./src/waterfall.ts" },
     "./create-capital-engine": { "types": "./src/create-capital-engine.ts", "default": "./src/create-capital-engine.ts" },
-    "./tax-export":         { "types": "./src/tax-export.ts",            "default": "./src/tax-export.ts" }
+    "./tax-export":         { "types": "./src/tax-export.ts",            "default": "./src/tax-export.ts" },
+    "./events":             { "types": "./src/events.ts",                "default": "./src/events.ts" },
+    "./venture-adapter":    { "types": "./src/venture-adapter.ts",       "default": "./src/venture-adapter.ts" },
+    "./event-publisher":    { "types": "./src/event-publisher.ts",       "default": "./src/event-publisher.ts" }
   },
   "files": ["src"],
   "dependencies": {
