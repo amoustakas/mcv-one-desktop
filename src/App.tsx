@@ -65,6 +65,8 @@ const CapitalGlobalView = lazyRetry(() => import('./views/CapitalGlobalView'));
 const CapitalVentureView = lazyRetry(() => import('./views/CapitalVentureView'));
 const CapitalRoundDetailView = lazyRetry(() => import('./views/CapitalRoundDetailView'));
 const PlatformApiKeysView = lazyRetry(() => import('./views/PlatformApiKeysView'));
+const ProspectsView = lazyRetry(() => import('./views/ProspectsView'));
+const ProspectProfileView = lazyRetry(() => import('./views/ProspectProfileView'));
 const ForgeView = lazyRetry(() => import('./views/ForgeView'));
 const DocsHub = lazyRetry(() => import('./views/DocsHub'));
 const BlogAdmin = lazyRetry(() => import('./views/BlogAdmin'));
@@ -232,6 +234,10 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <CapitalRoundDetailView />;
     case 'platform-api-keys':
       return <PlatformApiKeysView />;
+    case 'prospects':
+      return <ProspectsView />;
+    case 'prospect-profile':
+      return <ProspectProfileView />;
     case 'comms-hub':
       return <CommsHub />;
     case 'forge':

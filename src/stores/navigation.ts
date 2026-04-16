@@ -134,6 +134,9 @@ export type ViewId =
   | 'capital-contact-detail'
   | 'capital-launchpad-admin'
   | 'platform-api-keys'
+  // Phase 2 — Prospect funnel + onboarding admin
+  | 'prospects'
+  | 'prospect-profile'
   // Departmental Command Suites (global toolbox + dedicated per-department surfaces)
   | 'suite-command-bridge'
   | 'suite-creative-studio'
@@ -167,8 +170,12 @@ interface NavigationState {
   // One-shot detail-tab request — consumed by VentureDetailView then cleared.
   // Lets a caller say "navigate to venture-detail and open the Docs tab".
   pendingDetailTab: string | null;
+  // Phase 2 — selected prospect journey for ProspectProfileView. Set by
+  // ProspectsView row click, consumed by ProspectProfileView.
+  selectedProspectJourneyId: string | null;
 
   setView: (view: ViewId) => void;
+  selectProspectJourney: (id: string) => void;
   openVentureDetailTab: (tab: string) => void;
   consumePendingDetailTab: () => string | null;
   switchToGlobal: () => void;
@@ -238,6 +245,8 @@ const VIEW_LABELS: Record<string, string> = {
   'capital-contact-detail': 'Investor',
   'capital-launchpad-admin': 'Launchpad',
   'platform-api-keys': 'API Keys',
+  prospects: 'Prospects',
+  'prospect-profile': 'Prospect',
 };
 
 export const useNavigation = create<NavigationState>()(
@@ -255,6 +264,19 @@ export const useNavigation = create<NavigationState>()(
       history: ['command-center'],
       historyIndex: 0,
       pendingDetailTab: null,
+      selectedProspectJourneyId: null,
+
+      selectProspectJourney: (id) =>
+        set((s) => {
+          const newHistory = [...s.history.slice(0, s.historyIndex + 1), 'prospect-profile' as ViewId].slice(-50);
+          return {
+            activeView: 'prospect-profile' as ViewId,
+            previousView: s.activeView,
+            selectedProspectJourneyId: id,
+            history: newHistory,
+            historyIndex: newHistory.length - 1,
+          };
+        }),
 
       openVentureDetailTab: (tab) =>
         set((s) => {

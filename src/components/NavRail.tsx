@@ -82,6 +82,7 @@ const globalSections: NavSection[] = [
   {
     label: 'Growth & CRM', key: 'growth',
     items: [
+      { id: 'prospects', label: 'Prospects' },
       { id: 'crm', label: 'CRM Pipeline' },
       { id: 'growth', label: 'Growth Studio' },
       { id: 'comms-hub', label: 'Comms Hub' },

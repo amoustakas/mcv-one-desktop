@@ -1,0 +1,203 @@
+/* MCV Onboarding — design tokens.
+   Mirrors mcv-one-desktop design-system.css basics; branded per-venture
+   overrides inject --brand / --brand-accent at runtime via layout.tsx. */
+
+:root {
+  --bg-deep: #060D14;
+  --bg-card: #0F1720;
+  --bg-elevated: #1A242F;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --text: #E7EEF5;
+  --text-muted: #8A9AAD;
+  --text-secondary: #B9C4D1;
+
+  /* Default ecosystem brand — overridden per-venture */
+  --brand: #00F0FF;
+  --brand-accent: #8B5CF6;
+
+  --success: #10B981;
+  --warning: #F59E0B;
+  --danger:  #EF4444;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  background: var(--bg-deep); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--brand); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button { font-family: inherit; }
+
+/* ─── Wizard layout ─────────────────────────────────────────────── */
+
+.wiz-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 260px 1fr 380px;
+  gap: 0;
+  background: linear-gradient(180deg, var(--bg-deep) 0%, #0A141C 100%);
+}
+@media (max-width: 960px) {
+  .wiz-shell { grid-template-columns: 1fr; }
+  .wiz-rail, .wiz-chat { display: none; }
+}
+
+.wiz-rail {
+  padding: 28px 20px;
+  border-right: 1px solid var(--border-subtle);
+  background: rgba(0, 0, 0, 0.2);
+  min-height: 100vh;
+  position: sticky; top: 0;
+  overflow-y: auto;
+}
+.wiz-rail-header {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--text-muted); margin-bottom: 18px;
+}
+.wiz-rail-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+.wiz-rail-sub   { font-size: 12px; color: var(--text-muted); margin-bottom: 22px; }
+
+.wiz-rail-step {
+  display: grid; grid-template-columns: 32px 1fr; gap: 12px;
+  padding: 10px 6px; border-radius: 8px; margin-bottom: 2px;
+  transition: background 0.2s ease;
+}
+.wiz-rail-step-active { background: rgba(255, 255, 255, 0.04); }
+.wiz-rail-step-dot {
+  width: 28px; height: 28px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+}
+.wiz-rail-step-dot.pending   { background: var(--bg-elevated); color: var(--text-muted); }
+.wiz-rail-step-dot.current   { background: var(--brand); color: #000; }
+.wiz-rail-step-dot.completed { background: var(--success); color: #000; }
+.wiz-rail-step-label { font-size: 13px; color: var(--text); font-weight: 500; }
+.wiz-rail-step-agent { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.wiz-rail-step-agent span.handle { color: var(--brand); font-weight: 500; }
+
+/* ─── Center column ─────────────────────────────────────────────── */
+
+.wiz-main {
+  padding: 48px 48px 96px;
+  max-width: 720px;
+  margin: 0 auto;
+  width: 100%;
+}
+.wiz-main h1 { font-size: 36px; font-weight: 700; line-height: 1.1; margin: 0 0 12px; }
+.wiz-main p.lede { font-size: 17px; color: var(--text-secondary); margin: 0 0 28px; }
+
+.wiz-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 28px;
+  margin: 0 0 20px;
+}
+.wiz-card-agent {
+  display: flex; align-items: center; gap: 14px; margin-bottom: 16px;
+}
+.wiz-card-agent-avatar {
+  width: 44px; height: 44px; border-radius: 22px;
+  background: linear-gradient(135deg, var(--brand), var(--brand-accent));
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; color: #000; font-size: 17px;
+}
+.wiz-card-agent-name { font-weight: 600; font-size: 15px; }
+.wiz-card-agent-title { font-size: 12px; color: var(--text-muted); }
+.wiz-card-agent-line { font-size: 15px; color: var(--text); line-height: 1.5; }
+
+.wiz-input {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  color: var(--text); font-size: 14px;
+  font-family: inherit;
+}
+.wiz-input:focus { outline: none; border-color: var(--brand); }
+.wiz-label {
+  display: block; font-size: 12px; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  margin: 16px 0 6px;
+}
+
+.wiz-btn {
+  padding: 12px 22px; border-radius: 8px; font-weight: 600; font-size: 14px;
+  cursor: pointer; border: none; transition: transform 0.1s ease, opacity 0.2s ease;
+}
+.wiz-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.wiz-btn:active:not(:disabled) { transform: translateY(1px); }
+.wiz-btn-primary { background: linear-gradient(90deg, var(--brand), var(--brand-accent)); color: #000; }
+.wiz-btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border-strong); }
+
+.wiz-cta-row { display: flex; gap: 12px; margin-top: 22px; }
+
+/* ─── Chat column ──────────────────────────────────────────────── */
+
+.wiz-chat {
+  padding: 28px 22px;
+  border-left: 1px solid var(--border-subtle);
+  background: rgba(0, 0, 0, 0.2);
+  min-height: 100vh;
+  position: sticky; top: 0;
+  display: flex; flex-direction: column;
+}
+.wiz-chat-header {
+  display: flex; align-items: center; gap: 10px;
+  padding-bottom: 16px; border-bottom: 1px solid var(--border-subtle); margin-bottom: 16px;
+}
+.wiz-chat-agent-name { font-weight: 600; }
+.wiz-chat-agent-handle { color: var(--brand); font-size: 12px; }
+.wiz-chat-body { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+.wiz-chat-msg {
+  padding: 12px 14px; border-radius: 10px;
+  background: var(--bg-elevated);
+  font-size: 13px; line-height: 1.5;
+}
+.wiz-chat-stub-note {
+  margin-top: auto;
+  padding: 12px; border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed var(--border-subtle);
+  font-size: 11px; color: var(--text-muted);
+}
+
+/* ─── Venture tile grid (StepVentureSelection) ─────────────────── */
+
+.wiz-venture-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px;
+  margin: 16px 0;
+}
+.wiz-venture-tile {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px; padding: 16px;
+  cursor: pointer;
+  transition: transform 0.1s ease, border-color 0.2s ease;
+}
+.wiz-venture-tile:hover { transform: translateY(-1px); }
+.wiz-venture-tile.selected { border-color: var(--brand); background: rgba(0, 240, 255, 0.05); }
+.wiz-venture-tile-icon {
+  width: 36px; height: 36px; border-radius: 8px;
+  background: var(--brand); color: #000;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 700; margin-bottom: 10px;
+}
+.wiz-venture-tile-name { font-weight: 600; font-size: 15px; margin-bottom: 2px; }
+.wiz-venture-tile-tag  { font-size: 11px; color: var(--text-muted); }
+
+/* ─── Utilities ────────────────────────────────────────────────── */
+
+.wiz-badge {
+  display: inline-flex; padding: 3px 8px; border-radius: 10px;
+  font-size: 11px; font-weight: 500;
+  background: rgba(255, 255, 255, 0.06); color: var(--text-secondary);
+}
+.wiz-row { display: flex; gap: 12px; align-items: center; }
+.wiz-hr { height: 1px; background: var(--border-subtle); margin: 20px 0; border: 0; }
