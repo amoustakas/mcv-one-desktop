@@ -11,6 +11,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.82.0",
     "@mcv/onboarding-sdk": "*",
     "@supabase/supabase-js": "^2.101.1",
     "next": "^15.0.0",
