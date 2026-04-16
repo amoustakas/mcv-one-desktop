@@ -133,6 +133,7 @@ export type ViewId =
   | 'capital-round-detail'
   | 'capital-contact-detail'
   | 'capital-launchpad-admin'
+  | 'capital-foundation'
   | 'platform-api-keys'
   // Departmental Command Suites (global toolbox + dedicated per-department surfaces)
   | 'suite-command-bridge'
@@ -237,6 +238,7 @@ const VIEW_LABELS: Record<string, string> = {
   'capital-round-detail': 'Round',
   'capital-contact-detail': 'Investor',
   'capital-launchpad-admin': 'Launchpad',
+  'capital-foundation': 'Foundation',
   'platform-api-keys': 'API Keys',
 };
 
