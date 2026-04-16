@@ -437,10 +437,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       case 'screen-contact-ofac': {
         // OFAC SDN screening (Epic 13 S6). Runs the contact's legal name
-        // (+ optional DOB) against the bundled OFAC seed list and stamps
+        // (+ optional DOB) against the ofac_sdn_entries Supabase cache
+        // when populated (set by scripts/fetch-ofac-sdn.ts) and falls
+        // back to the bundled 5-entry seed for dev / cold start. Stamps
         // the result on capital_investor_profile.metadata.compliance.ofac.
-        // Follow-up PR will replace the seed with a supabase-backed
-        // ofac_sdn_entries cache refreshed nightly from the Treasury CSV.
         const contactId = params.contact_id as string;
         if (!contactId) return res.status(400).json({ error: 'contact_id required' });
 
@@ -456,10 +456,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ?? (params.dob as string | undefined);
 
         const { createOfacAdapter } = await import('../../src/lib/capital/adapters/ofac-adapter');
-        const { OFAC_SEED } = await import('../../src/lib/capital/adapters/ofac-seed');
+        const { loadSdnEntries } = await import('../../src/lib/capital/adapters/ofac-sdn-cache');
         const { reconcileCapitalCompliance } = await import('../../src/lib/capital/compliance-reconcile');
 
-        const adapter = createOfacAdapter({ sdnEntries: OFAC_SEED });
+        const { entries, source } = await loadSdnEntries(supabase);
+        const adapter = createOfacAdapter({ sdnEntries: entries });
         const event = await adapter.fromForeign({ contactId: contact.id, name: contact.full_name, dob });
         const result = await reconcileCapitalCompliance(event, { supabase });
         if (event && event.outcome !== 'clear') {
@@ -474,7 +475,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             },
           );
         }
-        return res.json({ event, result });
+        return res.json({ event, result, sdn_source: source, sdn_entry_count: entries.length });
+      }
+      case 'refresh-ofac-sdn': {
+        // Accepts a batch of SdnEntry records and upserts into
+        // ofac_sdn_entries. Typically called by
+        // scripts/fetch-ofac-sdn.ts from a service-role bearer token;
+        // can also be invoked manually from the admin console to seed
+        // the table. delete_missing=true triggers a full-refresh diff.
+        const entries = params.entries as unknown;
+        if (!Array.isArray(entries)) {
+          return res.status(400).json({ error: 'entries (SdnEntry[]) required' });
+        }
+        const { upsertSdnEntries } = await import('../../src/lib/capital/adapters/ofac-sdn-cache');
+        try {
+          const result = await upsertSdnEntries(
+            supabase,
+            entries as never,
+            {
+              sourceUrl: params.source_url as string | undefined,
+              deleteMissing: Boolean(params.delete_missing),
+            },
+          );
+          await publishCapitalEvent(
+            'capital.compliance.sdn_refreshed',
+            `OFAC SDN cache refreshed — ${result.upserted} upserted${result.deleted ? `, ${result.deleted} deleted` : ''}`,
+            { type: 'info' },
+          );
+          return res.json({ ok: true, ...result });
+        } catch (err) {
+          return res.status(500).json({
+            error: err instanceof Error ? err.message : 'SDN refresh failed',
+          });
+        }
       }
       case 'link-stripe-customer': {
         // Stamps `crm_contacts.metadata.stripe_customer_id` so the
