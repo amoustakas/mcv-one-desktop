@@ -5,6 +5,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getServiceClient } from './_supabase';
+import { withVentureScope } from '../../src/lib/server/require-venture-scope';
 
 const supabase = getServiceClient();
 
@@ -85,7 +86,7 @@ async function getVentureDetail(ventureId: string) {
   };
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'method not allowed' });
   }
@@ -107,3 +108,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: message });
   }
 }
+
+// M5 I3.4 — every venture-detail read is venture-scoped. The only action
+// requires venture_id in the body; the HOC enforces the caller's venture_scope
+// claim matches. mcv_admin role bypasses the check (see require-venture-scope).
+export default withVentureScope<VercelRequest, VercelResponse>(
+  (req) => {
+    const body = (req.body ?? {}) as { venture_id?: string };
+    return body.venture_id ?? null;
+  },
+)(handler);

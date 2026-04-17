@@ -19,6 +19,11 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getServiceClient } from './_supabase';
 import { withRateLimit, LIMITS } from '../../src/lib/server/rate-limit';
 import {
+  requireVentureScope,
+  VentureScopeError,
+  respondToScopeError,
+} from '../../src/lib/server/require-venture-scope';
+import {
   startJourney as sdkStartJourney,
   advanceStep as sdkAdvanceStep,
   runJourneyCompletionEffects,
@@ -437,6 +442,21 @@ async function handler(req: VercelRequest, res: VercelResponse) {
         if (!track || !TRACKS[track]) return res.status(400).json({ error: 'valid track required' });
 
         const sourceVentureId = ((params.source_venture_id as string) ?? 'futurestate') as VentureId;
+
+        // M5 I3.4 — operator intake is venture-bound. Enforce that the
+        // authenticated operator has venture_scope matching source_venture_id
+        // (or mcv_admin role). Public capture / start_journey / advance_step
+        // remain unscoped — those are wizard-driven lead flows, and auth sits
+        // at the Desktop shell for authenticated operator contexts.
+        try {
+          await requireVentureScope(req, sourceVentureId);
+        } catch (scopeErr) {
+          if (scopeErr instanceof VentureScopeError) {
+            respondToScopeError(res, scopeErr);
+            return;
+          }
+          throw scopeErr;
+        }
 
         // Resolve assigned persona: explicit id wins, otherwise resolve by handle.
         let agentId: string | null = (params.assigned_persona_id as string) ?? null;

@@ -4,6 +4,12 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getServiceClient } from './_supabase';
+import {
+  requireVentureScope,
+  VentureScopeError,
+  respondToScopeError,
+  withVentureScope,
+} from '../../src/lib/server/require-venture-scope';
 
 const supabase = getServiceClient();
 
@@ -210,23 +216,64 @@ async function executeDistribution(params: ExecuteInput) {
 // Default export
 // ───────────────────────────────────────────────────────────────────────────
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'method not allowed' });
   const body = (req.body ?? {}) as { action?: Action; [k: string]: unknown };
   try {
     switch (body.action) {
       case 'list_distributions':
+        // Scope already enforced by the HOC when venture_id is present.
+        // Admin listing across all ventures (no venture_id) is permitted —
+        // RLS gates the rows at the DB layer (see 0aff7b2).
         return res.status(200).json(await listDistributions({
           venture_id: body.venture_id as string | undefined,
           status: body.status as string | undefined,
           limit: body.limit as number | undefined,
         }));
-      case 'get_distribution':
-        return res.status(200).json(await getDistribution({ distribution_id: body.distribution_id as string }));
+      case 'get_distribution': {
+        // venture_id not known until the distribution is loaded. Load first,
+        // then enforce scope against the stored venture_id. Keeps the HOC
+        // extractor simple (no DB round-trip) and avoids double-fetch.
+        const distributionId = body.distribution_id as string;
+        const result = await getDistribution({ distribution_id: distributionId });
+        try {
+          await requireVentureScope(req, result.distribution.venture_id as string);
+        } catch (scopeErr) {
+          if (scopeErr instanceof VentureScopeError) {
+            respondToScopeError(res, scopeErr);
+            return;
+          }
+          throw scopeErr;
+        }
+        return res.status(200).json(result);
+      }
       case 'create_scheduled_distribution':
+        // HOC already enforced scope against body.venture_id.
         return res.status(200).json(await createScheduledDistribution(body as unknown as CreateScheduledInput));
-      case 'execute_distribution':
-        return res.status(200).json(await executeDistribution({ distribution_id: body.distribution_id as string, actor_id: body.actor_id as string | undefined }));
+      case 'execute_distribution': {
+        // Same pattern as get_distribution — load first, then enforce scope.
+        const distributionId = body.distribution_id as string;
+        const { data: distRow } = await supabase
+          .from('capital_distributions')
+          .select('venture_id')
+          .eq('id', distributionId)
+          .maybeSingle();
+        if (distRow?.venture_id) {
+          try {
+            await requireVentureScope(req, distRow.venture_id as string);
+          } catch (scopeErr) {
+            if (scopeErr instanceof VentureScopeError) {
+              respondToScopeError(res, scopeErr);
+              return;
+            }
+            throw scopeErr;
+          }
+        }
+        return res.status(200).json(await executeDistribution({
+          distribution_id: distributionId,
+          actor_id: body.actor_id as string | undefined,
+        }));
+      }
       default:
         return res.status(400).json({ error: `unknown action: ${body.action}` });
     }
@@ -240,3 +287,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: message });
   }
 }
+
+// M5 I3.4 — wrap with venture-scope enforcement. The extractor surfaces
+// body.venture_id when the action carries it (list_distributions,
+// create_scheduled_distribution); get_distribution + execute_distribution
+// enforce scope inside the handler after loading the row (distribution_id →
+// venture_id). Admin cross-venture listing is permitted when venture_id is
+// absent — RLS still gates rows at the DB layer.
+export default withVentureScope<VercelRequest, VercelResponse>(
+  (req) => {
+    const body = (req.body ?? {}) as { action?: Action; venture_id?: string };
+    if (body.action === 'list_distributions' || body.action === 'create_scheduled_distribution') {
+      return body.venture_id ?? null;
+    }
+    return null;
+  },
+)(handler);
