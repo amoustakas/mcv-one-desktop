@@ -57,6 +57,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         await supabase.from('tasks').delete().eq('id', req.body.id);
         return res.json({ success: true });
       }
+      case 'update_task_mode': {
+        const task_id = req.body?.task_id as string | undefined;
+        const mode = req.body?.mode as string | undefined;
+        if (!task_id) return res.status(400).json({ error: 'task_id required' });
+        if (!mode || !['human', 'agent', 'hybrid'].includes(mode)) {
+          return res.status(400).json({ error: 'mode must be human|agent|hybrid' });
+        }
+        const { data, error } = await supabase
+          .from('tasks')
+          .update({ mode, updated_at: new Date().toISOString() })
+          .eq('id', task_id)
+          .select('*')
+          .single();
+        if (error) throw error;
+        return res.json({ task: data });
+      }
       case 'stats': {
         const { data } = await supabase.from('tasks').select('status, priority, venture_id');
         const tasks = data || [];
