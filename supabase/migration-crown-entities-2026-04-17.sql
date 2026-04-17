@@ -1,28 +1,27 @@
 -- supabase/migration-crown-entities-2026-04-17.sql
 -- Elevates capital_legal_entity with dual-parent crown support.
 -- Seeds MCV Inc. (mcv.inc) and MCV LTD (mcv.ltd) as sovereign 6D crowns.
--- Wires existing EdgeIQ Holdings as a child of MCV Inc.
+-- Wires existing EdgeIQ Holdings under MCV Inc.
+--
+-- SCHEMA NOTE: capital_legal_entity.id is text (not uuid). label column (not name).
+-- parent_entity_id (text) already exists. We only ADD is_crown here.
 
 ALTER TABLE capital_legal_entity
   ADD COLUMN IF NOT EXISTS is_crown boolean NOT NULL DEFAULT false;
 
-ALTER TABLE capital_legal_entity
-  ADD COLUMN IF NOT EXISTS parent_crown_id uuid REFERENCES capital_legal_entity(id);
-
 -- Seed MCV Inc. (primary crown — US-DE C-Corp)
-INSERT INTO capital_legal_entity (id, name, entity_type, jurisdiction, is_crown)
-VALUES (gen_random_uuid(), 'MCV Inc.', 'C-Corp', 'US-DE', true)
-ON CONFLICT DO NOTHING;
+INSERT INTO capital_legal_entity (id, label, entity_type, jurisdiction, is_crown, active)
+SELECT 'mcv-inc-crown', 'MCV Inc.', 'corporation', 'US-DE', true, true
+WHERE NOT EXISTS (SELECT 1 FROM capital_legal_entity WHERE id = 'mcv-inc-crown');
 
 -- Seed MCV LTD (secondary crown — UK/international)
-INSERT INTO capital_legal_entity (id, name, entity_type, jurisdiction, is_crown)
-VALUES (gen_random_uuid(), 'MCV LTD', 'Limited Co.', 'UK', true)
-ON CONFLICT DO NOTHING;
+INSERT INTO capital_legal_entity (id, label, entity_type, jurisdiction, is_crown, active)
+SELECT 'mcv-ltd-crown', 'MCV LTD', 'corporation', 'UK', true, true
+WHERE NOT EXISTS (SELECT 1 FROM capital_legal_entity WHERE id = 'mcv-ltd-crown');
 
--- Wire EdgeIQ Holdings under MCV Inc. as the operating conglomerate
+-- Wire existing EdgeIQ Holdings under MCV Inc. via the existing parent_entity_id column.
 UPDATE capital_legal_entity
-SET parent_crown_id = (SELECT id FROM capital_legal_entity WHERE name = 'MCV Inc.' AND is_crown = true LIMIT 1)
-WHERE name = 'EdgeIQ Holdings';
+SET parent_entity_id = 'mcv-inc-crown'
+WHERE id = 'edgeiq-holdings';
 
-COMMENT ON COLUMN capital_legal_entity.is_crown IS 'Sovereign 6D entities (MCV Inc. / MCV LTD). Never for sale.';
-COMMENT ON COLUMN capital_legal_entity.parent_crown_id IS 'Links operating entities up to their crown parent.';
+COMMENT ON COLUMN capital_legal_entity.is_crown IS 'Sovereign 6D entities (MCV Inc. / MCV LTD). Never for sale. Succession-only.';
