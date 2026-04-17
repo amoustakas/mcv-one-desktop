@@ -141,6 +141,9 @@ export type ViewId =
   // Phase 2 — Prospect funnel + onboarding admin
   | 'prospects'
   | 'prospect-profile'
+  // People — active human tracking (net-new, distinct from onboarding funnel
+  // and distinct from the DevOps 'pipeline' view)
+  | 'people'
   // Departmental Command Suites (global toolbox + dedicated per-department surfaces)
   | 'suite-command-bridge'
   | 'suite-creative-studio'
@@ -266,8 +269,9 @@ const VIEW_LABELS: Record<string, string> = {
   'agent-profile': 'Agent',
   'agent-chat': 'Agent Chat',
   'platform-api-keys': 'API Keys',
-  prospects: 'Prospects',
+  prospects: 'Onboarding Funnel',
   'prospect-profile': 'Prospect',
+  people: 'People',
 };
 
 export const useNavigation = create<NavigationState>()(
