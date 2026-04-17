@@ -34,3 +34,4 @@ dist-ssr
 # Claude Code scratch state — don't commit
 .claude/scheduled_tasks.lock
 .claude/sessions/
+.superpowers/
