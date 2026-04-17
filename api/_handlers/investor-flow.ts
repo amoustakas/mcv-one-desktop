@@ -1,6 +1,7 @@
 // api/_handlers/investor-flow.ts
 // Consumer-facing money-in flow. Read actions (public): list_public_rounds, get_round_detail.
-// Write actions land in T6.2/T6.3/T6.4 (submit_accreditation, create_soft_commit, kickoff_payment).
+// Write actions: submit_accreditation (T6.2), create_soft_commit (T6.3).
+// Remaining stub: kickoff_payment (T6.4).
 // Routes through the catchall dispatcher at api/[...slug].ts.
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
@@ -210,6 +211,179 @@ async function submitAccreditation(params: SubmitAccreditationInput) {
 }
 
 // ───────────────────────────────────────────────────────────────────────────
+// T6.3: create_soft_commit (critical business logic)
+// ───────────────────────────────────────────────────────────────────────────
+
+interface CreateSoftCommitInput {
+  contact_id: string;
+  round_id: string;
+  amount: number;
+  currency?: string;
+  payment_method?: string;
+  wallet_address?: string;
+  wallet_chain?: string;
+  notes?: string;
+  source?: string;
+  referral_contact_id?: string;
+  actor_user_id?: string;
+}
+
+interface SoftCommitError extends Error {
+  code: string;
+  http_status: number;
+  details?: Record<string, unknown>;
+}
+
+function softCommitError(code: string, http_status: number, message: string, details?: Record<string, unknown>): SoftCommitError {
+  const err = new Error(message) as SoftCommitError;
+  err.code = code;
+  err.http_status = http_status;
+  err.details = details;
+  return err;
+}
+
+async function createSoftCommit(params: CreateSoftCommitInput) {
+  // 1. Basic input validation
+  if (!params.contact_id) throw softCommitError('missing_contact_id', 400, 'contact_id required');
+  if (!params.round_id) throw softCommitError('missing_round_id', 400, 'round_id required');
+  if (typeof params.amount !== 'number' || !Number.isFinite(params.amount) || params.amount <= 0) {
+    throw softCommitError('invalid_amount', 400, 'amount must be a positive number');
+  }
+
+  // 2. Load round with public-eligibility filter
+  const { data: round, error: rErr } = await supabase
+    .from('capital_rounds')
+    .select('id, venture_id, status, is_public, accredited_only, minimum_check, maximum_check, currency, close_date, funding_deadline, jurisdiction_restrictions, total_committed, total_investors, deleted_at')
+    .eq('id', params.round_id)
+    .is('deleted_at', null)
+    .maybeSingle();
+  if (rErr) throw rErr;
+  if (!round) throw softCommitError('round_not_found', 404, `round ${params.round_id} not found or not public`);
+  if (!round.is_public) throw softCommitError('round_not_public', 404, 'round is not publicly visible');
+  if (!['open', 'reserved'].includes(round.status)) {
+    throw softCommitError('round_not_accepting_commitments', 409, `round.status=${round.status} — must be open or reserved`);
+  }
+
+  // 3. Check-size bounds
+  if (params.amount < Number(round.minimum_check ?? 0)) {
+    throw softCommitError('minimum_check_violation', 422, `amount ${params.amount} below minimum_check ${round.minimum_check}`,
+      { minimum_check: round.minimum_check, amount: params.amount });
+  }
+  if (round.maximum_check != null && params.amount > Number(round.maximum_check)) {
+    throw softCommitError('maximum_check_violation', 422, `amount ${params.amount} above maximum_check ${round.maximum_check}`,
+      { maximum_check: round.maximum_check, amount: params.amount });
+  }
+
+  // 4. Deadline check
+  const now = Date.now();
+  if (round.close_date && new Date(round.close_date).getTime() < now) {
+    throw softCommitError('round_closed', 409, 'round close_date has passed');
+  }
+  if (round.funding_deadline && new Date(round.funding_deadline).getTime() < now) {
+    throw softCommitError('funding_deadline_passed', 409, 'funding_deadline has passed');
+  }
+
+  // 5. Accreditation check (only when accredited_only=true)
+  let investorProfile: { accreditation_status: string; jurisdiction: string | null } | null = null;
+  if (round.accredited_only || (Array.isArray(round.jurisdiction_restrictions) && round.jurisdiction_restrictions.length > 0)) {
+    const { data: profile, error: pErr } = await supabase
+      .from('capital_investor_profile')
+      .select('accreditation_status, jurisdiction')
+      .eq('contact_id', params.contact_id)
+      .eq('venture_id', round.venture_id)
+      .maybeSingle();
+    if (pErr) throw pErr;
+    investorProfile = profile;
+
+    if (round.accredited_only && (!profile || profile.accreditation_status !== 'verified')) {
+      throw softCommitError('accreditation_required', 403,
+        `round is accredited_only — verified accreditation required (current: ${profile?.accreditation_status ?? 'none'})`,
+        { accreditation_status: profile?.accreditation_status ?? null });
+    }
+
+    // 6. Jurisdiction check
+    const restrictions = (round.jurisdiction_restrictions ?? []) as string[];
+    if (restrictions.length > 0) {
+      const jurisdiction = profile?.jurisdiction;
+      if (!jurisdiction) {
+        throw softCommitError('jurisdiction_unknown', 422, 'investor jurisdiction not recorded — complete accreditation first',
+          { required_jurisdictions: restrictions });
+      }
+      const allowed = restrictions.includes(jurisdiction);
+      if (!allowed) {
+        throw softCommitError('jurisdiction_restricted', 403,
+          `jurisdiction ${jurisdiction} not in round restrictions`,
+          { jurisdiction, allowed_jurisdictions: restrictions });
+      }
+    }
+  }
+  // Avoid unused-variable TS warnings — profile lookup is load-bearing for validation side-effects.
+  void investorProfile;
+
+  const currency = params.currency ?? round.currency ?? 'USD';
+  // FX: if non-USD, we'd convert via an FX rate service; for v1 assume 1:1 if currency=USD, else store non-USD in amount + amount_usd=amount (caller responsibility when currency differs — M3 wires real FX).
+  const amount_usd = currency === 'USD' ? params.amount : params.amount; // TODO: FX rate lookup in M3
+  const fx_rate_note = currency !== 'USD' ? { fx_rate_note: 'FX passthrough — M3 wires real rates', fx_rate_used: 1 } : {};
+
+  // 7. Insert commitment
+  const nowIso = new Date().toISOString();
+  const { data: commitment, error: cErr } = await supabase
+    .from('capital_commitments')
+    .insert({
+      venture_id: round.venture_id,
+      contact_id: params.contact_id,
+      round_id: params.round_id,
+      status: 'soft_committed',
+      amount: params.amount,
+      currency,
+      amount_usd,
+      payment_method: params.payment_method ?? null,
+      wallet_address: params.wallet_address ?? null,
+      notes: params.notes ?? null,
+      source: params.source ?? 'investor_portal',
+      referral_contact_id: params.referral_contact_id ?? null,
+      interest_expressed_at: nowIso,
+      soft_committed_at: nowIso,
+      metadata: {
+        submitted_via: 'investor-flow',
+        wallet_chain: params.wallet_chain ?? null,
+        ...fx_rate_note,
+      },
+    })
+    .select('*')
+    .single();
+  if (cErr) throw cErr;
+
+  // 8. Audit event
+  const { error: actErr } = await supabase
+    .from('capital_activities')
+    .insert({
+      venture_id: round.venture_id,
+      contact_id: params.contact_id,
+      round_id: params.round_id,
+      commitment_id: commitment.id,
+      activity_type: 'soft_commit_created',
+      title: `Soft-commit: ${currency} ${params.amount.toLocaleString()} into ${round.id}`,
+      description: `Contact ${params.contact_id} soft-committed ${currency} ${params.amount} via ${params.source ?? 'investor_portal'}${params.payment_method ? `, payment_method=${params.payment_method}` : ''}.`,
+      previous_value: 'interest',
+      new_value: 'soft_committed',
+      actor_id: params.actor_user_id ?? params.contact_id,
+      actor_type: 'user',
+      metadata: {
+        amount: params.amount, currency, amount_usd,
+        payment_method: params.payment_method ?? null,
+        source: params.source ?? 'investor_portal',
+      },
+    });
+  if (actErr) {
+    console.error('[investor-flow] capital_activities insert failed — commitment created, audit missing:', actErr);
+    // Non-fatal — commitment is the source of truth
+  }
+
+  return { commitment };
+}
+
+// ───────────────────────────────────────────────────────────────────────────
 // Default export — HTTP dispatcher
 // ───────────────────────────────────────────────────────────────────────────
 
@@ -244,13 +418,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           actor_user_id: body.actor_user_id as string | undefined,
         }));
       }
-      case 'create_soft_commit':
+      case 'create_soft_commit': {
+        try {
+          return res.status(200).json(await createSoftCommit({
+            contact_id: body.contact_id as string,
+            round_id: body.round_id as string,
+            amount: Number(body.amount),
+            currency: body.currency as string | undefined,
+            payment_method: body.payment_method as string | undefined,
+            wallet_address: body.wallet_address as string | undefined,
+            wallet_chain: body.wallet_chain as string | undefined,
+            notes: body.notes as string | undefined,
+            source: body.source as string | undefined,
+            referral_contact_id: body.referral_contact_id as string | undefined,
+            actor_user_id: body.actor_user_id as string | undefined,
+          }));
+        } catch (err) {
+          const anyErr = err as SoftCommitError;
+          if (anyErr.code && anyErr.http_status) {
+            return res.status(anyErr.http_status).json({
+              error: anyErr.message,
+              code: anyErr.code,
+              ...(anyErr.details ? { details: anyErr.details } : {}),
+            });
+          }
+          throw err;  // fall-through to outer try/catch
+        }
+      }
       case 'kickoff_payment': {
-        const phaseMap: Record<string, string> = {
-          create_soft_commit: '3',
-          kickoff_payment: '4',
-        };
-        return res.status(501).json({ error: `${body.action} not implemented yet — lands in T6.${phaseMap[body.action]}` });
+        return res.status(501).json({ error: `${body.action} not implemented yet — lands in T6.4` });
       }
       default: {
         return res.status(400).json({ error: `unknown action: ${body.action}` });
