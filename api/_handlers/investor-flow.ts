@@ -6,6 +6,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getServiceClient } from './_supabase';
+import { withRateLimit, LIMITS } from '../../src/lib/server/rate-limit';
 
 const supabase = getServiceClient();
 
@@ -525,7 +526,7 @@ async function kickoffPayment(params: KickoffPaymentInput) {
 // Default export — HTTP dispatcher
 // ───────────────────────────────────────────────────────────────────────────
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'method not allowed' });
   }
@@ -625,3 +626,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: message });
   }
 }
+
+export default withRateLimit(LIMITS.INVESTOR_FLOW)(handler);

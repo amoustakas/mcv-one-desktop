@@ -19,6 +19,7 @@ import {
   verifyUSDCWebhook,
   WebhookVerificationError,
 } from '../../src/lib/server/webhook-verify';
+import { withRateLimit, LIMITS, getClientIp } from '../../src/lib/server/rate-limit';
 
 export const config = {
   api: {
@@ -61,7 +62,7 @@ async function readRawBody(req: VercelRequest): Promise<Buffer> {
   });
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'method not allowed' });
   }
@@ -238,3 +239,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: message });
   }
 }
+
+export default withRateLimit(LIMITS.WEBHOOK, getClientIp)(handler);

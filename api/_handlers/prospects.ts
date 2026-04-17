@@ -17,6 +17,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getServiceClient } from './_supabase';
+import { withRateLimit, LIMITS } from '../../src/lib/server/rate-limit';
 import {
   startJourney as sdkStartJourney,
   advanceStep as sdkAdvanceStep,
@@ -196,7 +197,7 @@ async function applyCompletionEffects(
 // Handler
 // ───────────────────────────────────────────────────────────────────────────
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+async function handler(req: VercelRequest, res: VercelResponse) {
   const action = req.method === 'GET' ? (req.query.action as string) : (req.body?.action as string);
   const params = { ...(req.query || {}), ...(req.body || {}) } as Record<string, unknown>;
 
@@ -611,3 +612,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: msg });
   }
 }
+
+export default withRateLimit(LIMITS.PROSPECT_INTAKE)(handler);

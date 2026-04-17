@@ -23,6 +23,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'node:crypto';
 import { emitPaymentEvent, type PaymentEventType } from './_payment-events.js';
+import { withRateLimit, LIMITS, getClientIp } from '../../src/lib/server/rate-limit';
 
 export const config = { api: { bodyParser: false } };
 
@@ -326,7 +327,7 @@ async function reconcileToCapital(evt: PlaidTransferEvent): Promise<void> {
 
 // ─── Handler ────────────────────────────────────────────────────────────
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).send('POST only');
 
   let raw: Buffer;
@@ -369,3 +370,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   return res.status(200).json({ received: true, handled: false, type: body.webhook_type });
 }
+
+export default withRateLimit(LIMITS.WEBHOOK, getClientIp)(handler);

@@ -21,6 +21,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'node:crypto';
+import { withRateLimit, LIMITS, getClientIp } from '../../src/lib/server/rate-limit';
 
 export const config = { api: { bodyParser: false } };
 
@@ -48,7 +49,7 @@ function verifySignature(raw: Buffer, signature: string | undefined, secret: str
   return crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(provided, 'hex'));
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).send('POST only');
 
   let raw: Buffer;
@@ -103,6 +104,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     vcIssued,
   });
 }
+
+export default withRateLimit(LIMITS.WEBHOOK, getClientIp)(handler);
 
 async function issueVcFromEvent(
   event: Awaited<ReturnType<Exclude<ReturnType<typeof import('../../src/lib/capital/adapters/verify-investor-adapter').createVerifyInvestorAdapter>['fromForeign'], undefined>>>,

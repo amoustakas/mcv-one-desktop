@@ -18,6 +18,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'node:crypto';
+import { withRateLimit, LIMITS, getClientIp } from '../../src/lib/server/rate-limit';
 
 export const config = { api: { bodyParser: false } };
 
@@ -61,7 +62,7 @@ function verifyDocuSignSignature(raw: Buffer, headers: VercelRequest['headers'])
   return false;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).send('POST only');
 
   let raw: Buffer;
@@ -102,3 +103,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     receipt_content_id: result.receiptContentId,
   });
 }
+
+export default withRateLimit(LIMITS.WEBHOOK, getClientIp)(handler);
