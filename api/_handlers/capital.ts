@@ -12,6 +12,11 @@ import {
 import { makeCapitalLedgerAdapter, makeCapitalPaymentRouterAdapter } from '../../src/lib/capital/adapters';
 import { paymentRouter } from '../../src/lib/payments/router';
 import { createServerFabric } from '../../src/lib/mcv-core/fabric';
+import {
+  requireVentureScope,
+  VentureScopeError,
+  respondToScopeError,
+} from '../../src/lib/server/require-venture-scope';
 
 import { requestLogger } from '../../src/lib/server/logger';
 // Fabric client (null when FABRIC_URL isn't configured — fire-and-forget
@@ -141,6 +146,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.json({ round });
       }
       case 'create-round': {
+        // M5 I3.4 — scope the round to the caller's venture_scope claim.
+        // mcv_admin bypasses. Round creation is the single largest cross-tenant
+        // leak vector: an operator for venture A must not be able to mint a
+        // round for venture B.
+        const roundInput = params.round as { ventureId?: string } | undefined;
+        if (roundInput?.ventureId) {
+          try {
+            await requireVentureScope(req, roundInput.ventureId);
+          } catch (scopeErr) {
+            if (scopeErr instanceof VentureScopeError) {
+              respondToScopeError(res, scopeErr);
+              return;
+            }
+            throw scopeErr;
+          }
+        }
         const round = await engine.rounds.createRound(params.round as never);
         await engine.activities.recordActivity({
           ventureId: round.ventureId,
@@ -606,6 +627,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const ventureId = params.venture_id as string;
         const rail = params.rail as 'mcv-sign' | 'docusign' | 'eu-sign';
         if (!ventureId || !rail) return res.status(400).json({ error: 'venture_id and rail required' });
+
+        // M5 I3.4 — signing rail config is venture-bound. An operator must
+        // have venture_scope matching or mcv_admin role to flip their
+        // venture's rail. Wrong-venture changes would re-route downstream
+        // signing envelopes — a compliance + audit leak.
+        try {
+          await requireVentureScope(req, ventureId);
+        } catch (scopeErr) {
+          if (scopeErr instanceof VentureScopeError) {
+            respondToScopeError(res, scopeErr);
+            return;
+          }
+          throw scopeErr;
+        }
         if (!['mcv-sign', 'docusign', 'eu-sign'].includes(rail)) {
           return res.status(400).json({ error: 'rail must be mcv-sign, docusign, or eu-sign' });
         }
@@ -1137,6 +1172,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.json(state ?? { distribution: null, recipients: [] });
       }
       case 'create-distribution': {
+        // M5 I3.4 — scope the distribution to the caller's venture. The input
+        // carries ventureId; enforce the operator's venture_scope matches
+        // (mcv_admin bypasses). Distributions move real money — wrong-venture
+        // leakage would be a capital-safety incident, not just a data leak.
+        const distInput = params.input as { ventureId?: string } | undefined;
+        if (distInput?.ventureId) {
+          try {
+            await requireVentureScope(req, distInput.ventureId);
+          } catch (scopeErr) {
+            if (scopeErr instanceof VentureScopeError) {
+              respondToScopeError(res, scopeErr);
+              return;
+            }
+            throw scopeErr;
+          }
+        }
         const dist = await engine.distributions.createDistribution({
           ...(params.input as never),
           createdBy: userId,

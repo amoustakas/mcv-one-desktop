@@ -19,6 +19,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import { emitPaymentEvent, type PaymentEventType } from './_payment-events.js';
+import { withRateLimit, LIMITS, getClientIp } from '../../src/lib/server/rate-limit';
 
 import { requestLogger } from '../../src/lib/server/logger';
 export const config = { api: { bodyParser: false } };
@@ -251,7 +252,7 @@ function mapStripeEvent(event: Stripe.Event): MappedEvent | null {
   }
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+async function handler(req: VercelRequest, res: VercelResponse) {
   const { log: __log, correlationId: __correlationId } = requestLogger(req as unknown as { headers?: Record<string, unknown>; url?: string; method?: string });
   try { res.setHeader('x-correlation-id', __correlationId); } catch { /* headers already sent */ }
   const __start = Date.now();
@@ -333,6 +334,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // only in the response body for inspection.
   return res.status(200).json({ received: true, handled: !!mapped, type: event.type });
 }
+
+export default withRateLimit(LIMITS.WEBHOOK, getClientIp)(handler);
 
 // ── Capital reconciliation ──────────────────────────────────────────────
 // Composes the StripeAdapter (Epic 13 S2) with the shared reconcile

@@ -6,6 +6,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getServiceClient } from './_supabase';
+import { withRateLimit, LIMITS } from '../../src/lib/server/rate-limit';
 
 import { requestLogger } from '../../src/lib/server/logger';
 const supabase = getServiceClient();
@@ -526,7 +527,7 @@ async function kickoffPayment(params: KickoffPaymentInput) {
 // Default export — HTTP dispatcher
 // ───────────────────────────────────────────────────────────────────────────
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+async function handler(req: VercelRequest, res: VercelResponse) {
   const { log: __log, correlationId: __correlationId } = requestLogger(req as unknown as { headers?: Record<string, unknown>; url?: string; method?: string });
   try { res.setHeader('x-correlation-id', __correlationId); } catch { /* headers already sent */ }
   const __start = Date.now();
@@ -638,3 +639,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: message });
   }
 }
+
+export default withRateLimit(LIMITS.INVESTOR_FLOW)(handler);

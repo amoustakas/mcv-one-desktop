@@ -18,6 +18,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'node:crypto';
+import { withRateLimit, LIMITS, getClientIp } from '../../src/lib/server/rate-limit';
 
 import { requestLogger } from '../../src/lib/server/logger';
 export const config = { api: { bodyParser: false } };
@@ -62,7 +63,7 @@ function verifyDocuSignSignature(raw: Buffer, headers: VercelRequest['headers'])
   return false;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+async function handler(req: VercelRequest, res: VercelResponse) {
   const { log: __log, correlationId: __correlationId } = requestLogger(req as unknown as { headers?: Record<string, unknown>; url?: string; method?: string });
   try { res.setHeader('x-correlation-id', __correlationId); } catch { /* headers already sent */ }
   const __start = Date.now();
@@ -115,3 +116,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     receipt_content_id: result.receiptContentId,
   });
 }
+
+export default withRateLimit(LIMITS.WEBHOOK, getClientIp)(handler);
