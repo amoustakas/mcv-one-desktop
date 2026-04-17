@@ -15,6 +15,7 @@ import { useContact } from '../hooks/use-crm';
 import { useNavigation } from '../stores/navigation';
 import { PageHeader, PageShell, GlassCard, Badge, EmptyState } from '../components/ui';
 import AccreditationFlowModal from '../components/capital/AccreditationFlowModal';
+import RoundBrowseModal from '../components/capital/RoundBrowseModal';
 
 type FoundationTab = 'treasuries' | 'royalties' | 'distributions' | 'compliance' | 'entities' | 'simulator';
 
@@ -424,6 +425,7 @@ function PinnedInvestorBanner({
   const { data: position, isLoading: positionLoading } = useInvestorPosition(contactId);
   const selectProspectJourney = useNavigation((s) => s.selectProspectJourney);
   const [verifyModalOpen, setVerifyModalOpen] = useState(false);
+  const [browseRoundsOpen, setBrowseRoundsOpen] = useState(false);
 
   const contact = contactData?.contact;
   const profile = position?.profile ?? null;
@@ -515,6 +517,20 @@ function PinnedInvestorBanner({
                   Verify accreditation
                 </button>
               )}
+              {isVerified && profile && (
+                <button
+                  onClick={() => setBrowseRoundsOpen(true)}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '8px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                    background: '#F472B6', color: 'var(--surface-base)',
+                    border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+                  }}
+                >
+                  <Sparkles size={13} />
+                  Browse available rounds
+                </button>
+              )}
               {journeyId && (
                 <button
                   onClick={() => selectProspectJourney(journeyId)}
@@ -542,6 +558,15 @@ function PinnedInvestorBanner({
           contactId={contactId}
           contactName={contact.name}
           profile={profile}
+        />
+      )}
+      {profile && (
+        <RoundBrowseModal
+          open={browseRoundsOpen}
+          onClose={() => setBrowseRoundsOpen(false)}
+          contactId={contactId}
+          contactName={contact.name}
+          ventureId={profile.ventureId ?? undefined}
         />
       )}
     </div>
