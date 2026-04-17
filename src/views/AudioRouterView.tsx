@@ -7,6 +7,9 @@ import { PageShell, PageHeader, GlassCard, EmptyState } from '../components/ui';
 import { useDeviceStore } from '../stores/devices';
 import type { AudioRoute, DeviceProfile } from '../lib/devices/types';
 import { cn } from '../lib/utils';
+import VoiceDock from '../components/voice/VoiceDock';
+import VoiceProviderComparator from '../components/voice/VoiceProviderComparator';
+import type { ProviderName, VentureVoiceConfig } from '@mcv/voice-sdk';
 
 // GoXLR routing inputs and outputs
 const INPUTS = [
@@ -250,6 +253,57 @@ function SamplerGrid() {
   );
 }
 
+function VoicePlaygroundSection() {
+  // MCV default voice stack — Gemini Live primary, ElevenLabs+Deepgram fallback.
+  // This mirrors docs/voice/PROVIDER-MATRIX.md recommendations.
+  const venture: VentureVoiceConfig = useMemo(() => ({
+    ventureId: 'mcv',
+    primary: 'gemini-live',
+    fallback: ['elevenlabs', 'deepgram'],
+    monthlySpendCapUsd: 250,
+  }), []);
+
+  const providerConfigs = useMemo<Partial<Record<ProviderName, { apiKey?: string }>>>(() => ({
+    'gemini-live': { apiKey: import.meta.env.VITE_GOOGLE_AI_KEY },
+    'elevenlabs': { apiKey: import.meta.env.VITE_ELEVENLABS_API_KEY },
+    'deepgram': { apiKey: import.meta.env.VITE_DEEPGRAM_API_KEY },
+    'openai-realtime': { apiKey: import.meta.env.VITE_OPENAI_API_KEY },
+  }), []);
+
+  const [transcripts, setTranscripts] = useState<string[]>([]);
+
+  return (
+    <GlassCard className="p-4 space-y-4">
+      <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider">
+        Voice Playground
+      </h3>
+      <VoiceDock
+        venture={venture}
+        providerConfigs={providerConfigs}
+        agentPersona={{ tone: 'warm', pace: 'natural', humor: 0.2 }}
+        onTranscript={(t) => setTranscripts((prev) => [...prev.slice(-4), t])}
+      />
+      {transcripts.length > 0 && (
+        <div className="space-y-1 text-xs text-white/60 font-mono bg-black/30 rounded p-2">
+          {transcripts.map((t, i) => (
+            <div key={i} className="truncate">{t}</div>
+          ))}
+        </div>
+      )}
+      <div>
+        <div className="text-xs uppercase tracking-wider text-white/50 mb-2">
+          Provider A/B comparator
+        </div>
+        <VoiceProviderComparator
+          providers={['elevenlabs', 'gemini-live', 'azure-speech']}
+          providerConfigs={providerConfigs}
+          agentPersona={{ tone: 'warm', pace: 'natural' }}
+        />
+      </div>
+    </GlassCard>
+  );
+}
+
 export default function AudioRouterView() {
   const { devices, profiles, activeProfileId, addProfile, setActiveProfile } = useDeviceStore();
 
@@ -332,6 +386,9 @@ export default function AudioRouterView() {
 
       {/* Always show the UI for visual design even without hardware */}
       <div className="space-y-6">
+        {/* Voice playground — VoiceDock + VoiceProviderComparator */}
+        <VoicePlaygroundSection />
+
         {/* Faders with source labels */}
         <GlassCard className="p-4">
           <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-4">

@@ -38,6 +38,43 @@ export interface VentureWhiteLabel {
   accentColor?: string;
 }
 
+/**
+ * Per-venture voice configuration — consumed by @mcv/voice-sdk's
+ * VoiceRouter. Every venture picks a primary provider plus an ordered
+ * fallback list so in-app voice degrades gracefully when the primary
+ * provider times out or errors. Provider names are canonical strings
+ * matching ProviderName in @mcv/voice-sdk.
+ */
+export type VentureVoiceProvider =
+  | 'elevenlabs'
+  | 'gemini-live'
+  | 'vapi'
+  | 'openai-realtime'
+  | 'deepgram'
+  | 'azure-speech'
+  | 'xai-grok';
+
+export interface VentureVoiceFeatures {
+  /** Enable streaming TTS paths. Default true. */
+  streaming?: boolean;
+  /** Allow phone (PSTN/SIP) routing via Vapi for this venture. */
+  phone?: boolean;
+  /** Allow voice cloning (ElevenLabs / Azure custom voice). */
+  cloning?: boolean;
+  /** Force composite stack (STT + TTS) for highest-fidelity agents. */
+  composite?: boolean;
+}
+
+export interface VentureVoiceConfig {
+  primary: VentureVoiceProvider;
+  fallback: VentureVoiceProvider[];
+  features?: VentureVoiceFeatures;
+  /** Monthly USD spend cap. Router alerts at 80%, rejects at 100%. */
+  monthlySpendCapUsd?: number;
+  /** Per-provider param overrides (voiceId, model, etc.). */
+  overrides?: Partial<Record<VentureVoiceProvider, Record<string, unknown>>>;
+}
+
 export type VentureAssetKind = 'repo' | 'app' | 'domain' | 'doc' | 'integration' | 'social' | 'workspace';
 export type VentureTier = 1 | 2 | 3;
 
@@ -84,4 +121,6 @@ export interface Venture {
   whiteLabel?: VentureWhiteLabel;
   docNamespace?: string;
   questState?: Record<string, unknown>;
+  /** Voice stack config consumed by @mcv/voice-sdk's VoiceRouter. */
+  voice?: VentureVoiceConfig;
 }

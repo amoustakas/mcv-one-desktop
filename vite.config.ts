@@ -14,6 +14,22 @@ export default defineConfig(({ mode }) => {
     define: {
       __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
     },
+    build: {
+      // @mcv/voice-sdk provider adapters dynamic-import these SDKs as
+      // optional peers — a host app only installs the providers it needs.
+      // Mark them external so Rolldown doesn't fail to resolve at bundle
+      // time; unavailable providers throw a friendly runtime error via
+      // their try/catch fallback ("X not installed; <provider> unavailable").
+      rollupOptions: {
+        external: [
+          '@elevenlabs/elevenlabs-js',
+          '@deepgram/sdk',
+          '@vapi-ai/server-sdk',
+          'openai/realtime/ws',
+          'openai/realtime/websocket',
+        ],
+      },
+    },
     server: {
       proxy: {
         '/local/browser/stream': {
