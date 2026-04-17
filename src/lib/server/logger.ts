@@ -45,3 +45,11 @@ export function requestLogger(req: { headers?: Record<string, unknown>; url?: st
 }
 
 export type MCVLogger = typeof logger;
+
+import { getActiveCorrelationId } from './correlation';
+
+/** Child logger bound to the current AsyncLocalStorage correlation_id, if any. */
+export function logger_al() {
+  const id = getActiveCorrelationId();
+  return id ? logger.child({ correlation_id: id }) : logger;
+}
