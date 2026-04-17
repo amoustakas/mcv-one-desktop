@@ -4,8 +4,14 @@
 //
 // SCHEMA: ventures uses funding_stage (not 'stage') and owner_entity_id (not 'parent_entity_id').
 // Both are text. is_raising added in T2.2.
+//
+// ROUTING: the catchall dispatcher at api/[...slug].ts loads mod.default from here,
+// so this file exposes both the pure handleVentureStack (for unit use / hook-reuse)
+// AND a default-export handler that wraps it for the HTTP layer.
 
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { getServiceClient } from './_supabase';
 
 export interface VentureStackRequest {
   action:
@@ -67,5 +73,22 @@ export async function handleVentureStack(supabase: SupabaseClient, req: VentureS
       if (error) throw error;
       return { brandKit: data };
     }
+  }
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'method not allowed' });
+  }
+  try {
+    const result = await handleVentureStack(
+      getServiceClient(),
+      req.body as VentureStackRequest,
+    );
+    return res.status(200).json(result);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'venture-stack failed';
+    console.error('[venture-stack] error:', message);
+    return res.status(500).json({ error: message });
   }
 }
