@@ -572,6 +572,26 @@ export default function App() {
     }
   }, [navActiveView]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Deep-link consumer for `?view=agent-profile&handle=@atlas` style URLs.
+  // The onboarding wizard's agent avatars open these in a new tab so any
+  // venture can hand off directly to a Desktop view.
+  const openAgentProfile = useNavigation(s => s.openAgentProfile);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const view = params.get('view');
+    const handle = params.get('handle');
+    if (view === 'agent-profile' && handle) {
+      openAgentProfile(handle.startsWith('@') ? handle : `@${handle}`);
+      // Clear so reloads don't re-apply the deep-link.
+      params.delete('view');
+      params.delete('handle');
+      const next = params.toString();
+      const url = window.location.pathname + (next ? `?${next}` : '') + window.location.hash;
+      window.history.replaceState(null, '', url);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   useLocalServer(); // Detect local server connection
   usePipelineSync(); // Auto-sync local data → Supabase every 5min
   useRealtimeSync(); // Supabase Realtime — live push updates across devices
