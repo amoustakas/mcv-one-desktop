@@ -137,6 +137,7 @@ export type ViewId =
   | 'agents'
   | 'agent-profile'
   | 'agent-chat'
+  | 'hit-squad'
   | 'platform-api-keys'
   // Phase 2 — Prospect funnel + onboarding admin
   | 'prospects'
