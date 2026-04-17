@@ -26,14 +26,16 @@ import { TinyEmitter } from './ProviderContract';
 async function loadRealtime(): Promise<{ impl: any; kind: 'ws' | 'browser' } | null> {
   // Prefer browser WebSocket when `window` is present.
   const isBrowser = typeof window !== 'undefined' && typeof (window as any).WebSocket !== 'undefined';
+  // Indirect specifier keeps Vite's import-analysis (and webpack's equivalent)
+  // from trying to resolve the optional peer at bundle time.
+  const browserSpec = ['openai', 'realtime', 'websocket'].join('/');
+  const nodeSpec = ['openai', 'realtime', 'ws'].join('/');
   try {
     if (isBrowser) {
-      // @ts-expect-error — optional peer; installed by host app only if OpenAI Realtime is used
-      const mod = await import('openai/realtime/websocket');
+      const mod = await import(/* @vite-ignore */ browserSpec);
       return { impl: mod.OpenAIRealtimeWebSocket, kind: 'browser' };
     }
-    // @ts-expect-error — optional peer; installed by host app only if OpenAI Realtime is used
-    const mod = await import('openai/realtime/ws');
+    const mod = await import(/* @vite-ignore */ nodeSpec);
     return { impl: mod.OpenAIRealtimeWS, kind: 'ws' };
   } catch {
     return null;

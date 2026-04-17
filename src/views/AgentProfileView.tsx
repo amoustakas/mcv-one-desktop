@@ -4,8 +4,9 @@
 // schedule a workflow, review activity.
 
 import { useState } from 'react';
-import { ArrowLeft, MessageCircle, Settings2, Clock, Zap, Shield, Briefcase, Loader2 } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Settings2, Clock, Zap, Shield, Briefcase, Loader2, Volume2, VolumeX } from 'lucide-react';
 import { useAgent, useAgents, useAgentConversations } from '../hooks/use-agents';
+import { useAgentVoice } from '../hooks/use-agent-voice';
 import { useNavigation } from '../stores/navigation';
 import { useAgentChat } from '../stores/agent-chat';
 import { startAgentConversation } from '../lib/agents/chat';
@@ -45,6 +46,7 @@ export default function AgentProfileView() {
   const queryClient = useQueryClient();
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
+  const agentVoice = useAgentVoice();
 
   async function handleStartConversation() {
     if (!activeHandle || starting) return;
@@ -235,7 +237,44 @@ export default function AgentProfileView() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
         {/* Voice profile */}
         <GlassCard>
-          <SectionHead icon={<Zap className="w-4 h-4" />} label="Voice Profile" />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <SectionHead icon={<Zap className="w-4 h-4" />} label="Voice Profile" />
+            <button
+              type="button"
+              onClick={() => {
+                if (agentVoice.playing) {
+                  agentVoice.stop();
+                  return;
+                }
+                const firstName = agent.full_name.split(' ')[0] || agent.full_name;
+                void agentVoice.play({
+                  text: `Hi, I'm ${agent.full_name}. I'm ${agent.title} here at MCV. Good to finally meet you.`,
+                  agentHandle: agent.handle,
+                  ventureId: agent.scope_kind === 'venture' ? agent.scope_value : null,
+                });
+                void firstName; // kept for future: could personalize line below
+              }}
+              disabled={false}
+              title={agentVoice.playing ? 'Stop' : 'Hear voice'}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '6px 12px', borderRadius: 999,
+                background: agentVoice.playing ? accent : 'transparent',
+                color: agentVoice.playing ? 'var(--surface-base)' : accent,
+                border: `1px solid ${accent}`,
+                cursor: 'pointer', fontSize: 11, fontWeight: 600, letterSpacing: 0.3,
+                textTransform: 'uppercase',
+              }}
+            >
+              {agentVoice.playing
+                ? (<><VolumeX className="w-3 h-3" /> Stop</>)
+                : (<><Volume2 className="w-3 h-3" /> Hear voice</>)
+              }
+            </button>
+          </div>
+          {agentVoice.error && (
+            <div style={{ marginBottom: 8, fontSize: 11, color: '#EF4444' }}>{agentVoice.error}</div>
+          )}
           <DefRow label="Tone"      value={voice.tone} />
           <DefRow label="Pace"      value={voice.pace} />
           <DefRow label="Formality" value={voice.formality} />

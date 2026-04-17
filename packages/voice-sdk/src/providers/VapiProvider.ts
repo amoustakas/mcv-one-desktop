@@ -23,10 +23,11 @@ import type {
 } from './ProviderContract';
 import { TinyEmitter } from './ProviderContract';
 
+const VAPI_PKG = ['@vapi-ai', 'server-sdk'].join('/');
+
 async function loadSdk(): Promise<any | null> {
   try {
-    // @ts-expect-error — optional peer; installed by host app only if Vapi is used
-    return await import('@vapi-ai/server-sdk');
+    return await import(/* @vite-ignore */ VAPI_PKG);
   } catch {
     return null;
   }
