@@ -7,6 +7,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { requestLogger } from '../../src/lib/server/logger';
 import {
   generateApiKey,
   listApiKeys,
@@ -33,6 +34,18 @@ async function requireAuth(req: VercelRequest, res: VercelResponse): Promise<str
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const { log: __log, correlationId: __correlationId } = requestLogger(req as unknown as { headers?: Record<string, unknown>; url?: string; method?: string });
+  try { res.setHeader('x-correlation-id', __correlationId); } catch { /* headers already sent */ }
+  const __start = Date.now();
+  __log.info({ event: 'request_in' });
+  res.on('finish', () => {
+    __log.info({ event: 'request_out', status: res.statusCode, duration_ms: Date.now() - __start });
+  });
+  res.on('close', () => {
+    if (!res.writableEnded) {
+      __log.warn({ event: 'request_abort', duration_ms: Date.now() - __start });
+    }
+  });
   const userId = await requireAuth(req, res);
   if (!userId) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });

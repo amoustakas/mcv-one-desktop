@@ -1,19 +1,44 @@
 // src/components/factory/FlowRunner.tsx
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useStartFactoryRun, useFactoryRun } from '../../hooks/use-factory-run';
 import { useFactoryRunStream } from '../../hooks/use-factory-run';
 import type { FactoryFlow } from '../../lib/factory-client';
 import { RunStatusBadge } from './RunStatusBadge';
 
-interface Props { flow: FactoryFlow | null }
+interface Props {
+  flow: FactoryFlow | null;
+  /** Optional callback fired when a run reaches a terminal state (succeeded/failed/cancelled). */
+  onRunComplete?: (flowName: string, status: string, durationMs: number) => void;
+}
 
-export function FlowRunner({ flow }: Props) {
+export function FlowRunner({ flow, onRunComplete }: Props) {
   const [inputText, setInputText] = useState('{\n  \n}');
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const start = useStartFactoryRun();
   const runQ = useFactoryRun(activeRunId);
   const stream = useFactoryRunStream(activeRunId);
+
+  // Track run latency: capture performance.now() when run is kicked off,
+  // fire onRunComplete when the polled status reaches a terminal state.
+  const runStartRef = useRef<number | null>(null);
+  const reportedRunIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const status = runQ.data?.status;
+    const terminal = status === 'succeeded' || status === 'failed' || status === 'cancelled';
+    if (
+      terminal &&
+      activeRunId &&
+      activeRunId !== reportedRunIdRef.current &&
+      runStartRef.current !== null &&
+      onRunComplete &&
+      flow
+    ) {
+      reportedRunIdRef.current = activeRunId;
+      onRunComplete(flow.name, status, performance.now() - runStartRef.current);
+    }
+  }, [runQ.data?.status, activeRunId, flow, onRunComplete]);
 
   const schemaHint = useMemo(() => {
     if (!flow) return '';
@@ -35,6 +60,7 @@ export function FlowRunner({ flow }: Props) {
       return;
     }
     try {
+      runStartRef.current = performance.now();
       const res = await start.mutateAsync({ flowName: flow.name, input: parsed });
       setActiveRunId(res.run_id);
     } catch (e) {

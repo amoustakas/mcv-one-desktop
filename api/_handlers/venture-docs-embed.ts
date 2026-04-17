@@ -25,6 +25,7 @@ import crypto from 'node:crypto';
 import { getServiceClient, requireAuth } from './_supabase.js';
 import { embedMany } from './_embeddings.js';
 
+import { requestLogger } from '../../src/lib/server/logger';
 // ─── Chunking (mirrors rag-ingest.ts; keeps this handler self-contained
 //     so a future SDK extraction can replace both at once) ────────────────
 
@@ -222,6 +223,18 @@ function isCronRequest(req: VercelRequest): boolean {
 const STALE_BATCH_LIMIT = 50; // safety cap per cron tick — tune up later
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const { log: __log, correlationId: __correlationId } = requestLogger(req as unknown as { headers?: Record<string, unknown>; url?: string; method?: string });
+  try { res.setHeader('x-correlation-id', __correlationId); } catch { /* headers already sent */ }
+  const __start = Date.now();
+  __log.info({ event: 'request_in' });
+  res.on('finish', () => {
+    __log.info({ event: 'request_out', status: res.statusCode, duration_ms: Date.now() - __start });
+  });
+  res.on('close', () => {
+    if (!res.writableEnded) {
+      __log.warn({ event: 'request_abort', duration_ms: Date.now() - __start });
+    }
+  });
   if (req.method !== 'POST' && req.method !== 'GET') {
     return res.status(405).json({ error: 'POST or GET required' });
   }
