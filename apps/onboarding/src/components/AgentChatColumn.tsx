@@ -12,6 +12,19 @@ import { playAgentVoice, stopAgentVoice } from '@/lib/voice';
 
 const MUTE_KEY = 'mcv.wiz.voice.muted';
 
+/**
+ * Open the Desktop app's AgentProfileView for a given handle in a new tab.
+ * Desktop origin falls back to localhost:5173 in dev so the wizard works
+ * standalone; prod is configured via NEXT_PUBLIC_DESKTOP_ORIGIN.
+ */
+function openAgentProfileInDesktop(handle: string) {
+  if (typeof window === 'undefined') return;
+  const origin = process.env.NEXT_PUBLIC_DESKTOP_ORIGIN || 'http://localhost:5173';
+  const normalized = handle.startsWith('@') ? handle : `@${handle}`;
+  const url = `${origin}/?view=agent-profile&handle=${encodeURIComponent(normalized)}`;
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
 interface AgentSummary {
   id: string;
   handle: string;
@@ -196,9 +209,18 @@ export function AgentChatColumn({ journey, ventureId }: Props) {
   return (
     <>
       <div className="wiz-chat-header" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={avatarStyle(initialsOf(headerAgent?.full_name ?? 'A'), 'var(--brand)', 'var(--brand-accent)', headerAgent?.accent_color)}>
+        <button
+          type="button"
+          onClick={() => headerAgent?.handle && openAgentProfileInDesktop(headerAgent.handle)}
+          aria-label={headerAgent ? `Open ${headerAgent.full_name} profile in Desktop` : 'Open Atlas profile'}
+          title="Open profile in Desktop"
+          style={{
+            ...avatarStyle(initialsOf(headerAgent?.full_name ?? 'A'), 'var(--brand)', 'var(--brand-accent)', headerAgent?.accent_color),
+            border: 'none', padding: 0, cursor: 'pointer',
+          }}
+        >
           {initialsOf(headerAgent?.full_name ?? 'A')}
-        </div>
+        </button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="wiz-chat-agent-name">{headerAgent?.full_name ?? 'Atlas'}</div>
           <div className="wiz-chat-agent-handle">{headerAgent?.handle ?? '@atlas'} · {headerAgent?.title ?? 'Chief of Staff'}</div>
@@ -278,11 +300,23 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
     );
   }
 
+  const handle = msg.agent?.handle;
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-      <div style={avatarStyle(initialsOf(msg.agent?.full_name ?? 'A'), 'var(--brand)', 'var(--brand-accent)', accent, 28, 14)}>
+      <button
+        type="button"
+        onClick={() => handle && openAgentProfileInDesktop(handle)}
+        disabled={!handle}
+        aria-label={msg.agent ? `Open ${msg.agent.full_name} profile in Desktop` : undefined}
+        title={handle ? 'Open profile in Desktop' : undefined}
+        style={{
+          ...avatarStyle(initialsOf(msg.agent?.full_name ?? 'A'), 'var(--brand)', 'var(--brand-accent)', accent, 28, 14),
+          border: 'none', padding: 0,
+          cursor: handle ? 'pointer' : 'default',
+        }}
+      >
         {initialsOf(msg.agent?.full_name ?? 'A')}
-      </div>
+      </button>
       <div style={{ flex: 1 }}>
         {agentName && (
           <div style={{ fontSize: 10, color: accent ?? 'var(--text-muted)', marginBottom: 2, fontWeight: 600 }}>

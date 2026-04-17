@@ -433,7 +433,7 @@ function PinnedInvestorBanner({
   // Check for the journey reverse-link in BOTH metadatas — contact's
   // metadata.completion_journey_id is the canonical pointer; profile's
   // is a backup if contact metadata is empty.
-  const contactMeta = (((contact as unknown) as { metadata?: Record<string, unknown> } | undefined)?.metadata ?? {}) as { prospect_id?: string; completion_journey_id?: string; track?: string };
+  const contactMeta = (contact?.metadata ?? {}) as { prospect_id?: string; completion_journey_id?: string; track?: string };
   const profileMeta = (profile?.metadata ?? {}) as { completion_journey_id?: string; track?: string };
   const journeyId = contactMeta.completion_journey_id ?? profileMeta.completion_journey_id ?? null;
   const fromTrack = contactMeta.track ?? profileMeta.track ?? null;

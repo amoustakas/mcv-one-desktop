@@ -24,6 +24,11 @@ export const contactSchema = z.object({
   source: z.string(),
   lifecycle_stage: z.string(),
   title: z.string(),
+  // JSONB bag on the DB side. Known consumers stash things like
+  // prospect_id (onboarding → CRM bridge), completion_journey_id (reverse
+  // link to the journey that created the contact), and track (which onboarding
+  // track). Keep the type open so new fields don't require a schema bump.
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 export type Contact = z.infer<typeof contactSchema>;
 

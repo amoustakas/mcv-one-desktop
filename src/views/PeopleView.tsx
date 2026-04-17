@@ -167,7 +167,7 @@ export default function PeopleView() {
 
 function PersonRow({ contact, selected, onClick }: { contact: Contact; selected: boolean; onClick: () => void }) {
   const accent = TYPE_COLORS[contact.type] ?? '#94A3B8';
-  const meta = ((contact as unknown as { metadata?: Record<string, unknown> }).metadata ?? {}) as { prospect_id?: string; track?: string };
+  const meta = (contact.metadata ?? {}) as { prospect_id?: string; track?: string };
   const fromOnboarding = Boolean(meta.prospect_id);
 
   return (
@@ -223,7 +223,7 @@ function PersonDetail({ contact, onClose }: { contact: Contact; onClose: () => v
   const [actType, setActType] = useState<'note' | 'call' | 'email' | 'meeting'>('note');
 
   const activities = (detail?.activities ?? []) as Array<{ id: string; type: string; title: string; created_at: string }>;
-  const meta = ((contact as unknown as { metadata?: Record<string, unknown> }).metadata ?? {}) as {
+  const meta = (contact.metadata ?? {}) as {
     prospect_id?: string; completion_journey_id?: string; track?: string;
   };
 

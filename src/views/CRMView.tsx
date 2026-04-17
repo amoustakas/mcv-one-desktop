@@ -48,9 +48,7 @@ const CRM_TABS = [
 // completion-effects hook (Phase 2 onboarding journey). Reads journey id
 // from contact.metadata.completion_journey_id (set by runJourneyCompletionEffects).
 function FromOnboardingLink({ contact }: { contact: Contact }) {
-  // Contact schema doesn't surface metadata, but the underlying row carries
-  // jsonb metadata that completion-effects writes prospect_id + completion_journey_id into.
-  const meta = ((contact as unknown as { metadata?: Record<string, unknown> }).metadata ?? {}) as {
+  const meta = (contact.metadata ?? {}) as {
     prospect_id?: string; completion_journey_id?: string; track?: string;
   };
   if (!meta.prospect_id || !meta.completion_journey_id) return null;
