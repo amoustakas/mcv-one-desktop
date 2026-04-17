@@ -26,4 +26,14 @@ describe('pinned-kpi definitions', () => {
   it('getTileDefinition returns undefined for unknown id', () => {
     expect(getTileDefinition('nonexistent')).toBeUndefined();
   });
+
+  it('every SuiteId has at least 6 tiles defined', () => {
+    const bySuite = Object.values(TILE_DEFINITIONS).reduce<Record<string, number>>((acc, t) => {
+      acc[t.suite] = (acc[t.suite] ?? 0) + 1;
+      return acc;
+    }, {});
+    for (const suite of ['command-center','capital','growth','payments','crm','creative','engineering','operations','knowledge','comms']) {
+      expect(bySuite[suite], `${suite} must have ≥6 tiles`).toBeGreaterThanOrEqual(6);
+    }
+  });
 });
