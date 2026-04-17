@@ -137,6 +137,7 @@ export type ViewId =
   | 'agents'
   | 'agent-profile'
   | 'agent-chat'
+  | 'ladder'
   | 'platform-api-keys'
   // Phase 2 — Prospect funnel + onboarding admin
   | 'prospects'
@@ -268,6 +269,7 @@ const VIEW_LABELS: Record<string, string> = {
   agents: 'The Team',
   'agent-profile': 'Agent',
   'agent-chat': 'Agent Chat',
+  ladder: 'Ladder',
   'platform-api-keys': 'API Keys',
   prospects: 'Onboarding Funnel',
   'prospect-profile': 'Prospect',

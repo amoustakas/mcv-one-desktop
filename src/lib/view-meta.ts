@@ -13,7 +13,7 @@ import {
   Gift, Users2, Layers, Percent, SlidersHorizontal,
   Globe, MonitorPlay,
   Mail, Calendar, HardDrive, Table, FileEdit, ListTodo,
-  Phone,
+  Phone, Trophy,
   type LucideIcon,
 } from 'lucide-react';
 import type { ViewId } from '../stores/navigation';
@@ -59,6 +59,7 @@ export const VIEW_ICONS: Record<string, LucideIcon> = {
   'contact-center': Phone, 'compliance-hub': Shield,
   'knowledge-hub': Brain,
   'audit-log': Shield,
+  ladder: Trophy,
 };
 
 // ── Label map ──
@@ -103,6 +104,7 @@ export const VIEW_LABELS: Record<string, string> = {
   'contact-center': 'Contact Center', 'compliance-hub': 'Compliance',
   'knowledge-hub': 'Knowledge Hub',
   'audit-log': 'Audit Log',
+  ladder: 'Ladder',
 };
 
 // ── View categories for color accents ──

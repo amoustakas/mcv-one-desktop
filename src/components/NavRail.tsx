@@ -30,6 +30,7 @@ const globalSections: NavSection[] = [
     items: [
       { id: 'agents', label: 'Agent Roster' },
       { id: 'agent-chat', label: 'Agent Chat' },
+      { id: 'ladder', label: 'Ladder', badge: 'NEW' },
     ],
   },
   {
