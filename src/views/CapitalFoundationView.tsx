@@ -13,7 +13,8 @@ import {
 } from '../hooks/use-capital';
 import { useContact } from '../hooks/use-crm';
 import { useNavigation } from '../stores/navigation';
-import { PageHeader, PageShell, GlassCard, Badge, EmptyState } from '../components/ui';
+import { GlassCard, Badge, EmptyState } from '../components/ui';
+import { SuiteShell } from '../components/suite';
 import AccreditationFlowModal from '../components/capital/AccreditationFlowModal';
 import RoundBrowseModal from '../components/capital/RoundBrowseModal';
 
@@ -61,12 +62,11 @@ export default function CapitalFoundationView() {
   ];
 
   return (
-    <PageShell>
-      <PageHeader
-        title="Capital Foundation"
-        subtitle="The five-tuple primitive powering every venture's monetization — live data from capital_treasury, capital_royalty_graph, capital_distribution_config, capital_compliance_rule_set, and capital_legal_entity."
-      />
-
+    <SuiteShell
+      suite="capital"
+      title="Capital Foundation"
+      subtitle="The five-tuple primitive powering every venture's monetization — live data from capital_treasury, capital_royalty_graph, capital_distribution_config, capital_compliance_rule_set, and capital_legal_entity."
+    >
       {pinnedContactId && (
         <PinnedInvestorBanner
           contactId={pinnedContactId}
@@ -122,7 +122,7 @@ export default function CapitalFoundationView() {
       {tab === 'compliance' && <ComplianceTab ventureId={ventureFilter || undefined} />}
       {tab === 'entities' && <EntitiesTab />}
       {tab === 'simulator' && <SimulatorTab />}
-    </PageShell>
+    </SuiteShell>
   );
 }
 
