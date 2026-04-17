@@ -134,6 +134,7 @@ export type ViewId =
   | 'capital-contact-detail'
   | 'capital-launchpad-admin'
   | 'capital-foundation'
+  | 'distributions'
   | 'agents'
   | 'agent-profile'
   | 'agent-chat'
@@ -265,6 +266,7 @@ const VIEW_LABELS: Record<string, string> = {
   'capital-contact-detail': 'Investor',
   'capital-launchpad-admin': 'Launchpad',
   'capital-foundation': 'Foundation',
+  distributions: 'Distributions',
   agents: 'The Team',
   'agent-profile': 'Agent',
   'agent-chat': 'Agent Chat',
