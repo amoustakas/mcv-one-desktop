@@ -7,7 +7,18 @@
 
 ## TL;DR
 
-15/26 tasks done. Foundation + batch-1/2/3 shipped. Four migrations live in Supabase. Schema drift reconciled iteratively. Three parallel worktrees healthy. Next step: keep dispatching (T1.5 + T2.5 + T3.6).
+**MARATHON COMPLETE** — all 26 tasks shipped. 6 migrations + 22 Corporate Stack rows + 2 operator prospects live in Supabase. Three PRs open for review:
+
+- **T1 #47** — PinnedKpiStrip + SuiteShell + 60-tile registry + TilePicker (8 tasks)
+- **T2 #48** — Ventures + dual crown + Corporate Stack + domain registry + catchall route consolidation (10 + 1 tasks)
+- **T3 #49** — Operator-seeded intake wizard + Hunter Milborne + Kirill Soloviev (8 tasks)
+
+Supabase project `kovsdngjojzfebrxulyj` end-state:
+- 7 raising ventures · 2 sovereign crowns (MCV Inc + MCV LTD)
+- 4 back-filled round_ventures junction rows · 9 jurisdictions · 6 venture accounts · 7 brand kits
+- 9 seeded domains · 2 operator prospects (Hunter + Kirill) on Futurestate track
+
+Agent_id for Hunter + Kirill journeys is NULL pending T5 persona seed (known gap — will resolve to Quinn's uuid).
 
 ### Batch progress map
 
