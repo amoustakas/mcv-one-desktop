@@ -5,7 +5,7 @@
 
 import { useMemo, useState } from 'react';
 import { Users, UserPlus, CheckCircle2, Clock, AlertTriangle, Inbox, Link2, Copy, Check, Sparkles } from 'lucide-react';
-import { useProspects, useCaptures, type JourneyWithProfile, type EmbeddedAgent } from '../hooks/use-prospects';
+import { useProspects, useCaptures, type JourneyWithProfile } from '../hooks/use-prospects';
 import { useNavigation } from '../stores/navigation';
 import { PageHeader, PageShell, GlassCard, Badge, EmptyState, Modal } from '../components/ui';
 import { TRACKS, type JourneyStatus, type TrackName } from '@mcv/onboarding-sdk';
@@ -58,8 +58,8 @@ export default function ProspectsView() {
   return (
     <PageShell>
       <PageHeader
-        title="Prospects"
-        subtitle="Every external party in the ecosystem — investors, partners, creators, team, allies, waitlisted leads. Each row is a journey in flight, owned by a named specialist."
+        title="Onboarding Funnel"
+        subtitle="Automated monitor for Phase 2 onboarding journeys — public wizard captures emails, journeys guide prospects to completion, completed journeys produce Pipeline rows you can track. This is NOT your working pipeline — see Pipeline for that."
       >
         <button
           onClick={() => setInviteOpen(true)}
@@ -135,14 +135,14 @@ export default function ProspectsView() {
       {tab !== 'captures' && isLoading && <p style={{ color: 'var(--text-muted)' }}>Loading prospects…</p>}
       {tab !== 'captures' && !isLoading && (journeys?.length ?? 0) === 0 && (
         <EmptyState
-          title="No prospects yet"
-          description="Seed test data with `npm run seed:prospects`, or share a /join/[venture] link to start their journey."
+          title="No journeys yet"
+          description="Share your wizard link at /join/[venture] on apps/onboarding, or seed demo data with `npm run seed:prospects`."
         />
       )}
       {tab !== 'captures' && !isLoading && (journeys?.length ?? 0) > 0 && (
         <div style={{ display: 'grid', gap: 10 }}>
           {(journeys ?? []).map((j) => (
-            <ProspectRow key={j.id} journey={j} agent={j.agent ?? null} />
+            <ProspectRow key={j.id} journey={j} />
           ))}
         </div>
       )}
@@ -186,7 +186,7 @@ function KpiTile({
   );
 }
 
-function ProspectRow({ journey, agent }: { journey: JourneyWithProfile; agent: EmbeddedAgent | null }) {
+function ProspectRow({ journey }: { journey: JourneyWithProfile }) {
   const selectProspectJourney = useNavigation((s) => s.selectProspectJourney);
   const trackMeta = TRACKS[journey.track as TrackName];
   const accent = TRACK_ACCENT[journey.track as TrackName] ?? 'var(--color-brand-purple)';
@@ -223,7 +223,6 @@ function ProspectRow({ journey, agent }: { journey: JourneyWithProfile; agent: E
           <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', gap: 12 }}>
             <span>step: <b style={{ color: 'var(--text-secondary)' }}>{currentStep ?? '—'}</b></span>
             <span>progress: <b style={{ color: 'var(--text-secondary)' }}>{progress}%</b></span>
-            {agent && <span>agent: <b style={{ color: accent }}>{agent.handle} · {agent.full_name}</b></span>}
             <span>last activity: {new Date(journey.last_activity_at).toLocaleString()}</span>
           </div>
         </div>

@@ -96,9 +96,10 @@ const globalSections: NavSection[] = [
     ],
   },
   {
-    label: 'Growth & CRM', key: 'growth',
+    label: 'People & Pipeline', key: 'growth',
     items: [
-      { id: 'prospects', label: 'Prospects' },
+      { id: 'people', label: 'People' },
+      { id: 'prospects', label: 'Onboarding Funnel' },
       { id: 'crm', label: 'CRM Pipeline' },
       { id: 'growth', label: 'Growth Studio' },
       { id: 'comms-hub', label: 'Comms Hub' },

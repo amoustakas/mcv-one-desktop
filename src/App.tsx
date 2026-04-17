@@ -71,6 +71,7 @@ const AgentChatView = lazyRetry(() => import('./views/AgentChatView'));
 const PlatformApiKeysView = lazyRetry(() => import('./views/PlatformApiKeysView'));
 const ProspectsView = lazyRetry(() => import('./views/ProspectsView'));
 const ProspectProfileView = lazyRetry(() => import('./views/ProspectProfileView'));
+const PeopleView = lazyRetry(() => import('./views/PeopleView'));
 const ForgeView = lazyRetry(() => import('./views/ForgeView'));
 const DocsHub = lazyRetry(() => import('./views/DocsHub'));
 const BlogAdmin = lazyRetry(() => import('./views/BlogAdmin'));
@@ -250,6 +251,8 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <ProspectsView />;
     case 'prospect-profile':
       return <ProspectProfileView />;
+    case 'people':
+      return <PeopleView />;
     case 'comms-hub':
       return <CommsHub />;
     case 'forge':
