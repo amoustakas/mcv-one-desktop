@@ -1,3 +1,6 @@
+import { initSentryClient } from './lib/sentry/client';
+initSentryClient();
+
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClientProvider } from '@tanstack/react-query';
