@@ -7,7 +7,31 @@
 
 ## TL;DR
 
-3/26 tasks done. Foundation migrations live in Supabase. Schema drift from spec discovered and reconciled. Three parallel worktrees healthy. Next step: keep dispatching.
+15/26 tasks done. Foundation + batch-1/2/3 shipped. Four migrations live in Supabase. Schema drift reconciled iteratively. Three parallel worktrees healthy. Next step: keep dispatching (T1.5 + T2.5 + T3.6).
+
+### Batch progress map
+
+| Batch | T1 | T2 | T3 | Migrations applied |
+|---|---|---|---|---|
+| foundation | T1.1 `a2bee3e` | T2.1 `9b9c448` | T3.1 `9002b51` | crown_entities + prospect_profile_operator |
+| batch 1    | T1.2 `edd4028` | T2.2 `bad0a4c` | T3.2 `e28837d` | + ventures_expansion |
+| batch 2    | T1.3 `254b3bf` | T2.3 `c54b197` | T3.3 `9a89080` | + capital_round_ventures |
+| batch 3    | T1.4 `a61085b` | T2.4 `40a4d7b` | T3.4 `ce1f00d` + T3.5 `d6b6038` | + venture_corporate_stack |
+
+### Cumulative schema / contract corrections layered onto the plan
+
+- `capital_legal_entity` — text ids, `label` not `name`, `parent_entity_id` already exists (T2.1)
+- `ventures` — `funding_stage` not `stage`, `owner_entity_id` not `parent_entity_id uuid`, ADD `is_raising` (T2.2)
+- `prospect_profile` / `prospect_journey` / `agent_persona` — singular names (T3.1/T3.2)
+- `prospect_journey.prospect_id` NOT `prospect_profile_id` — verified against live schema + existing `start_journey` case (T3.2)
+- API action names use **underscores** (`create_operator_prospect`) to match existing convention — NOT hyphens as plan said (T3.2)
+- API body fields are **snake_case** (`full_name`, `source_venture_id`, `assigned_persona_id`) — hook translates camelCase input (T3.3)
+- `use-prospects.ts` uses `apiPost` helper from `../lib/api/client`, not raw fetch (T3.3)
+- T3 worktree now has node_modules junction (created mid-batch-2 for typechecking) — same setup as T1
+- Modal at `src/components/ui/index.ts` barrel re-exports default; wizard imports `import { Modal } from '../ui'` (T3.4)
+- `'investor_accredited'` confirmed valid TrackName in `@mcv/onboarding-sdk` (T3.4)
+- Corporate Stack tables reference `capital_treasury(id uuid)` and `capital_compliance_rule_set(id uuid)` — both verified uuid before T2.4 (T2.4)
+- `venture_brand_kits.primary_domain` intentionally lacks FK — T2.5 adds it via `ALTER TABLE` (deferred FK pattern)
 
 ## What's live
 
