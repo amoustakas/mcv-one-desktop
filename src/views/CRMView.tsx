@@ -18,7 +18,8 @@ import {
   usePipelineStats,
 } from '../hooks/use-crm';
 import type { Contact } from '../lib/schemas/crm';
-import { PageHeader, Button, GlassCard, Badge, StatCard, Tabs, EmptyState, GridLayout, BulkActionBar, Tooltip, Dialog, DialogActions, FormField, Input, Select } from '../components/ui';
+import { Button, GlassCard, Badge, StatCard, Tabs, EmptyState, GridLayout, BulkActionBar, Tooltip, Dialog, DialogActions, FormField, Input, Select } from '../components/ui';
+import { SuiteShell } from '../components/suite';
 import type { BulkAction } from '../components/ui';
 import { Tag as TagIcon, ArrowRightCircle, AlertTriangle, Sparkles } from 'lucide-react';
 import { timeAgo, formatMoney, formatDate, cn } from '../lib/utils';
@@ -652,30 +653,38 @@ export default function CRMView() {
   const activeDeals = deals.filter(d => !d.stage.startsWith('closed')).length;
 
   return (
-    <div className="crm">
-      <PageHeader icon={<Users size={20} />} title="CRM" loading={loading} onRefresh={() => refetch()}>
-        {tab === 'contacts' && (
-          <div className="crm-search-bar">
-            <Search size={12} />
-            <input className="crm-search-input" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search contacts..." />
-          </div>
-        )}
-        {tab === 'contacts' && (
-          <div className="crm-filter">
-            <Filter size={11} />
-            <select className="crm-filter-sel" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
-              <option value="all">All Types</option>
-              {Object.keys(TYPE_COLORS).map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
-        )}
-        {tab !== 'activities' && tab !== 'pipeline' && (
-          <Button variant="secondary" size="sm" icon={<Plus size={13} />} onClick={() => setShowAdd(!showAdd)}>
-            {tab === 'contacts' ? 'Contact' : tab === 'accounts' ? 'Account' : 'Deal'}
-          </Button>
-        )}
-      </PageHeader>
-
+    <SuiteShell
+      suite="crm"
+      title="CRM"
+      subtitle="Universal relationship OS — investors, customers, operators, partners, advisors, vendors. One pipeline per archetype."
+      icon={<Users size={20} />}
+      loading={loading}
+      onRefresh={() => refetch()}
+      headerActions={
+        <>
+          {tab === 'contacts' && (
+            <div className="crm-search-bar">
+              <Search size={12} />
+              <input className="crm-search-input" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search contacts..." />
+            </div>
+          )}
+          {tab === 'contacts' && (
+            <div className="crm-filter">
+              <Filter size={11} />
+              <select className="crm-filter-sel" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
+                <option value="all">All Types</option>
+                {Object.keys(TYPE_COLORS).map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+          )}
+          {tab !== 'activities' && tab !== 'pipeline' && (
+            <Button variant="secondary" size="sm" icon={<Plus size={13} />} onClick={() => setShowAdd(!showAdd)}>
+              {tab === 'contacts' ? 'Contact' : tab === 'accounts' ? 'Account' : 'Deal'}
+            </Button>
+          )}
+        </>
+      }
+    >
       <Tabs
         tabs={CRM_TABS.map(t => ({
           ...t,
@@ -687,20 +696,6 @@ export default function CRMView() {
         active={tab}
         onChange={(id) => { setTab(id as typeof tab); setShowAdd(false); }}
       />
-
-      {/* KPI Strip */}
-      <div className="crm-kpis-gradient-border">
-        <motion.div variants={staggerContainer} initial="hidden" animate="show">
-          <GridLayout cols={6} gap="sm" className="crm-kpis-grid">
-            <motion.div variants={fadeInUp}><StatCard icon={<Users size={13} />} label="Contacts" value={contacts.length} /></motion.div>
-            <motion.div variants={fadeInUp}><StatCard icon={<DollarSign size={13} />} label="Pipeline" value={formatMoney(pipeline)} /></motion.div>
-            <motion.div variants={fadeInUp}><StatCard icon={<TrendingUp size={13} />} label="Won" value={formatMoney(wonValue)} /></motion.div>
-            <motion.div variants={fadeInUp}><StatCard icon={<ArrowRight size={13} />} label="Active Deals" value={activeDeals} /></motion.div>
-            <motion.div variants={fadeInUp}><StatCard icon={<Building size={13} />} label="Accounts" value={accounts.length} /></motion.div>
-            <motion.div variants={fadeInUp}><StatCard icon={<Activity size={13} />} label="Activities" value={activities.length} /></motion.div>
-          </GridLayout>
-        </motion.div>
-      </div>
 
       {/* Add Forms */}
       {showAdd && tab === 'contacts' && (
@@ -1359,6 +1354,6 @@ export default function CRMView() {
           </FormField>
         )}
       </Dialog>
-    </div>
+    </SuiteShell>
   );
 }

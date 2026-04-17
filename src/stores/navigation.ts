@@ -135,9 +135,12 @@ export type ViewId =
   | 'capital-launchpad-admin'
   | 'capital-foundation'
   | 'distributions'
+  // Consumer-facing investor money-in flow (T6.6)
+  | 'invest-rounds'
   | 'agents'
   | 'agent-profile'
   | 'agent-chat'
+  | 'hit-squad'
   | 'platform-api-keys'
   // Phase 2 — Prospect funnel + onboarding admin
   | 'prospects'
@@ -267,6 +270,7 @@ const VIEW_LABELS: Record<string, string> = {
   'capital-launchpad-admin': 'Launchpad',
   'capital-foundation': 'Foundation',
   distributions: 'Distributions',
+  'invest-rounds': 'Invest',
   agents: 'The Team',
   'agent-profile': 'Agent',
   'agent-chat': 'Agent Chat',

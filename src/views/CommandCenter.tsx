@@ -1,9 +1,6 @@
 import { useMemo } from 'react';
-import { GitBranch, Cloud, Zap, ExternalLink, CheckSquare, Users, BookOpen, MessageSquare, Activity, Shield, TrendingUp, Cpu, AlertTriangle, Brain, DollarSign, Bell, Monitor } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { GitBranch, Cloud, ExternalLink, Activity, TrendingUp, Cpu, AlertTriangle, Brain } from 'lucide-react';
 import { InfraOverviewBar } from '../components/docker';
-import { useNavigation } from '../stores/navigation';
-import { useDeviceStore } from '../stores/devices';
 import { ventures } from '../lib/ventures';
 import { useGithubCommits } from '../hooks/use-github';
 import { useDeployments } from '../hooks/use-deployments';
@@ -11,8 +8,9 @@ import { useActivities } from '../hooks/use-crm';
 import { useDashboardStats, useAttentionItems, useMorningBrief } from '../hooks/use-dashboard';
 import { useRoadmap } from '../hooks/use-orchestration';
 import { useAllVentureMetrics, useAllVentureTimeseries } from '../hooks/use-commerce-metrics';
-import { PageShell, PageHeader, StatCard, GlassCard, GridLayout, Badge } from '../components/ui';
-import { timeAgo, formatMoney } from '../lib/utils';
+import { PageShell, PageHeader, GlassCard, Badge } from '../components/ui';
+import { PinnedKpiStrip } from '../components/pinned-kpi';
+import { timeAgo } from '../lib/utils';
 import Markdown from '../components/Markdown';
 import {
   SystemHealthCard,
@@ -27,7 +25,6 @@ import {
   type AttentionItem,
   type VentureRollup,
 } from '../components/command-center';
-import { staggerContainer, staggerItem } from '../lib/motion/variants';
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -39,8 +36,6 @@ function getGreeting(): string {
 }
 
 export default function CommandCenter() {
-  const { setView } = useNavigation();
-
   // Dashboard data
   const { data: dashboard, isLoading: statsLoading, refetch: refetchStats } = useDashboardStats();
   const { data: attentionItems = [], refetch: refetchAttention } = useAttentionItems();
@@ -50,11 +45,6 @@ export default function CommandCenter() {
   const { data: commits = [], refetch: refetchCommits } = useGithubCommits();
   const { data: deploys = [], refetch: refetchDeploys } = useDeployments();
   const { data: activities = [], refetch: refetchActivities } = useActivities();
-
-  // Device Hub
-  const deviceDevices = useDeviceStore(s => s.devices);
-  const deviceList = Object.values(deviceDevices);
-  const deviceConnectedCount = deviceList.filter(d => d.status === 'connected').length;
 
   // Orchestration
   const { data: roadmapData } = useRoadmap();
@@ -173,20 +163,10 @@ export default function CommandCenter() {
         </div>
       )}
 
-      {/* KPI Grid with stagger motion */}
-      <motion.div variants={staggerContainer} initial="hidden" animate="show" className="cc-kpi-wrap">
-        <GridLayout cols={4} gap="sm">
-          <motion.div variants={staggerItem}><StatCard icon={<Zap size={14} />} label="Ventures" value={ventures.length} color="#00F0FF" onClick={() => setView('portfolio')} /></motion.div>
-          <motion.div variants={staggerItem}><StatCard icon={<CheckSquare size={14} />} label="Active Tasks" value={stats?.tasks.open ?? '...'} color={stats?.tasks.overdue ? '#F59E0B' : undefined} onClick={() => setView('tasks')} /></motion.div>
-          <motion.div variants={staggerItem}><StatCard icon={<DollarSign size={14} />} label="Pipeline" value={stats ? formatMoney(stats.deals.pipelineValue) : '...'} onClick={() => setView('crm')} /></motion.div>
-          <motion.div variants={staggerItem}><StatCard icon={<Users size={14} />} label="Contacts" value={stats?.contacts.total ?? '...'} onClick={() => setView('crm')} /></motion.div>
-          <motion.div variants={staggerItem}><StatCard icon={<BookOpen size={14} />} label="Knowledge Base" value={stats?.docs.total ?? '...'} onClick={() => setView('docs')} /></motion.div>
-          <motion.div variants={staggerItem}><StatCard icon={<MessageSquare size={14} />} label="Conversations" value={stats?.conversations.total ?? '...'} onClick={() => setView('chat')} /></motion.div>
-          <motion.div variants={staggerItem}><StatCard icon={<Shield size={14} />} label="Won Revenue" value={stats ? formatMoney(stats.deals.wonValue) : '...'} color="#10B981" /></motion.div>
-          <motion.div variants={staggerItem}><StatCard icon={<Bell size={14} />} label="Unread" value={stats?.unreadNotifications ?? 0} color={stats?.unreadNotifications ? '#EF4444' : undefined} /></motion.div>
-          <motion.div variants={staggerItem}><StatCard icon={<Monitor size={14} />} label="Devices" value={deviceConnectedCount} color="#00F0FF" onClick={() => setView('device-hub')} /></motion.div>
-        </GridLayout>
-      </motion.div>
+      {/* Pinned KPI Strip — user-customizable, replaces the legacy 9-tile StatCard grid */}
+      <div className="cc-kpi-wrap">
+        <PinnedKpiStrip suite="command-center" />
+      </div>
 
       {/* Venture Rollups — replaces the old flat venture card list */}
       <div className="cc-row">

@@ -2,13 +2,14 @@
 // Pattern matches api/_handlers/capital.ts.
 //
 // Actions:
-//   create_capture   — anon lead capture (email + optional name + venture)
-//   start_journey    — create profile (or find existing) + journey + step rows
-//   advance_step     — progress a journey by one step using the SDK orchestrator
-//   get_journey      — read journey + steps + prospect (admin or prospect self)
-//   list_journeys    — admin funnel dashboard
-//   get_prospect     — admin deep-dive
-//   list_captures    — admin raw lead view
+//   create_capture            — anon lead capture (email + optional name + venture)
+//   start_journey             — create profile (or find existing) + journey + step rows
+//   advance_step              — progress a journey by one step using the SDK orchestrator
+//   create_operator_prospect  — operator-seeded prospect_profile + journey with operator intel fields
+//   get_journey               — read journey + steps + prospect (admin or prospect self)
+//   list_journeys             — admin funnel dashboard
+//   get_prospect              — admin deep-dive
+//   list_captures             — admin raw lead view
 //
 // Admin gating is light here: the Desktop app is already auth-gated by Clerk
 // at the shell level. The public wizard calls this handler via apps/onboarding's
@@ -426,6 +427,75 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.json({ journey: updatedJourney, next_step: intent.next_step, effects });
       }
 
+      // ─── Operator-seeded prospect intake ────────────────────────────────
+
+      case 'create_operator_prospect': {
+        const email = ((params.email as string) || '').trim().toLowerCase();
+        const track = params.track as TrackName;
+        if (!email) return res.status(400).json({ error: 'email required' });
+        if (!track || !TRACKS[track]) return res.status(400).json({ error: 'valid track required' });
+
+        const sourceVentureId = ((params.source_venture_id as string) ?? 'futurestate') as VentureId;
+
+        // Resolve assigned persona: explicit id wins, otherwise resolve by handle.
+        let agentId: string | null = (params.assigned_persona_id as string) ?? null;
+        const assignedHandle = params.assigned_persona_handle as string | undefined;
+        if (!agentId && assignedHandle) {
+          agentId = await resolveAgentIdByHandle(assignedHandle as AgentHandle);
+        }
+
+        // 1. Upsert prospect_profile (singular) with operator-authored intel fields.
+        const { data: profile, error: profileErr } = await supabase
+          .from('prospect_profile')
+          .upsert({
+            email,
+            full_name: (params.full_name as string) ?? null,
+            country: (params.country as string) ?? null,
+            role_hint: (params.role_hint as string) ?? TRACKS[track].role_hint,
+            source_venture_id: sourceVentureId,
+            intake_source: 'operator',
+            operator_notes: (params.operator_notes as string) ?? null,
+            relationship_history: (params.relationship_history as string) ?? null,
+            prior_deals: (params.prior_deals as unknown[]) ?? [],
+            aum_estimate: (params.aum_estimate as number) ?? null,
+            check_size_range: (params.check_size_range as string) ?? null,
+            investor_thesis: (params.investor_thesis as string) ?? null,
+            social_profiles: (params.social_profiles as Record<string, string>) ?? {},
+            priority: (params.priority as string) ?? 'medium',
+            archetype: (params.archetype as string) ?? null,
+          }, { onConflict: 'email' })
+          .select()
+          .single();
+        if (profileErr) throw profileErr;
+
+        // 2. Create prospect_journey (singular) tied to track + assigned persona.
+        //    prospect_journey FK column is prospect_id (matches start_journey above).
+        const { data: journey, error: journeyErr } = await supabase
+          .from('prospect_journey')
+          .insert({
+            prospect_id: profile.id,
+            track,
+            status: 'active',
+            current_step_index: 0,
+            agent_id: agentId,
+            metadata: { venture_id: sourceVentureId, intake_source: 'operator' },
+          })
+          .select()
+          .single();
+        if (journeyErr) throw journeyErr;
+
+        await logActivity({
+          agent_id: agentId,
+          journey_id: journey.id,
+          sub_kind: 'journey_start',
+          input: { track, email, venture_id: sourceVentureId, intake_source: 'operator' },
+          output: { journey_id: journey.id, prospect_id: profile.id },
+          venture_id: sourceVentureId,
+        });
+
+        return res.json({ profile, journey });
+      }
+
       // ─── Admin reads ────────────────────────────────────────────────────
 
       case 'list_journeys': {
@@ -435,7 +505,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .from('prospect_journey')
           .select(`
             *,
-            prospect_profile!inner(email, full_name, country, role_hint, source_venture_id),
+            prospect_profile!inner(email, full_name, country, role_hint, source_venture_id, intake_source),
             agent:agent_id(id, handle, full_name, title, accent_color)
           `)
           .order('last_activity_at', { ascending: false })
