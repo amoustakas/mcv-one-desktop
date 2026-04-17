@@ -39,8 +39,14 @@ export function OperatorProspectIntakeWizard({ open, onClose }: Props) {
   const canAdvance = step === 'identity' ? !!input.email : true;
 
   return (
-    <Modal open={open} onClose={onClose} title="Seed a prospect — operator intake">
+    <Modal open={open} onClose={onClose} ariaLabel="Seed a prospect — operator intake">
       <div style={{ padding: 16, minWidth: 520 }}>
+        <h2 style={{
+          fontSize: 18, fontWeight: 700, color: 'var(--text-primary)',
+          margin: 0, marginBottom: 16,
+        }}>
+          Seed a prospect — operator intake
+        </h2>
         <div style={{ display: 'flex', gap: 4, marginBottom: 16 }}>
           {STEPS.map((s, i) => (
             <div key={s} style={{

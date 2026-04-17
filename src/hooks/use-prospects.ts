@@ -29,6 +29,7 @@ export interface JourneyWithProfile extends ProspectJourney {
     country: string | null;
     role_hint: string | null;
     source_venture_id: string | null;
+    intake_source: 'wizard' | 'operator' | 'referral' | 'import' | null;
   };
   agent: EmbeddedAgent | null;
 }

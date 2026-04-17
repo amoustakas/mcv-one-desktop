@@ -505,7 +505,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .from('prospect_journey')
           .select(`
             *,
-            prospect_profile!inner(email, full_name, country, role_hint, source_venture_id),
+            prospect_profile!inner(email, full_name, country, role_hint, source_venture_id, intake_source),
             agent:agent_id(id, handle, full_name, title, accent_color)
           `)
           .order('last_activity_at', { ascending: false })
