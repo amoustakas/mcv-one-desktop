@@ -45,6 +45,7 @@ const globalSections: NavSection[] = [
     items: [
       { id: 'capital-foundation', label: 'Foundation' },
       { id: 'capital', label: 'Cap Table' },
+      { id: 'invest-rounds', label: 'Invest', badge: 'NEW' },
       { id: 'capital-launchpad-admin', label: 'Launchpad Admin' },
       { id: 'platform-api-keys', label: 'API Keys' },
     ],
