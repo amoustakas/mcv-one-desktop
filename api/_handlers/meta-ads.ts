@@ -1,6 +1,7 @@
 import { requireAuth } from './_auth.js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
+import { requestLogger } from '../../src/lib/server/logger';
 // ---------------------------------------------------------------------------
 // Meta Marketing API v21.0 — campaigns, ad sets, ads, audiences, insights, pages
 // Covers Facebook Ads, Instagram Ads, and audience management
@@ -28,6 +29,18 @@ async function metaPost(path: string, body: Record<string, unknown>) {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const { log: __log, correlationId: __correlationId } = requestLogger(req as unknown as { headers?: Record<string, unknown>; url?: string; method?: string });
+  try { res.setHeader('x-correlation-id', __correlationId); } catch { /* headers already sent */ }
+  const __start = Date.now();
+  __log.info({ event: 'request_in' });
+  res.on('finish', () => {
+    __log.info({ event: 'request_out', status: res.statusCode, duration_ms: Date.now() - __start });
+  });
+  res.on('close', () => {
+    if (!res.writableEnded) {
+      __log.warn({ event: 'request_abort', duration_ms: Date.now() - __start });
+    }
+  });
   const userId = await requireAuth(req, res);
   if (!userId) return;
   if (!TOKEN) return res.status(500).json({ error: 'META_ACCESS_TOKEN not configured' });

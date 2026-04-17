@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import * as fs from 'fs';
 import * as path from 'path';
 
+import { requestLogger } from '../../src/lib/server/logger';
 const LOCAL_ROOT = process.env.MCV_LOCAL_STORAGE_PATH || 'F:\\MCV-Desktop-SA';
 
 function safePath(userPath: string): string {
@@ -13,6 +14,18 @@ function safePath(userPath: string): string {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const { log: __log, correlationId: __correlationId } = requestLogger(req as unknown as { headers?: Record<string, unknown>; url?: string; method?: string });
+  try { res.setHeader('x-correlation-id', __correlationId); } catch { /* headers already sent */ }
+  const __start = Date.now();
+  __log.info({ event: 'request_in' });
+  res.on('finish', () => {
+    __log.info({ event: 'request_out', status: res.statusCode, duration_ms: Date.now() - __start });
+  });
+  res.on('close', () => {
+    if (!res.writableEnded) {
+      __log.warn({ event: 'request_abort', duration_ms: Date.now() - __start });
+    }
+  });
   // Local storage only available in development
   if (process.env.VERCEL) {
     return res.status(400).json({ error: 'Local storage not available in production' });
