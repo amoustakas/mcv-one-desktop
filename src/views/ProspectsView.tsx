@@ -10,6 +10,7 @@ import { useNavigation } from '../stores/navigation';
 import { PageHeader, PageShell, GlassCard, Badge, EmptyState, Modal } from '../components/ui';
 import { TRACKS, type JourneyStatus, type TrackName } from '@mcv/onboarding-sdk';
 import type { ProspectCapture } from '@mcv/onboarding-sdk';
+import { OperatorProspectIntakeWizard } from '../components/prospects/OperatorProspectIntakeWizard';
 
 type Tab = 'active' | 'completed' | 'all' | 'captures';
 
@@ -27,6 +28,7 @@ export default function ProspectsView() {
   const [tab, setTab] = useState<Tab>('active');
   const [trackFilter, setTrackFilter] = useState<TrackName | ''>('');
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [operatorOpen, setOperatorOpen] = useState(false);
 
   const statusFilter: JourneyStatus | undefined =
     tab === 'active' ? 'active' : tab === 'completed' ? 'completed' : undefined;
@@ -72,6 +74,17 @@ export default function ProspectsView() {
         >
           <Link2 className="w-4 h-4" />
           Invite a prospect
+        </button>
+        <button
+          onClick={() => setOperatorOpen(true)}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+            background: 'var(--color-brand-purple)', color: 'var(--surface-base)',
+            border: 'none', cursor: 'pointer',
+          }}
+        >
+          ⚡ New prospect (operator)
         </button>
       </PageHeader>
 
@@ -151,6 +164,7 @@ export default function ProspectsView() {
       {tab === 'captures' && <CapturesTab captures={captures ?? []} loading={capturesLoading} />}
 
       <InviteModal open={inviteOpen} onClose={() => setInviteOpen(false)} />
+      <OperatorProspectIntakeWizard open={operatorOpen} onClose={() => setOperatorOpen(false)} />
     </PageShell>
   );
 }
@@ -208,6 +222,16 @@ function ProspectRow({ journey }: { journey: JourneyWithProfile }) {
             <Badge>{journey.status}</Badge>
             {journey.prospect_profile.source_venture_id && (
               <Badge>{journey.prospect_profile.source_venture_id}</Badge>
+            )}
+            {journey.prospect_profile.intake_source === 'operator' && (
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '2px 8px', borderRadius: 4, fontSize: 10, fontWeight: 600,
+                background: 'color-mix(in srgb, var(--color-brand-purple) 20%, transparent)',
+                color: 'var(--color-brand-purple)',
+              }}>
+                ⚡ operator
+              </span>
             )}
             {Boolean((journey.metadata as { effects_applied?: boolean }).effects_applied) && (
               <span style={{

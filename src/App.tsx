@@ -65,10 +65,13 @@ const CapitalGlobalView = lazyRetry(() => import('./views/CapitalGlobalView'));
 const CapitalVentureView = lazyRetry(() => import('./views/CapitalVentureView'));
 const CapitalRoundDetailView = lazyRetry(() => import('./views/CapitalRoundDetailView'));
 const CapitalFoundationView = lazyRetry(() => import('./views/CapitalFoundationView'));
+const DistributionsView = lazyRetry(() => import('./views/DistributionsView'));
+const RoundBrowseView = lazyRetry(() => import('./views/investor/RoundBrowseView'));
 const AgentsView = lazyRetry(() => import('./views/AgentsView'));
 const AgentProfileView = lazyRetry(() => import('./views/AgentProfileView'));
 const AgentChatView = lazyRetry(() => import('./views/AgentChatView'));
 const LadderView = lazyRetry(() => import('./views/LadderView'));
+const PersonaRegistryView = lazyRetry(() => import('./views/PersonaRegistryView'));
 const PlatformApiKeysView = lazyRetry(() => import('./views/PlatformApiKeysView'));
 const ProspectsView = lazyRetry(() => import('./views/ProspectsView'));
 const ProspectProfileView = lazyRetry(() => import('./views/ProspectProfileView'));
@@ -184,7 +187,7 @@ function ViewLoadingFallback() {
   );
 }
 
-function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & object) {
+function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & object, activeVenture: string | null) {
   switch (viewId) {
     case 'command-center':
       return <CommandCenter />;
@@ -240,6 +243,10 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <CapitalRoundDetailView />;
     case 'capital-foundation':
       return <CapitalFoundationView />;
+    case 'distributions':
+      return <DistributionsView />;
+    case 'invest-rounds':
+      return <RoundBrowseView />;
     case 'agents':
       return <AgentsView />;
     case 'ladder':
@@ -248,6 +255,8 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <AgentProfileView />;
     case 'agent-chat':
       return <AgentChatView />;
+    case 'hit-squad':
+      return <PersonaRegistryView />;
     case 'platform-api-keys':
       return <PlatformApiKeysView />;
     case 'prospects':
@@ -332,7 +341,7 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
     case 'venture-profile':
       return <VentureProfile venture={venture} />;
     case 'venture-detail':
-      return <VentureDetailView venture={venture} />;
+      return <VentureDetailView ventureId={activeVenture} />;
     case 'ventures-index':
       return <VenturesIndexView
         onSelect={(v) => { useNavigation.getState().switchToVenture(v.id); useNavigation.getState().setView('venture-detail'); }}
@@ -446,7 +455,7 @@ function ViewPanel({ viewId }: { viewId?: ViewId }) {
   const { activeView, activeVenture } = useNavigation();
   const venture = getVenture(activeVenture || 'mcv') ?? ventures[0];
   const currentView = viewId ?? activeView;
-  const view = renderView(currentView, venture);
+  const view = renderView(currentView, venture, activeVenture);
   return (
     <ViewErrorBoundary key={currentView} fallbackTitle={`Error loading ${currentView}`}>
       <Suspense fallback={<ViewLoadingFallback />}>{view}</Suspense>

@@ -12,6 +12,7 @@ import { PageShell, GlassCard, Badge, EmptyState } from '../components/ui';
 import { STEPS, TRACKS, type StepName, type TrackName } from '@mcv/onboarding-sdk';
 import AccreditationFlowModal from '../components/capital/AccreditationFlowModal';
 import RoundBrowseModal from '../components/capital/RoundBrowseModal';
+import { ResearchDossierView } from '../components/research';
 
 export default function ProspectProfileView() {
   const setView = useNavigation((s) => s.setView);
@@ -90,6 +91,11 @@ export default function ProspectProfileView() {
       {ecosystem && (ecosystem.contact || ecosystem.investor_profile) && (
         <EcosystemBridge ecosystem={ecosystem} />
       )}
+
+      {/* T4 research dossier — surfaces @sterling / @leo intel for this prospect. */}
+      <div style={{ marginTop: 16 }}>
+        <ResearchDossierView entityType="prospect" entityId={journey.prospect_id} />
+      </div>
 
       {/* Two-column: timeline + chat stub */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, marginTop: 16 }}>

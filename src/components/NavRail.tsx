@@ -29,6 +29,7 @@ const globalSections: NavSection[] = [
     label: 'The Team', key: 'team',
     items: [
       { id: 'agents', label: 'Agent Roster' },
+      { id: 'hit-squad', label: 'Hit Squad', badge: 'NEW' },
       { id: 'agent-chat', label: 'Agent Chat' },
       { id: 'ladder', label: 'Ladder', badge: 'NEW' },
     ],
@@ -46,6 +47,8 @@ const globalSections: NavSection[] = [
     items: [
       { id: 'capital-foundation', label: 'Foundation' },
       { id: 'capital', label: 'Cap Table' },
+      { id: 'distributions', label: 'Distributions' },
+      { id: 'invest-rounds', label: 'Invest', badge: 'NEW' },
       { id: 'capital-launchpad-admin', label: 'Launchpad Admin' },
       { id: 'platform-api-keys', label: 'API Keys' },
     ],
