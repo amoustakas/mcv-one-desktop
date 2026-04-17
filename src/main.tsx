@@ -11,6 +11,10 @@ import App from './App';
 import './styles/design-system.css';
 import './styles/components.css';
 import './styles/shell.css';
+import { Analytics, SpeedInsights, initWebVitals } from './lib/analytics';
+
+// Register Core Web Vitals reporting (CLS/LCP/FCP/TTFB/INP → /api/web-vitals)
+initWebVitals();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -19,6 +23,8 @@ createRoot(document.getElementById('root')!).render(
         <App />
       </AuthProvider>
     </QueryClientProvider>
+    <Analytics />
+    <SpeedInsights />
   </StrictMode>,
 );
 

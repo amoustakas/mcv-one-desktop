@@ -63,6 +63,8 @@
     "@tldraw/tldraw": "^4.5.7",
     "@types/lodash": "^4.17.24",
     "@types/three": "^0.183.1",
+    "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^2.0.0",
     "@workflow/ai": "^4.1.0-beta.60",
     "bignumber.js": "^10.0.2",
     "bs58": "^6.0.0",
@@ -89,6 +91,7 @@
     "remark-gfm": "^4.0.1",
     "stripe": "^22.0.1",
     "three": "^0.183.2",
+    "web-vitals": "^5.2.0",
     "workflow": "^4.2.0-beta.76",
     "zod": "^4.3.6",
     "zustand": "^5.0.12"
