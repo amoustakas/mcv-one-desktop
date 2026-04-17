@@ -199,6 +199,49 @@ const knowledgeTiles: TileDefinition[] = [
     source: async () => mock(12), formatter: (v) => count(Number(v)) },
 ];
 
+// Factory tiles (operations suite — Local AI Factory heartbeat + run throughput)
+const factoryTiles: TileDefinition[] = [
+  {
+    id: 'fct_heartbeat',
+    suite: 'operations',
+    label: 'Factory',
+    accent: 'var(--color-brand-purple)',
+    source: async () => {
+      try {
+        const { factory_client } = await import('../factory-client');
+        const hb = await factory_client.heartbeat();
+        const uptime_h = Math.floor(hb.uptime_ms / 3_600_000);
+        const uptime_m = Math.floor((hb.uptime_ms % 3_600_000) / 60_000);
+        const uptime_label = uptime_h > 0 ? `${uptime_h}h ${uptime_m}m` : `${uptime_m}m`;
+        return {
+          value: hb.local_model ? 'online' : 'no-model',
+          secondary: `${uptime_label} · ${hb.active_runs} active · ${hb.local_model ?? 'gemini-only'}`,
+          delta: hb.gemini_available ? { direction: 'up', magnitude: 0, period: 'gemini ready' } : undefined,
+        };
+      } catch {
+        return { value: 'offline', secondary: 'runtime unreachable', delta: { direction: 'down', magnitude: 0, period: 'check :7004' } };
+      }
+    },
+    formatter: (v) => String(v),
+  },
+  {
+    id: 'fct_runs_active',
+    suite: 'operations',
+    label: 'Factory · active runs',
+    accent: 'var(--color-brand-electric)',
+    source: async () => {
+      try {
+        const { factory_client } = await import('../factory-client');
+        const hb = await factory_client.heartbeat();
+        return { value: hb.active_runs, secondary: hb.last_event_ts ? `last event ${new Date(hb.last_event_ts).toLocaleTimeString()}` : 'no events yet' };
+      } catch {
+        return { value: 0, secondary: 'offline' };
+      }
+    },
+    formatter: (v) => String(v),
+  },
+];
+
 // Comms
 const commsTiles: TileDefinition[] = [
   { id: 'cm_unread', suite: 'comms', label: 'Unread', accent: '#5EEAD4',
@@ -227,6 +270,7 @@ export const TILE_DEFINITIONS: Record<KpiId, TileDefinition> = Object.fromEntrie
     ...operationsTiles,
     ...knowledgeTiles,
     ...commsTiles,
+    ...factoryTiles,
   ].map((t) => [t.id, t]),
 );
 
