@@ -1,34 +1,110 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+/**
+ * GET /api/health — uptime probe for monitors, load balancers, smoke tests.
+ *
+ * Returns 200 + { ok: true } when DB is reachable.
+ * Returns 503 + { ok: false } when DB is unreachable.
+ *
+ * Logging: uses console.log with correlation_id pattern for now.
+ * I2.1 (pino logger) may patch this to use requestLogger once
+ * src/lib/server/logger.ts lands.
+ */
 
-export default function handler(_req: VercelRequest, res: VercelResponse) {
-  const keys = {
-    ANTHROPIC_API_KEY: !!process.env.ANTHROPIC_API_KEY,
-    GOOGLE_AI_KEY: !!(process.env.GOOGLE_AI_KEY || process.env.VITE_GOOGLE_AI_KEY || process.env.GOOGLE_GENERATIVE_AI_KEY),
-    GOOGLE_MAPS_KEY: !!(process.env.GOOGLE_MAPS_KEY || process.env.VITE_GOOGLE_MAPS_KEY),
-    GITHUB_TOKEN: !!process.env.GITHUB_TOKEN,
-    VERCEL_TOKEN: !!process.env.VERCEL_TOKEN,
-    DEEPGRAM_API_KEY: !!(process.env.DEEPGRAM_API_KEY || process.env.VITE_DEEPGRAM_API_KEY),
-    ELEVENLABS_API_KEY: !!(process.env.ELEVENLABS_API_KEY || process.env.VITE_ELEVENLABS_API_KEY),
-    SUPABASE_URL: !!(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL),
-    CLERK_PUBLISHABLE_KEY: !!(process.env.VITE_CLERK_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY),
-    CLERK_SECRET_KEY: !!process.env.CLERK_SECRET_KEY,
-    NOTION_API_KEY: !!(process.env.NOTION_API_KEY || process.env.NOTION_TOKEN),
-    GOOGLE_DRIVE_KEY: !!(process.env.GOOGLE_DRIVE_KEY || process.env.GOOGLE_API_KEY),
-    CLOUDFLARE_API_TOKEN: !!process.env.CLOUDFLARE_API_TOKEN,
-    CLOUDFLARE_ACCOUNT_ID: !!process.env.CLOUDFLARE_ACCOUNT_ID,
-    N8N_API_KEY: !!process.env.N8N_API_KEY,
-    N8N_BASE_URL: !!process.env.N8N_BASE_URL,
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createClient } from '@supabase/supabase-js';
+
+// Module-level start time — persists across warm invocations.
+const startedAt = Date.now();
+
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { persistSession: false } }
+);
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const correlationId =
+    (req.headers['x-correlation-id'] as string) ?? crypto.randomUUID();
+  res.setHeader('x-correlation-id', correlationId);
+
+  const t0 = Date.now();
+  console.log(JSON.stringify({
+    level: 'info',
+    msg: 'health check start',
+    correlation_id: correlationId,
+    ts: new Date().toISOString(),
+  }));
+
+  let db_ok = false;
+  let migrations_count = 0;
+
+  try {
+    // 1) Basic liveness — read one row from ventures
+    const { error: venturesError } = await supabase
+      .from('ventures')
+      .select('id')
+      .limit(1);
+    db_ok = !venturesError;
+
+    if (db_ok) {
+      // 2) Migration count — try supabase_migrations schema first (service role
+      //    should have access), fall back to public.schema_migrations, then skip.
+      try {
+        const { count, error: migError } = await supabase
+          .schema('supabase_migrations')
+          .from('schema_migrations')
+          .select('version', { count: 'exact', head: true });
+        if (!migError && count != null) {
+          migrations_count = count;
+        }
+      } catch {
+        // supabase_migrations schema not exposed via supabase-js — try public fallback
+        try {
+          const { count, error: pubMigError } = await supabase
+            .from('schema_migrations')
+            .select('version', { count: 'exact', head: true });
+          if (!pubMigError && count != null) {
+            migrations_count = count;
+          }
+        } catch {
+          // Not queryable via JS client — migrations_count stays 0, not a blocker
+          console.log(JSON.stringify({
+            level: 'warn',
+            msg: 'migrations table not queryable via supabase-js',
+            correlation_id: correlationId,
+          }));
+        }
+      }
+    }
+  } catch (err) {
+    db_ok = false;
+    console.log(JSON.stringify({
+      level: 'error',
+      msg: 'health DB check threw',
+      correlation_id: correlationId,
+      error: err instanceof Error ? err.message : String(err),
+    }));
+  }
+
+  const body = {
+    ok: db_ok,
+    db_ok,
+    migrations_count,
+    active_crons: 6, // matches vercel.json cron count — update if crons change
+    commit_sha: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8) ?? 'local',
+    uptime_ms: Date.now() - startedAt,
+    ts: new Date().toISOString(),
   };
 
-  // Also check env var names that exist (just names, not values)
-  const allEnvNames = Object.keys(process.env).filter(
-    (k) => k.includes('KEY') || k.includes('TOKEN') || k.includes('SECRET') || k.includes('URL') || k.includes('SUPABASE') || k.includes('CLERK') || k.includes('GOOGLE') || k.includes('ANTHROPIC') || k.includes('DEEPGRAM') || k.includes('ELEVEN') || k.includes('CLOUDFLARE') || k.includes('N8N') || k.includes('NOTION')
-  ).sort();
+  const status = db_ok ? 200 : 503;
+  console.log(JSON.stringify({
+    level: db_ok ? 'info' : 'warn',
+    msg: 'health check complete',
+    correlation_id: correlationId,
+    status,
+    db_ok,
+    migrations_count,
+    latency_ms: Date.now() - t0,
+  }));
 
-  return res.json({
-    status: 'healthy',
-    version: '5.4.0',
-    configured: keys,
-    env_names: allEnvNames,
-  });
+  return res.status(status).json(body);
 }
