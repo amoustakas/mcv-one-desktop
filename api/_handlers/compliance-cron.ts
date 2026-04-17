@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
+import { requestLogger } from '../../src/lib/server/logger';
 // ---------------------------------------------------------------------------
 // /api/compliance-cron — compliance runtime executor.
 //
@@ -121,6 +122,18 @@ async function notifyIfInteresting(result: CycleResult): Promise<void> {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const { log: __log, correlationId: __correlationId } = requestLogger(req as unknown as { headers?: Record<string, unknown>; url?: string; method?: string });
+  try { res.setHeader('x-correlation-id', __correlationId); } catch { /* headers already sent */ }
+  const __start = Date.now();
+  __log.info({ event: 'request_in' });
+  res.on('finish', () => {
+    __log.info({ event: 'request_out', status: res.statusCode, duration_ms: Date.now() - __start });
+  });
+  res.on('close', () => {
+    if (!res.writableEnded) {
+      __log.warn({ event: 'request_abort', duration_ms: Date.now() - __start });
+    }
+  });
   const actor = await requireAuth(req, res);
   if (!actor) return;
 

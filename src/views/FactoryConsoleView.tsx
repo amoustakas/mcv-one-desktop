@@ -1,16 +1,34 @@
 // src/views/FactoryConsoleView.tsx
 // Operator console for the Local AI Factory. Pick a flow → fill input → run → watch the live stream.
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useFactoryFlows } from '../hooks/use-factory-flows';
 import { useFactoryHeartbeat } from '../hooks/use-factory-heartbeat';
 import { FlowPicker } from '../components/factory/FlowPicker';
 import { FlowRunner } from '../components/factory/FlowRunner';
+import { trackTiming } from '../lib/analytics';
 
 export function FactoryConsoleView() {
   const flowsQ = useFactoryFlows();
   const heartbeatQ = useFactoryHeartbeat();
   const [selectedFlowName, setSelectedFlowName] = useState<string | null>(null);
+
+  // Track total mount lifetime of the console (how long operator has it open per session)
+  const mountedAt = useRef(performance.now());
+  useEffect(() => {
+    const mountStart = mountedAt.current;
+    return () => {
+      trackTiming('factory_console_mount', performance.now() - mountStart);
+    };
+  }, []);
+
+  // Bubble up run-completion latency from FlowRunner → trackTiming
+  const handleRunComplete = useCallback(
+    (flowName: string, status: string, durationMs: number) => {
+      trackTiming('factory_flow_run', durationMs, { flowName, status });
+    },
+    [],
+  );
 
   const flows = flowsQ.data ?? [];
   const selectedFlow = selectedFlowName ? flows.find((f) => f.name === selectedFlowName) ?? null : null;
@@ -64,7 +82,7 @@ export function FactoryConsoleView() {
             <FlowPicker flows={flows} selected={selectedFlowName} onSelect={setSelectedFlowName} />
           </aside>
           <main>
-            <FlowRunner flow={selectedFlow} />
+            <FlowRunner flow={selectedFlow} onRunComplete={handleRunComplete} />
           </main>
         </div>
       )}

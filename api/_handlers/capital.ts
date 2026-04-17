@@ -18,6 +18,7 @@ import {
   respondToScopeError,
 } from '../../src/lib/server/require-venture-scope';
 
+import { requestLogger } from '../../src/lib/server/logger';
 // Fabric client (null when FABRIC_URL isn't configured — fire-and-forget
 // publishes degrade gracefully). Instantiated once per serverless cold start.
 const fabric = createServerFabric();
@@ -102,6 +103,18 @@ async function publishCapitalEvent(
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const { log: __log, correlationId: __correlationId } = requestLogger(req as unknown as { headers?: Record<string, unknown>; url?: string; method?: string });
+  try { res.setHeader('x-correlation-id', __correlationId); } catch { /* headers already sent */ }
+  const __start = Date.now();
+  __log.info({ event: 'request_in' });
+  res.on('finish', () => {
+    __log.info({ event: 'request_out', status: res.statusCode, duration_ms: Date.now() - __start });
+  });
+  res.on('close', () => {
+    if (!res.writableEnded) {
+      __log.warn({ event: 'request_abort', duration_ms: Date.now() - __start });
+    }
+  });
   const userId = await requireAuth(req, res); if (!userId) return;
   const action = req.method === 'GET' ? req.query.action as string : req.body?.action;
   const params = { ...req.query, ...(req.body || {}) } as Record<string, unknown>;

@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { encryptToken, decryptToken } from './_oauth-helper.js';
 import { emitPaymentEvent } from './_payment-events.js';
 
+import { requestLogger } from '../../src/lib/server/logger';
 const _supabase = createClient(
   process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '',
   process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '',
@@ -54,6 +55,18 @@ async function plaidFetch(path: string, body: Record<string, unknown>) {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const { log: __log, correlationId: __correlationId } = requestLogger(req as unknown as { headers?: Record<string, unknown>; url?: string; method?: string });
+  try { res.setHeader('x-correlation-id', __correlationId); } catch { /* headers already sent */ }
+  const __start = Date.now();
+  __log.info({ event: 'request_in' });
+  res.on('finish', () => {
+    __log.info({ event: 'request_out', status: res.statusCode, duration_ms: Date.now() - __start });
+  });
+  res.on('close', () => {
+    if (!res.writableEnded) {
+      __log.warn({ event: 'request_abort', duration_ms: Date.now() - __start });
+    }
+  });
   const userId = await requireAuth(req, res);
   if (!userId) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST required' });

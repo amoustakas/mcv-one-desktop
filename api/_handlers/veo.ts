@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI, VideoGenerationReferenceType } from '@google/genai';
 
+import { requestLogger } from '../../src/lib/server/logger';
 async function requireAuth(req: VercelRequest, res: VercelResponse): Promise<string | null> {
   const secretKey = process.env.CLERK_SECRET_KEY;
   if (!secretKey) return 'no-secret';
@@ -17,6 +18,18 @@ async function requireAuth(req: VercelRequest, res: VercelResponse): Promise<str
 const GOOGLE_AI_KEY = process.env.GOOGLE_AI_KEY || process.env.VITE_GOOGLE_AI_KEY || '';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const { log: __log, correlationId: __correlationId } = requestLogger(req as unknown as { headers?: Record<string, unknown>; url?: string; method?: string });
+  try { res.setHeader('x-correlation-id', __correlationId); } catch { /* headers already sent */ }
+  const __start = Date.now();
+  __log.info({ event: 'request_in' });
+  res.on('finish', () => {
+    __log.info({ event: 'request_out', status: res.statusCode, duration_ms: Date.now() - __start });
+  });
+  res.on('close', () => {
+    if (!res.writableEnded) {
+      __log.warn({ event: 'request_abort', duration_ms: Date.now() - __start });
+    }
+  });
   const userId = await requireAuth(req, res);
   if (!userId) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST required' });
