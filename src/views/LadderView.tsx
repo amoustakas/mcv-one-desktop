@@ -1,13 +1,17 @@
 // src/views/LadderView.tsx
 // Marathon #3 T9.5 — Hit Squad leaderboard ranked by xp.
+// Marathon #3 T9.6 — row click opens PersonaCharacterSheet.
 // Consumes useLadder (T9.4). Diablo 2 HC Ladder vibe — every rank earned.
 
+import { useState } from 'react';
 import { useLadder } from '../hooks/use-ladder';
 import { LadderRow } from '../components/gamification/LadderRow';
+import { PersonaCharacterSheet } from '../components/gamification/PersonaCharacterSheet';
 import { PageShell, PageHeader } from '../components/ui';
 
 export function LadderView() {
   const { data, isLoading } = useLadder({ limit: 50 });
+  const [activeAgentId, setActiveAgentId] = useState<string | null>(null);
 
   if (isLoading) {
     return (
@@ -38,7 +42,13 @@ export function LadderView() {
       </div>
 
       <div style={{ display: 'grid', gap: 8 }}>
-        {ladder.map((entry) => <LadderRow key={entry.id} entry={entry} />)}
+        {ladder.map((entry) => (
+          <LadderRow
+            key={entry.id}
+            entry={entry}
+            onClick={(e) => setActiveAgentId(e.id)}
+          />
+        ))}
       </div>
 
       {ladder.length === 0 && (
@@ -46,6 +56,12 @@ export function LadderView() {
           No personas on the ladder yet.
         </div>
       )}
+
+      <PersonaCharacterSheet
+        agentId={activeAgentId}
+        open={!!activeAgentId}
+        onClose={() => setActiveAgentId(null)}
+      />
     </PageShell>
   );
 }

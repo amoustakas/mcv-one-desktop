@@ -3,3 +3,6 @@
 
 export { LadderRow } from './LadderRow';
 export { LevelBadge } from './LevelBadge';
+export { PersonaCharacterSheet } from './PersonaCharacterSheet';
+export { XpHistoryChart } from './XpHistoryChart';
+export { AchievementBadge } from './AchievementBadge';
