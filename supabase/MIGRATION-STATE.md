@@ -49,3 +49,9 @@ All `public.*` tables have `USING (true) WITH CHECK (true)` permissive policies.
 `src/lib/supabase.ts` uses supabase-js `accessToken` callback so every existing browser query transparently attaches the Clerk JWT. No call sites changed; all 9 consumer files (AegisChat, NotificationCenter, OpsPanel, StatusBar, use-presence, use-realtime, chat store, SessionsView, VentureProfile) are now RLS-aware without refactor.
 
 See individual `supabase/migration-*.sql` files in this repo for reference schemas. Live schemas applied may differ slightly (permissive RLS, `IF NOT EXISTS` guards, pinned `search_path` on functions).
+
+## Pending (staged for manual apply)
+
+| Name | File | Purpose |
+| --- | --- | --- |
+| `rename_contacts_to_crm_contacts` | `migration-rename-contacts-to-crm-contacts.sql` | Wave-5D resolution: `ALTER TABLE contacts RENAME TO crm_contacts` + add `full_name` (GENERATED from `name`) and `country` columns + `CREATE VIEW contacts AS SELECT * FROM crm_contacts` for backward compat. FKs, RLS, and realtime publication carry over automatically. Apply only after PR review (Session 13e). |
