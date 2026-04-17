@@ -50,8 +50,10 @@ All `public.*` tables have `USING (true) WITH CHECK (true)` permissive policies.
 
 See individual `supabase/migration-*.sql` files in this repo for reference schemas. Live schemas applied may differ slightly (permissive RLS, `IF NOT EXISTS` guards, pinned `search_path` on functions).
 
-## Pending (staged for manual apply)
+## Applied 2026-04-17 (marathon follow-up)
 
 | Name | File | Purpose |
 | --- | --- | --- |
-| `rename_contacts_to_crm_contacts` | `migration-rename-contacts-to-crm-contacts.sql` | Wave-5D resolution: `ALTER TABLE contacts RENAME TO crm_contacts` + add `full_name` (GENERATED from `name`) and `country` columns + `CREATE VIEW contacts AS SELECT * FROM crm_contacts` for backward compat. FKs, RLS, and realtime publication carry over automatically. Apply only after PR review (Session 13e). |
+| `persona_voices_real_ids_and_onboarding_agents` | `migration-persona-voices-real-ids.sql` | Replaced placeholder voice aliases (`josh`, `rachel`) with real ElevenLabs voice IDs (verified vs `/v1/voices`) for all 12 NAOS codenames, plus inserted 12 new rows for the onboarding agent handles (`ada`, `amara`, `dieter`, `hannah`, `hedy`, `justice`, `leo`, `linus`, `nico`, `satoshi`, `sterling`, `warren`). Unblocks voice playback via `/api/tts` (wizard) and `/api/voice-tts` (Desktop). |
+| `seed_demo_capital_rounds_v3` | `seed-demo-rounds.sql` | Four live rounds for the D2 round-browse demo: 3 Futurestate (Seed II, Ocean Drive LP, Starter Tranche) + 1 BetEdge (Token Pre-Sale). Mix of accredited-only + retail. Idempotent via `WHERE NOT EXISTS (slug)`. |
+| `rename_contacts_to_crm_contacts_with_compat_view` | `migration-rename-contacts-to-crm-contacts.sql` | Wave-5D final resolution (PR #40): `ALTER TABLE contacts RENAME TO crm_contacts` + add `full_name` (GENERATED from `name`) and `country` columns + `CREATE VIEW contacts AS SELECT * FROM crm_contacts` for backward compat. FKs, RLS, and realtime publication carried over automatically. Post-apply verification: `contacts` is now VIEW, `crm_contacts` is BASE TABLE, 3 FKs preserved (activities, deals, signing_envelope_signers), full_name mirrors name on every row. CRM + Capital surfaces both smoke-tested green. |
