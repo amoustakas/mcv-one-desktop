@@ -124,6 +124,92 @@ async function getRoundDetail(params: { round_id?: string; public_page_slug?: st
 }
 
 // ───────────────────────────────────────────────────────────────────────────
+// T6.2: submit_accreditation
+// ───────────────────────────────────────────────────────────────────────────
+
+interface SubmitAccreditationInput {
+  contact_id: string;
+  venture_id: string;
+  accreditation_method: string;
+  jurisdiction: string;
+  documents?: Array<{ type: string; url: string; uploaded_at: string }>;
+  organization_id?: string;
+  wallet_address?: string;
+  wallet_chain?: string;
+  actor_user_id?: string;
+}
+
+async function submitAccreditation(params: SubmitAccreditationInput) {
+  const validMethods = ['self_attestation', 'cpa_letter', 'income', 'net_worth', 'professional_cert'];
+  if (!params.contact_id) throw new Error('contact_id required');
+  if (!params.venture_id) throw new Error('venture_id required');
+  if (!params.accreditation_method || !validMethods.includes(params.accreditation_method)) {
+    throw new Error(`accreditation_method must be one of: ${validMethods.join(', ')}`);
+  }
+  if (!params.jurisdiction) throw new Error('jurisdiction required');
+
+  // Fetch existing profile for previous_value on activity log
+  const { data: existing } = await supabase
+    .from('capital_investor_profile')
+    .select('accreditation_status, kyc_status')
+    .eq('contact_id', params.contact_id)
+    .eq('venture_id', params.venture_id)
+    .maybeSingle();
+
+  const previous_status = existing?.accreditation_status ?? 'unknown';
+  const now = new Date().toISOString();
+
+  // Upsert profile with pending accreditation + jurisdiction + wallet metadata
+  const profileRow = {
+    contact_id: params.contact_id,
+    venture_id: params.venture_id,
+    organization_id: params.organization_id ?? null,
+    accreditation_status: 'pending' as const,
+    kyc_status: existing?.kyc_status === 'completed' ? 'completed' : 'in_progress',
+    jurisdiction: params.jurisdiction,
+    wallet_address: params.wallet_address ?? null,
+    wallet_chain: params.wallet_chain ?? null,
+    last_touch_date: now,
+    last_touch_type: 'accreditation_submission',
+    metadata: {
+      accreditation_method: params.accreditation_method,
+      documents: params.documents ?? [],
+      submitted_at: now,
+    },
+  };
+
+  const { data: profile, error: profileErr } = await supabase
+    .from('capital_investor_profile')
+    .upsert(profileRow, { onConflict: 'contact_id,venture_id' })
+    .select('*')
+    .single();
+  if (profileErr) throw profileErr;
+
+  // Audit-log the submission
+  const { error: actErr } = await supabase
+    .from('capital_activities')
+    .insert({
+      venture_id: params.venture_id,
+      contact_id: params.contact_id,
+      organization_id: params.organization_id ?? null,
+      activity_type: 'accreditation_submitted',
+      title: `Accreditation submitted (${params.accreditation_method})`,
+      description: `Jurisdiction: ${params.jurisdiction}. Method: ${params.accreditation_method}. Documents: ${(params.documents ?? []).length}`,
+      previous_value: previous_status,
+      new_value: 'pending',
+      actor_id: params.actor_user_id ?? params.contact_id,
+      actor_type: 'user',
+      metadata: { accreditation_method: params.accreditation_method, jurisdiction: params.jurisdiction },
+    });
+  if (actErr) throw actErr;
+
+  return {
+    profile,
+    estimated_review_hours: 48,  // surface a UX hint for the client
+  };
+}
+
+// ───────────────────────────────────────────────────────────────────────────
 // Default export — HTTP dispatcher
 // ───────────────────────────────────────────────────────────────────────────
 
@@ -145,11 +231,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
         return res.status(200).json(await getRoundDetail({ round_id, public_page_slug }));
       }
-      case 'submit_accreditation':
+      case 'submit_accreditation': {
+        return res.status(200).json(await submitAccreditation({
+          contact_id: body.contact_id as string,
+          venture_id: body.venture_id as string,
+          accreditation_method: body.accreditation_method as string,
+          jurisdiction: body.jurisdiction as string,
+          documents: body.documents as SubmitAccreditationInput['documents'],
+          organization_id: body.organization_id as string | undefined,
+          wallet_address: body.wallet_address as string | undefined,
+          wallet_chain: body.wallet_chain as string | undefined,
+          actor_user_id: body.actor_user_id as string | undefined,
+        }));
+      }
       case 'create_soft_commit':
       case 'kickoff_payment': {
         const phaseMap: Record<string, string> = {
-          submit_accreditation: '2',
           create_soft_commit: '3',
           kickoff_payment: '4',
         };
