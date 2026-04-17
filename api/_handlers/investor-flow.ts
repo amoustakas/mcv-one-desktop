@@ -1,7 +1,7 @@
 // api/_handlers/investor-flow.ts
-// Consumer-facing money-in flow. Read actions (public): list_public_rounds, get_round_detail.
-// Write actions: submit_accreditation (T6.2), create_soft_commit (T6.3).
-// Remaining stub: kickoff_payment (T6.4).
+// Consumer-facing money-in flow. Read actions (public): list_public_rounds, get_round_detail, get_commitment.
+// Write actions: submit_accreditation (T6.2), create_soft_commit (T6.3), kickoff_payment (T6.4).
+// Processor callbacks land in investor-flow-webhook.ts (dedupe + mark commitment funded).
 // Routes through the catchall dispatcher at api/[...slug].ts.
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
@@ -16,6 +16,7 @@ const supabase = getServiceClient();
 type Action =
   | 'list_public_rounds'
   | 'get_round_detail'
+  | 'get_commitment'          // T6.7 — FundingStepsView polling
   | 'submit_accreditation'    // T6.2
   | 'create_soft_commit'      // T6.3
   | 'kickoff_payment';        // T6.4
@@ -384,6 +385,143 @@ async function createSoftCommit(params: CreateSoftCommitInput) {
 }
 
 // ───────────────────────────────────────────────────────────────────────────
+// T6.4: kickoff_payment — create payment_intent + move commitment to reserved
+// ───────────────────────────────────────────────────────────────────────────
+
+interface KickoffPaymentInput {
+  commitment_id: string;
+  payment_method: string;   // 'stripe_ach' | 'stripe_card' | 'wire' | 'crypto_usdc'
+  actor_user_id?: string;
+}
+
+interface PaymentError extends Error {
+  code: string;
+  http_status: number;
+  details?: Record<string, unknown>;
+}
+
+function paymentError(code: string, http_status: number, message: string, details?: Record<string, unknown>): PaymentError {
+  const err = new Error(message) as PaymentError;
+  err.code = code;
+  err.http_status = http_status;
+  err.details = details;
+  return err;
+}
+
+async function kickoffPayment(params: KickoffPaymentInput) {
+  // 1. Input validation
+  if (!params.commitment_id) throw paymentError('missing_commitment_id', 400, 'commitment_id required');
+  if (!params.payment_method) throw paymentError('missing_payment_method', 400, 'payment_method required');
+
+  // 2. Load commitment
+  const { data: commitment, error: cErr } = await supabase
+    .from('capital_commitments')
+    .select('id, venture_id, contact_id, round_id, status, amount, amount_usd, currency, payment_method, payment_reference')
+    .eq('id', params.commitment_id)
+    .maybeSingle();
+  if (cErr) throw cErr;
+  if (!commitment) throw paymentError('commitment_not_found', 404, `commitment ${params.commitment_id} not found`);
+
+  if (!['soft_committed', 'reserved'].includes(commitment.status)) {
+    throw paymentError('commitment_wrong_status', 409,
+      `commitment.status=${commitment.status} — must be soft_committed or reserved to kick off payment`,
+      { current_status: commitment.status });
+  }
+
+  const amount = Number(commitment.amount_usd ?? commitment.amount ?? 0);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw paymentError('invalid_amount', 422, `commitment has non-positive amount (${amount})`, { amount });
+  }
+
+  // 3. Route payment_method → processor_id via payment_processor_config (lowest priority = primary)
+  const { data: processorCfg, error: procErr } = await supabase
+    .from('payment_processor_config')
+    .select('id, venture_id, payment_method, processor_id, priority, enabled, metadata')
+    .eq('venture_id', commitment.venture_id)
+    .eq('payment_method', params.payment_method)
+    .eq('enabled', true)
+    .order('priority', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (procErr) throw procErr;
+  if (!processorCfg) {
+    throw paymentError('no_processor_configured', 422,
+      `no enabled processor for (venture_id=${commitment.venture_id}, payment_method=${params.payment_method})`,
+      { venture_id: commitment.venture_id, payment_method: params.payment_method });
+  }
+
+  // 4. Create payment_intent row
+  const currency = commitment.currency ?? 'USD';
+  const { data: intent, error: intErr } = await supabase
+    .from('payment_intents')
+    .insert({
+      venture_id: commitment.venture_id,
+      processor_id: processorCfg.processor_id,
+      amount,
+      currency,
+      status: 'pending',
+      payment_method: params.payment_method,
+      customer_id: commitment.contact_id,
+      description: `Capital commitment ${commitment.id}`,
+      metadata: {
+        commitment_id: commitment.id,
+        round_id: commitment.round_id,
+        contact_id: commitment.contact_id,
+        kicked_off_by: params.actor_user_id ?? commitment.contact_id,
+        kicked_off_at: new Date().toISOString(),
+      },
+    })
+    .select('*')
+    .single();
+  if (intErr) throw intErr;
+
+  // 5. Update commitment → reserved
+  const nowIso = new Date().toISOString();
+  const { data: updatedCommitment, error: upErr } = await supabase
+    .from('capital_commitments')
+    .update({
+      status: 'reserved',
+      reserved_at: nowIso,
+      payment_reference: intent.id,
+      payment_method: params.payment_method,
+      updated_at: nowIso,
+    })
+    .eq('id', commitment.id)
+    .select('*')
+    .single();
+  if (upErr) throw upErr;
+
+  // 6. Emit activity
+  const { error: actErr } = await supabase
+    .from('capital_activities')
+    .insert({
+      venture_id: commitment.venture_id,
+      contact_id: commitment.contact_id,
+      round_id: commitment.round_id,
+      commitment_id: commitment.id,
+      activity_type: 'payment_kicked_off',
+      title: `Payment kicked off: ${currency} ${amount.toLocaleString()} via ${params.payment_method}`,
+      description: `payment_intent ${intent.id} created on processor ${processorCfg.processor_id}.`,
+      previous_value: 'soft_committed',
+      new_value: 'reserved',
+      actor_id: params.actor_user_id ?? commitment.contact_id,
+      actor_type: 'user',
+      metadata: {
+        payment_intent_id: intent.id,
+        processor_id: processorCfg.processor_id,
+        payment_method: params.payment_method,
+        amount,
+        currency,
+      },
+    });
+  if (actErr) {
+    console.error('[investor-flow] capital_activities insert failed on kickoff_payment — non-fatal:', actErr);
+  }
+
+  return { payment_intent: intent, commitment: updatedCommitment };
+}
+
+// ───────────────────────────────────────────────────────────────────────────
 // Default export — HTTP dispatcher
 // ───────────────────────────────────────────────────────────────────────────
 
@@ -404,6 +542,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(400).json({ error: 'round_id or public_page_slug required' });
         }
         return res.status(200).json(await getRoundDetail({ round_id, public_page_slug }));
+      }
+      case 'get_commitment': {
+        const commitment_id = body.commitment_id as string | undefined;
+        if (!commitment_id) {
+          return res.status(400).json({ error: 'commitment_id required' });
+        }
+        const { data, error } = await supabase
+          .from('capital_commitments')
+          .select('*')
+          .eq('id', commitment_id)
+          .maybeSingle();
+        if (error) throw error;
+        return res.status(200).json({ commitment: data ?? null });
       }
       case 'submit_accreditation': {
         return res.status(200).json(await submitAccreditation({
@@ -446,7 +597,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
       case 'kickoff_payment': {
-        return res.status(501).json({ error: `${body.action} not implemented yet — lands in T6.4` });
+        try {
+          return res.status(200).json(await kickoffPayment({
+            commitment_id: body.commitment_id as string,
+            payment_method: body.payment_method as string,
+            actor_user_id: body.actor_user_id as string | undefined,
+          }));
+        } catch (err) {
+          const anyErr = err as PaymentError;
+          if (anyErr.code && anyErr.http_status) {
+            return res.status(anyErr.http_status).json({
+              error: anyErr.message,
+              code: anyErr.code,
+              ...(anyErr.details ? { details: anyErr.details } : {}),
+            });
+          }
+          throw err;  // fall-through to outer try/catch
+        }
       }
       default: {
         return res.status(400).json({ error: `unknown action: ${body.action}` });
