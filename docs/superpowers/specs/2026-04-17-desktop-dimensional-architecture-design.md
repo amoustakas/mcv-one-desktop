@@ -28,7 +28,7 @@ The venture switcher in the global shell is a **dimensional elevator**. Selectio
 
 | Dim | Name | Trigger | What you see |
 |-----|------|---------|--------------|
-| **6D** | Ecosystem Crown | default landing, "home" | MCV Inc. + MCV LTD dual parent, protocol health, consortium roster, cross-parent strategic roadmap |
+| **6D** | Ecosystem Crown | dedicated nav item (sovereign surface) | MCV Inc. + MCV LTD dual parent — **sovereign · dynastic · never for sale · royalty-up from every venture**. Tony only (successors = his two sons). Protocol health, consortium roster, cross-parent strategic roadmap, universal royalty graph. Tone: legacy / dynastic / non-SaaS |
 | **5D** | Conglomerate | 6D → "enter holdings" | EdgeIQ Holdings CEO view. Brand portfolio grid, consolidated financials, inter-brand flows, exec agent briefs, cross-brand goals |
 | **4.5D** | Lens | 2+ ventures selected | Blended view over a venture group (e.g., MCV.Tech + MCV.DEV shared cap). Pinned strip aggregates over lens; Suites show lens-filtered data |
 | **4D** | Venture | single venture selected | Full operating stack for one brand. Corporate Stack row + venture pinned strip + 8 Suite tabs scoped to that venture |
@@ -60,9 +60,10 @@ Tools: Processors (Stripe Connect · Plaid · Crypto) · Invoices · Bills · Pa
 Status: `@mcv/payments-sdk` exists + Plaid/Stripe inbound adapters live + tax-export service shipping. Missing: consolidated Suite surface, FX/multi-currency, full bill/payout UI.
 
 ### 2.4 CRM 👥
-**The relationship graph.**
-Tools: Prospects · Pipeline · People · Companies · Activities · Campaigns (CRM-facet) · Personas (read-only surface — Operations owns the authoring side).
-Status: `crm_contacts` schema live, InvestorsPanel shipped, ProspectsView (408 LOC) shipped. Prospects is the highest-value extension (T3).
+**The universal relationship graph — not capital-only.**
+Every human the ecosystem touches: investors, customers, partners, collaborators, creators, vendors, advisors, team, prospects, platform users. Same primitive (`crm_contacts`), different archetypes.
+Tools: Prospects · Pipeline · People · Companies · Activities · Campaigns (CRM-facet) · Personas (read-only surface — Operations owns the authoring side) · **Archetypes** (class/role classification per the gamification model — see §12).
+Status: `crm_contacts` schema live, InvestorsPanel shipped, ProspectsView (408 LOC) shipped. Prospects is the highest-value extension (T3). Archetypes/classes layer ships with T3's operator-intake wizard (role picker).
 
 ### 2.5 Creative 🎨
 **Make things.**
@@ -450,4 +451,86 @@ Each tranche is independently shippable and unblocks subsequent tranches.
 
 ---
 
+---
+
+## 12. Gamification Foundation — The Hardcore Ladder (below 6D)
+
+Every layer below 6D operates as **the hardest gamification system known**. Diablo 2 Hardcore Ladder is the reference: real stakes, permanent consequences, prestige through contribution, ladder-based visibility. 6D itself stays sovereign/dynastic and is *outside* the game — it's the throne, not the board.
+
+### 12.1 Character model
+Every person onboarded (prospect, investor, partner, contributor, creator, team member) is a **character** with:
+- **Class / archetype** — investor · operator · creator · advisor · partner · contributor · customer · founder · vendor
+- **Level** — progression metric tied to real ecosystem contribution (capital deployed, work shipped, referrals onboarded, content published, token staked)
+- **Attributes** — reputation · trust · accreditation status · contribution history · jurisdictional eligibility
+- **Inventory** — owned equity · token holdings · credentials (VCs) · access grants · earned badges
+- **Achievements** — first deal · first distribution · first referral · first token stake · first published asset · succession transfer received
+
+### 12.2 Venture realms
+Each venture is a **realm** with its own economy + rules but shared infrastructure. Characters are *placed* into realms with scoped roles — not free-roaming across every venture. Role scope = what you see + what you can do + what you can earn in that realm. Cross-realm travel is governed (introduction, invite, verification).
+
+### 12.3 Hardcore stakes
+- **Irreversibility** — equity commitments, token stakes, signed contracts don't roll back. One-way doors.
+- **High-stakes gates** — accreditation, OFAC, VC verification are real barriers. Failure flags are permanent (with cryptographic audit).
+- **Append-only record** — every action timestamped, signed, auditable. No silent resets.
+
+### 12.4 Ladder (cross-venture leaderboards)
+- Top investors by deployed capital (per-venture + consortium-wide)
+- Top contributors by shipped work
+- Top referrers by onboarded network
+- Top creators by asset engagement
+- Ladder tiers map to real access rights (gated rounds, exclusive governance votes, token allocations, invite-only events)
+
+### 12.5 Progression is real
+Levels are not cosmetic. They gate:
+- Access to capital rounds (minimum tier for Seed, higher for private rounds)
+- Governance voting weight
+- Token allocation priority at TGE
+- Exclusive content + research access
+- Persona assignment (higher-level characters get Quinn — senior IR persona; lower-level get templated flows from junior personas)
+
+### 12.6 Succession (real-world dynasty)
+Mirrors the 6D dynastic principle. Passing equity · credentials · access grants · earned badges · reputation to a named successor is a **first-class operation** with cryptographic audit. Not a platform feature bolt-on — architectural from day one.
+
+### 12.7 Implementation timing
+- **Marathon #1 (T1+T2+T3):** design primitives so the ladder layer can hang off them later. `crm_contacts.metadata.archetype` + `crm_contacts.metadata.level` reserved. Operator-intake wizard captures archetype on creation.
+- **Post-T6:** dedicated spec `2026-04-25-hardcore-ladder-design.md` details the progression engine, leaderboards, cross-realm governance, and succession operation.
+- **Design invariant:** never ship a primitive that would have to be refactored to accommodate the ladder. Stakes are permanent, record is append-only, archetype is explicit.
+
+---
+
+## 13. Agent Hit Squad — Rollout Order
+
+Agents are not generic tools — each is a role/department specialist. The squad operates as a hive-mind (shared memory graph, shared event bus, real-time evolution). See memory `project_hit_squad_agent_rollout.md` for canonical directive.
+
+### 13.1 Top-down rollout
+1. **6D executive tier FIRST** — CEO-proxy · protocol counsel · legacy steward · succession advisor · royalty architect. These agents encode Tony's sovereign/dynastic constraints + strategic reasoning. Every layer below inherits context from this tier.
+2. **5D conglomerate tier** — CFO-proxy · Chief of Staff · brand-portfolio strategist · cross-brand risk officer · inter-brand capital router.
+3. **4D venture tier** — operator · CMO · product lead · compliance officer · IR lead per venture (Quinn for Futurestate, TBD names for BetEdge / MCV.GG / WarForge / MCV.Tech+DEV / MCV.CX / MCV.INC-governance).
+4. **3D suite tier** — engineering lead · compliance officer · creative director · growth strategist · ops chief per Suite (applied to a venture).
+5. **2D / 1D tactical tier** — specialists for individual tools + rows (PR reviewer · deal intake agent · investor-brief drafter · etc.).
+
+### 13.2 Hive-mind semantics
+- **Shared substrate** — persona memory graph · Fabric event bus (pub/sub) · Content OS RAG corpus · activity + audit timeline
+- **Specialized surface** — system prompts · tool loadouts · voice clones · accent_color · default venture scope · role
+- **Real-time evolution** — system prompts + tool loadouts update continuously from agent-effectiveness telemetry
+- **Cross-agent handoff** — agent A completes → agent B picks up via shared context (no re-briefing)
+
+### 13.3 Implementation timing
+- **T5 (Personas + Research)** elevates `agents_roster` to `personas` — the Hit Squad substrate
+- **Post-T5 spec** `2026-04-21-agent-hit-squad-rollout-design.md` details the 6D agent cast, hive-mind event bus, evolution telemetry, cross-tier handoff, and real-time system-prompt updates
+- **Design invariant for marathon #1:** every Suite surface exposes an "assigned persona" slot; every operator-seeded prospect in T3 is assigned at least one persona (Quinn for Futurestate investor track)
+
+---
+
+## 14. Brand Tone & Voice Invariants
+
+The product, its copy, its agents, and its specs speak in one voice. See memory `feedback_brand_tone_philosophy.md` for the canonical rules. Applied to this spec, to every UI surface, to every agent system prompt, to every public artifact.
+
+- Aggressive ambition · historic mission · founder-family legacy · elite hardcore · hive-mind intelligence · production-grade
+- Never corporate-sanitized; never MVP-hedged
+- Default voice check: *"Would an elite team changing history write this sentence?"* If not → rewrite.
+
+---
+
 *End of spec.*
+
