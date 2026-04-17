@@ -134,7 +134,7 @@ export default function WizardShell(props: WizardInitialState) {
       </main>
 
       <aside className="wiz-chat">
-        <AgentChatColumn journey={journey} />
+        <AgentChatColumn journey={journey} ventureId={props.ventureId ?? null} />
       </aside>
     </div>
   );

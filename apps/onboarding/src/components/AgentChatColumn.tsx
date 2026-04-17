@@ -8,6 +8,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ProspectJourney } from '@mcv/onboarding-sdk';
 import { callChatApi } from '@/lib/api';
+import { playAgentVoice, stopAgentVoice } from '@/lib/voice';
+
+const MUTE_KEY = 'mcv.wiz.voice.muted';
 
 interface AgentSummary {
   id: string;
@@ -28,9 +31,10 @@ interface ChatMessage {
 
 interface Props {
   journey: ProspectJourney | null;
+  ventureId?: string | null;
 }
 
-export function AgentChatColumn({ journey }: Props) {
+export function AgentChatColumn({ journey, ventureId }: Props) {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [openingAgent, setOpeningAgent] = useState<AgentSummary | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -38,6 +42,13 @@ export function AgentChatColumn({ journey }: Props) {
   const [sending, setSending] = useState(false);
   const [bootstrapping, setBootstrapping] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Autoplay is gated on the first user interaction (browser autoplay policy).
+  // Once the user sends a message, subsequent assistant replies play in-voice.
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const [muted, setMuted] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem(MUTE_KEY) === '1';
+  });
   const endRef = useRef<HTMLDivElement>(null);
 
   // Bootstrap conversation on first journey appearance.
@@ -80,9 +91,38 @@ export function AgentChatColumn({ journey }: Props) {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length, sending]);
 
+  // Persist mute preference + silence any in-flight playback when muting.
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(MUTE_KEY, muted ? '1' : '0');
+    }
+    if (muted) stopAgentVoice();
+  }, [muted]);
+
+  // Autoplay the most recent assistant message in the agent's voice —
+  // the helper dedupes by message id so scroll/re-render doesn't replay.
+  useEffect(() => {
+    if (!hasInteracted || muted) return;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (m.role !== 'assistant') continue;
+      const handle = m.agent?.handle;
+      if (!handle || !m.content) break;
+      void playAgentVoice({
+        messageId: m.id,
+        text: m.content,
+        agentHandle: handle,
+        ventureId: ventureId ?? null,
+      });
+      break;
+    }
+  }, [messages, hasInteracted, muted, ventureId]);
+
   const send = useCallback(async () => {
     const text = input.trim();
     if (!text || !conversationId || !journey?.id) return;
+    // First send counts as the user-gesture that unlocks autoplay.
+    setHasInteracted(true);
     setInput('');
     setSending(true);
     setError(null);
@@ -155,14 +195,23 @@ export function AgentChatColumn({ journey }: Props) {
 
   return (
     <>
-      <div className="wiz-chat-header">
+      <div className="wiz-chat-header" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={avatarStyle(initialsOf(headerAgent?.full_name ?? 'A'), 'var(--brand)', 'var(--brand-accent)', headerAgent?.accent_color)}>
           {initialsOf(headerAgent?.full_name ?? 'A')}
         </div>
-        <div>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div className="wiz-chat-agent-name">{headerAgent?.full_name ?? 'Atlas'}</div>
           <div className="wiz-chat-agent-handle">{headerAgent?.handle ?? '@atlas'} · {headerAgent?.title ?? 'Chief of Staff'}</div>
         </div>
+        <button
+          type="button"
+          onClick={() => setMuted((v) => !v)}
+          aria-label={muted ? 'Unmute agent voice' : 'Mute agent voice'}
+          title={muted ? 'Unmute agent voice' : 'Mute agent voice'}
+          style={muteButtonStyle(muted)}
+        >
+          {muted ? 'Muted' : 'Voice on'}
+        </button>
       </div>
 
       <div className="wiz-chat-body" style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 240px)' }}>
@@ -252,6 +301,23 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
 
 function initialsOf(name: string): string {
   return name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
+}
+
+function muteButtonStyle(muted: boolean): React.CSSProperties {
+  return {
+    padding: '4px 10px',
+    fontSize: 10,
+    fontWeight: 600,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    borderRadius: 999,
+    border: '1px solid var(--border-subtle)',
+    background: muted ? 'transparent' : 'var(--brand)',
+    color: muted ? 'var(--text-muted)' : '#000',
+    cursor: 'pointer',
+    lineHeight: 1.4,
+    flexShrink: 0,
+  };
 }
 
 function avatarStyle(
