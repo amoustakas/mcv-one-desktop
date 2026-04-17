@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { SuiteId, KpiId } from '../lib/pinned-kpi/types';
 
 /**
  * Command Center persisted state — alert snoozing, quick action customization,
@@ -61,6 +62,12 @@ interface CommandCenterState {
 
   setWidgetVisible: (id: string, visible: boolean) => void;
   isWidgetVisible: (id: string) => boolean;
+
+  pinnedKpis: Record<string, KpiId[]>; // keyed by SuiteId
+  setSuiteTiles: (suite: SuiteId, ids: KpiId[]) => void;
+  addSuiteTile: (suite: SuiteId, id: KpiId) => void;
+  removeSuiteTile: (suite: SuiteId, id: KpiId) => void;
+  reorderSuiteTile: (suite: SuiteId, from: number, to: number) => void;
 }
 
 export const useCommandCenter = create<CommandCenterState>()(
@@ -121,6 +128,31 @@ export const useCommandCenter = create<CommandCenterState>()(
         const v = get().widgetVisibility[id];
         return v === undefined ? true : v; // default visible
       },
+
+      pinnedKpis: {},
+
+      setSuiteTiles: (suite, ids) =>
+        set((s) => ({ pinnedKpis: { ...s.pinnedKpis, [suite]: ids } })),
+
+      addSuiteTile: (suite, id) =>
+        set((s) => {
+          const current = s.pinnedKpis[suite] ?? [];
+          if (current.includes(id)) return s;
+          return { pinnedKpis: { ...s.pinnedKpis, [suite]: [...current, id] } };
+        }),
+
+      removeSuiteTile: (suite, id) =>
+        set((s) => ({
+          pinnedKpis: { ...s.pinnedKpis, [suite]: (s.pinnedKpis[suite] ?? []).filter((x) => x !== id) },
+        })),
+
+      reorderSuiteTile: (suite, from, to) =>
+        set((s) => {
+          const current = [...(s.pinnedKpis[suite] ?? [])];
+          const [moved] = current.splice(from, 1);
+          current.splice(to, 0, moved);
+          return { pinnedKpis: { ...s.pinnedKpis, [suite]: current } };
+        }),
     }),
     { name: 'mcv-command-center' },
   ),
