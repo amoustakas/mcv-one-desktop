@@ -170,6 +170,41 @@ export function useInvestors(ventureId?: string, filters?: { stage?: ContactStag
   });
 }
 
+/**
+ * Rounds available to a specific investor — filtered by:
+ *   - round.status === 'open'
+ *   - round.accredited_only ? investor.accreditation in {verified_accredited, qualified_purchaser, institutional} : true
+ *
+ * Venture filter is optional; when omitted, returns rounds across every
+ * venture the investor has an ecosystem link to. Callers can always filter
+ * again client-side (e.g. by raise_lane) on the returned list.
+ *
+ * Empty list is fine: that's the "no live rounds right now" state.
+ */
+export function useRoundsForInvestor(contactId: string | null | undefined, ventureId?: string) {
+  const positionQuery = useInvestorPosition(contactId);
+  const roundsQuery = useRounds(ventureId, 'open');
+
+  const investorProfile = positionQuery.data?.profile ?? null;
+  const investorStatus = investorProfile?.accreditationStatus ?? 'unknown';
+  const canSeeAccreditedOnly = investorStatus === 'verified_accredited'
+    || investorStatus === 'qualified_purchaser'
+    || investorStatus === 'institutional';
+
+  const eligibleRounds = (roundsQuery.data ?? []).filter((r) => {
+    if (r.status !== 'open') return false;
+    if (r.accreditedOnly && !canSeeAccreditedOnly) return false;
+    return true;
+  });
+
+  return {
+    rounds: eligibleRounds,
+    investorProfile,
+    isLoading: positionQuery.isLoading || roundsQuery.isLoading,
+    error: positionQuery.error ?? roundsQuery.error ?? null,
+  };
+}
+
 export function useInvestorPosition(contactId: string | null | undefined) {
   return useQuery({
     queryKey: ['capital', 'investor-position', contactId],

@@ -11,6 +11,7 @@ import { useNavigation } from '../stores/navigation';
 import { PageShell, GlassCard, Badge, EmptyState } from '../components/ui';
 import { STEPS, TRACKS, type StepName, type TrackName } from '@mcv/onboarding-sdk';
 import AccreditationFlowModal from '../components/capital/AccreditationFlowModal';
+import RoundBrowseModal from '../components/capital/RoundBrowseModal';
 
 export default function ProspectProfileView() {
   const setView = useNavigation((s) => s.setView);
@@ -238,6 +239,7 @@ function EcosystemBridge({
   const openCrmContact = useNavigation((s) => s.openCrmContact);
   const openCapitalContact = useNavigation((s) => s.openCapitalContact);
   const [verifyModalOpen, setVerifyModalOpen] = useState(false);
+  const [browseRoundsOpen, setBrowseRoundsOpen] = useState(false);
 
   // Fetch the camelCase InvestorProfile for the modal's mutation cache.
   // The ecosystem.investor_profile shape is snake_case from the get_journey
@@ -316,6 +318,14 @@ function EcosystemBridge({
                     <Shield className="w-3.5 h-3.5" /> Verify accreditation
                   </button>
                 )}
+                {isVerified && (
+                  <button
+                    onClick={() => setBrowseRoundsOpen(true)}
+                    style={{ ...ctaStyle('#F472B6'), background: '#F472B6', color: 'var(--surface-base)' }}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" /> Browse available rounds
+                  </button>
+                )}
                 <button onClick={() => openCapitalContact(investor_profile.contact_id)} style={ctaStyle('var(--color-brand-electric)')}>
                   Open in Capital <ArrowRight className="w-3.5 h-3.5" />
                 </button>
@@ -332,6 +342,15 @@ function EcosystemBridge({
           contactId={investor_profile.contact_id}
           contactName={contact.name}
           profile={fullInvestorProfile}
+        />
+      )}
+      {investor_profile && contact && (
+        <RoundBrowseModal
+          open={browseRoundsOpen}
+          onClose={() => setBrowseRoundsOpen(false)}
+          contactId={investor_profile.contact_id}
+          contactName={contact.name}
+          ventureId={investor_profile.venture_id ?? undefined}
         />
       )}
     </GlassCard>
