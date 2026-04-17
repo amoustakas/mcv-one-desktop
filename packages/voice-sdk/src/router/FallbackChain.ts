@@ -53,13 +53,18 @@ export interface FallbackOptions {
  * and `tts()` (returns ArrayBuffer).
  */
 export class FallbackChain {
+  readonly candidates: ReadonlyArray<FallbackCandidate>;
+  readonly options: FallbackOptions;
+
   constructor(
-    public readonly candidates: ReadonlyArray<FallbackCandidate>,
-    public readonly options: FallbackOptions = {},
+    candidates: ReadonlyArray<FallbackCandidate>,
+    options: FallbackOptions = {},
   ) {
     if (candidates.length === 0) {
       throw new Error('FallbackChain: at least one candidate required');
     }
+    this.candidates = candidates;
+    this.options = options;
   }
 
   async run<T>(
