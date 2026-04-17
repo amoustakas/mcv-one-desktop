@@ -22,6 +22,8 @@
     "turbo:typecheck": "turbo run typecheck",
     "smoke:triangle": "tsx scripts/triangle-smoke.ts",
     "seed:prospects": "tsx scripts/seed-prospects.ts",
+    "env:audit": "tsx scripts/env-audit.ts",
+    "env:audit:prod": "tsx scripts/env-audit.ts --check-vercel",
     "prepare": "husky"
   },
   "dependencies": {
