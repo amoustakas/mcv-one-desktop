@@ -1,0 +1,99 @@
+# Production deploy pipeline for mcv-one-desktop
+#
+# Required GitHub secrets:
+#   VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID
+#   SUPABASE_DB_HOST, SUPABASE_DB_PASSWORD  (for migration-check job)
+#
+# Required GitHub environment:
+#   "production" — configure required reviewers in Settings → Environments
+#   so every merge to master pauses for human approval before deploying.
+
+name: Prod Deploy
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: prod-deploy
+  cancel-in-progress: false
+
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+jobs:
+  migration-check:
+    name: Verify Supabase migrations are applied
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Count local migrations
+        id: local
+        run: |
+          count=$(ls supabase/migration-*.sql 2>/dev/null | wc -l)
+          echo "count=$count" >> $GITHUB_OUTPUT
+          echo "Found $count local migration files"
+
+      - name: Count applied migrations in Supabase
+        id: remote
+        env:
+          PGHOST: ${{ secrets.SUPABASE_DB_HOST }}
+          PGDATABASE: postgres
+          PGUSER: postgres
+          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          PGPORT: 6543
+        run: |
+          count=$(psql -tAc "SELECT count(*) FROM supabase_migrations.schema_migrations")
+          echo "count=$count" >> $GITHUB_OUTPUT
+          echo "Remote applied: $count"
+
+      - name: Verify migrations are applied
+        run: |
+          if [ "${{ steps.local.outputs.count }}" -gt "${{ steps.remote.outputs.count }}" ]; then
+            echo "::error::Local has ${{ steps.local.outputs.count }} migration files but Supabase has only ${{ steps.remote.outputs.count }} applied. Apply migrations via the Supabase MCP before merging to master."
+            exit 1
+          fi
+          echo "✓ Migrations verified: local=${{ steps.local.outputs.count }} remote=${{ steps.remote.outputs.count }}"
+
+  deploy-prod:
+    name: Deploy to Vercel production
+    needs: migration-check
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel production environment
+        run: vercel pull --yes --environment=production --token=$VERCEL_TOKEN
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build project artifacts
+        run: vercel build --prod --token=$VERCEL_TOKEN
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy prebuilt artifact to production
+        id: deploy
+        run: |
+          url=$(vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN)
+          echo "url=$url" >> $GITHUB_OUTPUT
+          echo "DEPLOY_URL=$url" >> $GITHUB_ENV
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+      - name: Write deploy summary
+        run: |
+          echo "## Production deploy 🟢" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- URL: $DEPLOY_URL" >> $GITHUB_STEP_SUMMARY
+          echo "- Triggered by: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
