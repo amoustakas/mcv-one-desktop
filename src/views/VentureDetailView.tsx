@@ -1,129 +1,91 @@
-import { useState, useEffect, Suspense, lazy } from 'react';
-import { Tabs, PageShell, EmptyState } from '../components/ui';
-import { type Venture } from '../lib/ventures';
-import { useNavigation } from '../stores/navigation';
-import VentureQuestPanel from '../components/ventures/VentureQuestPanel';
-import AssetTierGraph from '../components/ventures/AssetTierGraph';
-import ClerkOrgPanel from '../components/ventures/ClerkOrgPanel';
-import VentureDomainsPanel from '../components/ventures/VentureDomainsPanel';
-import VentureSocialsPanel from '../components/ventures/VentureSocialsPanel';
-import VentureDocsPanel from '../components/ventures/VentureDocsPanel';
-import VentureOpsPanel from '../components/ventures/VentureOpsPanel';
-import VentureSettingsPanel from '../components/ventures/VentureSettingsPanel';
-import VentureSnapshotCard from '../components/ventures/VentureSnapshotCard';
-import { Settings as SettingsIcon } from 'lucide-react';
+// VentureDetailView — venture god-view shell (Marathon #3 T7.3+T7.4).
+//
+// Single round-trip render. Uses useVentureDetail (T7.2) to pull the full
+// payload in one go, then composes the T7.5 VentureLensHero + three block
+// components (Rounds, Activities, Team) over a two-column layout.
 
-const VentureProfile = lazy(() => import('./VentureProfile'));
+import { useVentureDetail } from '../hooks/use-venture-detail';
+import {
+  VentureLensHero,
+  VentureRoundsPanel,
+  VentureActivitiesFeed,
+  VentureTeamBlock,
+} from '../components/venture-detail';
+import { PageShell, PageHeader } from '../components/ui';
 
-type TabId = 'overview' | 'quests' | 'assets' | 'domains' | 'socials' | 'team' | 'docs' | 'ops' | 'settings';
+interface Props { ventureId: string | null }
 
-interface TabDef {
-  id: TabId;
-  label: string;
-}
+export function VentureDetailView({ ventureId }: Props) {
+  const { data, isLoading, error } = useVentureDetail(ventureId);
 
-const TABS: TabDef[] = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'quests', label: 'Quests' },
-  { id: 'assets', label: 'Assets' },
-  { id: 'domains', label: 'Domains' },
-  { id: 'socials', label: 'Socials' },
-  { id: 'team', label: 'Team' },
-  { id: 'docs', label: 'Docs' },
-  { id: 'ops', label: 'Ops' },
-  { id: 'settings', label: 'Settings' },
-];
+  if (!ventureId) {
+    return (
+      <PageShell>
+        <PageHeader title="Ventures" subtitle="Select a venture from the nav to see its god-view." />
+      </PageShell>
+    );
+  }
 
-const VALID_TABS = new Set<TabId>(['overview', 'quests', 'assets', 'domains', 'socials', 'team', 'docs', 'ops', 'settings']);
+  if (isLoading) {
+    return (
+      <PageShell>
+        <PageHeader title="Venture" subtitle="Loading…" />
+        <div style={{ padding: 24, color: 'var(--text-muted)' }}>Loading venture detail…</div>
+      </PageShell>
+    );
+  }
 
-export default function VentureDetailView({ venture }: { venture: Venture }) {
-  const [tab, setTab] = useState<TabId>('overview');
-  const consumePendingDetailTab = useNavigation(s => s.consumePendingDetailTab);
+  if (error || !data) {
+    return (
+      <PageShell>
+        <PageHeader title="Venture" subtitle="Not found or error" />
+        <div style={{ padding: 24, color: '#FB7185' }}>
+          {(error as Error)?.message ?? `Venture ${ventureId} not found.`}
+        </div>
+      </PageShell>
+    );
+  }
 
-  // Honor a one-shot tab request from any caller (e.g. the Venture Wizard hint
-  // "Open Docs tab"). We consume-and-clear so navigating away + back doesn't
-  // keep yanking the user to the same tab.
-  useEffect(() => {
-    const pending = consumePendingDetailTab();
-    if (pending && VALID_TABS.has(pending as TabId)) {
-      setTab(pending as TabId);
-    }
-  }, [consumePendingDetailTab]);
+  const { rounds, raising_rounds, recent_activities, scoped_personas, commitments_summary } = data;
+  const brandAccent = data.brand?.color_primary ?? 'var(--color-brand-electric)';
 
   return (
-    <div className="vdv-root">
-      <Tabs
-        tabs={TABS.map(t => ({ id: t.id, label: t.label }))}
-        active={tab}
-        onChange={(id) => setTab(id as TabId)}
-        className="vdv-tabs"
-      />
+    <PageShell>
+      {/* Hero banner with name + brand accent + aggregate raise progress */}
+      <VentureLensHero detail={data} />
 
-      <div className="vdv-body">
-        {tab === 'overview' && (
-          <Suspense fallback={<div className="vdv-loading">Loading overview…</div>}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <VentureSnapshotCard venture={venture} />
-              <VentureProfile venture={venture} />
-            </div>
-          </Suspense>
-        )}
-
-        {tab === 'quests' && (
-          <PageShell>
-            <VentureQuestPanel venture={venture} />
-          </PageShell>
-        )}
-
-        {tab === 'assets' && (
-          <PageShell>
-            <AssetTierGraph venture={venture} />
-          </PageShell>
-        )}
-
-        {tab === 'domains' && (
-          <PageShell>
-            <VentureDomainsPanel venture={venture} />
-          </PageShell>
-        )}
-
-        {tab === 'socials' && (
-          <PageShell>
-            <VentureSocialsPanel venture={venture} />
-          </PageShell>
-        )}
-
-        {tab === 'team' && (
-          <PageShell>
-            <ClerkOrgPanel venture={venture} />
-          </PageShell>
-        )}
-
-        {tab === 'docs' && (
-          <PageShell>
-            <VentureDocsPanel venture={venture} />
-          </PageShell>
-        )}
-
-        {tab === 'ops' && (
-          <PageShell>
-            <VentureOpsPanel venture={venture} />
-          </PageShell>
-        )}
-
-        {tab === 'settings' && (
-          <PageShell>
-            <VentureSettingsPanel venture={venture} />
-          </PageShell>
-        )}
+      {/* Summary strip */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, margin: '16px 0 20px' }}>
+        <Stat label="Rounds" value={rounds.length} />
+        <Stat label="Open" value={raising_rounds.length} accent={brandAccent} />
+        <Stat label="Committed USD" value={`$${Math.round(commitments_summary.total_committed_usd).toLocaleString()}`} />
+        <Stat label="Funded USD" value={`$${Math.round(commitments_summary.total_funded_usd).toLocaleString()}`} accent="#6EE7B7" />
+        <Stat label="Activity (30d)" value={recent_activities.length} />
       </div>
 
-      <style>{`
-        .vdv-root { display: flex; flex-direction: column; height: 100%; }
-        .vdv-tabs { flex-shrink: 0; border-bottom: 1px solid var(--border); padding: 0 24px; }
-        .vdv-body { flex: 1; overflow-y: auto; }
-        .vdv-loading { padding: 48px; text-align: center; color: var(--text-muted); font-size: 13px; }
-      `}</style>
-    </div>
+      {/* Two-column body */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(260px, 340px)', gap: 20 }}>
+        <div style={{ display: 'grid', gap: 20 }}>
+          <VentureRoundsPanel rounds={rounds} raising={raising_rounds} />
+          <VentureActivitiesFeed activities={recent_activities} />
+        </div>
+        <div style={{ display: 'grid', gap: 20 }}>
+          <VentureTeamBlock personas={scoped_personas} />
+        </div>
+      </div>
+    </PageShell>
   );
 }
+
+const Stat = ({ label, value, accent }: { label: string; value: number | string; accent?: string }) => (
+  <div style={{
+    padding: 10, borderRadius: 10,
+    border: `1px solid ${accent ? `${accent}40` : 'var(--border-subtle)'}`,
+    background: accent ? `color-mix(in srgb, ${accent} 10%, transparent)` : 'var(--surface-elevated)',
+  }}>
+    <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{label}</div>
+    <div style={{ fontSize: 18, fontWeight: 700, color: accent ?? 'var(--text-primary)' }}>{value}</div>
+  </div>
+);
+
+export default VentureDetailView;
