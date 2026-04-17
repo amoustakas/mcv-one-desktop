@@ -134,6 +134,7 @@ export type ViewId =
   | 'capital-contact-detail'
   | 'capital-launchpad-admin'
   | 'capital-foundation'
+  | 'distributions'
   // Consumer-facing investor money-in flow (T6.6)
   | 'invest-rounds'
   | 'agents'
@@ -268,6 +269,7 @@ const VIEW_LABELS: Record<string, string> = {
   'capital-contact-detail': 'Investor',
   'capital-launchpad-admin': 'Launchpad',
   'capital-foundation': 'Foundation',
+  distributions: 'Distributions',
   'invest-rounds': 'Invest',
   agents: 'The Team',
   'agent-profile': 'Agent',
