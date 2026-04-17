@@ -14,6 +14,19 @@ export default defineConfig(({ mode }) => {
     define: {
       __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
     },
+    optimizeDeps: {
+      // @mcv/voice-sdk's optional-peer SDKs — keep Vite's dep-scanner from
+      // trying to pre-bundle packages we don't install. Combined with the
+      // /* @vite-ignore */ comments on the dynamic imports themselves, dev
+      // mode no longer barfs with "Failed to resolve import ...".
+      exclude: [
+        '@elevenlabs/elevenlabs-js',
+        '@deepgram/sdk',
+        '@vapi-ai/server-sdk',
+        'openai/realtime/ws',
+        'openai/realtime/websocket',
+      ],
+    },
     build: {
       // @mcv/voice-sdk provider adapters dynamic-import these SDKs as
       // optional peers — a host app only installs the providers it needs.

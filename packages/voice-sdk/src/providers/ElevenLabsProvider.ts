@@ -25,10 +25,14 @@ import { TinyEmitter } from './ProviderContract';
 
 const BASE_URL = 'https://api.elevenlabs.io';
 
+// Indirect specifier keeps Vite's import-analysis from statically resolving
+// this optional peer at bundle time — we pay the tiny runtime cost in
+// exchange for not forcing every host app to install ElevenLabs.
+const ELEVENLABS_PKG = ['@elevenlabs', 'elevenlabs-js'].join('/');
+
 async function loadSdk(): Promise<any | null> {
   try {
-    // @ts-expect-error — optional peer; installed by host app only if ElevenLabs is used
-    const mod = await import('@elevenlabs/elevenlabs-js');
+    const mod = await import(/* @vite-ignore */ ELEVENLABS_PKG);
     return mod.ElevenLabsClient ? mod : null;
   } catch {
     return null;

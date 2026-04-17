@@ -19,10 +19,11 @@ import type {
 } from './ProviderContract';
 import { TinyEmitter } from './ProviderContract';
 
+const DEEPGRAM_PKG = ['@deepgram', 'sdk'].join('/');
+
 async function loadSdk(): Promise<any | null> {
   try {
-    // @ts-expect-error — optional peer; installed by host app only if Deepgram is used
-    return await import('@deepgram/sdk');
+    return await import(/* @vite-ignore */ DEEPGRAM_PKG);
   } catch {
     return null;
   }
