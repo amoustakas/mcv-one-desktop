@@ -1,7 +1,7 @@
 // React Query hooks for the Prospect admin surfaces.
 // Pattern matches src/hooks/use-agents.ts.
 
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiPost } from '../lib/api/client';
 import type {
   ProspectProfile,
@@ -132,6 +132,66 @@ export function useCaptures() {
         action: 'list_captures',
       });
       return data.captures;
+    },
+  });
+}
+
+// Operator-created prospect (T3.2 handler: `create_operator_prospect`).
+// Interface is camelCase for React ergonomics; the fetch body is snake_case to
+// match the server handler's exact param contract (see T3.2).
+export interface OperatorProspectInput {
+  email: string;
+  fullName?: string;
+  country?: string;
+  roleHint?: string;
+  sourceVentureId?: string;
+  track: TrackName;
+  operatorNotes?: string;
+  relationshipHistory?: string;
+  priorDeals?: unknown[];
+  aumEstimate?: number;
+  checkSizeRange?: string;
+  investorThesis?: string;
+  socialProfiles?: Record<string, string>;
+  priority?: 'hot' | 'warm' | 'medium' | 'cold';
+  archetype?: string;
+  assignedPersonaId?: string;
+  assignedPersonaHandle?: string;
+}
+
+export interface OperatorProspectResult {
+  profile: ProspectProfile;
+  journey: ProspectJourney;
+}
+
+export function useCreateOperatorProspect() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: OperatorProspectInput): Promise<OperatorProspectResult> => {
+      return apiPost<OperatorProspectResult>('/api/prospects', {
+        action: 'create_operator_prospect',
+        email: input.email,
+        full_name: input.fullName,
+        country: input.country,
+        role_hint: input.roleHint,
+        source_venture_id: input.sourceVentureId,
+        track: input.track,
+        operator_notes: input.operatorNotes,
+        relationship_history: input.relationshipHistory,
+        prior_deals: input.priorDeals,
+        aum_estimate: input.aumEstimate,
+        check_size_range: input.checkSizeRange,
+        investor_thesis: input.investorThesis,
+        social_profiles: input.socialProfiles,
+        priority: input.priority,
+        archetype: input.archetype,
+        assigned_persona_id: input.assignedPersonaId,
+        assigned_persona_handle: input.assignedPersonaHandle,
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['prospects'] });
+      qc.invalidateQueries({ queryKey: ['captures'] });
     },
   });
 }
