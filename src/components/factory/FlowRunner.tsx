@@ -1,157 +1,154 @@
-// src/components/factory/FlowRunner.tsx
-import { useMemo, useState, useEffect, useRef } from 'react';
-import { useStartFactoryRun, useFactoryRun } from '../../hooks/use-factory-run';
-import { useFactoryRunStream } from '../../hooks/use-factory-run';
-import type { FactoryFlow } from '../../lib/factory-client';
-import { RunStatusBadge } from './RunStatusBadge';
+// Flow runner — pick a registered flow, edit JSON input, invoke it.
+// Phase 0 UI is deliberately plain: a select + JSON textarea + run button.
+// Phase 1 will graduate to per-flow schema-aware forms driven by Zod.
 
-interface Props {
-  flow: FactoryFlow | null;
-  /** Optional callback fired when a run reaches a terminal state (succeeded/failed/cancelled). */
-  onRunComplete?: (flowName: string, status: string, durationMs: number) => void;
-}
+import { useMemo, useState } from 'react';
+import { Play, Loader2, ClipboardCopy } from 'lucide-react';
+import { GlassCard, Badge } from '../ui';
+import { useFactoryFlows, useFactoryRunner, type FlowRunRecord } from '../../hooks/use-factory';
 
-export function FlowRunner({ flow, onRunComplete }: Props) {
-  const [inputText, setInputText] = useState('{\n  \n}');
-  const [activeRunId, setActiveRunId] = useState<string | null>(null);
+const DEFAULT_INPUTS: Record<string, Record<string, unknown>> = {
+  heartbeatPulse: { emit: false },
+  researchDossierBuilder: {
+    entityName: 'Hunter Milborne',
+    domain: 'real-estate-operator',
+    depth: 2,
+    context: 'Operator prospect from Futurestate intake (M1-T3 seed).',
+  },
+  oracleSynthesizer: {
+    objectiveTitle: 'Complete Risk Management L3',
+    currentProgress: 78,
+    bottleneckDetected: true,
+    domainContext: 'trading',
+  },
+  repoCrawler: {
+    targetDirectory: 'c:\\Users\\moust\\mcv-one-desktop',
+    query: 'How is the capital-sdk wired into the investor flow?',
+  },
+};
+
+export default function FlowRunner({ onRun }: { onRun: (run: FlowRunRecord) => void }) {
+  const { flows, loading: flowsLoading, error: flowsError } = useFactoryFlows();
+  const { invoke, running } = useFactoryRunner();
+
+  const [selected, setSelected] = useState<string>('heartbeatPulse');
+  const [inputText, setInputText] = useState<string>(() =>
+    JSON.stringify(DEFAULT_INPUTS.heartbeatPulse ?? {}, null, 2),
+  );
   const [parseError, setParseError] = useState<string | null>(null);
-  const start = useStartFactoryRun();
-  const runQ = useFactoryRun(activeRunId);
-  const stream = useFactoryRunStream(activeRunId);
 
-  // Track run latency: capture performance.now() when run is kicked off,
-  // fire onRunComplete when the polled status reaches a terminal state.
-  const runStartRef = useRef<number | null>(null);
-  const reportedRunIdRef = useRef<string | null>(null);
+  const effectiveFlows = useMemo(() => {
+    // Always include common defaults even if /flows hasn't responded yet so
+    // the UI is useful before first heartbeat.
+    const set = new Set<string>(flows);
+    Object.keys(DEFAULT_INPUTS).forEach(k => set.add(k));
+    return Array.from(set).sort();
+  }, [flows]);
 
-  useEffect(() => {
-    const status = runQ.data?.status;
-    const terminal = status === 'succeeded' || status === 'failed' || status === 'cancelled';
-    if (
-      terminal &&
-      activeRunId &&
-      activeRunId !== reportedRunIdRef.current &&
-      runStartRef.current !== null &&
-      onRunComplete &&
-      flow
-    ) {
-      reportedRunIdRef.current = activeRunId;
-      onRunComplete(flow.name, status, performance.now() - runStartRef.current);
-    }
-  }, [runQ.data?.status, activeRunId, flow, onRunComplete]);
-
-  const schemaHint = useMemo(() => {
-    if (!flow) return '';
-    try {
-      return JSON.stringify(flow.input_schema, null, 2);
-    } catch {
-      return '(schema unavailable)';
-    }
-  }, [flow]);
-
-  const onRun = async () => {
-    if (!flow) return;
+  const onSelect = (name: string) => {
+    setSelected(name);
+    const tmpl = DEFAULT_INPUTS[name];
+    setInputText(JSON.stringify(tmpl ?? {}, null, 2));
     setParseError(null);
-    let parsed: Record<string, unknown>;
-    try {
-      parsed = JSON.parse(inputText);
-    } catch (e) {
-      setParseError(e instanceof Error ? e.message : String(e));
-      return;
-    }
-    try {
-      runStartRef.current = performance.now();
-      const res = await start.mutateAsync({ flowName: flow.name, input: parsed });
-      setActiveRunId(res.run_id);
-    } catch (e) {
-      setParseError(e instanceof Error ? e.message : String(e));
-    }
   };
 
-  if (!flow) {
-    return (
-      <div style={{ padding: 20, color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', border: '1px dashed var(--border-subtle)', borderRadius: 10 }}>
-        Pick a flow to run.
-      </div>
-    );
-  }
+  const onInvoke = async () => {
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(inputText || '{}');
+      if (typeof parsed !== 'object' || parsed === null) throw new Error('Input must be an object');
+      setParseError(null);
+    } catch (err) {
+      setParseError(err instanceof Error ? err.message : 'Invalid JSON');
+      return;
+    }
+    const record = await invoke(selected, parsed);
+    onRun(record);
+  };
+
+  const copyCurl = async () => {
+    const curl = `curl -X POST http://localhost:7004/invoke/${selected} \\
+  -H 'Content-Type: application/json' \\
+  -d '${inputText.replace(/\n\s*/g, ' ')}'`;
+    try { await navigator.clipboard.writeText(curl); } catch { /* ignore */ }
+  };
 
   return (
-    <div style={{ display: 'grid', gap: 14 }}>
-      <header>
-        <div style={{ fontSize: 10, letterSpacing: '.15em', textTransform: 'uppercase', color: 'var(--color-brand-electric)', fontWeight: 700 }}>
-          {flow.pillar} · flow
+    <GlassCard>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Flow Runner</h3>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {flowsLoading && <Badge variant="outline">loading flows…</Badge>}
+          {flowsError && <Badge variant="outline" color="#EF4444">flows unavailable</Badge>}
+          <button
+            type="button"
+            onClick={copyCurl}
+            title="Copy equivalent curl command"
+            style={{
+              background: 'transparent', border: '1px solid var(--border-default)',
+              borderRadius: 4, padding: '4px 8px', color: 'var(--text-muted)',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11,
+            }}
+          >
+            <ClipboardCopy size={12} /> curl
+          </button>
         </div>
-        <h3 style={{ margin: '4px 0 0', fontSize: 16, fontWeight: 700, fontFamily: 'monospace', color: 'var(--text-primary)' }}>{flow.name}</h3>
-        {flow.description && <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>{flow.description}</p>}
-      </header>
+      </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-        <label style={{ display: 'grid', gap: 4, fontSize: 11, color: 'var(--text-muted)' }}>
-          input (JSON — matches the flow's Zod schema)
+      <div style={{ display: 'grid', gap: 12 }}>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Flow</span>
+          <select
+            value={selected}
+            onChange={e => onSelect(e.target.value)}
+            style={{
+              padding: '6px 8px', fontSize: 13, borderRadius: 4,
+              background: 'var(--surface-raised)', color: 'var(--text-primary)',
+              border: '1px solid var(--border-default)',
+            }}
+          >
+            {effectiveFlows.map(name => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+        </label>
+
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Input (JSON)</span>
           <textarea
             value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            rows={10}
+            onChange={e => setInputText(e.target.value)}
             spellCheck={false}
-            style={{ padding: 10, borderRadius: 6, background: 'var(--surface-base)', border: `1px solid ${parseError ? '#FB7185' : 'var(--border-subtle)'}`, color: 'var(--text-primary)', fontFamily: 'monospace', fontSize: 11 }}
+            rows={10}
+            style={{
+              fontFamily: 'var(--font-mono)', fontSize: 12,
+              padding: 8, borderRadius: 4, resize: 'vertical',
+              background: 'var(--surface-sunken)', color: 'var(--text-primary)',
+              border: `1px solid ${parseError ? '#EF4444' : 'var(--border-default)'}`,
+            }}
           />
-          {parseError && <span style={{ color: '#FB7185', fontSize: 11 }}>{parseError}</span>}
+          {parseError && <span style={{ fontSize: 11, color: '#EF4444' }}>{parseError}</span>}
         </label>
 
-        <label style={{ display: 'grid', gap: 4, fontSize: 11, color: 'var(--text-muted)' }}>
-          expected shape
-          <pre style={{ margin: 0, padding: 10, borderRadius: 6, background: 'var(--surface-base)', border: '1px solid var(--border-subtle)', color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: 11, overflow: 'auto', maxHeight: 220 }}>
-            {schemaHint}
-          </pre>
-        </label>
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <button
-          onClick={onRun}
-          disabled={start.isPending}
-          style={{ padding: '10px 16px', borderRadius: 8, background: 'var(--color-brand-electric)', color: 'var(--surface-base)', border: 'none', cursor: 'pointer', fontWeight: 700 }}
-        >
-          {start.isPending ? 'Starting…' : 'Run flow'}
-        </button>
-        {activeRunId && <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>{activeRunId.slice(0, 8)}…</span>}
-        {runQ.data && <RunStatusBadge status={runQ.data.status} />}
-        {stream.connected && <span style={{ fontSize: 10, color: '#6EE7B7', letterSpacing: '.1em' }}>● live</span>}
-      </div>
-
-      {activeRunId && (
-        <div style={{ padding: 12, borderRadius: 10, background: 'var(--surface-elevated)', border: '1px solid var(--border-subtle)' }}>
-          <div style={{ fontSize: 10, letterSpacing: '.15em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 8 }}>
-            stream · {stream.events.length} events
-          </div>
-          <div style={{ maxHeight: 200, overflowY: 'auto', display: 'grid', gap: 3, fontSize: 11, fontFamily: 'monospace' }}>
-            {stream.events.slice(-30).map((ev, i) => (
-              <div key={i} style={{ color: 'var(--text-primary)', opacity: 0.9 }}>
-                <span style={{ color: 'var(--color-brand-purple)' }}>[{ev.type}]</span>{' '}
-                {ev.type === 'token' ? (ev as { text: string }).text
-                  : ev.type === 'tool_call' ? `${(ev as { tool_name: string }).tool_name}(…)`
-                  : ev.type === 'error' ? `${(ev as { code: string; message: string }).code}: ${(ev as { message: string }).message}`
-                  : ev.type === 'complete' ? '✓ complete'
-                  : JSON.stringify((ev as Record<string, unknown>))
-                }
-              </div>
-            ))}
-          </div>
-          {stream.error && <div style={{ marginTop: 8, padding: 8, borderRadius: 6, background: '#FB718520', color: '#FB7185', fontSize: 11 }}>{stream.error.message}</div>}
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            onClick={onInvoke}
+            disabled={running}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '8px 14px', borderRadius: 4,
+              background: running ? 'var(--surface-raised)' : 'var(--color-brand-electric, #00F0FF)',
+              color: running ? 'var(--text-muted)' : '#000',
+              border: 'none', cursor: running ? 'not-allowed' : 'pointer',
+              fontSize: 13, fontWeight: 600,
+            }}
+          >
+            {running ? <Loader2 size={14} className="spin" /> : <Play size={14} />}
+            {running ? 'Running…' : 'Invoke'}
+          </button>
         </div>
-      )}
-
-      {runQ.data?.result && runQ.data.status === 'succeeded' && (
-        <div style={{ padding: 14, borderRadius: 10, background: 'color-mix(in srgb, #6EE7B7 8%, transparent)', border: '1px solid #6EE7B740' }}>
-          <div style={{ fontSize: 10, letterSpacing: '.15em', textTransform: 'uppercase', color: '#6EE7B7', fontWeight: 700, marginBottom: 8 }}>
-            result
-          </div>
-          <pre style={{ margin: 0, fontFamily: 'monospace', fontSize: 11, color: 'var(--text-primary)', overflow: 'auto', maxHeight: 300 }}>
-            {JSON.stringify(runQ.data.result, null, 2)}
-          </pre>
-        </div>
-      )}
-    </div>
+      </div>
+    </GlassCard>
   );
 }

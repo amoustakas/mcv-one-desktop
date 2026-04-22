@@ -1,73 +1,169 @@
-// src/components/factory/FactoryEventFeed.tsx
-// Live SSE stream of Fabric events filtered by topic (default: factory.*).
+// Live Factory bus feed via SSE. Replaces the previous polling version —
+// now every side-effect inside the Factory process (process spawn, repo
+// file change, job lifecycle, webhook, fabric emission, heartbeat) streams
+// to the cockpit in real time.
+//
+// The component colour-codes events by source domain and renders a chip with
+// a collapsible detail drawer per row. Kept under ~200 LOC by reusing the
+// shared GlassCard + Badge primitives.
 
-import { useEffect, useState } from 'react';
-import { factory_client, type FactoryFabricEvent } from '../../lib/factory-client';
+import { useMemo, useState } from 'react';
+import {
+  CheckCircle2, AlertTriangle, Activity, GitBranch, Cpu, Radio, Webhook, Clock, Loader2,
+  ChevronDown, ChevronRight, Trash2, WifiOff, Wifi,
+} from 'lucide-react';
+import { GlassCard, EmptyState, Badge } from '../ui';
+import { useFactoryStream } from '../../hooks/use-factory';
+import type { FactoryBusEvent } from '../../lib/factory-client';
 
-interface Props {
-  topic?: string;
-  maxEvents?: number;
+const DOMAIN_COLOR: Record<string, string> = {
+  process: '#A78BFA',
+  repo: '#6EE7B7',
+  job: '#F59E0B',
+  webhook: '#00F0FF',
+  fabric: '#F472B6',
+  heartbeat: '#64748B',
+  flow: '#FBBF24',
+  runtime: '#94A3B8',
+  lmstudio: '#8B5CF6',
+  oracle: '#00F0FF',
+};
+
+function domainOf(type: string): string {
+  const parts = type.split('.');
+  return parts[1] ?? 'misc';
 }
 
-export function FactoryEventFeed({ topic = 'factory.*', maxEvents = 50 }: Props) {
-  const [events, setEvents] = useState<FactoryFabricEvent[]>([]);
-  const [connected, setConnected] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+function DomainIcon({ domain }: { domain: string }) {
+  const color = DOMAIN_COLOR[domain] ?? 'var(--text-muted)';
+  const size = 12;
+  switch (domain) {
+    case 'process': return <Cpu size={size} color={color} />;
+    case 'repo': return <GitBranch size={size} color={color} />;
+    case 'job': return <Clock size={size} color={color} />;
+    case 'webhook': return <Webhook size={size} color={color} />;
+    case 'fabric': return <Radio size={size} color={color} />;
+    case 'heartbeat': return <Activity size={size} color={color} />;
+    case 'flow': return <CheckCircle2 size={size} color={color} />;
+    default: return <AlertTriangle size={size} color={color} />;
+  }
+}
 
-  useEffect(() => {
-    setError(null);
-    setConnected(true);
-    const cleanup = factory_client.subscribe_events(
-      topic,
-      (ev) => setEvents((prev) => [ev, ...prev].slice(0, maxEvents)),
-      {
-        on_error: (err) => { setError(err.message); setConnected(false); },
-      },
-    );
-    return () => { cleanup(); setConnected(false); };
-  }, [topic, maxEvents]);
+function formatAgo(iso: string): string {
+  const delta = Date.now() - new Date(iso).getTime();
+  if (delta < 10_000) return 'just now';
+  if (delta < 60_000) return `${Math.floor(delta / 1000)}s ago`;
+  if (delta < 3_600_000) return `${Math.floor(delta / 60_000)}m ago`;
+  return new Date(iso).toLocaleTimeString();
+}
 
+function EventRow({ event }: { event: FactoryBusEvent }) {
+  const [open, setOpen] = useState(false);
+  const domain = domainOf(event.type);
   return (
-    <section>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
-        <span style={{ fontSize: 10, letterSpacing: '.15em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-          event feed · {events.length}
+    <div
+      style={{ borderBottom: '1px solid var(--border-subtle)', padding: '8px 12px', cursor: 'pointer' }}
+      onClick={() => setOpen(v => !v)}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {open ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+        <DomainIcon domain={domain} />
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {event.type}
         </span>
-        <span style={{ fontSize: 10, color: connected ? '#6EE7B7' : '#FB7185', letterSpacing: '.1em' }}>
-          {connected ? '● live' : '● disconnected'}
+        <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+          {event.source}
         </span>
-      </header>
-
-      {error && <div style={{ color: '#FB7185', fontSize: 11, marginBottom: 8 }}>{error}</div>}
-
-      {events.length === 0 && !error && (
-        <div style={{ padding: 14, color: 'var(--text-muted)', fontSize: 11, fontStyle: 'italic', border: '1px dashed var(--border-subtle)', borderRadius: 8, textAlign: 'center' }}>
-          Listening on <code style={{ fontFamily: 'monospace' }}>{topic}</code> — no events yet.
+        <span style={{ fontSize: 10, color: 'var(--text-muted)', minWidth: 64, textAlign: 'right' }}>
+          {formatAgo(event.ts)}
+        </span>
+      </div>
+      {open && (
+        <div style={{ marginTop: 6, paddingLeft: 20, fontSize: 11, color: 'var(--text-muted)' }}>
+          {event.correlationId && (
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, marginBottom: 4 }}>
+              <strong>correlationId:</strong> {event.correlationId}
+            </div>
+          )}
+          <pre style={{
+            fontFamily: 'var(--font-mono)', fontSize: 10,
+            background: 'var(--surface-sunken)', padding: 6, borderRadius: 4,
+            marginTop: 4, overflowX: 'auto', maxHeight: 240,
+          }}>{JSON.stringify(event.data, null, 2)}</pre>
         </div>
       )}
+    </div>
+  );
+}
 
-      <div style={{ display: 'grid', gap: 3 }}>
-        {events.map((ev) => (
-          <div key={ev.id} style={{
-            display: 'grid', gridTemplateColumns: '70px 1fr 70px', gap: 8, alignItems: 'center',
-            padding: '6px 10px', borderRadius: 4,
-            background: 'var(--surface-base)', border: '1px solid var(--border-subtle)',
-            fontSize: 10,
-          }}>
-            <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace' }}>
-              {new Date(ev.timestamp).toLocaleTimeString()}
-            </span>
-            <span>
-              <span style={{ color: 'var(--color-brand-electric)', fontFamily: 'monospace', fontWeight: 600 }}>{ev.topic}</span>
-              {ev.venture_id && <span style={{ color: 'var(--text-muted)' }}> · {ev.venture_id}</span>}
-              {ev.correlation_id && <span style={{ color: 'var(--text-muted)', opacity: 0.6 }}> · {ev.correlation_id.slice(0, 8)}</span>}
-            </span>
-            <span style={{ color: 'var(--text-muted)', textAlign: 'right', fontFamily: 'monospace' }}>
-              {ev.id.slice(0, 6)}
-            </span>
-          </div>
-        ))}
+export default function FactoryEventFeed() {
+  const { events, connected, error, reconnect, clear } = useFactoryStream({ maxEvents: 300 });
+
+  const counts = useMemo(() => {
+    const c: Record<string, number> = {};
+    for (const e of events) {
+      const d = domainOf(e.type);
+      c[d] = (c[d] ?? 0) + 1;
+    }
+    return c;
+  }, [events]);
+
+  return (
+    <GlassCard>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+        <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+          Factory bus
+          {connected
+            ? <Badge variant="outline" color="#10B981"><Wifi size={10} style={{ marginRight: 4, verticalAlign: 'middle' }} />live</Badge>
+            : <Badge variant="outline" color="#EF4444"><WifiOff size={10} style={{ marginRight: 4, verticalAlign: 'middle' }} />disconnected</Badge>
+          }
+          <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>
+            {events.length} in view
+          </span>
+        </h3>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          {Object.entries(counts).slice(0, 6).map(([d, n]) => (
+            <Badge key={d} variant="outline" color={DOMAIN_COLOR[d] ?? undefined}>{d} {n}</Badge>
+          ))}
+          {!connected && (
+            <button
+              type="button" onClick={reconnect} title="Reconnect SSE"
+              style={{
+                background: 'transparent', border: '1px solid var(--border-default)',
+                borderRadius: 4, padding: '3px 6px', color: 'var(--text-muted)',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 10,
+              }}
+            >
+              <Loader2 size={11} /> reconnect
+            </button>
+          )}
+          <button
+            type="button" onClick={clear} title="Clear feed (local only)"
+            style={{
+              background: 'transparent', border: '1px solid var(--border-default)',
+              borderRadius: 4, padding: '3px 6px', color: 'var(--text-muted)',
+              cursor: 'pointer', display: 'flex', alignItems: 'center',
+            }}
+          >
+            <Trash2 size={11} />
+          </button>
+        </div>
       </div>
-    </section>
+      {error && !connected && (
+        <div style={{ fontSize: 11, color: '#FCA5A5', marginBottom: 8 }}>{error}</div>
+      )}
+      {events.length === 0 ? (
+        <EmptyState
+          title={connected ? 'Waiting for events…' : 'Not connected'}
+          description={connected
+            ? 'The Factory is idle. Invoke a flow or let the repo watcher fire.'
+            : 'Start the Factory: cd c:/Users/moust/mcv && pnpm dev'}
+        />
+      ) : (
+        <div style={{ borderTop: '1px solid var(--border-subtle)', maxHeight: 520, overflowY: 'auto' }}>
+          {events.map((e) => <EventRow key={e.id} event={e} />)}
+        </div>
+      )}
+    </GlassCard>
   );
 }
