@@ -27,8 +27,13 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
 
+      # npm install (not npm ci) — the lockfile is generated on Windows and
+      # misses some Linux-only optional deps (@emnapi/runtime, utf-8-validate,
+      # etc.) that CI's Ubuntu runner needs. `npm install` tolerates the
+      # mismatch; `npm ci` rejects it. Revisit once lockfile generation is
+      # moved to a Linux runner.
       - name: Install dependencies
-        run: npm ci
+        run: npm install --prefer-offline --no-audit --no-fund
 
       # Lint is non-blocking while we work through the ~3.2k pre-existing ESLint
       # errors that accumulated before the primary pipeline ever successfully
