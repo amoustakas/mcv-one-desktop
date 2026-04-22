@@ -15,7 +15,7 @@
 // Consumers that don't have this RPC can implement equivalent logic
 // themselves — this helper just wraps the canonical MCV signature.
 
-import { embedOne, type TaskType } from './embeddings';
+import { embed, type EmbedTaskType } from './embeddings';
 
 export interface RetrievedChunk {
   id: string;
@@ -36,7 +36,7 @@ export interface RetrieveOptions {
   topK?: number;
   threshold?: number;
   /** Embedding task type — defaults to RETRIEVAL_QUERY */
-  taskType?: TaskType;
+  taskType?: EmbedTaskType;
 }
 
 /**
@@ -48,7 +48,7 @@ export async function retrieve(opts: RetrieveOptions): Promise<RetrievedChunk[]>
   if (!opts.query || opts.query.trim().length < 2) return [];
 
   try {
-    const embedding = await embedOne(opts.query, opts.taskType ?? 'RETRIEVAL_QUERY');
+    const embedding = await embed(opts.query, { taskType: opts.taskType ?? 'RETRIEVAL_QUERY' });
     const { data, error } = await opts.supabase.rpc('match_chunks', {
       query_embedding: embedding,
       match_threshold: opts.threshold ?? 0.6,

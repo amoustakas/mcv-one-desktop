@@ -25,7 +25,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { createServiceClient } from './_lib/supabase';
 import { writeChunks, embeddingKeyPresent } from './_lib/embedding';
-import type { FoundationChunk } from './_lib/chunking';
+import { chunkDocument, type FoundationChunk } from './_lib/chunking';
 
 import { parseIpInventory } from './parsers/ip-inventory';
 import { parsePatents } from './parsers/patent-section';
@@ -310,11 +310,30 @@ async function upsertDomains(
   domains: ReturnType<typeof parseT0Portfolio>['owned'],
 ): Promise<number> {
   if (domains.length === 0) return 0;
+
+  // Pre-fetch existing entity IDs so we can null-out unmapped parent FKs
+  // rather than crashing the whole T0 pass. The T0 CSV's Holding Entity text
+  // slugifies cleanly for most rows, but slash-separated values like
+  // "EdgeIQ Holdings Inc / MCV Inc" produce IDs that don't exist.
+  const { data: entityRows } = await supabase.from('capital_legal_entity').select('id');
+  const validEntityIds = new Set(
+    ((entityRows ?? []) as Array<{ id: string }>).map((r) => r.id),
+  );
+
+  // Same defense for venture_id — any string that doesn't match a real
+  // ventures.id row would violate that FK too.
+  const { data: ventureRows } = await supabase.from('ventures').select('id');
+  const validVentureIds = new Set(
+    ((ventureRows ?? []) as Array<{ id: string }>).map((r) => r.id),
+  );
+
   const rows = domains.map((d) => ({
     fqdn: d.fqdn,
     registrar: d.registrar,
-    parent_entity_id: d.parentEntityId,
-    venture_id: d.ventureId,
+    parent_entity_id: d.parentEntityId && validEntityIds.has(d.parentEntityId)
+      ? d.parentEntityId : null,
+    venture_id: d.ventureId && validVentureIds.has(d.ventureId)
+      ? d.ventureId : null,
     status: d.status,
     registered_at: d.registeredAt,
     expires_at: d.expiresAt,
@@ -475,10 +494,6 @@ async function upsertCounselTasks(
 // ─── Small helpers ──────────────────────────────────────────────────────────
 
 function chunkWholeFile(text: string, sourceDoc: string): FoundationChunk[] {
-  // Delegate to the shared chunker so tuning stays consistent across sources.
-  // Imported lazily to keep the orchestrator's top-level imports readable.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { chunkDocument } = require('./_lib/chunking') as typeof import('./_lib/chunking');
   return chunkDocument(text, { sourceDoc, sourceSection: '(full file)' });
 }
 
