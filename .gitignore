@@ -34,4 +34,18 @@ dist-ssr
 # Claude Code scratch state — don't commit
 .claude/scheduled_tasks.lock
 .claude/sessions/
+.claude/worktrees/
 .superpowers/
+
+# Parallel-session scratch + debug artifacts — each produces thousands of files
+# that VS Code would otherwise index as "untracked" and balloon the change count.
+# Content is still on disk; just not in git or VS Code's source control view.
+.tmp.driveupload/
+.playwright-mcp/
+
+# UI walkthrough screenshots (use docs/ or per-PR attachments instead)
+local-state-*.png
+
+# One-off backup files from AI/assistant workflows
+*.gemini.bak.ts
+*.gemini.bak.tsx
