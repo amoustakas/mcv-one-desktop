@@ -9,8 +9,33 @@ Your job: build fast, ship working code, ask only when truly blocked.
 
 ## PARALLEL-SESSION DISCIPLINE (IMPORTANT)
 Tony runs multiple concurrent Claude sessions across devices on this repo. Branches
-and working trees can shift between your tool calls. To avoid committing to the
-wrong branch or losing a parallel session's work:
+and working trees can shift between your tool calls, and in the past a peer session's
+`git stash push -u` has invisibly swept a running session's uncommitted files into
+a stash labeled "stale — possibly crashed session." To avoid committing to the wrong
+branch or losing a parallel session's work:
+
+### Preferred: run each session in its own git worktree
+
+When Tony is about to start a second Claude Code session on this repo, spin up an
+isolated worktree FIRST:
+
+```bash
+./scripts/new-session.sh my-feature      # bash
+pwsh ./scripts/new-session.ps1 -Slug my-feature   # PowerShell
+```
+
+This creates a sibling directory (e.g. `mcv-one-desktop-my-feature-2026-04-16-0830`)
+on a uniquely-named branch off `origin/master`. Both sessions share the same `.git`
+database (so every commit / branch is visible in both), but each has its own working
+tree — `checkout`, `stash`, and file writes in one worktree are invisible to the
+other. **Zero cross-contamination.** Open the new directory in a separate VS Code
+window and start Claude Code there.
+
+When you spot signs that two sessions are colliding (untracked files you don't
+recognize, branch that switched under you, stashes labeled "stale-…"), STOP and
+tell Tony. Offer to set up a worktree rather than trying to share a tree.
+
+### Within a single worktree — defensive rules
 
 1. **Always `git branch --show-current` immediately before `git commit`** — not
    just at session start. Branches move under you. A commit on the wrong branch
@@ -18,15 +43,28 @@ wrong branch or losing a parallel session's work:
 2. **Before `git checkout -B` or destructive ops**, check `git status --short` for
    dirty state that another session may have left. If present, `git stash push -u -m`
    with a timestamped label instead of discarding.
-3. **Never force-push** a shared branch (triangle-integration, master) without
+3. **Never `git stash push -u` when the working tree has untracked files you did
+   not write yourself.** Those files may be another session's in-progress work.
+   If `git status -s` shows `??` lines you don't recognize, STOP and ask Tony
+   before stashing — do not auto-classify them as "stale" or "leftover."
+4. **Never force-push** a shared branch (triangle-integration, master) without
    confirming no other session is pushing to it — `git fetch` first and compare
    `origin/<branch>` tips.
-4. **Prefer uniquely-named branches** for new work (e.g. `triangle-wire-format-2026-04-15`)
+5. **Prefer uniquely-named branches** for new work (e.g. `triangle-wire-format-2026-04-15`)
    over generic names (`triangle-integration`, `feature`) that other sessions
-   may reuse.
-5. **Branch diff surprises → cherry-pick onto a fresh branch from `origin/master`**
+   may reuse. Include an owner-prefix if multiple sessions run concurrently
+   (e.g. `A-mcv-sign-…` vs `B-journey-…`).
+6. **Commit-early discipline.** Every significant milestone (a working module,
+   a passing test, a completed layer) is a commit. Uncommitted work is fragile;
+   committed work is backed up in the object database and survives any branch
+   switch or stash.
+7. **Branch diff surprises → cherry-pick onto a fresh branch from `origin/master`**
    rather than trying to salvage a contaminated branch. Git keeps every commit by
    SHA; cherry-pick is non-destructive.
+8. **If your files vanish mid-task, check the reflog + stash list before assuming
+   data loss.** `git reflog` shows every HEAD move, `git stash list` shows every
+   stash across all branches. Files written by the Write tool also still live in
+   the Claude Code conversation history as a last-resort backup.
 
 Rule of thumb: treat every interaction with shared remote state (branches, PRs, master)
 as if another human might have touched it one second ago. They probably did.
