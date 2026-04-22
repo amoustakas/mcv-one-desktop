@@ -27,6 +27,7 @@ import {
   type AttentionItem,
   type VentureRollup,
 } from '../components/command-center';
+import FactoryHeartbeat from '../components/factory/FactoryHeartbeat';
 import { staggerContainer, staggerItem } from '../lib/motion/variants';
 
 function getGreeting(): string {
@@ -185,6 +186,7 @@ export default function CommandCenter() {
           <motion.div variants={staggerItem}><StatCard icon={<Shield size={14} />} label="Won Revenue" value={stats ? formatMoney(stats.deals.wonValue) : '...'} color="#10B981" /></motion.div>
           <motion.div variants={staggerItem}><StatCard icon={<Bell size={14} />} label="Unread" value={stats?.unreadNotifications ?? 0} color={stats?.unreadNotifications ? '#EF4444' : undefined} /></motion.div>
           <motion.div variants={staggerItem}><StatCard icon={<Monitor size={14} />} label="Devices" value={deviceConnectedCount} color="#00F0FF" onClick={() => setView('device-hub')} /></motion.div>
+          <motion.div variants={staggerItem}><FactoryHeartbeat /></motion.div>
         </GridLayout>
       </motion.div>
 

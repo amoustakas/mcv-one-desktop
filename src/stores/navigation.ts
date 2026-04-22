@@ -30,6 +30,7 @@ export type ViewId =
   // Tools & AI
   | 'ai-studio'
   | 'prompt-composer'
+  | 'factory-console'
   // System
   | 'team'
   | 'settings'
