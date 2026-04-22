@@ -21,6 +21,9 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { createServiceClient } from './_lib/supabase';
 import { headSha, stagePaths, commit as gitCommit, resetHard, workingTreeIsClean } from './_lib/git';
+import {
+  EXT_CLASS, escapeRegex, isIdentifierKind, locateMatch, refineKindForLine,
+} from './_lib/naming-classification';
 
 async function main(): Promise<void> {
   const [, , cmd, ...args] = process.argv;
@@ -56,23 +59,6 @@ const IGNORE_DIRS = new Set([
   '.claude', 'memory',
   'android', 'ios',
 ]);
-const EXT_CLASS: Record<string, InsertOccurrenceInput['occurrenceKind']> = {
-  '.md':   'markdown_prose',
-  '.mdx':  'markdown_prose',
-  '.txt':  'markdown_prose',
-  '.html': 'ui_copy',
-  '.css':  'ui_copy',
-  '.scss': 'ui_copy',
-  '.tsx':  'ui_copy',
-  '.jsx':  'ui_copy',
-  '.ts':   'string_literal',
-  '.js':   'string_literal',
-  '.mjs':  'string_literal',
-  '.cjs':  'string_literal',
-  '.json': 'string_literal',
-  '.yaml': 'string_literal',
-  '.yml':  'string_literal',
-};
 
 async function scan(supabase: SupabaseClient, pathArgs: string[]): Promise<void> {
   const service = createNamingService({ supabase });
@@ -271,55 +257,17 @@ function* walk(dir: string): Generator<string> {
   }
 }
 
-function locateMatch(body: string, offset: number, needle: string): {
-  line: number;
-  column: number;
-  contextBefore: string;
-  match: string;
-  contextAfter: string;
-} {
-  let line = 1;
-  let col = 1;
-  for (let i = 0; i < offset; i += 1) {
-    if (body[i] === '\n') { line += 1; col = 1; continue; }
-    col += 1;
-  }
-  const contextBefore = body.slice(Math.max(0, offset - 60), offset);
-  const match = body.slice(offset, offset + needle.length);
-  const contextAfter = body.slice(offset + needle.length, offset + needle.length + 60);
-  return { line, column: col, contextBefore, match, contextAfter };
-}
-
-function refineKindForLine(
-  defaultKind: InsertOccurrenceInput['occurrenceKind'],
-  contextBefore: string,
-  match: string,
-): InsertOccurrenceInput['occurrenceKind'] {
-  if (defaultKind !== 'string_literal' && defaultKind !== 'ui_copy') return defaultKind;
-  const linePrefix = contextBefore.split('\n').pop() ?? '';
-  if (/\/\//.test(linePrefix) || /\*/.test(linePrefix)) return 'code_comment';
-  const charBefore = contextBefore.slice(-1);
-  if (/[A-Za-z0-9_]/.test(charBefore)) return 'identifier';
-  if (match.length > 1 && /[A-Z]/.test(match[0])) {
-    const tail = contextBefore.slice(-8);
-    if (/[A-Za-z0-9_]$/.test(tail) || /import|from|type|interface|class|function/.test(tail)) {
-      return 'identifier';
-    }
-  }
-  return defaultKind;
-}
-
-function isIdentifierKind(kind: InsertOccurrenceInput['occurrenceKind']): boolean {
-  return kind === 'identifier' || kind === 'import_path' || kind === 'type_name' || kind === 'test_name';
-}
-
-function escapeRegex(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
 void sep;
 
-main().catch((err) => {
-  console.error('naming-scanner crashed:', err);
-  process.exit(1);
-});
+// Only auto-run when invoked directly as a CLI, not when imported by a test.
+const invokedDirectly = (() => {
+  const argv1 = process.argv[1] ?? '';
+  return /naming-scanner(\.ts|\.js)?$/.test(argv1.replace(/\\/g, '/'));
+})();
+
+if (invokedDirectly) {
+  main().catch((err) => {
+    console.error('naming-scanner crashed:', err);
+    process.exit(1);
+  });
+}

@@ -13,7 +13,11 @@ import type { CreateIPMarkInput } from '@mcv/foundation-sdk/types';
 import { splitSections, type MarkdownSection } from '../_lib/markdown';
 
 const SOURCE_DOC = 'MCV-IP-Inventory-v1.1.md';
-const BULLET_LINE_RE = /^-\s+\*\*(PP[012]-[A-Z]):\s+([^*]+?)\*\*\s*(?:[-—]\s*(.+))?$/;
+// The IP Inventory v1.1 uses two bullet formats interchangeably:
+//   - **PP0-A: Title** — prose
+//   - **PP1-E: Title.** Prose     (no em-dash after bold)
+// Both feed into the same row; the trailing prose is captured in group 3.
+const BULLET_LINE_RE = /^-\s+\*\*(PP[012]-[A-Z]):\s+([^*]+?)\*\*\s*(?:[-—]\s*)?(.*)$/;
 
 export interface ParsePatentsResult {
   patents: CreateIPMarkInput[];

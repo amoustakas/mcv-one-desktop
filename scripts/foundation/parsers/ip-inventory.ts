@@ -74,14 +74,17 @@ function parseTrademarkTables(section: MarkdownSection, warnings: string[]): Cre
     if (!markCol || !priorityCol) continue;
 
     for (const row of table.rows) {
-      const rawMark = unbold(row[markCol] ?? '');
-      if (!rawMark || rawMark === '-' || rawMark.toLowerCase() === 'mark') continue;
+      const raw = row[markCol] ?? '';
+      if (!raw || raw === '-' || raw.toLowerCase() === 'mark') continue;
       const tier = firstPriorityToken(row[priorityCol] ?? '');
       if (!tier) {
-        warnings.push(`[IP Inventory ${section.heading}] skipped row with unknown priority: ${rawMark}`);
+        warnings.push(`[IP Inventory ${section.heading}] skipped row with unknown priority: ${raw}`);
         continue;
       }
-      const { markText, isCompound } = stripCompoundMarker(rawMark);
+      // Strip compound marker first; some cells look like "**NAME** (compound w/ token)"
+      // where the bold wrapper doesn't span the whole cell.
+      const { markText: stripped, isCompound } = stripCompoundMarker(raw);
+      const markText = unbold(stripped);
 
       rows.push({
         markText,
