@@ -122,6 +122,8 @@ import { manifest as stripeConnectManifest, handlers as stripeConnectHandlers } 
 // Department agents (Cassandra/Atlas/Nova/Mint/Vector/Helix) + cross-cutting intelligence
 import { departmentKits } from '@mcv/kits-sdk/builtin/department-kits';
 import { manifest as ventureIntelManifest, handlers as ventureIntelHandlers } from '@mcv/kits-sdk/builtin/venture-intelligence-kit';
+// MCV Foundation OS — IP portfolio / counsel / filings / acquisitions / naming ratifications
+import { manifest as foundationManifest, handlers as foundationHandlers } from '@mcv/kits-sdk/builtin/foundation-kit';
 
 // ---------------------------------------------------------------------------
 // Local Kit Registry — hardcoded builtin list lives here because the 95+
@@ -238,6 +240,7 @@ const builtinKits: KitInstance[] = [
   ...Object.values(departmentKits).map(({ manifest, handlers }) => kit(manifest, handlers)),
   // Cross-cutting venture intelligence (consult_departments + venture_snapshot)
   kit(ventureIntelManifest, ventureIntelHandlers),
+  kit(foundationManifest, foundationHandlers),
 ];
 
 // Wire the assembled kit list into kits-sdk's shared-singleton so
