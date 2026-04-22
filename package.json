@@ -45,6 +45,7 @@
     "@mcv/compliance-sdk": "*",
     "@mcv/core-triangle": "*",
     "@mcv/design-system": "*",
+    "@mcv/foundation-sdk": "*",
     "@mcv/kits-sdk": "*",
     "@mcv/ledger-sdk": "*",
     "@mcv/mcp-sdk": "*",
