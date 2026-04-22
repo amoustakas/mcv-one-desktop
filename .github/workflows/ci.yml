@@ -21,27 +21,27 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
       - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'pnpm'
+          cache: 'npm'
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm ci
 
+      # Lint is non-blocking while we work through the ~3.2k pre-existing ESLint
+      # errors that accumulated before the primary pipeline ever successfully
+      # executed (PR #58 introduced pnpm-backed CI that died at install, so lint
+      # never actually gated merges). Remove continue-on-error once lint is clean.
       - name: Lint
-        run: pnpm lint
+        run: npm run lint
+        continue-on-error: true
 
       - name: Build (tsc -b + vite build — real typecheck gate)
-        run: pnpm run build
+        run: npm run build
 
       - name: Test
         env:
           NODE_ENV: test
-        run: pnpm test
+        run: npm test

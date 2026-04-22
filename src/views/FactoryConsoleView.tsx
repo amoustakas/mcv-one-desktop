@@ -63,11 +63,15 @@ export default function FactoryConsoleView() {
   );
 
   // Track total mount lifetime — how long operators keep the console open per session.
-  const mountedAtRef = useRef(performance.now());
+  // Initialized inside useEffect (not at useRef init) to keep render pure per
+  // react-hooks/purity lint rule — performance.now() is impure.
+  const mountedAtRef = useRef<number | null>(null);
   useEffect(() => {
-    const start = mountedAtRef.current;
+    mountedAtRef.current = performance.now();
     return () => {
-      trackTiming('factory_console_mount', performance.now() - start);
+      if (mountedAtRef.current !== null) {
+        trackTiming('factory_console_mount', performance.now() - mountedAtRef.current);
+      }
     };
   }, []);
 

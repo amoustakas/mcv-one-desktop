@@ -411,7 +411,14 @@ export function openFactoryStream(opts: {
 // ── FactoryClient class (compat shell + DI for tests) ────────────────────
 
 export class FactoryClient {
-  constructor(private readonly options: FactoryClientOptions = {}) {}
+  // Declared explicitly (not via constructor parameter property) because
+  // the project's tsconfig has `erasableSyntaxOnly` enabled — parameter
+  // properties are TS-only syntax that can't be stripped to pure JS.
+  private readonly options: FactoryClientOptions;
+
+  constructor(options: FactoryClientOptions = {}) {
+    this.options = options;
+  }
 
   // All methods delegate to the free-function API with the injected options.
   // Methods are named snake_case to match the consumer code master shipped.
