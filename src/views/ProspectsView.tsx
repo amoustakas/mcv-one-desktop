@@ -11,6 +11,7 @@ import { PageHeader, PageShell, GlassCard, Badge, EmptyState, Modal } from '../c
 import { TRACKS, type JourneyStatus, type TrackName } from '@mcv/onboarding-sdk';
 import type { ProspectCapture } from '@mcv/onboarding-sdk';
 import { OperatorProspectIntakeWizard } from '../components/prospects/OperatorProspectIntakeWizard';
+import DossierGenerateButton from '../components/factory/DossierGenerateButton';
 
 type Tab = 'active' | 'completed' | 'all' | 'captures';
 
@@ -207,6 +208,26 @@ function ProspectRow({ journey }: { journey: JourneyWithProfile }) {
   const currentStep = journey.steps[journey.current_step_index];
   const progress = journey.steps.length === 0 ? 0 : Math.round((journey.current_step_index / journey.steps.length) * 100);
 
+  // Factory dossier context — used by the inline DossierGenerateButton to
+  // give researchDossierBuilder a useful lens per prospect track.
+  const dossierDomain =
+    journey.track === 'investor_accredited' ? 'accredited-investor-prospect'
+    : journey.track === 'investor_retail' ? 'retail-investor-prospect'
+    : journey.track === 'partner' ? 'partner-prospect'
+    : journey.track === 'creator' ? 'creator-prospect'
+    : journey.track === 'team_member' ? 'team-member-prospect'
+    : 'prospect';
+
+  const dossierContext = [
+    journey.prospect_profile.full_name ? `name: ${journey.prospect_profile.full_name}` : null,
+    `email: ${journey.prospect_profile.email}`,
+    journey.prospect_profile.role_hint ? `role hint: ${journey.prospect_profile.role_hint}` : null,
+    journey.prospect_profile.country ? `country: ${journey.prospect_profile.country}` : null,
+    journey.prospect_profile.source_venture_id ? `source: ${journey.prospect_profile.source_venture_id}` : null,
+    `track: ${journey.track}`,
+    `journey progress: ${progress}%`,
+  ].filter(Boolean).join(' · ');
+
   const handleClick = () => selectProspectJourney(journey.id);
 
   return (
@@ -250,7 +271,15 @@ function ProspectRow({ journey }: { journey: JourneyWithProfile }) {
             <span>last activity: {new Date(journey.last_activity_at).toLocaleString()}</span>
           </div>
         </div>
-        <div style={{ color: 'var(--text-muted)', fontSize: 18 }}>→</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <DossierGenerateButton
+            entityName={journey.prospect_profile.full_name ?? journey.prospect_profile.email}
+            domain={dossierDomain}
+            context={dossierContext}
+            depth={2}
+          />
+          <div style={{ color: 'var(--text-muted)', fontSize: 18 }}>→</div>
+        </div>
       </div>
     </GlassCard>
   );

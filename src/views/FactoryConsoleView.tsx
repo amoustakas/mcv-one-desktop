@@ -1,93 +1,263 @@
 // src/views/FactoryConsoleView.tsx
-// Operator console for the Local AI Factory. Pick a flow → fill input → run → watch the live stream.
+// Operator cockpit for the Local AI Factory runtime on :7004.
+//
+// Layout: Health banner + Capabilities + Flow Runner / Event Feed +
+//         LMStudio / Docker + StreamDeck / Hotkeys / Audio + Jobs + Run history.
+//
+// Observability: trackTiming fires on mount (factory_console_mount) and
+// per completed flow invocation (factory_flow_run), matching the M5/I2
+// analytics surface established for the rest of the cockpit.
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useFactoryFlows } from '../hooks/use-factory-flows';
-import { useFactoryHeartbeat } from '../hooks/use-factory-heartbeat';
-import { FlowPicker } from '../components/factory/FlowPicker';
-import { FlowRunner } from '../components/factory/FlowRunner';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ExternalLink, RefreshCw } from 'lucide-react';
+import {
+  PageHeader, PageShell, GlassCard, GridLayout, Badge, Skeleton,
+} from '../components/ui';
+import FlowRunner from '../components/factory/FlowRunner';
+import RunHistoryList from '../components/factory/RunHistoryList';
+import FactoryEventFeed from '../components/factory/FactoryEventFeed';
+import FactoryCapabilitiesPanel from '../components/factory/FactoryCapabilitiesPanel';
+import FactoryJobsPanel from '../components/factory/FactoryJobsPanel';
+import LMStudioPanel from '../components/factory/LMStudioPanel';
+import DockerPanel from '../components/factory/DockerPanel';
+import StreamDeckPanel from '../components/factory/StreamDeckPanel';
+import HotkeysPanel from '../components/factory/HotkeysPanel';
+import AudioWidget from '../components/factory/AudioWidget';
+import {
+  useFactoryHeartbeat,
+  useFactoryRunner,
+  type FactoryStatus,
+  type FlowRunRecord,
+} from '../hooks/use-factory';
 import { trackTiming } from '../lib/analytics';
 
-export function FactoryConsoleView() {
-  const flowsQ = useFactoryFlows();
-  const heartbeatQ = useFactoryHeartbeat();
-  const [selectedFlowName, setSelectedFlowName] = useState<string | null>(null);
+const STATUS_LABEL: Record<FactoryStatus, string> = {
+  online: 'Online',
+  degraded: 'Degraded',
+  offline: 'Offline',
+  loading: 'Checking…',
+};
 
-  // Track total mount lifetime of the console (how long operator has it open per session)
-  const mountedAt = useRef(performance.now());
+const STATUS_COLOR: Record<FactoryStatus, string> = {
+  online: '#10B981',
+  degraded: '#F59E0B',
+  offline: '#EF4444',
+  loading: '#64748B',
+};
+
+export default function FactoryConsoleView() {
+  // Faster heartbeat polling — this is the primary observe surface.
+  const { heartbeat, status, error, refetch, lastFetched } = useFactoryHeartbeat({
+    intervalMs: 5_000,
+    skipEmit: true,
+  });
+  const { runs, clear } = useFactoryRunner();
+
+  // Parent-held history: the internal hook keeps its own list too, but
+  // mirroring here keeps the UI consistent when FlowRunner pushes a record
+  // via onRun. Persistence will be swapped for a Fabric-audit query later.
+  const [runRecords, setRunRecords] = useState<FlowRunRecord[]>(runs);
+  const combined = useMemo(
+    () => (runRecords.length > 0 ? runRecords : runs),
+    [runRecords, runs],
+  );
+
+  // Track total mount lifetime — how long operators keep the console open per session.
+  // Initialized inside useEffect (not at useRef init) to keep render pure per
+  // react-hooks/purity lint rule — performance.now() is impure.
+  const mountedAtRef = useRef<number | null>(null);
   useEffect(() => {
-    const mountStart = mountedAt.current;
+    mountedAtRef.current = performance.now();
     return () => {
-      trackTiming('factory_console_mount', performance.now() - mountStart);
+      if (mountedAtRef.current !== null) {
+        trackTiming('factory_console_mount', performance.now() - mountedAtRef.current);
+      }
     };
   }, []);
 
-  // Bubble up run-completion latency from FlowRunner → trackTiming
-  const handleRunComplete = useCallback(
-    (flowName: string, status: string, durationMs: number) => {
-      trackTiming('factory_flow_run', durationMs, { flowName, status });
-    },
-    [],
-  );
+  // Per-run latency + status, funneled up from FlowRunner.
+  const handleRun = useCallback((record: FlowRunRecord) => {
+    setRunRecords((prev) => [record, ...prev.filter((x) => x.id !== record.id)].slice(0, 50));
 
-  const flows = flowsQ.data ?? [];
-  const selectedFlow = selectedFlowName ? flows.find((f) => f.name === selectedFlowName) ?? null : null;
-
-  const uptime_minutes = heartbeatQ.data ? Math.floor(heartbeatQ.data.uptime_ms / 60_000) : null;
-  const online = !heartbeatQ.isError && !!heartbeatQ.data;
+    if (record.completedAt) {
+      const durationMs = record.completedAt - record.startedAt;
+      const flowStatus = record.error ? 'failed' : 'succeeded';
+      trackTiming('factory_flow_run', durationMs, {
+        flowName: record.flowName,
+        status: flowStatus,
+      });
+    }
+  }, []);
 
   return (
-    <div style={{ padding: '24px 32px', maxWidth: 1300, margin: '0 auto' }}>
-      <header style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ fontSize: 11, letterSpacing: '.2em', textTransform: 'uppercase', color: 'var(--color-brand-purple)', fontWeight: 700 }}>
-            Local AI Factory
+    <PageShell scroll>
+      <PageHeader
+        title="Factory Console"
+        subtitle="Local AI Factory — Genkit runtime on :7004, feeding the MCV ecosystem"
+      >
+        <button
+          type="button"
+          onClick={refetch}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '6px 10px', borderRadius: 4,
+            background: 'var(--surface-raised)', color: 'var(--text-primary)',
+            border: '1px solid var(--border-default)', cursor: 'pointer', fontSize: 12,
+          }}
+        >
+          <RefreshCw size={12} /> Refresh
+        </button>
+        <a
+          href="http://localhost:4000"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '6px 10px', borderRadius: 4,
+            background: 'var(--surface-raised)', color: 'var(--text-primary)',
+            border: '1px solid var(--border-default)', textDecoration: 'none', fontSize: 12,
+          }}
+        >
+          <ExternalLink size={12} /> Genkit UI
+        </a>
+      </PageHeader>
+
+      {/* Health banner */}
+      <GlassCard style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span
+              aria-hidden
+              style={{
+                width: 10, height: 10, borderRadius: '50%',
+                background: STATUS_COLOR[status],
+                boxShadow: `0 0 8px ${STATUS_COLOR[status]}`,
+              }}
+            />
+            <span style={{ fontWeight: 600, fontSize: 14 }}>{STATUS_LABEL[status]}</span>
           </div>
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 4,
-            padding: '2px 8px', borderRadius: 4,
-            fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase',
-            background: online ? 'color-mix(in srgb, #6EE7B7 15%, transparent)' : 'color-mix(in srgb, #FB7185 15%, transparent)',
-            color: online ? '#6EE7B7' : '#FB7185',
-          }}>
-            {online ? '● online' : '● offline'}
-          </span>
-        </div>
-        <h1 style={{ margin: '4px 0 0', fontSize: 28, fontWeight: 800, color: 'var(--text-primary)' }}>
-          Factory Console
-        </h1>
-        <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
-          {online && heartbeatQ.data
-            ? `${heartbeatQ.data.local_model ?? 'no local model'}${heartbeatQ.data.gemini_available ? ' + gemini escalation' : ''} · uptime ${uptime_minutes}m · ${heartbeatQ.data.active_runs} active run${heartbeatQ.data.active_runs === 1 ? '' : 's'}`
-            : 'factory runtime unreachable — start with `pnpm --dir c:/Users/moust/mcv run genkit:start`'}
-        </p>
-      </header>
 
-      {flowsQ.isLoading && <div style={{ color: 'var(--text-muted)' }}>Loading flows…</div>}
-      {flowsQ.isError && (
-        <div style={{ padding: 14, borderRadius: 10, background: 'color-mix(in srgb, #FB7185 12%, transparent)', color: '#FB7185' }}>
-          Couldn't reach factory: {flowsQ.error instanceof Error ? flowsQ.error.message : String(flowsQ.error)}
+          {heartbeat ? (
+            <>
+              <StatPair label="PID" value={String(heartbeat.pid)} />
+              <StatPair label="Uptime" value={`${heartbeat.uptimeSec}s`} />
+              <StatPair
+                label="Local models"
+                value={
+                  heartbeat.localModels.reachable
+                    ? `${heartbeat.localModels.models.length} loaded`
+                    : 'unreachable'
+                }
+                hint={
+                  heartbeat.localModels.reachable
+                    ? heartbeat.localModels.models.slice(0, 3).join(', ')
+                    : heartbeat.localModels.error
+                }
+              />
+              <StatPair
+                label="Triangle"
+                value={heartbeat.triangle.internalSecret ? 'configured' : 'not configured'}
+                hint={`Fabric ${heartbeat.triangle.fabric.url} · Intel ${heartbeat.triangle.intelligence.url}`}
+              />
+              <StatPair
+                label="Last heartbeat"
+                value={lastFetched ? new Date(lastFetched).toLocaleTimeString() : '—'}
+              />
+            </>
+          ) : (
+            <>
+              <Skeleton style={{ width: 120, height: 14 }} />
+              <Skeleton style={{ width: 120, height: 14 }} />
+            </>
+          )}
+
+          {error && <Badge variant="outline" color="#EF4444">{error}</Badge>}
+        </div>
+      </GlassCard>
+
+      {/* Host capabilities — CLIs, repos watched, models, jobs, webhooks, devices */}
+      <div style={{ marginBottom: 16 }}>
+        <FactoryCapabilitiesPanel />
+      </div>
+
+      {/* Top row: Flow Runner + Event Feed */}
+      <GridLayout cols={2} gap="md">
+        <FlowRunner onRun={handleRun} />
+        <FactoryEventFeed />
+      </GridLayout>
+
+      {/* LMStudio + Docker control */}
+      <div style={{ marginTop: 16 }}>
+        <GridLayout cols={2} gap="md">
+          <LMStudioPanel />
+          <DockerPanel />
+        </GridLayout>
+      </div>
+
+      {/* Device I/O: Stream Deck · Hotkeys · Audio */}
+      <div style={{ marginTop: 16 }}>
+        <GridLayout cols={3} gap="md">
+          <StreamDeckPanel />
+          <HotkeysPanel />
+          <AudioWidget />
+        </GridLayout>
+      </div>
+
+      {/* Jobs: scheduled cron + one-shot queue */}
+      <div style={{ marginTop: 16 }}>
+        <FactoryJobsPanel />
+      </div>
+
+      {/* Run history spans full width so dossier cards have room to breathe */}
+      <div style={{ marginTop: 16 }}>
+        <RunHistoryList runs={combined} />
+      </div>
+
+      {combined.length > 0 && (
+        <div style={{ marginTop: 8, textAlign: 'right' }}>
+          <button
+            type="button"
+            onClick={() => {
+              clear();
+              setRunRecords([]);
+            }}
+            style={{
+              background: 'transparent', border: 'none', color: 'var(--text-muted)',
+              fontSize: 11, cursor: 'pointer', textDecoration: 'underline',
+            }}
+          >
+            clear history
+          </button>
         </div>
       )}
+    </PageShell>
+  );
+}
 
-      {!flowsQ.isLoading && !flowsQ.isError && flows.length === 0 && (
-        <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border-subtle)', borderRadius: 12 }}>
-          Factory online but no flows registered yet. Scaffold the first one in <code>c:/Users/moust/mcv/src/flows/</code>.
-        </div>
-      )}
+export { FactoryConsoleView };
 
-      {flows.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 300px) minmax(0, 1fr)', gap: 20 }}>
-          <aside>
-            <FlowPicker flows={flows} selected={selectedFlowName} onSelect={setSelectedFlowName} />
-          </aside>
-          <main>
-            <FlowRunner flow={selectedFlow} onRunComplete={handleRunComplete} />
-          </main>
-        </div>
+function StatPair({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <span
+        style={{
+          fontSize: 11, color: 'var(--text-muted)',
+          textTransform: 'uppercase', letterSpacing: '0.05em',
+        }}
+      >
+        {label}
+      </span>
+      <span style={{ fontSize: 13, fontWeight: 600 }}>{value}</span>
+      {hint && (
+        <span
+          style={{
+            fontSize: 10, color: 'var(--text-muted)',
+            fontFamily: 'var(--font-mono)',
+          }}
+        >
+          {hint}
+        </span>
       )}
     </div>
   );
 }
-
-export default FactoryConsoleView;

@@ -30,6 +30,7 @@ export type ViewId =
   // Tools & AI
   | 'ai-studio'
   | 'prompt-composer'
+  | 'factory-console'
   // System
   | 'team'
   | 'settings'
@@ -230,7 +231,7 @@ const VIEW_LABELS: Record<string, string> = {
   engineering: 'Engineering', ops: 'Operations', forge: 'Forge',
   sessions: 'Sessions', 'war-room': 'War Room', crm: 'CRM',
   growth: 'Growth', 'comms-hub': 'Communications Hub', tasks: 'Tasks', docs: 'Documents',
-  'ai-studio': 'AI Studio', 'prompt-composer': 'Prompt Composer',
+  'ai-studio': 'AI Studio', 'prompt-composer': 'Prompt Composer', 'factory-console': 'Factory Console',
   team: 'Team', settings: 'Settings', 'kit-store': 'Kit Store', 'kit-studio': 'Kit Studio',
   memory: 'Memory Hub', pipeline: 'Pipeline', 'control-room': 'Control Room',
   'device-hub': 'Device Hub', 'stream-deck': 'Stream Deck',

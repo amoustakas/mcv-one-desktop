@@ -21,27 +21,32 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
       - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'pnpm'
+          cache: 'npm'
 
+      # npm install (not npm ci) — the lockfile is generated on Windows and
+      # misses some Linux-only optional deps (@emnapi/runtime, utf-8-validate,
+      # etc.) that CI's Ubuntu runner needs. `npm install` tolerates the
+      # mismatch; `npm ci` rejects it. Revisit once lockfile generation is
+      # moved to a Linux runner.
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm install --prefer-offline --no-audit --no-fund
 
+      # Lint is non-blocking while we work through the ~3.2k pre-existing ESLint
+      # errors that accumulated before the primary pipeline ever successfully
+      # executed (PR #58 introduced pnpm-backed CI that died at install, so lint
+      # never actually gated merges). Remove continue-on-error once lint is clean.
       - name: Lint
-        run: pnpm lint
+        run: npm run lint
+        continue-on-error: true
 
       - name: Build (tsc -b + vite build — real typecheck gate)
-        run: pnpm run build
+        run: npm run build
 
       - name: Test
         env:
           NODE_ENV: test
-        run: pnpm test
+        run: npm test

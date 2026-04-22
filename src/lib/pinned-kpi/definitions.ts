@@ -199,7 +199,10 @@ const knowledgeTiles: TileDefinition[] = [
     source: async () => mock(12), formatter: (v) => count(Number(v)) },
 ];
 
-// Factory tiles (operations suite — Local AI Factory heartbeat + run throughput)
+// Factory tiles (operations suite — Local AI Factory heartbeat + local-model presence)
+// Heartbeat shape matches what the :7004 runtime actually returns — uptimeSec,
+// localModels.{reachable,models}, triangle.internalSecret — not the speculative
+// uptime_ms/local_model/gemini_available shape from pre-merge master.
 const factoryTiles: TileDefinition[] = [
   {
     id: 'fct_heartbeat',
@@ -210,16 +213,24 @@ const factoryTiles: TileDefinition[] = [
       try {
         const { factory_client } = await import('../factory-client');
         const hb = await factory_client.heartbeat();
-        const uptime_h = Math.floor(hb.uptime_ms / 3_600_000);
-        const uptime_m = Math.floor((hb.uptime_ms % 3_600_000) / 60_000);
+        const uptimeMs = hb.uptimeSec * 1000;
+        const uptime_h = Math.floor(uptimeMs / 3_600_000);
+        const uptime_m = Math.floor((uptimeMs % 3_600_000) / 60_000);
         const uptime_label = uptime_h > 0 ? `${uptime_h}h ${uptime_m}m` : `${uptime_m}m`;
+        const modelCount = hb.localModels?.models?.length ?? 0;
+        const reachable = hb.localModels?.reachable ?? false;
+        const triangleOk = hb.triangle?.internalSecret ?? false;
         return {
-          value: hb.local_model ? 'online' : 'no-model',
-          secondary: `${uptime_label} · ${hb.active_runs} active · ${hb.local_model ?? 'gemini-only'}`,
-          delta: hb.gemini_available ? { direction: 'up', magnitude: 0, period: 'gemini ready' } : undefined,
+          value: reachable ? 'online' : (triangleOk ? 'gemini-only' : 'no-models'),
+          secondary: `${uptime_label} · pid ${hb.pid} · ${modelCount} local model${modelCount === 1 ? '' : 's'}`,
+          delta: triangleOk ? { direction: 'up', magnitude: 0, period: 'triangle configured' } : undefined,
         };
       } catch {
-        return { value: 'offline', secondary: 'runtime unreachable', delta: { direction: 'down', magnitude: 0, period: 'check :7004' } };
+        return {
+          value: 'offline',
+          secondary: 'runtime unreachable',
+          delta: { direction: 'down', magnitude: 0, period: 'check :7004' },
+        };
       }
     },
     formatter: (v) => String(v),
@@ -227,13 +238,20 @@ const factoryTiles: TileDefinition[] = [
   {
     id: 'fct_runs_active',
     suite: 'operations',
-    label: 'Factory · active runs',
+    label: 'Factory · local models',
     accent: 'var(--color-brand-electric)',
     source: async () => {
       try {
         const { factory_client } = await import('../factory-client');
         const hb = await factory_client.heartbeat();
-        return { value: hb.active_runs, secondary: hb.last_event_ts ? `last event ${new Date(hb.last_event_ts).toLocaleTimeString()}` : 'no events yet' };
+        const count = hb.localModels?.models?.length ?? 0;
+        const firstModel = hb.localModels?.models?.[0];
+        return {
+          value: count,
+          secondary: firstModel
+            ? `${firstModel}${count > 1 ? ` +${count - 1}` : ''}`
+            : (hb.localModels?.error ?? 'no models loaded'),
+        };
       } catch {
         return { value: 0, secondary: 'offline' };
       }
