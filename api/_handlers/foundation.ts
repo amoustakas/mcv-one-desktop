@@ -346,6 +346,51 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (error) throw error;
         return res.json({ domains: data ?? [] });
       }
+
+      // ─── GitHub repository registry (GitHub-API-synced) ───────────────
+      // Hydrated by scripts/seed-github-repos.ts which calls the GitHub REST
+      // API and upserts into github_repos. UI consumes via the
+      // RepositoryPortfolioView. Mirrors the domain_registry pattern.
+      case 'list-github-repos': {
+        const { data, error } = await supabase
+          .from('github_repos')
+          .select('*')
+          .order('pushed_at', { ascending: false, nullsFirst: false });
+        if (error) throw error;
+        return res.json({ repos: data ?? [] });
+      }
+
+      // ─── Vercel projects registry (Vercel-API-synced) ─────────────────
+      // Hydrated by scripts/seed-vercel-deployments.ts which calls the
+      // Vercel REST API and upserts into vercel_projects. Paired with
+      // list-vercel-deployments for the Deployment Portfolio panel.
+      case 'list-vercel-projects': {
+        const { data, error } = await supabase
+          .from('vercel_projects')
+          .select('*')
+          .order('last_deployment_at', { ascending: false, nullsFirst: false });
+        if (error) throw error;
+        return res.json({ projects: data ?? [] });
+      }
+
+      // ─── Vercel deployments registry (Vercel-API-synced) ──────────────
+      // Hydrated by scripts/seed-vercel-deployments.ts. Supports optional
+      // filters: state=ERROR|READY|BUILDING, target=production|preview,
+      // project_id=<vercel_project_id>, limit=<n> (default 100).
+      case 'list-vercel-deployments': {
+        let q = supabase
+          .from('vercel_deployments')
+          .select('*')
+          .order('created_at_vercel', { ascending: false });
+        if (typeof p.state === 'string') q = q.eq('state', p.state);
+        if (typeof p.target === 'string') q = q.eq('target', p.target);
+        if (typeof p.project_id === 'string') q = q.eq('vercel_project_id', p.project_id);
+        const limit = typeof p.limit === 'number' ? p.limit : 100;
+        q = q.limit(limit);
+        const { data, error } = await q;
+        if (error) throw error;
+        return res.json({ deployments: data ?? [] });
+      }
       case 'seed-urgent-acquisitions': {
         const result = await acquisition.seedUrgent();
         if (result.inserted > 0) {
