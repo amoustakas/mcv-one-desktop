@@ -19,7 +19,10 @@
     "./core/auth-router":        { "types": "./src/core/auth-router.ts",        "default": "./src/core/auth-router.ts" },
     "./solana/token-engine":     { "types": "./src/solana/token-engine.ts",     "default": "./src/solana/token-engine.ts" },
     "./solana/verifiable-build": { "types": "./src/solana/verifiable-build.ts", "default": "./src/solana/verifiable-build.ts" },
-    "./compliance/fintrac-tracker": { "types": "./src/compliance/fintrac-tracker.ts", "default": "./src/compliance/fintrac-tracker.ts" }
+    "./compliance/fintrac-tracker": { "types": "./src/compliance/fintrac-tracker.ts", "default": "./src/compliance/fintrac-tracker.ts" },
+    "./ztag/commission-dag":     { "types": "./src/ztag/commission-dag.ts",     "default": "./src/ztag/commission-dag.ts" },
+    "./ztag/vesting":            { "types": "./src/ztag/vesting.ts",            "default": "./src/ztag/vesting.ts" },
+    "./ztag/acs-controller":     { "types": "./src/ztag/acs-controller.ts",     "default": "./src/ztag/acs-controller.ts" }
   },
   "files": ["src"],
   "dependencies": {
