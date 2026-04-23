@@ -59,6 +59,13 @@ const GrowthView = lazyRetry(() => import('./views/GrowthView'));
 const TasksView = lazyRetry(() => import('./views/TasksView'));
 const EpicBoardView = lazyRetry(() => import('./views/EpicBoardView'));
 const SuiteView = lazyRetry(() => import('./views/suites/SuiteView'));
+// Foundation OS v1 — Phase 3 cockpit panels
+const FoundationCounselCockpitView = lazyRetry(() => import('./views/foundation/CounselCockpitView'));
+const FoundationIPPortfolioView = lazyRetry(() => import('./views/foundation/IPPortfolioView'));
+const FoundationDomainPortfolioView = lazyRetry(() => import('./views/foundation/DomainPortfolioView'));
+const FoundationEntityStackView = lazyRetry(() => import('./views/foundation/EntityStackView'));
+const FoundationNamingBoardView = lazyRetry(() => import('./views/foundation/NamingRatificationBoardView'));
+const FoundationFilingsCalendarView = lazyRetry(() => import('./views/foundation/FilingsCalendarView'));
 const VentureIntegrationsView = lazyRetry(() => import('./views/VentureIntegrationsView'));
 const CRMView = lazyRetry(() => import('./views/CRMView'));
 const CapitalGlobalView = lazyRetry(() => import('./views/CapitalGlobalView'));
@@ -235,6 +242,20 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <SuiteView suiteId="ventures-workspace" />;
     case 'suite-arcade-lab':
       return <SuiteView suiteId="arcade-lab" />;
+    case 'suite-foundation':
+      return <SuiteView suiteId="foundation" />;
+    case 'foundation-counsel':
+      return <FoundationCounselCockpitView />;
+    case 'foundation-ip':
+      return <FoundationIPPortfolioView />;
+    case 'foundation-domains':
+      return <FoundationDomainPortfolioView />;
+    case 'foundation-entities':
+      return <FoundationEntityStackView />;
+    case 'foundation-naming':
+      return <FoundationNamingBoardView />;
+    case 'foundation-filings':
+      return <FoundationFilingsCalendarView />;
     case 'crm':
       return <CRMView />;
     case 'capital':

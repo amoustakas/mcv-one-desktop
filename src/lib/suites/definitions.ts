@@ -17,7 +17,8 @@ export type SuiteId =
   | 'strategy-intelligence'
   | 'ops-infra'
   | 'ventures-workspace'
-  | 'arcade-lab';
+  | 'arcade-lab'
+  | 'foundation';
 
 export interface SuiteTool {
   /** View id the tool opens (must match an App.tsx case) */
@@ -293,6 +294,28 @@ export const SUITES: SuiteDefinition[] = [
     memoryTags: ['experimental', 'lab'],
   },
 ];
+
+// Foundation suite — added in Phase 3 of Foundation OS v1.
+// Exposes the 6 cockpit panels + the 24 NAOS tools from foundation-kit.
+SUITES.push({
+  id: 'foundation',
+  label: 'Foundation',
+  tagline: 'IP · counsel · entities · domains · naming — the legal perimeter',
+  icon: 'Scale',
+  color: '#00F5FF',
+  agents: ['aegis', 'atlas', 'argus'],
+  tools: [
+    { viewId: 'foundation-counsel', label: 'Counsel Cockpit', description: '3 workstream cards + embedded epic board', icon: 'Gavel', category: 'manage' },
+    { viewId: 'foundation-ip', label: 'IP Portfolio', description: 'Trademarks / patents / copyrights / trade secrets', icon: 'Shield', category: 'manage' },
+    { viewId: 'foundation-domains', label: 'Domain Portfolio', description: '4 urgency lanes — 🔴 Hunter-gating, 🟠 30-day, 🟢 defensive', icon: 'Globe', category: 'manage' },
+    { viewId: 'foundation-entities', label: 'Entity Stack', description: 'Root → Crown pair → operating subs → venture SPVs', icon: 'Network', category: 'analyze' },
+    { viewId: 'foundation-naming', label: 'Naming Board', description: '6 ratifications + occurrence review + git apply/rollback', icon: 'FileSignature', category: 'manage' },
+    { viewId: 'foundation-filings', label: 'Filings Calendar', description: 'Critical 30d / 90d / year-one bands + Blue Marlin gate', icon: 'CalendarCheck', category: 'analyze' },
+    { kitId: 'foundation', label: 'Foundation (chat)', description: '24 NAOS tools — IP, counsel, acquisitions, naming', icon: 'Sparkles', category: 'manage' },
+  ],
+  primaryKits: ['foundation'],
+  memoryTags: ['foundation', 'legal', 'ip', 'counsel', 'entities'],
+});
 
 export function getSuite(id: SuiteId): SuiteDefinition | undefined {
   return SUITES.find(s => s.id === id);

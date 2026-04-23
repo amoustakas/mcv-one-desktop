@@ -164,7 +164,15 @@ export type ViewId =
   | 'suite-strategy-intelligence'
   | 'suite-ops-infra'
   | 'suite-ventures-workspace'
-  | 'suite-arcade-lab';
+  | 'suite-arcade-lab'
+  | 'suite-foundation'
+  // Foundation OS suite panels
+  | 'foundation-counsel'
+  | 'foundation-ip'
+  | 'foundation-domains'
+  | 'foundation-entities'
+  | 'foundation-naming'
+  | 'foundation-filings';
 
 export type ContextMode = 'global' | 'venture';
 
@@ -284,6 +292,14 @@ const VIEW_LABELS: Record<string, string> = {
   prospects: 'Onboarding Funnel',
   'prospect-profile': 'Prospect',
   people: 'People',
+  // Foundation OS v1 — suite hub + 6 panels
+  'suite-foundation': 'Foundation',
+  'foundation-counsel': 'Counsel Cockpit',
+  'foundation-ip': 'IP Portfolio',
+  'foundation-domains': 'Domain Portfolio',
+  'foundation-entities': 'Entity Stack',
+  'foundation-naming': 'Naming Board',
+  'foundation-filings': 'Filings Calendar',
 };
 
 export const useNavigation = create<NavigationState>()(
