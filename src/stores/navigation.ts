@@ -175,6 +175,7 @@ export type ViewId =
   | 'foundation-entities'
   | 'foundation-naming'
   | 'foundation-filings'
+  | 'agentic-draft-inbox'
   // Agentic OS — Layer 1 dev panels
   | 'internal-event-stream';
 
@@ -306,6 +307,8 @@ const VIEW_LABELS: Record<string, string> = {
   'foundation-entities': 'Entity Stack',
   'foundation-naming': 'Naming Board',
   'foundation-filings': 'Filings Calendar',
+  // Agentic OS
+  'agentic-draft-inbox': 'Draft Inbox',
   // Agentic OS dev panels
   'internal-event-stream': 'Event Stream',
 };
