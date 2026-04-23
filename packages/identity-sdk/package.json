@@ -1,0 +1,21 @@
+{
+  "name": "@mcv/identity-sdk",
+  "version": "0.1.0",
+  "description": "MCV Continuous Ambient Trust Engine (mcv.id L2). Layered on Clerk Enterprise (L1 Session Ledger), injects an Omni-Trust Score + Civic Clearance tier into JWT custom claims based on ambient biometrics, 4D spatial context, active step-up attestations, and Canadian/US civic identity federation. Augments — never replaces — existing Clerk session management.",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".":                 { "types": "./src/index.ts",          "default": "./src/index.ts" },
+    "./types":           { "types": "./src/types.ts",          "default": "./src/types.ts" },
+    "./trust-engine":    { "types": "./src/trust-engine.ts",   "default": "./src/trust-engine.ts" },
+    "./claims":          { "types": "./src/claims.ts",         "default": "./src/claims.ts" },
+    "./step-up":         { "types": "./src/step-up.ts",        "default": "./src/step-up.ts" }
+  },
+  "files": ["src"],
+  "scripts": {
+    "lint": "echo 'no lint yet'",
+    "test": "echo 'no tests yet'"
+  }
+}
