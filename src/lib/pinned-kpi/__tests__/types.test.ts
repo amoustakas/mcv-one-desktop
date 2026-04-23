@@ -1,13 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import type { SuiteId, TileDefinition } from '../types';
+import type { TileDefinition } from '../types';
 import { SUITE_IDS } from '../types';
 
 describe('pinned-kpi types', () => {
-  it('exports the canonical 10 SuiteId values', () => {
+  it('exports the canonical 11 SuiteId values', () => {
     expect(SUITE_IDS).toEqual([
       'command-center',
       'capital', 'growth', 'payments', 'crm',
       'creative', 'engineering', 'operations', 'knowledge', 'comms',
+      'foundation',
     ]);
   });
 
