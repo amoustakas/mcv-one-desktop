@@ -1,0 +1,35 @@
+{
+  "name": "@mcv/events-sdk",
+  "version": "0.1.0",
+  "description": "MCV Agentic OS Layer 1 — typed publish/subscribe substrate over Supabase realtime. Provides EventEnvelope<T>, code-first integration contracts, DLQ + replay, and per-module emissions/subscriptions registry. Underpins workflow triggers (M-F2) + agent subscriptions (M-F3).",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".":                    { "types": "./src/index.ts",              "default": "./src/index.ts" },
+    "./types":              { "types": "./src/types.ts",              "default": "./src/types.ts" },
+    "./envelope":           { "types": "./src/envelope.ts",           "default": "./src/envelope.ts" },
+    "./publisher":          { "types": "./src/publisher.ts",          "default": "./src/publisher.ts" },
+    "./subscriber":         { "types": "./src/subscriber.ts",         "default": "./src/subscriber.ts" },
+    "./registry":           { "types": "./src/registry.ts",           "default": "./src/registry.ts" },
+    "./replay":             { "types": "./src/replay.ts",             "default": "./src/replay.ts" },
+    "./dead-letter":        { "types": "./src/dead-letter.ts",        "default": "./src/dead-letter.ts" },
+    "./contracts":          { "types": "./src/contracts/index.ts",    "default": "./src/contracts/index.ts" },
+    "./contracts/foundation": { "types": "./src/contracts/foundation.ts", "default": "./src/contracts/foundation.ts" },
+    "./contracts/capital":    { "types": "./src/contracts/capital.ts",    "default": "./src/contracts/capital.ts" },
+    "./contracts/commerce":   { "types": "./src/contracts/commerce.ts",   "default": "./src/contracts/commerce.ts" },
+    "./contracts/mcv-sign":   { "types": "./src/contracts/mcv-sign.ts",   "default": "./src/contracts/mcv-sign.ts" }
+  },
+  "files": ["src"],
+  "dependencies": {
+    "zod": "^4.3.6"
+  },
+  "peerDependencies": {
+    "@supabase/supabase-js": "^2.0.0"
+  },
+  "scripts": {
+    "lint": "echo 'no lint yet'",
+    "test": "echo 'no tests yet'"
+  }
+}

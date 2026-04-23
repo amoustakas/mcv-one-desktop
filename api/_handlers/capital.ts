@@ -11,7 +11,7 @@ import {
 } from '@mcv/capital-sdk';
 import { makeCapitalLedgerAdapter, makeCapitalPaymentRouterAdapter } from '../../src/lib/capital/adapters';
 import { paymentRouter } from '../../src/lib/payments/router';
-import { createServerFabric } from '../../src/lib/mcv-core/fabric';
+import { createPublisher } from '@mcv/events-sdk';
 import {
   requireVentureScope,
   VentureScopeError,
@@ -19,9 +19,6 @@ import {
 } from '../../src/lib/server/require-venture-scope';
 
 import { requestLogger } from '../../src/lib/server/logger';
-// Fabric client (null when FABRIC_URL isn't configured — fire-and-forget
-// publishes degrade gracefully). Instantiated once per serverless cold start.
-const fabric = createServerFabric();
 
 async function requireAuth(req: VercelRequest, res: VercelResponse): Promise<string | null> {
   const secretKey = process.env.CLERK_SECRET_KEY;
@@ -51,13 +48,21 @@ const engine = createCapitalEngine({
   paymentRouter: makeCapitalPaymentRouterAdapter(paymentRouter),
 });
 
+// Typed events-sdk publisher — routes through event_log (Agentic OS Layer 1).
+// Swapped in for the prior Fabric HTTP publish: same ergonomics for call sites,
+// durable event_log archive, Supabase-realtime fan-out. No registry attached
+// here so legacy callers with loosely-typed payloads still publish; stricter
+// validation lives on new-code paths (workflow engine M-F2).
+const eventPublisher = createPublisher({ supabase });
+
 // Fire-and-forget lifecycle event helper — TWO sinks:
 //   1. `notifications` table: Desktop bell + cron-notifications-dispatch
 //      deliver to slack/email when channels JSON is populated.
-//   2. Fabric event bus (when FABRIC_URL set): real-time fan-out to any
-//      subscriber — portal, investor apps, external webhooks, agents.
+//   2. event_log via @mcv/events-sdk: real-time fan-out + durable archive +
+//      replayable. Powers EventStreamView, workflow triggers (M-F2), and
+//      agent subscriptions (M-F3).
 //
-// Both are best-effort. Fabric outages never block the primary mutation.
+// Both are best-effort. Event-bus outages never block the primary mutation.
 // Topic format documented in docs/capital/PROTOCOL.md §Event Schema:
 //   capital.<entity>.<action>  e.g. capital.round.created, capital.distribution.paid
 async function publishCapitalEvent(
@@ -83,22 +88,20 @@ async function publishCapitalEvent(
     console.warn(`[capital ${topic}] notify failed:`, err instanceof Error ? err.message : err);
   }
 
-  // Sink 2: Fabric pub-sub (degrades silently when not configured)
-  if (fabric) {
-    try {
-      await fabric.publish({
-        topic,
-        payload: {
-          title,
-          description: opts.description ?? null,
-          type: opts.type ?? 'info',
-          ...(opts.payload ?? {}),
-        },
-        ventureId: opts.ventureId,
-      });
-    } catch (err) {
-      console.warn(`[capital ${topic}] fabric publish failed:`, err instanceof Error ? err.message : err);
-    }
+  // Sink 2: event_log via events-sdk
+  try {
+    await eventPublisher.publish(
+      topic,
+      {
+        title,
+        description: opts.description ?? null,
+        type: opts.type ?? 'info',
+        ...(opts.payload ?? {}),
+      },
+      { ventureId: opts.ventureId ?? null, emittedBy: 'system:capital' },
+    );
+  } catch (err) {
+    console.warn(`[capital ${topic}] event_log publish failed:`, err instanceof Error ? err.message : err);
   }
 }
 

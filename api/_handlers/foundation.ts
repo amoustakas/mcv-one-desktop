@@ -27,12 +27,9 @@ import {
   createIngestionService,
   CROWN_ENTITY_IDS,
 } from '@mcv/foundation-sdk';
+import { createPublisher } from '@mcv/events-sdk';
 import { makeCapitalLedgerAdapter } from '../../src/lib/capital/adapters';
 import { requestLogger } from '../../src/lib/server/logger';
-import { createServerFabric } from '../../src/lib/mcv-core/fabric';
-
-// Fabric client for cross-venture event publishing (null when FABRIC_URL unset).
-const fabric = createServerFabric();
 
 // Clerk-backed auth (matches api/_handlers/capital.ts pattern).
 async function requireAuth(req: VercelRequest, res: VercelResponse): Promise<string | null> {
@@ -70,7 +67,20 @@ const naming = createNamingService({ supabase });
 const filings = createFilingsService({ supabase, ledger });
 const ingestion = createIngestionService({ supabase });
 
-// Fire-and-forget notification + fabric publish. Non-fatal.
+// Typed events-sdk publisher — routes through event_log (Agentic OS Layer 1).
+// No registry attached here so legacy call sites that pass loosely-typed
+// payloads still publish; strict validation lives on new-code paths (workflow
+// engine M-F2, agent subscribers M-F3) which instantiate their own publisher
+// with a ContractRegistry. Until then, subscribers validate at the receive
+// boundary — producer → consumer drift stays observable without blocking ship.
+const eventPublisher = createPublisher({ supabase });
+
+// Fire-and-forget notification + typed event publish. Non-fatal.
+//
+// Two sinks, both best-effort:
+//   1. notifications row — drives the bell UI + cron-notifications-dispatch.
+//   2. event_log via @mcv/events-sdk — durable typed bus, powers EventStreamView,
+//      workflow triggers (M-F2), and agent subscriptions (M-F3).
 async function publishFoundationEvent(
   topic: string,
   title: string,
@@ -91,21 +101,19 @@ async function publishFoundationEvent(
   } catch (err) {
     console.warn(`[foundation ${topic}] notify failed:`, err instanceof Error ? err.message : err);
   }
-  if (fabric) {
-    try {
-      await fabric.publish({
-        topic,
-        payload: {
-          title,
-          description: opts.description ?? null,
-          type: opts.type ?? 'info',
-          ...(opts.payload ?? {}),
-        },
-        ventureId: undefined,
-      });
-    } catch (err) {
-      console.warn(`[foundation ${topic}] fabric publish failed:`, err instanceof Error ? err.message : err);
-    }
+  try {
+    await eventPublisher.publish(
+      topic,
+      {
+        title,
+        description: opts.description ?? null,
+        type: opts.type ?? 'info',
+        ...(opts.payload ?? {}),
+      },
+      { ventureId: null, emittedBy: 'system:foundation' },
+    );
+  } catch (err) {
+    console.warn(`[foundation ${topic}] event_log publish failed:`, err instanceof Error ? err.message : err);
   }
 }
 

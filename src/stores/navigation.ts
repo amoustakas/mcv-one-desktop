@@ -172,7 +172,9 @@ export type ViewId =
   | 'foundation-domains'
   | 'foundation-entities'
   | 'foundation-naming'
-  | 'foundation-filings';
+  | 'foundation-filings'
+  // Agentic OS — Layer 1 dev panels
+  | 'internal-event-stream';
 
 export type ContextMode = 'global' | 'venture';
 
@@ -300,6 +302,8 @@ const VIEW_LABELS: Record<string, string> = {
   'foundation-entities': 'Entity Stack',
   'foundation-naming': 'Naming Board',
   'foundation-filings': 'Filings Calendar',
+  // Agentic OS dev panels
+  'internal-event-stream': 'Event Stream',
 };
 
 export const useNavigation = create<NavigationState>()(

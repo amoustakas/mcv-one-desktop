@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { lazyRetry } from './lib/lazy-retry';
 import AnimatedBackground from './components/AnimatedBackground';
 import NavRail from './components/NavRail';
@@ -66,6 +66,8 @@ const FoundationDomainPortfolioView = lazyRetry(() => import('./views/foundation
 const FoundationEntityStackView = lazyRetry(() => import('./views/foundation/EntityStackView'));
 const FoundationNamingBoardView = lazyRetry(() => import('./views/foundation/NamingRatificationBoardView'));
 const FoundationFilingsCalendarView = lazyRetry(() => import('./views/foundation/FilingsCalendarView'));
+// Agentic OS Layer 1 — Event Stream dev panel
+const EventStreamView = lazyRetry(() => import('./views/internal/EventStreamView'));
 const VentureIntegrationsView = lazyRetry(() => import('./views/VentureIntegrationsView'));
 const CRMView = lazyRetry(() => import('./views/CRMView'));
 const CapitalGlobalView = lazyRetry(() => import('./views/CapitalGlobalView'));
@@ -158,33 +160,6 @@ const CostIntelligence = lazyRetry(() => import('./views/CostIntelligence'));
 const FinancialsLedger = lazyRetry(() => import('./views/FinancialsLedger'));
 const Checkout = lazyRetry(() => import('./views/Checkout'));
 
-// Placeholder views
-function PlaceholderView({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="placeholder-view">
-      <h2>{title}</h2>
-      <p>{description}</p>
-      <p className="placeholder-hint">Coming in Phase 2. Use Aegis chat or slash commands in the meantime.</p>
-      <style>{`
-        .placeholder-view {
-          height: 100%;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: var(--space-sm);
-          color: var(--text-primary);
-          text-align: center;
-          padding: var(--space-2xl);
-        }
-        .placeholder-view h2 { font-size: var(--text-2xl); font-weight: 700; }
-        .placeholder-view p { font-size: var(--text-sm); color: var(--text-secondary); max-width: 400px; }
-        .placeholder-hint { color: var(--text-muted) !important; font-size: var(--text-xs) !important; margin-top: var(--space-md); }
-      `}</style>
-    </div>
-  );
-}
-
 function ViewLoadingFallback() {
   return (
     <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -256,6 +231,8 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <FoundationNamingBoardView />;
     case 'foundation-filings':
       return <FoundationFilingsCalendarView />;
+    case 'internal-event-stream':
+      return <EventStreamView />;
     case 'crm':
       return <CRMView />;
     case 'capital':
@@ -345,9 +322,10 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <CreativeCanvasView />;
     case 'ad-studio':
       return <AdStudioView />;
+    // Venture views (naos-command falls through intentionally — reuses the
+    // venture dashboard until a dedicated NAOS command surface ships).
     case 'naos-command':
-    // Venture views
-    case 'venture-dashboard':
+    case 'venture-dashboard':  
       return <VentureDashboard venture={venture} />;
     case 'venture-engineering':
       return <EngineeringView />;
@@ -575,7 +553,11 @@ function Breadcrumbs() {
 const PublicRoute = lazyRetry(() => import('./views/public/PublicRoute'));
 
 export default function App() {
-  // Public content bypass — check before any app shell mounts.
+  // Public content bypass — visitors on /p/:venture/… skip the entire
+  // authenticated app shell (no NavRail, no ChatDock). Split into a thin
+  // router + AppBody so rules-of-hooks stays happy: the public branch
+  // never runs the dashboard's hooks at all, and AppBody's hooks are
+  // called unconditionally every render.
   if (typeof window !== 'undefined' && window.location.pathname.startsWith('/p/')) {
     return (
       <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.6 }}>Loading…</div>}>
@@ -583,7 +565,10 @@ export default function App() {
       </Suspense>
     );
   }
+  return <AppBody />;
+}
 
+function AppBody() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
   const { chatDocked, toggleChatDock, setView, toggleSplit, mode, switchToGlobal, switchToVenture, goBack, goForward } = useNavigation();
