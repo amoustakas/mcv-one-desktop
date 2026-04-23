@@ -1,0 +1,16 @@
+Domain,Class Fit,Priority,Current Owner (WHOIS),Estimated Value,Acquisition Channel,Budget Ceiling,Outreach Status,Next Action,Notes
+futurestate.com,Venture (flagship),P0,TBD (run WHOIS),$5K-50K estimate,Direct owner outreach / broker,Up to $25K (Gary tier budget),Not started,"Run WHOIS, identify owner, send offer",If owned by squatter — broker; if by business — direct
+mcv.com,Core (supreme),P0,TBD (run WHOIS),$50K-500K estimate,Broker (premium),TBD (depends on owner posture),Not started,WHOIS + historical sale data via Sedo,Likely extremely expensive; evaluate vs mcv.one + mcv.global sufficiency
+mcv.co,Defensive (typo),P1,TBD,$500-5K,Backorder / broker,$3K,Not started,WHOIS + watch for expiration,Common .com typo redirect
+mcv.io,Defensive (tech),P1,TBD,$1K-15K,Broker,$5K,Not started,WHOIS check,Dev-facing defensive for mcv.dev
+mcv.ai,Core (AI positioning),P0,TBD,$5K-25K,Broker,$15K,Not started,WHOIS + outreach,AI positioning — strategic for NAOS narrative
+mcv.app,Platform (apple-eco),P1,TBD,$2K-20K,Broker,$10K,Not started,WHOIS check,Apple ecosystem defensive for MCV Desktop mobile companion
+mcv.xyz,Platform (web3),P2,TBD,$500-5K,Backorder,$2K,Not started,WHOIS check,Web3-native defensive
+mcv.org,Defensive (nonprofit),P2,TBD,$500-5K,Broker,$3K,Not started,WHOIS check,Philanthropic arm future use
+naos.com,Core (NAOS),P1,TBD,TBD,Broker,TBD,Not started,Research existing usage,NAOS brand premium domain
+coretriangle.io,Core (Core-Triangle),P2,TBD,TBD,Backorder,TBD,Not started,WHOIS check,Patent-adjacent brand
+nexus.*,Platform (MCV NEXUS),P3,TBD,Varies widely,Depends on TLD,Limited,Not started,Decide if NEXUS is retained brand or renamed,MCV NEXUS community hub — brand needs decision
+weave.*,Platform (Weave),P3,TBD,Varies (Weaveworks exists),Research before purchase,Limited,Not started,Clear TM before spending,Weaveworks in K8s space — different class but check
+chorus.*,Platform (Chorus),P3,TBD,Varies (chorus.ai exists),Research before purchase,Limited,Not started,Clear TM; chorus.ai is taken,Chorus brand needs availability check
+root.*,Layer 0 (Root brand),P3,TBD,Varies,TLD-dependent,Limited,Not started,Subdomain root.mcv.global sufficient for now,Defer to subdomain unless branded product emerges
+citizen.*,Civic (Citizen brand),P3,TBD,Varies widely,Research before purchase,Limited,Not started,Likely expensive; citizen.com etc highly valued,Citizen framework brand — use compound form (MCV CITIZEN) for TM

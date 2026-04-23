@@ -1,0 +1,219 @@
+#,Domain,List Price CAD,Sale Price CAD,Savings,Decision,Class,Priority,Rationale,Fits a Class?,Needed <24mo?,Hard to Re-Acquire?
+1,mcv.ac,86.01,39.58,46.43,ACQUIRE,Core,P0,Citizen Account Center — daily-use surface for every user.,Yes,Yes,Yes
+76,mcv.eco,99.67,64.16,35.51,ACQUIRE,Core,P0,Already listed as Core — keep.,Yes,Yes,Yes
+5,mcv.exchange,55.97,14.31,41.66,ACQUIRE,Platform,P0,Utility token swap venue — distinct from mcv.trade by asset class.,Yes,Yes,Yes
+61,mcv.trade,955.98,955.98,,ACQUIRE,Platform,P0,Tokenized securities secondary market — distinct from mcv.exchange.,Yes,Yes,Yes
+20,mcv.build,286.79,286.79,,ACQUIRE,Platform,P1,$286 premium but very strategic — build/construction flagship.,Yes,Yes,Yes
+95,mcv.careers,103.76,39.58,64.18,ACQUIRE,Platform,P1,Talent + recruitment surface — Citizen career progression.,Yes,Yes,Yes
+83,mcv.community,65.53,65.53,,ACQUIRE,Platform,P1,Community surface alternate to mcv.cx — defensive + warmer brand.,Yes,Yes,Yes
+10,mcv.construction,55.97,55.97,,ACQUIRE,Platform,P1,Construction vertical — FutureState build-out + Cliff Bay-tier.,Yes,Yes,Yes
+102,mcv.doctor,167.95,8.17,159.78,ACQUIRE,Platform,P1,Healthcare vertical — Citizen-OS health surface.,Yes,Yes,Yes
+94,mcv.education,50.50,50.50,,ACQUIRE,Sacred-Floor,P1,Sacred Floor formal education vertical.,Yes,Yes,Yes
+48,mcv.estate,55.97,17.73,38.24,ACQUIRE,Platform,P1,FutureState extended brand — institutional estate + commercial RE.,Yes,Yes,Yes
+63,mcv.events,65.53,14.31,51.22,ACQUIRE,Platform,P1,Event hosting + conferences + WarForge tournaments.,Yes,Yes,Yes
+16,mcv.fitness,60.06,6.12,53.94,ACQUIRE,Platform,P1,Fitness vertical complement to mcv.fit — Anytime/Purpose Brands.,Yes,Yes,Yes
+36,mcv.games,94.64,94.64,,ACQUIRE,Platform,P1,Games developer platform — B2B dev surface complement to mcv.gg.,Yes,Yes,Yes
+57,mcv.investments,187.07,9.53,177.54,ACQUIRE,Platform,P1,Investment vertical — institutional LP + retail investor portal.,Yes,Yes,Yes
+6,mcv.land,60.06,16.36,43.70,ACQUIRE,Platform,P1,FutureState land vertical — undeveloped + commercial land tokenization.,Yes,Yes,Yes
+7,mcv.law,630.95,630.95,,ACQUIRE,Platform,P1,Legal services flagship — premium $630 but strategic for legal vertical.,Yes,Yes,Yes
+9,mcv.legal,102.40,102.40,,ACQUIRE,Platform,P1,Legal vertical — Citizen-OS legal services + counsel marketplace.,Yes,Yes,Yes
+15,mcv.link,336.98,336.98,,ACQUIRE,Defensive,P1,$336 premium but strategic — link-shortener for entire ecosystem.,Yes,Yes,Yes
+45,mcv.live,94.64,94.64,,ACQUIRE,Platform,P1,Live events + streaming + tournaments — gaming + community.,Yes,Yes,Yes
+60,mcv.markets,28.65,8.17,20.48,ACQUIRE,Platform,P1,EdgeIQ Markets primary surface — markets analytics.,Yes,Yes,Yes
+8,mcv.media,31.55,31.55,,ACQUIRE,Platform,P1,Content + journalism + ecosystem media arm.,Yes,Yes,Yes
+49,mcv.mortgage,90.11,90.11,,ACQUIRE,Platform,P1,FutureState financing — mortgage-backed RWA tokenization.,Yes,Yes,Yes
+80,mcv.press,238.99,238.99,,ACQUIRE,Platform,P1,PR + journalist relations surface — Gary/Joel-tier institutional press.,Yes,Yes,Yes
+51,mcv.rentals,64.16,9.53,54.63,ACQUIRE,Platform,P1,FutureState rental yield surface — RWA passive-income portal.,Yes,Yes,Yes
+11,mcv.school,94.64,94.64,,ACQUIRE,Sacred-Floor,P1,Sacred Floor education surface — Garden / Apprentice stages.,Yes,Yes,Yes
+38,mcv.studio,57.36,57.36,,ACQUIRE,Platform,P1,MCV Studios corporate — game development arm corporate face.,Yes,Yes,Yes
+86,mcv.team,31.55,31.55,,ACQUIRE,Platform,P1,Internal team surface + contractor onboarding.,Yes,Yes,Yes
+90,mcv.training,60.06,12.26,47.80,ACQUIRE,Sacred-Floor,P1,Apprenticeship + skills training across Lineage Arc.,Yes,Yes,Yes
+71,mcv.auction,53.23,53.23,,ACQUIRE,Sub-Venture,P2,Auction surface — RWA + WarForge marketplace.,Yes,Maybe,Yes
+40,mcv.baby,88.74,2.46,86.28,ACQUIRE,Sacred-Floor,P2,Sacred Floor Cradle stage — infant-care surface.,Yes,Maybe,Yes
+47,mcv.broker,53.23,16.36,36.87,ACQUIRE,Defensive,P2,Broker-dealer reference + future Dealer of Record entity.,Yes,Maybe,Yes
+64,mcv.builders,47.77,47.77,,ACQUIRE,Defensive,P2,Defensive for mcv.construction.,Yes,Maybe,Yes
+70,mcv.business,24.86,24.86,,ACQUIRE,Defensive,P2,B2B surface — multi-venture business gateway.,Yes,Maybe,Yes
+29,mcv.cards,55.97,55.97,,ACQUIRE,Sub-Venture,P2,"Citizen-card products — gift, loyalty, credit cards.",Yes,Maybe,Yes
+91,mcv.center,47.77,6.80,40.97,ACQUIRE,Sacred-Floor,P2,Sacred Floor Garden Houses physical-locator (already listed above — keeping).,Yes,Maybe,Yes
+62,mcv.chat,31.55,31.55,,ACQUIRE,Sub-Venture,P2,Citizen-to-Citizen messaging surface.,Yes,Maybe,Yes
+59,mcv.claims,94.20,16.36,77.84,ACQUIRE,Sub-Venture,P2,Insurance claims surface under mcv.insure.,Yes,Maybe,Yes
+17,mcv.condos,84.65,84.65,,ACQUIRE,Sub-Venture,P2,Cliff Bay + condo-specific RWA tokenization (Milborne fit).,Yes,Maybe,Yes
+65,mcv.contractors,50.50,50.50,,ACQUIRE,Defensive,P2,Contractor marketplace under mcv.construction.,Yes,Maybe,Yes
+26,mcv.credit,150.20,12.95,137.25,ACQUIRE,Sub-Venture,P2,Credit-product surface — lending + Citizen credit profile.,Yes,Maybe,Yes
+121,mcv.dental,111.96,111.96,,ACQUIRE,Sub-Venture,P2,Dental sub-vertical under mcv.doctor.,Yes,Maybe,Yes
+213,mcv.directory,39.58,6.80,32.78,ACQUIRE,Defensive,P2,Citizen directory + Confluence/Weave registry.,Yes,Maybe,Yes
+74,mcv.energy,167.95,15.00,152.95,ACQUIRE,Platform,P2,Energy vertical — RWA tokenization for energy assets.,Yes,Maybe,Yes
+106,mcv.engineering,94.20,14.31,79.89,ACQUIRE,Defensive,P2,Engineering arm — ARQ Labs adjacent.,Yes,Maybe,Yes
+58,mcv.financial,84.65,23.87,60.78,ACQUIRE,Defensive,P2,Defensive for mcv.finance — alternate spelling.,Yes,Maybe,Yes
+107,mcv.gallery,40.94,40.94,,ACQUIRE,Sub-Venture,P2,NFT + creator gallery surface.,Yes,Maybe,Yes
+136,mcv.gift,229.43,229.43,,ACQUIRE,Sub-Venture,P2,Citizen-gifting + UWG-funded gift mechanism.,Yes,Maybe,Yes
+87,mcv.guide,59.38,59.38,,ACQUIRE,Sacred-Floor,P2,Mentor + apprentice matching — Confluence-adjacent (renamed Weave).,Yes,Maybe,Yes
+166,mcv.haus,49.14,16.36,32.78,ACQUIRE,Defensive,P2,Already listed — German real estate.,Yes,Maybe,Yes
+82,mcv.house,64.16,17.73,46.43,ACQUIRE,Defensive,P2,Family unit surface — Sacred Floor family-as-constitutional-structure.,Yes,Maybe,Yes
+134,mcv.immo,50.50,50.50,,ACQUIRE,Defensive,P2,European real estate (immobilier) — defensive for EU launch.,Yes,Maybe,Yes
+158,mcv.institute,39.58,8.17,31.41,ACQUIRE,Sacred-Floor,P2,Research + advanced study — Council-tier learning surface.,Yes,Maybe,Yes
+19,mcv.insure,105.13,105.13,,ACQUIRE,Sub-Venture,P2,Insurance vertical — Triangle-anchored Citizen insurance products.,Yes,Maybe,Yes
+143,mcv.international,44.36,12.95,31.41,ACQUIRE,Defensive,P2,Cross-border + multi-jurisdiction landing.,Yes,Maybe,Yes
+130,mcv.irish,31.38,8.17,23.21,ACQUIRE,Defensive,P2,Ireland market — MCV Tech (DAC) is Irish entity.,Yes,Maybe,Yes
+116,mcv.is,91.47,91.47,,ACQUIRE,Defensive,P2,Iceland ccTLD — short-link surface defensive.,Yes,Maybe,Yes
+139,mcv.lawyer,90.11,90.11,,ACQUIRE,Platform,P2,Legal services Citizen surface — complement to mcv.law.,Yes,Maybe,Yes
+50,mcv.lease,80.55,80.55,,ACQUIRE,Sub-Venture,P2,Commercial lease + FutureState commercial RE.,Yes,Maybe,Yes
+135,mcv.life,52.55,3.39,49.16,ACQUIRE,Platform,P2,Citizen-life umbrella — Lineage Arc public surface.,Yes,Maybe,Yes
+175,mcv.maison,83.28,83.28,,ACQUIRE,Defensive,P2,Already listed — French real estate.,Yes,Maybe,Yes
+53,mcv.management,36.85,36.85,,ACQUIRE,Defensive,P2,Asset management defensive — fund admin + portfolio management.,Yes,Maybe,Yes
+28,mcv.money,47.77,16.36,31.41,ACQUIRE,Defensive,P2,Consumer money brand — defensive for retail finance.,Yes,Maybe,Yes
+148,mcv.observer,19.12,19.12,,ACQUIRE,Sub-Venture,P2,Audit/transparency news arm — supports tamper-evident audit narrative.,Yes,Maybe,Yes
+52,mcv.partners,102.40,14.31,88.09,ACQUIRE,Defensive,P2,Strategic partnerships surface — institutional partner portal.,Yes,Maybe,Yes
+100,mcv.plus,79.18,6.80,72.38,ACQUIRE,Defensive,P2,Premium-tier defensive (subscription tiering surface).,Yes,Maybe,Yes
+164,mcv.report,36.16,9.53,26.63,ACQUIRE,Sub-Venture,P2,Investigative reporting + ecosystem audit reports.,Yes,Maybe,Yes
+98,mcv.reviews,90.11,90.11,,ACQUIRE,Defensive,P2,Citizen reviews + reputation surface (per Hidden Reputation Layer).,Yes,Maybe,Yes
+157,mcv.sh,86.01,47.77,38.24,ACQUIRE,Defensive,P2,Saint Helena ccTLD — short-link defensive.,Yes,Maybe,Yes
+93,mcv.shopping,40.94,40.94,,ACQUIRE,Sub-Venture,P2,Consumer shopping under mcv.store umbrella.,Yes,Maybe,Yes
+218,mcv.so,88.74,88.74,,ACQUIRE,Defensive,P2,Short ccTLD — link-shortener defensive.,Yes,Maybe,Yes
+167,mcv.tickets,585.85,538.05,47.80,ACQUIRE,Platform,P2,Event ticketing — WarForge tournaments + mcv.events integration.,Yes,Maybe,Yes
+67,mcv.tools,52.55,21.82,30.73,ACQUIRE,Sub-Venture,P2,Developer tools + Citizen utilities.,Yes,Maybe,Yes
+111,mcv.university,90.11,90.11,,ACQUIRE,Sacred-Floor,P2,Mastery-tier learning — adult continuing-education complement.,Yes,Maybe,Yes
+112,mcv.vet,60.06,60.06,,ACQUIRE,Sub-Venture,P2,Veterinary care + Citizen-pet OS.,Yes,Maybe,Yes
+85,mcv.video,63.09,63.09,,ACQUIRE,Sub-Venture,P2,Already listed — keep.,Yes,Maybe,Yes
+155,mcv.villas,86.01,86.01,,ACQUIRE,Sub-Venture,P2,Premium residential — Cliff Bay tier + Muskoka resort.,Yes,Maybe,Yes
+147,mcv.yoga,76.48,76.48,,ACQUIRE,Platform,P2,Wellness sub-vertical under mcv.fit umbrella.,Yes,Maybe,Yes
+55,mcv.enterprises,47.77,12.95,34.82,ACQUIRE,Defensive,P3,Defensive corporate variant — low priority.,Yes,No,Yes
+66,mcv.forsale,52.55,16.36,36.19,ACQUIRE,Defensive,P3,Defensive for marketplace surfaces.,Yes,No,Yes
+145,mcv.gifts,52.55,52.55,,ACQUIRE,Defensive,P3,Plural defensive for mcv.gift.,Yes,No,Yes
+180,mcv.immobilien,54.60,54.60,,ACQUIRE,Defensive,P3,Long-form German RE — defer or kill if budget-constrained.,Yes,No,Yes
+75,mcv.solutions,45.04,12.26,32.78,ACQUIRE,Defensive,P3,Generic B2B surface — defensive only.,Yes,No,Yes
+41,mcv.actor,64.16,16.36,47.80,DEFER,Sub-Venture,P3,Actor talent vertical — defer.,Yes,No,Maybe
+161,mcv.bargains,40.94,20.46,20.48,DEFER,Defensive,P3,"Discount commerce — low-strategic-fit, defer.",Yes,No,Maybe
+199,mcv.beauty,27.29,2.46,24.83,DEFER,Sub-Venture,P3,Beauty vertical — defer.,Yes,No,Maybe
+124,mcv.best,27.29,3.11,24.18,DEFER,Defensive,P3,Generic — defer.,Yes,No,Maybe
+183,mcv.bike,54.60,8.17,46.43,DEFER,Sub-Venture,P3,Mobility specialty — defer.,Yes,No,Maybe
+146,mcv.bingo,70.99,70.99,,DEFER,Sub-Venture,P3,Gambling-adjacent — defer.,Yes,No,Maybe
+32,mcv.boats,27.29,2.46,24.83,DEFER,Sub-Venture,P3,Marine vertical — defer.,Yes,No,Maybe
+162,mcv.boutique,43.67,3.39,40.28,DEFER,Sub-Venture,P3,Niche commerce — defer.,Yes,No,Maybe
+132,mcv.camera,84.65,84.65,,DEFER,Defensive,P3,Hardware/photography defensive — defer.,Yes,No,Maybe
+127,mcv.camp,90.11,90.11,,DEFER,Sub-Venture,P3,Camping/outdoor — defer.,Yes,No,Maybe
+197,mcv.catering,55.97,55.97,,DEFER,Sub-Venture,P3,Catering services — defer.,Yes,No,Maybe
+181,mcv.cfd,123.32,123.32,,DEFER,Sub-Venture,P3,CFD trading — already listed.,Yes,No,Yes
+160,mcv.cleaning,109.23,109.23,,DEFER,Sub-Venture,P3,Cleaning services vertical — defer.,Yes,No,Yes
+177,mcv.college,86.01,6.83,79.18,DEFER,Sub-Venture,P3,Education sub-vertical — defer.,Yes,No,Maybe
+163,mcv.computer,57.33,23.87,33.46,DEFER,Defensive,P3,Hardware/computing defensive — defer.,Yes,No,Maybe
+196,mcv.cooking,76.48,76.48,,DEFER,Sub-Venture,P3,Culinary vertical — defer.,Yes,No,Maybe
+149,mcv.creditcard,214.39,214.39,,DEFER,Sub-Venture,P3,Credit card vertical — defer.,Yes,No,Yes
+96,mcv.dance,39.58,14.31,25.27,DEFER,Sub-Venture,P3,Performance arts — defer.,Yes,No,Maybe
+194,mcv.degree,75.09,75.09,,DEFER,Sub-Venture,P3,Credential vertical — defer.,Yes,No,Maybe
+24,mcv.delivery,90.11,4.07,86.04,DEFER,Sub-Venture,P3,Logistics vertical — defer.,Yes,No,Maybe
+178,mcv.dentist,189.28,189.28,,DEFER,Defensive,P3,Defensive for mcv.dental.,Yes,No,Yes
+172,mcv.desi,27.29,27.29,,DEFER,Defensive,P3,Indian/South Asian community — defer until APAC-S federation launch.,Yes,No,Maybe
+115,mcv.diamonds,79.18,79.18,,DEFER,Sub-Venture,P3,Luxury commerce — defer.,Yes,No,Maybe
+195,mcv.discount,40.94,40.94,,DEFER,Defensive,P3,Discount commerce — defer.,Yes,No,Maybe
+129,mcv.engineer,55.97,55.97,,DEFER,Defensive,P3,Singular variant — defer.,Yes,No,Maybe
+142,mcv.equipment,40.94,40.94,,DEFER,Defensive,P3,Generic equipment — defer.,Yes,No,Maybe
+151,mcv.express,63.09,63.09,,DEFER,Defensive,P3,Defensive only — defer.,Yes,No,Maybe
+215,mcv.fan,79.18,79.18,,DEFER,Defensive,P3,Fan community defensive — defer.,Yes,No,Maybe
+209,mcv.fans,573.59,573.59,,DEFER,Defensive,P3,Plural defensive for mcv.fan.,Yes,No,Yes
+37,mcv.farm,55.97,6.80,49.17,DEFER,Sub-Venture,P3,Agriculture vertical — defer.,Yes,No,Maybe
+105,mcv.fashion,76.48,76.48,,DEFER,Sub-Venture,P3,Fashion vertical — defer.,Yes,No,Maybe
+44,mcv.fit,764.78,764.78,,DEFER,Sub-Venture,P3,Not yet classified — review needed.,Yes,No,Yes
+156,mcv.football,36.85,36.85,,DEFER,Sub-Venture,P3,Sports vertical under mcv.bet/BetEdge AI.,Yes,No,Maybe
+152,mcv.fyi,28.68,28.68,,DEFER,Defensive,P3,Modern TLD defensive — defer.,Yes,No,Maybe
+133,mcv.garden,46.41,2.70,43.71,DEFER,Sub-Venture,P3,Sacred Floor Garden adjacency but speculative — defer.,Yes,No,Maybe
+212,mcv.gives,38.21,10.22,27.99,DEFER,Defensive,P3,Charity vertical — defer until philanthropy arm.,Yes,No,Maybe
+193,mcv.golf,92.84,8.17,84.67,DEFER,Sub-Venture,P3,Sports specialty + premium ABCC angle.,Yes,No,Maybe
+140,mcv.graphics,31.38,31.38,,DEFER,Defensive,P3,Creative vertical defensive — defer.,Yes,No,Maybe
+109,mcv.green,116.06,16.36,99.70,DEFER,Defensive,P3,Sustainability defensive — defer.,Yes,No,Maybe
+211,mcv.hair,27.29,2.46,24.83,DEFER,Sub-Venture,P3,Beauty sub-vertical — defer.,Yes,No,Maybe
+216,mcv.hockey,86.01,86.01,,DEFER,Sub-Venture,P3,Sports vertical defensive.,Yes,No,Maybe
+128,mcv.how,42.31,42.31,,DEFER,Defensive,P3,Generic verb — defer.,Yes,No,Maybe
+187,mcv.industries,65.53,65.53,,DEFER,Defensive,P3,Already listed.,Yes,No,Maybe
+97,mcv.jewelry,92.84,92.84,,DEFER,Sub-Venture,P3,Luxury commerce — defer.,Yes,No,Maybe
+192,mcv.juegos,503.91,503.91,,DEFER,Defensive,P3,Spanish gaming — defer until LATAM launch.,Yes,No,Yes
+21,mcv.kitchen,92.84,12.26,80.58,DEFER,Sub-Venture,P3,Kitchen vertical — defer.,Yes,No,Maybe
+123,mcv.lighting,31.38,31.38,,DEFER,Sub-Venture,P3,Specialty trade — defer.,Yes,No,Maybe
+56,mcv.limited,51.87,51.87,,DEFER,Defensive,P3,Defensive corporate variant — defer.,Yes,No,Maybe
+189,mcv.makeup,27.29,2.46,24.83,DEFER,Sub-Venture,P3,Beauty sub-vertical — defer.,Yes,No,Maybe
+33,mcv.marketing,60.06,9.53,50.53,DEFER,Sub-Venture,P3,Not yet classified — review needed.,Yes,No,Maybe
+184,mcv.mba,55.97,16.36,39.61,DEFER,Sub-Venture,P3,Business education credential — defer.,Yes,No,Maybe
+68,mcv.motorcycles,27.29,2.46,24.83,DEFER,Sub-Venture,P3,Mobility specialty — defer.,Yes,No,Maybe
+30,mcv.parts,60.06,14.31,45.75,DEFER,Defensive,P3,Parts vertical — defer.,Yes,No,Maybe
+81,mcv.photography,52.55,9.53,43.02,DEFER,Sub-Venture,P3,Specialty creator vertical — defer.,Yes,No,Maybe
+103,mcv.photos,43.67,12.26,31.41,DEFER,Defensive,P3,Plural defensive for photography.,Yes,No,Maybe
+18,mcv.pics,55.97,2.46,53.51,DEFER,Defensive,P3,Defensive for photo content.,Yes,No,Maybe
+159,mcv.pictures,24.86,24.86,,DEFER,Defensive,P3,Defensive — defer.,Yes,No,Maybe
+191,mcv.place,31.38,31.38,,DEFER,Defensive,P3,Generic — defer.,Yes,No,Maybe
+170,mcv.plumbing,105.13,105.13,,DEFER,Sub-Venture,P3,Trade-specific — defer.,Yes,No,Yes
+13,mcv.poker,98.30,8.17,90.13,DEFER,Sub-Venture,P3,Gaming-adjacent — defer until gambling regulatory clear.,Yes,No,Maybe
+23,mcv.productions,58.70,8.85,49.85,DEFER,Sub-Venture,P3,MCV Studios production arm — defer.,Yes,No,Maybe
+131,mcv.promo,36.16,16.36,19.80,DEFER,Sub-Venture,P3,Not yet classified — review needed.,Yes,No,Maybe
+12,mcv.quest,27.29,2.46,24.83,DEFER,Sub-Venture,P3,Not yet classified — review needed.,Yes,No,Maybe
+205,mcv.rehab,52.55,52.55,,DEFER,Sub-Venture,P3,Healthcare specialty — defer.,Yes,No,Maybe
+173,mcv.repair,52.55,8.17,44.38,DEFER,Sub-Venture,P3,Citizen repair services — defer.,Yes,No,Maybe
+14,mcv.run,19.12,19.12,,DEFER,Defensive,P3,Generic verb — defer.,Yes,No,Maybe
+203,mcv.shiksha,75.09,16.36,58.73,DEFER,Defensive,P3,Indian education — defer.,Yes,No,Maybe
+113,mcv.show,60.06,21.82,38.24,DEFER,Sub-Venture,P3,Streaming entertainment — defer.,Yes,No,Maybe
+202,mcv.soccer,37.53,37.53,,DEFER,Sub-Venture,P3,Sports vertical defensive.,Yes,No,Maybe
+35,mcv.social,60.06,5.44,54.62,DEFER,Sub-Venture,P3,Not yet classified — review needed.,Yes,No,Maybe
+122,mcv.style,63.09,63.09,,DEFER,Sub-Venture,P3,Fashion/lifestyle — defer.,Yes,No,Maybe
+204,mcv.supplies,34.80,34.80,,DEFER,Defensive,P3,Plural defensive — defer.,Yes,No,Maybe
+25,mcv.supply,37.53,37.53,,DEFER,Defensive,P3,Supply-chain defensive — defer.,Yes,No,Maybe
+22,mcv.taxi,90.11,12.26,77.85,DEFER,Sub-Venture,P3,Mobility — already listed.,Yes,No,Maybe
+165,mcv.theater,92.84,92.84,,DEFER,Sub-Venture,P3,Performance arts venue surface — defer.,Yes,No,Maybe
+101,mcv.tips,45.72,17.73,27.99,DEFER,Defensive,P3,Tips + advice surface — defer.,Yes,No,Maybe
+84,mcv.today,40.94,4.07,36.87,DEFER,Defensive,P3,News-day defensive — defer.,Yes,No,Maybe
+31,mcv.toys,93.52,16.36,77.16,DEFER,Sub-Venture,P3,Sacred Floor adjacency — defer.,Yes,No,Maybe
+3,mcv.vote,131.08,32.75,98.33,DEFER,Sub-Venture,P3,Not yet classified — review needed.,Yes,No,Maybe
+34,mcv.watch,60.06,4.75,55.31,DEFER,Sub-Venture,P3,Luxury commerce — defer.,Yes,No,Maybe
+88,mcv.works,55.97,5.44,50.53,DEFER,Defensive,P3,Plural variant — defer.,Yes,No,Maybe
+69,mcv.yachts,27.29,2.46,24.83,DEFER,Sub-Venture,P3,Premium marine — defer.,Yes,No,Maybe
+171,mcv.IDN,20.46,20.46,,KILL,DNF,DNF,Chinese .机构 IDN — defer until China federation real.,No,No,Maybe
+42,mcv.adult,176.15,19.09,157.06,KILL,DNF,DNF,Adult content — institutional-brand kill.,No,No,Maybe
+43,mcv.army,57.33,18.41,38.92,KILL,DNF,DNF,"Military niche, brand-unclear.",No,No,Maybe
+2,mcv.art,521.96,521.96,,KILL,DNF,DNF,$521 premium. mcv.gallery + mcv.studio cover.,No,No,Yes
+144,mcv.barcelona,53.23,53.23,,KILL,DNF,DNF,City-specific. Spain not on roadmap.,No,No,Maybe
+4,mcv.bid,955.98,955.98,,KILL,DNF,DNF,$955 premium. mcv.auction covers.,No,No,Yes
+176,mcv.bond,140.53,140.53,,KILL,DNF,DNF,$140 for ambiguous brand. Pass.,No,No,Yes
+190,mcv.cab,46.41,46.41,,KILL,DNF,DNF,Mobility duplicate. Pass.,No,No,Maybe
+46,mcv.cars,3138.34,2826.97,311.37,KILL,DNF,DNF,$2826 premium. Pink Slip City covers automotive narrative. Pass.,No,No,Yes
+185,mcv.cheap,52.55,8.17,44.38,KILL,DNF,DNF,Brand-dilutive. Cheap branding hurts MCV institutional posture.,No,No,Maybe
+92,mcv.church,84.65,16.36,68.29,KILL,DNF,DNF,Religious-specific brand. Conflicts with secular Sacred Floor framing.,No,No,Maybe
+126,mcv.cloud,955.98,955.98,,KILL,DNF,DNF,$955 premium. mcv.dev + mcv.tech cover infra brand needs.,No,No,Yes
+119,mcv.country,3138.34,3138.34,,KILL,DNF,DNF,$3138 premium. No clear ecosystem fit.,No,No,Yes
+138,mcv.courses,955.98,955.98,,KILL,DNF,DNF,$955 premium. mcv.education covers.,No,No,Yes
+114,mcv.day,112.81,112.81,,KILL,DNF,DNF,$112 premium for generic.,No,No,Yes
+206,mcv.dealer,2865.20,680.11,2185.09,KILL,DNF,DNF,Already killed above.,No,No,Yes
+208,mcv.diy,334.59,334.59,,KILL,DNF,DNF,$334 premium for niche.,No,No,Yes
+118,mcv.download,955.98,955.98,,KILL,DNF,DNF,$955 premium. mcv.dev/downloads covers.,No,No,Yes
+137,mcv.fail,55.97,55.97,,KILL,DNF,DNF,Brand-negative. Do not acquire.,No,No,Maybe
+108,mcv.fast,955.98,955.98,,KILL,DNF,DNF,$955 premium. No clear ecosystem fit.,No,No,Yes
+141,mcv.feedback,764.78,764.78,,KILL,DNF,DNF,$764 premium for low-strategic-fit. Use mcv.cx feedback instead.,No,No,Yes
+186,mcv.florist,43.67,43.67,,KILL,DNF,DNF,Specialty retail. Pass.,No,No,Maybe
+39,mcv.fm,136.54,95.57,40.97,KILL,DNF,DNF,$95 sale for niche TLD. Skip.,No,No,Maybe
+54,mcv.gmbh,65.53,65.53,,KILL,DNF,DNF,German LLC suffix — too jurisdiction-specific.,No,No,Maybe
+188,mcv.guitars,176.15,148.83,27.32,KILL,DNF,DNF,$148 for niche specialty. Pass.,No,No,Yes
+182,mcv.hiphop,955.98,955.98,,KILL,DNF,DNF,Genre-specific. No fit.,No,No,Yes
+207,mcv.hosting,503.91,424.70,79.21,KILL,DNF,DNF,$424 premium for low-strategic-fit. mcv.dev covers.,No,No,Yes
+210,mcv.limo,79.18,79.18,,KILL,DNF,DNF,"Niche-luxury, low-fit.",No,No,Maybe
+201,mcv.meme,172.08,172.08,,KILL,DNF,DNF,$172 for cultural niche. Pass.,No,No,Yes
+154,mcv.mobi,75.09,6.12,68.97,KILL,DNF,DNF,Dead TLD. Skip.,No,No,Maybe
+153,mcv.mobile,573.59,573.59,,KILL,DNF,DNF,$573 premium. Generic.,No,No,Yes
+200,mcv.moda,60.06,60.06,,KILL,DNF,DNF,Italian fashion — niche.,No,No,Maybe
+89,mcv.movie,505.28,55.97,449.31,KILL,DNF,DNF,$55 sale OK but niche; defer if want.,No,No,Maybe
+214,mcv.ong,25.92,25.92,,KILL,DNF,DNF,NGO-specific TLD. No fit.,No,No,Maybe
+120,mcv.onl,32.75,5.44,27.31,KILL,DNF,DNF,Low-trust TLD. Pass.,No,No,Maybe
+79,mcv.porn,176.15,19.09,157.06,KILL,DNF,DNF,Adult content — institutional-brand kill.,No,No,Maybe
+77,mcv.pro,382.39,382.39,,KILL,DNF,DNF,$382 premium for generic word.,No,No,Yes
+110,mcv.pw,191.20,191.20,,KILL,DNF,DNF,$191 for low-trust TLD. Pass.,No,No,Yes
+99,mcv.sbs,105.16,105.16,,KILL,DNF,DNF,$105 for low-trust TLD. Pass.,No,No,Yes
+198,mcv.schule,40.94,40.94,,KILL,DNF,DNF,German-only school TLD. mcv.school + mcv.education cover.,No,No,Maybe
+78,mcv.sex,176.15,19.09,157.06,KILL,DNF,DNF,Adult content — institutional-brand kill.,No,No,Maybe
+104,mcv.shoes,92.84,47.77,45.07,KILL,DNF,DNF,"$47 sale, low-fit. Pass.",No,No,Maybe
+72,mcv.shop,3823.91,3823.91,,KILL,DNF,DNF,$3823 premium. mcv.store covers.,No,No,Yes
+169,mcv.study,955.98,955.98,,KILL,DNF,DNF,$955 premium. mcv.education + mcv.school cover.,No,No,Yes
+168,mcv.surf,76.48,76.48,,KILL,DNF,DNF,"Lifestyle niche, no fit.",No,No,Maybe
+117,mcv.talk,955.98,955.98,,KILL,DNF,DNF,$955 premium. mcv.chat covers.,No,No,Yes
+217,mcv.tattoo,191.20,191.20,,KILL,DNF,DNF,$191 for low-fit specialty. Pass.,No,No,Yes
+174,mcv.tel,955.98,955.98,,KILL,DNF,DNF,$955 premium. Niche TLD.,No,No,Yes
+179,mcv.theatre,818.02,736.08,81.94,KILL,DNF,DNF,Premium price ($736 sale) for spelling variant of mcv.theater. Pass.,No,No,Yes
+150,mcv.tires,120.15,120.15,,KILL,DNF,DNF,$120 for low-strategic-fit. Pass.,No,No,Yes
+73,mcv.vip,9559.79,9559.79,,KILL,DNF,DNF,$9559 premium. Not worth ecosystem-relative value.,No,No,Yes
+27,mcv.work,477.99,477.99,,KILL,DNF,DNF,$478 premium. Use mcv.team or mcv.careers instead.,No,No,Yes
+125,mcv.you,955.98,955.98,,KILL,DNF,DNF,$955 premium. No fit.,No,No,Yes

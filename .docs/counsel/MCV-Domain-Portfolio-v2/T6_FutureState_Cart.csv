@@ -1,0 +1,438 @@
+Domain,Price CAD,Premium,Decision,Priority,Rationale
+futurestate.app,17.77,,ACQUIRE,P0,Primary venture surface — consumer + investor face. Hunter disclosure dependency.
+futurestate.io,2608.43,premium,ACQUIRE,P0,Premium $2608 but standard dev/tech surface for RWA tokenization ventures. Pay it.
+futurestate.xyz,135.56,premium,ACQUIRE,P0,Web3-native standard surface — token holders expect to find venture here.
+futurestate.build,45.16,,ACQUIRE,P1,Build/construction vertical — Cliff Bay-tier development.
+futurestate.ca,2326.36,premium,ACQUIRE,P1,"Canada ccTLD $2326 premium — Tony is Canadian, Cliff Bay is Muskoka. Worth it."
+futurestate.condos,84.87,,ACQUIRE,P1,Cliff Bay direct fit (Milborne).
+futurestate.construction,56.11,,ACQUIRE,P1,Construction vertical.
+futurestate.estate,17.77,,ACQUIRE,P1,Estate brand — institutional RE complement; not in CSV but flag if appears.
+futurestate.fund,16.40,,ACQUIRE,P1,Fund vehicle naming — Cliff Bay SPC complement.
+futurestate.homes,2.46,,ACQUIRE,P1,Consumer RE surface — fractional residential complement.
+futurestate.investments,9.56,,ACQUIRE,P1,Investor-facing surface defensive.
+futurestate.land,16.40,,ACQUIRE,P1,Land vertical — undeveloped + commercial land.
+futurestate.mortgage,90.34,,ACQUIRE,P1,Mortgage-backed RWA tokenization vertical.
+futurestate.properties,21.88,,ACQUIRE,P1,Property-listing surface defensive.
+futurestate.property,27.36,,ACQUIRE,P1,Singular property defensive.
+futurestate.realty,136.65,,ACQUIRE,P1,Pure venture-fit — RWA real estate tokenization is THE thesis. Acquire.
+futurestate.rentals,9.56,,ACQUIRE,P1,Rental-yield vertical — passive income surface.
+futurestate.apartments,83.50,,ACQUIRE,P2,Apartments vertical defensive.
+futurestate.builders,47.90,,ACQUIRE,P2,Builders defensive.
+futurestate.contractors,50.63,,ACQUIRE,P2,Contractors defensive.
+futurestate.energy,15.03,,ACQUIRE,P2,Energy vertical — RWA energy assets fit.
+futurestate.group,36.94,,ACQUIRE,P2,Group defensive — FutureState Group corporate identifier.
+futurestate.holdings,93.08,,ACQUIRE,P2,Holdings defensive.
+futurestate.house,17.77,,ACQUIRE,P2,House defensive — warmer consumer brand.
+futurestate.inc,681.89,,ACQUIRE,P2,Corporate entity defensive — FutureState Inc identifier.
+futurestate.lease,80.76,,ACQUIRE,P2,Commercial lease defensive.
+futurestate.ltd,8.19,,ACQUIRE,P2,Corporate entity defensive.
+futurestate.money,16.40,,ACQUIRE,P2,Money brand defensive.
+futurestate.partners,14.35,,ACQUIRE,P2,Partners defensive — Hunter/Kirill institutional partner brand.
+futurestate.rent,6.85,,ACQUIRE,P2,Rent-defensive.
+futurestate.site,1.34,,ACQUIRE,P2,Cheap defensive at $1.34. Brand integrity.
+futurestate.villas,86.24,,ACQUIRE,P2,Premium residential — Muskoka resort tier.
+futurestate.website,1.34,,ACQUIRE,P2,Cheap defensive at $1.34. Brand integrity.
+futurestate.academy,14.35,,ACQUIRE,P3,Investor-education defensive.
+futurestate.broker,16.40,,ACQUIRE,P3,Broker defensive.
+futurestate.cash,8.19,,ACQUIRE,P3,Cash defensive — low.
+futurestate.community,65.70,,ACQUIRE,P3,Community defensive.
+futurestate.credit,12.98,,ACQUIRE,P3,Credit-product defensive.
+futurestate.institute,8.19,,ACQUIRE,P3,Institute defensive — research/policy framing.
+futurestate.insure,105.41,,ACQUIRE,P3,Insurance vertical defensive.
+futurestate.loans,23.93,,ACQUIRE,P3,Loans defensive — RE financing.
+futurestate.market,64.33,,ACQUIRE,P3,Market singular defensive.
+futurestate.markets,8.19,,ACQUIRE,P3,Markets defensive.
+futurestate.school,52.69,,ACQUIRE,P3,Investor school defensive.
+futurestate.space,1.34,,ACQUIRE,P3,Space defensive — $1.34 cheap; minor brand defensive.
+futurestate.systems,16.40,,ACQUIRE,P3,Systems defensive — low priority.
+futurestate.trading,30.10,,ACQUIRE,P3,Trading defensive.
+futurestate.us,2670.04,premium,DEFER,P1,US ccTLD premium $2670 — reconsider after US partner/entity formation.
+futurestate.ac,39.68,,DEFER,P3,"Standard price (C$39.68) — no clear fit, defer."
+futurestate.accountants,168.39,,DEFER,P3,Professional services premium — defer.
+futurestate.actor,16.40,,DEFER,P3,"Standard price (C$16.40) — no clear fit, defer."
+futurestate.ad,30.10,,DEFER,P3,"Standard price (C$30.10) — no clear fit, defer."
+futurestate.ae.org,27.36,,DEFER,P3,Workaround TLD for .ae — defer.
+futurestate.africa,15.03,,DEFER,P3,Africa defensive — defer until continent launch.
+futurestate.archi,20.51,,DEFER,P3,"Standard price (C$20.51) — no clear fit, defer."
+futurestate.asia,6.82,,DEFER,P3,Asia regional — defer.
+futurestate.associates,17.77,,DEFER,P3,"Standard price (C$17.77) — no clear fit, defer."
+futurestate.attorney,90.34,,DEFER,P3,Professional services premium — defer.
+futurestate.auction,53.37,,DEFER,P3,"Standard price (C$53.37) — no clear fit, defer."
+futurestate.band,19.14,,DEFER,P3,"Standard price (C$19.14) — no clear fit, defer."
+futurestate.bar,3.83,,DEFER,P3,Cheap (C$3.83) — could grab but no clear fit. Defer to next batch.
+futurestate.barcelona,53.37,,DEFER,P3,"Standard price (C$53.37) — no clear fit, defer."
+futurestate.bargains,20.51,,DEFER,P3,"Standard price (C$20.51) — no clear fit, defer."
+futurestate.best,3.12,,DEFER,P3,Best defensive — defer.
+futurestate.bet,12.30,,DEFER,P3,"Standard price (C$12.30) — no clear fit, defer."
+futurestate.bingo,71.17,,DEFER,P3,"Standard price (C$71.17) — no clear fit, defer."
+futurestate.bio,8.19,,DEFER,P3,"Standard price (C$8.19) — no clear fit, defer."
+futurestate.black,23.93,,DEFER,P3,"Standard price (C$23.93) — no clear fit, defer."
+futurestate.blue,19.14,,DEFER,P3,"Standard price (C$19.14) — no clear fit, defer."
+futurestate.boo,17.77,,DEFER,P3,"Standard price (C$17.77) — no clear fit, defer."
+futurestate.bot,54.74,,DEFER,P3,"Standard price (C$54.74) — no clear fit, defer."
+futurestate.boutique,3.40,,DEFER,P3,Cheap (C$3.40) — could grab but no clear fit. Defer to next batch.
+futurestate.br.com,58.85,,DEFER,P3,"Standard price (C$58.85) — no clear fit, defer."
+futurestate.business,27.36,,DEFER,P3,"Standard price (C$27.36) — no clear fit, defer."
+futurestate.bz,30.10,,DEFER,P3,"Standard price (C$30.10) — no clear fit, defer."
+futurestate.cab,46.53,,DEFER,P3,"Standard price (C$46.53) — no clear fit, defer."
+futurestate.cafe,8.19,,DEFER,P3,"Standard price (C$8.19) — no clear fit, defer."
+futurestate.camera,84.87,,DEFER,P3,"Standard price (C$84.87) — no clear fit, defer."
+futurestate.camp,90.34,,DEFER,P3,"Standard price (C$90.34) — no clear fit, defer."
+futurestate.cards,56.11,,DEFER,P3,"Standard price (C$56.11) — no clear fit, defer."
+futurestate.care,15.03,,DEFER,P3,"Standard price (C$15.03) — no clear fit, defer."
+futurestate.careers,39.68,,DEFER,P3,"Standard price (C$39.68) — no clear fit, defer."
+futurestate.casino,9.56,,DEFER,P3,"Standard price (C$9.56) — no clear fit, defer."
+futurestate.cat,36.94,,DEFER,P3,"Standard price (C$36.94) — no clear fit, defer."
+futurestate.catering,56.11,,DEFER,P3,"Standard price (C$56.11) — no clear fit, defer."
+futurestate.center,6.82,,DEFER,P3,"Standard price (C$6.82) — no clear fit, defer."
+futurestate.ceo,13.68,,DEFER,P3,"Standard price (C$13.68) — no clear fit, defer."
+futurestate.channel,17.77,,DEFER,P3,"Standard price (C$17.77) — no clear fit, defer."
+futurestate.charity,10.24,,DEFER,P3,"Standard price (C$10.24) — no clear fit, defer."
+futurestate.chat,8.19,,DEFER,P3,"Standard price (C$8.19) — no clear fit, defer."
+futurestate.city,8.19,,DEFER,P3,"Standard price (C$8.19) — no clear fit, defer."
+futurestate.claims,16.40,,DEFER,P3,"Standard price (C$16.40) — no clear fit, defer."
+futurestate.cleaning,109.51,,DEFER,P3,"Standard price (C$109.51) — no clear fit, defer."
+futurestate.click,2.46,,DEFER,P3,Generic — defer.
+futurestate.clinic,16.40,,DEFER,P3,"Standard price (C$16.40) — no clear fit, defer."
+futurestate.clothing,43.79,,DEFER,P3,"Standard price (C$43.79) — no clear fit, defer."
+futurestate.cn.com,56.11,,DEFER,P3,"Standard price (C$56.11) — no clear fit, defer."
+futurestate.co.bz,62.96,,DEFER,P3,"Standard price (C$62.96) — no clear fit, defer."
+futurestate.co.com,35.57,,DEFER,P3,"Standard price (C$35.57) — no clear fit, defer."
+futurestate.co.in,10.93,,DEFER,P3,"Standard price (C$10.93) — no clear fit, defer."
+futurestate.coach,16.40,,DEFER,P3,Coaching — wrong vertical.
+futurestate.codes,5.45,,DEFER,P3,"Standard price (C$5.45) — no clear fit, defer."
+futurestate.coffee,19.14,,DEFER,P3,"Standard price (C$19.14) — no clear fit, defer."
+futurestate.college,6.85,,DEFER,P3,"Standard price (C$6.85) — no clear fit, defer."
+futurestate.com.au,2665.94,premium,DEFER,P3,Australia premium — defer until APAC launch.
+futurestate.com.co,17.77,,DEFER,P3,"Standard price (C$17.77) — no clear fit, defer."
+futurestate.com.de,8.19,,DEFER,P3,"Standard price (C$8.19) — no clear fit, defer."
+futurestate.com.mx,19.14,,DEFER,P3,"Standard price (C$19.14) — no clear fit, defer."
+futurestate.com.ph,72.54,,DEFER,P3,Philippines specific — defer.
+futurestate.com.se,13.67,,DEFER,P3,"Standard price (C$13.67) — no clear fit, defer."
+futurestate.com.vc,45.16,,DEFER,P3,"Standard price (C$45.16) — no clear fit, defer."
+futurestate.company,30.10,,DEFER,P3,"Standard price (C$30.10) — no clear fit, defer."
+futurestate.computer,23.93,,DEFER,P3,"Standard price (C$23.93) — no clear fit, defer."
+futurestate.contact,19.14,,DEFER,P3,"Standard price (C$19.14) — no clear fit, defer."
+futurestate.cool,8.19,,DEFER,P3,"Standard price (C$8.19) — no clear fit, defer."
+futurestate.coupons,4.08,,DEFER,P3,Cheap (C$4.08) — could grab but no clear fit. Defer to next batch.
+futurestate.cruises,75.28,,DEFER,P3,"Standard price (C$75.28) — no clear fit, defer."
+futurestate.cv,20.51,,DEFER,P3,"Standard price (C$20.51) — no clear fit, defer."
+futurestate.cx,27.36,,DEFER,P3,"Standard price (C$27.36) — no clear fit, defer."
+futurestate.cymru,17.77,,DEFER,P3,"Standard price (C$17.77) — no clear fit, defer."
+futurestate.dad,17.77,,DEFER,P3,"Standard price (C$17.77) — no clear fit, defer."
+futurestate.dance,14.35,,DEFER,P3,"Standard price (C$14.35) — no clear fit, defer."
+futurestate.dating,17.77,,DEFER,P3,"Standard price (C$17.77) — no clear fit, defer."
+futurestate.day,17.77,,DEFER,P3,"Standard price (C$17.77) — no clear fit, defer."
+futurestate.de.com,24.62,,DEFER,P3,"Standard price (C$24.62) — no clear fit, defer."
+futurestate.deal,34.20,,DEFER,P3,"Standard price (C$34.20) — no clear fit, defer."
+futurestate.deals,56.11,,DEFER,P3,"Standard price (C$56.11) — no clear fit, defer."
+futurestate.degree,75.28,,DEFER,P3,"Standard price (C$75.28) — no clear fit, defer."
+futurestate.delivery,4.08,,DEFER,P3,Cheap (C$4.08) — could grab but no clear fit. Defer to next batch.
+futurestate.democrat,47.21,,DEFER,P3,"Standard price (C$47.21) — no clear fit, defer."
+futurestate.dental,112.25,,DEFER,P3,"Standard price (C$112.25) — no clear fit, defer."
+futurestate.dentist,87.60,,DEFER,P3,"Standard price (C$87.60) — no clear fit, defer."
+futurestate.desi,27.36,,DEFER,P3,"Standard price (C$27.36) — no clear fit, defer."
+futurestate.diamonds,79.39,,DEFER,P3,"Standard price (C$79.39) — no clear fit, defer."
+futurestate.diet,149.22,,DEFER,P3,"Standard price (C$149.22) — no clear fit, defer."
+futurestate.direct,16.40,,DEFER,P3,"Standard price (C$16.40) — no clear fit, defer."
+futurestate.directory,6.82,,DEFER,P3,"Standard price (C$6.82) — no clear fit, defer."
+futurestate.discount,41.05,,DEFER,P3,"Standard price (C$41.05) — no clear fit, defer."
+futurestate.diy,6.82,,DEFER,P3,"Standard price (C$6.82) — no clear fit, defer."
+futurestate.doctor,8.19,,DEFER,P3,"Standard price (C$8.19) — no clear fit, defer."
+futurestate.dog,8.19,,DEFER,P3,"Standard price (C$8.19) — no clear fit, defer."
+futurestate.domains,61.59,,DEFER,P3,"Standard price (C$61.59) — no clear fit, defer."
+futurestate.eco,64.33,,DEFER,P3,"Standard price (C$64.33) — no clear fit, defer."
+futurestate.education,50.63,,DEFER,P3,Education defensive — defer.
+futurestate.email,6.82,,DEFER,P3,Email defensive — defer.
+futurestate.engineer,56.11,,DEFER,P3,"Standard price (C$56.11) — no clear fit, defer."
+futurestate.engineering,14.35,,DEFER,P3,"Standard price (C$14.35) — no clear fit, defer."
+futurestate.enterprises,12.98,,DEFER,P3,"Standard price (C$12.98) — no clear fit, defer."
+futurestate.equipment,41.05,,DEFER,P3,"Standard price (C$41.05) — no clear fit, defer."
+futurestate.esq,35.57,,DEFER,P3,"Standard price (C$35.57) — no clear fit, defer."
+futurestate.eu.com,24.62,,DEFER,P3,"Standard price (C$24.62) — no clear fit, defer."
+futurestate.events,14.35,,DEFER,P3,"Standard price (C$14.35) — no clear fit, defer."
+futurestate.expert,12.30,,DEFER,P3,"Standard price (C$12.30) — no clear fit, defer."
+futurestate.exposed,31.47,,DEFER,P3,"Standard price (C$31.47) — no clear fit, defer."
+futurestate.express,13.67,,DEFER,P3,"Standard price (C$13.67) — no clear fit, defer."
+futurestate.family,56.11,,DEFER,P3,"Standard price (C$56.11) — no clear fit, defer."
+futurestate.fan,79.39,,DEFER,P3,"Standard price (C$79.39) — no clear fit, defer."
+futurestate.fans,15.03,,DEFER,P3,"Standard price (C$15.03) — no clear fit, defer."
+futurestate.farm,6.82,,DEFER,P3,"Standard price (C$6.82) — no clear fit, defer."
+futurestate.fast,27.36,,DEFER,P3,"Standard price (C$27.36) — no clear fit, defer."
+futurestate.feedback,13.67,,DEFER,P3,"Standard price (C$13.67) — no clear fit, defer."
+futurestate.financial,23.93,,DEFER,P3,"Standard price (C$23.93) — no clear fit, defer."
+futurestate.fish,64.33,,DEFER,P3,"Standard price (C$64.33) — no clear fit, defer."
+futurestate.fitness,6.13,,DEFER,P3,"Standard price (C$6.13) — no clear fit, defer."
+futurestate.flights,32.83,,DEFER,P3,"Standard price (C$32.83) — no clear fit, defer."
+futurestate.florist,43.79,,DEFER,P3,"Standard price (C$43.79) — no clear fit, defer."
+futurestate.flowers,149.22,,DEFER,P3,"Standard price (C$149.22) — no clear fit, defer."
+futurestate.foo,17.77,,DEFER,P3,"Standard price (C$17.77) — no clear fit, defer."
+futurestate.food,6.82,,DEFER,P3,"Standard price (C$6.82) — no clear fit, defer."
+futurestate.football,36.94,,DEFER,P3,"Standard price (C$36.94) — no clear fit, defer."
+futurestate.forex,16.40,,DEFER,P3,"Standard price (C$16.40) — no clear fit, defer."
+futurestate.forsale,16.40,,DEFER,P3,"Standard price (C$16.40) — no clear fit, defer."
+futurestate.forum,2.46,,DEFER,P3,Forum defensive — defer.
+futurestate.foundation,10.24,,DEFER,P3,"Standard price (C$10.24) — no clear fit, defer."
+futurestate.free,34.20,,DEFER,P3,"Standard price (C$34.20) — no clear fit, defer."
+futurestate.furniture,32.83,,DEFER,P3,"Standard price (C$32.83) — no clear fit, defer."
+futurestate.futbol,23.25,,DEFER,P3,"Standard price (C$23.25) — no clear fit, defer."
+futurestate.fyi,9.56,,DEFER,P3,"Standard price (C$9.56) — no clear fit, defer."
+futurestate.gallery,41.05,,DEFER,P3,"Standard price (C$41.05) — no clear fit, defer."
+futurestate.games,16.40,,DEFER,P3,"Standard price (C$16.40) — no clear fit, defer."
+futurestate.gb.net,13.67,,DEFER,P3,"Standard price (C$13.67) — no clear fit, defer."
+futurestate.gdn,16.40,,DEFER,P3,"Standard price (C$16.40) — no clear fit, defer."
+futurestate.gift,28.73,,DEFER,P3,"Standard price (C$28.73) — no clear fit, defer."
+futurestate.gifts,52.69,,DEFER,P3,"Standard price (C$52.69) — no clear fit, defer."
+futurestate.gives,10.24,,DEFER,P3,"Standard price (C$10.24) — no clear fit, defer."
+futurestate.giving,10.24,,DEFER,P3,"Standard price (C$10.24) — no clear fit, defer."
+futurestate.glass,105.41,,DEFER,P3,"Standard price (C$105.41) — no clear fit, defer."
+futurestate.gmbh,65.70,,DEFER,P3,"Standard price (C$65.70) — no clear fit, defer."
+futurestate.gold,10.93,,DEFER,P3,"Standard price (C$10.93) — no clear fit, defer."
+futurestate.golf,8.19,,DEFER,P3,"Standard price (C$8.19) — no clear fit, defer."
+futurestate.gr.com,20.51,,DEFER,P3,"Standard price (C$20.51) — no clear fit, defer."
+futurestate.graphics,31.47,,DEFER,P3,"Standard price (C$31.47) — no clear fit, defer."
+futurestate.gratis,34.20,,DEFER,P3,"Standard price (C$34.20) — no clear fit, defer."
+futurestate.green,16.40,,DEFER,P3,"Standard price (C$16.40) — no clear fit, defer."
+futurestate.gripe,9.56,,DEFER,P3,"Standard price (C$9.56) — no clear fit, defer."
+futurestate.guide,59.54,,DEFER,P3,"Standard price (C$59.54) — no clear fit, defer."
+futurestate.guitars,149.22,,DEFER,P3,"Standard price (C$149.22) — no clear fit, defer."
+futurestate.haus,16.40,,DEFER,P3,"Standard price (C$16.40) — no clear fit, defer."
+futurestate.healthcare,128.68,,DEFER,P3,"Standard price (C$128.68) — no clear fit, defer."
+futurestate.help,3.83,,DEFER,P3,Cheap (C$3.83) — could grab but no clear fit. Defer to next batch.
+futurestate.hockey,86.24,,DEFER,P3,"Standard price (C$86.24) — no clear fit, defer."
+futurestate.holiday,93.08,,DEFER,P3,"Standard price (C$93.08) — no clear fit, defer."
+futurestate.hospital,76.65,,DEFER,P3,"Standard price (C$76.65) — no clear fit, defer."
+futurestate.host,13.68,,DEFER,P3,Host defensive — defer.
+futurestate.hot,41.05,,DEFER,P3,"Standard price (C$41.05) — no clear fit, defer."
+futurestate.how,42.42,,DEFER,P3,"Standard price (C$42.42) — no clear fit, defer."
+futurestate.hu.net,45.16,,DEFER,P3,"Standard price (C$45.16) — no clear fit, defer."
+futurestate.icu,3.82,,DEFER,P3,Cheap (C$3.82) — could grab but no clear fit. Defer to next batch.
+futurestate.id,31.47,,DEFER,P3,"Standard price (C$31.47) — no clear fit, defer."
+futurestate.immo,50.63,,DEFER,P3,"Standard price (C$50.63) — no clear fit, defer."
+futurestate.immobilien,54.74,,DEFER,P3,"Standard price (C$54.74) — no clear fit, defer."
+futurestate.in,13.67,,DEFER,P3,"Standard price (C$13.67) — no clear fit, defer."
+futurestate.in.net,10.93,,DEFER,P3,"Standard price (C$10.93) — no clear fit, defer."
+futurestate.industries,65.70,,DEFER,P3,"Standard price (C$65.70) — no clear fit, defer."
+futurestate.ing,17.77,,DEFER,P3,"Standard price (C$17.77) — no clear fit, defer."
+futurestate.international,12.98,,DEFER,P3,"Standard price (C$12.98) — no clear fit, defer."
+futurestate.irish,8.19,,DEFER,P3,"Standard price (C$8.19) — no clear fit, defer."
+futurestate.is,91.71,,DEFER,P3,"Standard price (C$91.71) — no clear fit, defer."
+futurestate.it.com,6.82,,DEFER,P3,"Standard price (C$6.82) — no clear fit, defer."
+futurestate.jetzt,33.52,,DEFER,P3,"Standard price (C$33.52) — no clear fit, defer."
+futurestate.jewelry,93.08,,DEFER,P3,"Standard price (C$93.08) — no clear fit, defer."
+futurestate.jp.net,12.30,,DEFER,P3,"Standard price (C$12.30) — no clear fit, defer."
+futurestate.jpn.com,53.37,,DEFER,P3,"Standard price (C$53.37) — no clear fit, defer."
+futurestate.kaufen,41.05,,DEFER,P3,"Standard price (C$41.05) — no clear fit, defer."
+futurestate.kids,10.93,,DEFER,P3,"Standard price (C$10.93) — no clear fit, defer."
+futurestate.kim,8.19,,DEFER,P3,"Standard price (C$8.19) — no clear fit, defer."
+futurestate.kitchen,12.30,,DEFER,P3,"Standard price (C$12.30) — no clear fit, defer."
+futurestate.kyoto,97.19,,DEFER,P3,"Standard price (C$97.19) — no clear fit, defer."
+futurestate.lat,2.46,,DEFER,P3,Latin America regional — defer.
+futurestate.lawyer,90.34,,DEFER,P3,"Standard price (C$90.34) — no clear fit, defer."
+futurestate.legal,102.67,,DEFER,P3,"Standard price (C$102.67) — no clear fit, defer."
+futurestate.lgbt,10.93,,DEFER,P3,"Standard price (C$10.93) — no clear fit, defer."
+futurestate.li,20.51,,DEFER,P3,"Standard price (C$20.51) — no clear fit, defer."
+futurestate.lifestyle,2.46,,DEFER,P3,Lifestyle — adjacent but defer.
+futurestate.lighting,31.47,,DEFER,P3,"Standard price (C$31.47) — no clear fit, defer."
+futurestate.limited,52.00,,DEFER,P3,"Standard price (C$52.00) — no clear fit, defer."
+futurestate.limo,79.39,,DEFER,P3,"Standard price (C$79.39) — no clear fit, defer."
+futurestate.link,93.45,premium,DEFER,P3,mcv.link covers; FutureState link redundant.
+futurestate.living,2.46,,DEFER,P3,Lifestyle — adjacent but defer.
+futurestate.llc,16.40,,DEFER,P3,"Standard price (C$16.40) — no clear fit, defer."
+futurestate.locker,17.77,,DEFER,P3,Generic — defer.
+futurestate.london,50.63,,DEFER,P3,"Standard price (C$50.63) — no clear fit, defer."
+futurestate.love,6.82,,DEFER,P3,"Standard price (C$6.82) — no clear fit, defer."
+futurestate.maison,83.50,,DEFER,P3,"Standard price (C$83.50) — no clear fit, defer."
+futurestate.management,36.94,,DEFER,P3,"Standard price (C$36.94) — no clear fit, defer."
+futurestate.marketing,9.56,,DEFER,P3,"Standard price (C$9.56) — no clear fit, defer."
+futurestate.mba,16.40,,DEFER,P3,"Standard price (C$16.40) — no clear fit, defer."
+futurestate.me.uk,9.56,,DEFER,P3,"Standard price (C$9.56) — no clear fit, defer."
+futurestate.memorial,75.28,,DEFER,P3,"Standard price (C$75.28) — no clear fit, defer."
+futurestate.mex.com,17.77,,DEFER,P3,"Standard price (C$17.77) — no clear fit, defer."
+futurestate.mobi,6.13,,DEFER,P3,"Standard price (C$6.13) — no clear fit, defer."
+futurestate.mobile,31.47,,DEFER,P3,"Standard price (C$31.47) — no clear fit, defer."
+futurestate.moda,60.22,,DEFER,P3,"Standard price (C$60.22) — no clear fit, defer."
+futurestate.mov,17.77,,DEFER,P3,"Standard price (C$17.77) — no clear fit, defer."
+futurestate.movie,56.11,,DEFER,P3,"Standard price (C$56.11) — no clear fit, defer."
+futurestate.music,65.70,,DEFER,P3,"Standard price (C$65.70) — no clear fit, defer."
+futurestate.my,4.08,,DEFER,P3,Cheap (C$4.08) — could grab but no clear fit. Defer to next batch.
+futurestate.nagoya,23.25,,DEFER,P3,"Standard price (C$23.25) — no clear fit, defer."
+futurestate.name,12.30,,DEFER,P3,"Standard price (C$12.30) — no clear fit, defer."
+futurestate.net.ph,72.54,,DEFER,P3,Philippines specific — defer.
+futurestate.net.vc,45.16,,DEFER,P3,"Standard price (C$45.16) — no clear fit, defer."
+futurestate.news,12.30,,DEFER,P3,"Standard price (C$12.30) — no clear fit, defer."
+futurestate.nexus,17.77,,DEFER,P3,"Standard price (C$17.77) — no clear fit, defer."
+futurestate.ngo,25.99,,DEFER,P3,"Standard price (C$25.99) — no clear fit, defer."
+futurestate.now,34.20,,DEFER,P3,"Standard price (C$34.20) — no clear fit, defer."
+futurestate.observer,16.40,,DEFER,P3,"Standard price (C$16.40) — no clear fit, defer."
+futurestate.okinawa,24.62,,DEFER,P3,"Standard price (C$24.62) — no clear fit, defer."
+futurestate.ong,25.99,,DEFER,P3,"Standard price (C$25.99) — no clear fit, defer."
+futurestate.onl,5.45,,DEFER,P3,"Standard price (C$5.45) — no clear fit, defer."
+futurestate.org.mx,30.10,,DEFER,P3,"Standard price (C$30.10) — no clear fit, defer."
+futurestate.org.ph,72.54,,DEFER,P3,"Standard price (C$72.54) — no clear fit, defer."
+futurestate.org.vc,45.16,,DEFER,P3,"Standard price (C$45.16) — no clear fit, defer."
+futurestate.page,17.77,,DEFER,P3,"Standard price (C$17.77) — no clear fit, defer."
+futurestate.parts,14.35,,DEFER,P3,"Standard price (C$14.35) — no clear fit, defer."
+futurestate.pet,9.56,,DEFER,P3,"Standard price (C$9.56) — no clear fit, defer."
+futurestate.ph,72.54,,DEFER,P3,Philippines specific — defer.
+futurestate.phd,35.57,,DEFER,P3,"Standard price (C$35.57) — no clear fit, defer."
+futurestate.photography,9.56,,DEFER,P3,"Standard price (C$9.56) — no clear fit, defer."
+futurestate.photos,12.30,,DEFER,P3,"Standard price (C$12.30) — no clear fit, defer."
+futurestate.pics,2.46,,DEFER,P3,Defensive — defer.
+futurestate.pictures,22.57,,DEFER,P3,"Standard price (C$22.57) — no clear fit, defer."
+futurestate.pink,8.87,,DEFER,P3,"Standard price (C$8.87) — no clear fit, defer."
+futurestate.pizza,8.19,,DEFER,P3,"Standard price (C$8.19) — no clear fit, defer."
+futurestate.place,31.47,,DEFER,P3,"Standard price (C$31.47) — no clear fit, defer."
+futurestate.plumbing,105.41,,DEFER,P3,"Standard price (C$105.41) — no clear fit, defer."
+futurestate.plus,6.82,,DEFER,P3,"Standard price (C$6.82) — no clear fit, defer."
+futurestate.poker,8.19,,DEFER,P3,"Standard price (C$8.19) — no clear fit, defer."
+futurestate.productions,8.87,,DEFER,P3,"Standard price (C$8.87) — no clear fit, defer."
+futurestate.prof,35.57,,DEFER,P3,"Standard price (C$35.57) — no clear fit, defer."
+futurestate.promo,16.40,,DEFER,P3,"Standard price (C$16.40) — no clear fit, defer."
+futurestate.pub,58.85,,DEFER,P3,"Standard price (C$58.85) — no clear fit, defer."
+futurestate.pw,9.56,,DEFER,P3,"Standard price (C$9.56) — no clear fit, defer."
+futurestate.quest,2.46,,DEFER,P3,Quest defensive — defer.
+futurestate.recipes,7.50,,DEFER,P3,"Standard price (C$7.50) — no clear fit, defer."
+futurestate.red,12.98,,DEFER,P3,"Standard price (C$12.98) — no clear fit, defer."
+futurestate.rehab,52.69,,DEFER,P3,"Standard price (C$52.69) — no clear fit, defer."
+futurestate.reise,141.01,,DEFER,P3,"Standard price (C$141.01) — no clear fit, defer."
+futurestate.reisen,30.10,,DEFER,P3,"Standard price (C$30.10) — no clear fit, defer."
+futurestate.repair,8.19,,DEFER,P3,"Standard price (C$8.19) — no clear fit, defer."
+futurestate.report,9.56,,DEFER,P3,"Standard price (C$9.56) — no clear fit, defer."
+futurestate.republican,43.79,,DEFER,P3,"Standard price (C$43.79) — no clear fit, defer."
+futurestate.restaurant,16.40,,DEFER,P3,"Standard price (C$16.40) — no clear fit, defer."
+futurestate.reviews,90.34,,DEFER,P3,"Standard price (C$90.34) — no clear fit, defer."
+futurestate.rip,34.20,,DEFER,P3,"Standard price (C$34.20) — no clear fit, defer."
+futurestate.rocks,10.93,,DEFER,P3,"Standard price (C$10.93) — no clear fit, defer."
+futurestate.rsvp,17.77,,DEFER,P3,"Standard price (C$17.77) — no clear fit, defer."
+futurestate.ru.com,50.63,,DEFER,P3,"Standard price (C$50.63) — no clear fit, defer."
+futurestate.run,4.77,,DEFER,P3,Cheap (C$4.77) — could grab but no clear fit. Defer to next batch.
+futurestate.ryukyu,24.62,,DEFER,P3,"Standard price (C$24.62) — no clear fit, defer."
+futurestate.sa.com,50.63,,DEFER,P3,"Standard price (C$50.63) — no clear fit, defer."
+futurestate.sale,8.19,,DEFER,P3,"Standard price (C$8.19) — no clear fit, defer."
+futurestate.salon,76.65,,DEFER,P3,"Standard price (C$76.65) — no clear fit, defer."
+futurestate.sarl,9.56,,DEFER,P3,"Standard price (C$9.56) — no clear fit, defer."
+futurestate.schule,41.05,,DEFER,P3,"Standard price (C$41.05) — no clear fit, defer."
+futurestate.se.net,45.16,,DEFER,P3,"Standard price (C$45.16) — no clear fit, defer."
+futurestate.services,7.50,,DEFER,P3,Generic services — defer.
+futurestate.sh,47.90,,DEFER,P3,"Standard price (C$47.90) — no clear fit, defer."
+futurestate.shiksha,16.40,,DEFER,P3,"Standard price (C$16.40) — no clear fit, defer."
+futurestate.shoes,47.90,,DEFER,P3,"Standard price (C$47.90) — no clear fit, defer."
+futurestate.shopping,41.05,,DEFER,P3,"Standard price (C$41.05) — no clear fit, defer."
+futurestate.show,21.88,,DEFER,P3,Show defensive — defer.
+futurestate.singles,5.45,,DEFER,P3,"Standard price (C$5.45) — no clear fit, defer."
+futurestate.ski,105.41,,DEFER,P3,"Standard price (C$105.41) — no clear fit, defer."
+futurestate.so,88.97,,DEFER,P3,"Standard price (C$88.97) — no clear fit, defer."
+futurestate.soccer,37.63,,DEFER,P3,"Standard price (C$37.63) — no clear fit, defer."
+futurestate.social,5.45,,DEFER,P3,Social defensive — defer.
+futurestate.software,16.40,,DEFER,P3,"Standard price (C$16.40) — no clear fit, defer."
+futurestate.solar,93.08,,DEFER,P3,"Standard price (C$93.08) — no clear fit, defer."
+futurestate.solutions,12.30,,DEFER,P3,Generic — defer.
+futurestate.soy,39.68,,DEFER,P3,"Standard price (C$39.68) — no clear fit, defer."
+futurestate.spot,23.93,,DEFER,P3,"Standard price (C$23.93) — no clear fit, defer."
+futurestate.style,10.93,,DEFER,P3,"Standard price (C$10.93) — no clear fit, defer."
+futurestate.supplies,34.89,,DEFER,P3,"Standard price (C$34.89) — no clear fit, defer."
+futurestate.supply,37.63,,DEFER,P3,"Standard price (C$37.63) — no clear fit, defer."
+futurestate.support,6.82,,DEFER,P3,"Standard price (C$6.82) — no clear fit, defer."
+futurestate.surgery,79.39,,DEFER,P3,"Standard price (C$79.39) — no clear fit, defer."
+futurestate.sydney,61.59,,DEFER,P3,"Standard price (C$61.59) — no clear fit, defer."
+futurestate.talk,34.20,,DEFER,P3,"Standard price (C$34.20) — no clear fit, defer."
+futurestate.tax,12.30,,DEFER,P3,"Standard price (C$12.30) — no clear fit, defer."
+futurestate.taxi,12.30,,DEFER,P3,"Standard price (C$12.30) — no clear fit, defer."
+futurestate.team,4.08,,DEFER,P3,Cheap (C$4.08) — could grab but no clear fit. Defer to next batch.
+futurestate.technology,5.45,,DEFER,P3,"Standard price (C$5.45) — no clear fit, defer."
+futurestate.tel,15.03,,DEFER,P3,"Standard price (C$15.03) — no clear fit, defer."
+futurestate.tennis,93.08,,DEFER,P3,"Standard price (C$93.08) — no clear fit, defer."
+futurestate.theater,93.08,,DEFER,P3,"Standard price (C$93.08) — no clear fit, defer."
+futurestate.tienda,86.24,,DEFER,P3,"Standard price (C$86.24) — no clear fit, defer."
+futurestate.tips,17.77,,DEFER,P3,"Standard price (C$17.77) — no clear fit, defer."
+futurestate.tires,120.47,,DEFER,P3,"Standard price (C$120.47) — no clear fit, defer."
+futurestate.to,41.05,,DEFER,P3,"Standard price (C$41.05) — no clear fit, defer."
+futurestate.today,4.08,,DEFER,P3,Today defensive — defer.
+futurestate.tokyo,23.25,,DEFER,P3,"Standard price (C$23.25) — no clear fit, defer."
+futurestate.tools,21.88,,DEFER,P3,"Standard price (C$21.88) — no clear fit, defer."
+futurestate.top,4.08,,DEFER,P3,Cheap (C$4.08) — could grab but no clear fit. Defer to next batch.
+futurestate.tours,8.19,,DEFER,P3,"Standard price (C$8.19) — no clear fit, defer."
+futurestate.town,9.56,,DEFER,P3,"Standard price (C$9.56) — no clear fit, defer."
+futurestate.toys,16.40,,DEFER,P3,"Standard price (C$16.40) — no clear fit, defer."
+futurestate.training,12.30,,DEFER,P3,Training defensive — defer.
+futurestate.travel,32.83,,DEFER,P3,"Standard price (C$32.83) — no clear fit, defer."
+futurestate.uk.com,43.79,,DEFER,P3,"Standard price (C$43.79) — no clear fit, defer."
+futurestate.uk.net,43.79,,DEFER,P3,"Standard price (C$43.79) — no clear fit, defer."
+futurestate.university,90.34,,DEFER,P3,University defensive — defer.
+futurestate.uno,6.82,,DEFER,P3,"Standard price (C$6.82) — no clear fit, defer."
+futurestate.us.com,27.36,,DEFER,P3,"Standard price (C$27.36) — no clear fit, defer."
+futurestate.us.org,27.36,,DEFER,P3,"Standard price (C$27.36) — no clear fit, defer."
+futurestate.vacations,56.11,,DEFER,P3,"Standard price (C$56.11) — no clear fit, defer."
+futurestate.vegas,27.36,,DEFER,P3,"Standard price (C$27.36) — no clear fit, defer."
+futurestate.vet,60.22,,DEFER,P3,"Standard price (C$60.22) — no clear fit, defer."
+futurestate.viajes,60.22,,DEFER,P3,"Standard price (C$60.22) — no clear fit, defer."
+futurestate.video,6.82,,DEFER,P3,"Standard price (C$6.82) — no clear fit, defer."
+futurestate.vin,9.56,,DEFER,P3,"Standard price (C$9.56) — no clear fit, defer."
+futurestate.vote,32.83,,DEFER,P3,"Standard price (C$32.83) — no clear fit, defer."
+futurestate.voto,16.40,,DEFER,P3,"Standard price (C$16.40) — no clear fit, defer."
+futurestate.voyage,84.87,,DEFER,P3,"Standard price (C$84.87) — no clear fit, defer."
+futurestate.wales,17.77,,DEFER,P3,"Standard price (C$17.77) — no clear fit, defer."
+futurestate.watch,4.77,,DEFER,P3,Cheap (C$4.77) — could grab but no clear fit. Defer to next batch.
+futurestate.wine,10.93,,DEFER,P3,"Standard price (C$10.93) — no clear fit, defer."
+futurestate.works,5.45,,DEFER,P3,"Standard price (C$5.45) — no clear fit, defer."
+futurestate.ws,16.40,,DEFER,P3,"Standard price (C$16.40) — no clear fit, defer."
+futurestate.wtf,4.08,,DEFER,P3,Cheap (C$4.08) — could grab but no clear fit. Defer to next batch.
+futurestate.xn--6frz82g,20.51,,DEFER,P3,"Standard price (C$20.51) — no clear fit, defer."
+futurestate.yokohama,23.25,,DEFER,P3,"Standard price (C$23.25) — no clear fit, defer."
+futurestate.you,21.88,,DEFER,P3,"Standard price (C$21.88) — no clear fit, defer."
+futurestate.za.com,50.63,,DEFER,P3,"Standard price (C$50.63) — no clear fit, defer."
+futurestate.zip,17.77,,DEFER,P3,"Standard price (C$17.77) — no clear fit, defer."
+futurestate.zone,12.30,,DEFER,P3,"Standard price (C$12.30) — no clear fit, defer."
+futurestate.ai,27097.52,premium,KILL,DNF,Premium (C$27098) with no clear ecosystem fit.
+futurestate.airforce,150.59,,KILL,DNF,Military niche — brand-unclear.
+futurestate.army,18.46,,KILL,DNF,Military niche — brand-unclear.
+futurestate.art,5.45,,KILL,DNF,Art-specific — wrong vertical.
+futurestate.audio,149.22,,KILL,DNF,Premium for low-fit vertical.
+futurestate.auto,2834.35,,KILL,DNF,Automotive — wrong vertical for FutureState (Pink Slip City covers).
+futurestate.autos,2.46,,KILL,DNF,Automotive — wrong vertical for FutureState (Pink Slip City covers).
+futurestate.baby,2.46,,KILL,DNF,Personal-care niche — wrong vertical.
+futurestate.beauty,2.46,,KILL,DNF,Personal-care niche — wrong vertical.
+futurestate.bike,8.19,,KILL,DNF,Vehicle niche — wrong vertical.
+futurestate.boats,2.46,,KILL,DNF,Vehicle niche — wrong vertical.
+futurestate.bond,2.19,,KILL,DNF,Low-trust TLD.
+futurestate.cam,4.08,,KILL,DNF,Adult content — institutional-brand kill (FutureState investor-facing).
+futurestate.car,2834.35,,KILL,DNF,Automotive — wrong vertical for FutureState (Pink Slip City covers).
+futurestate.cars,2834.35,,KILL,DNF,Automotive — wrong vertical for FutureState (Pink Slip City covers).
+futurestate.cfd,1.90,,KILL,DNF,Low-trust TLD.
+futurestate.cheap,8.19,,KILL,DNF,Brand-negative — DO NOT acquire.
+futurestate.christmas,2.46,,KILL,DNF,Holiday-niche — no fit.
+futurestate.church,16.40,,KILL,DNF,Religious-specific — secular brand conflict.
+futurestate.country,3146.54,,KILL,DNF,$3146 premium — no fit.
+futurestate.creditcard,214.95,,KILL,DNF,Premium (C$215) with no clear ecosystem fit.
+futurestate.cyou,1.90,,KILL,DNF,Low-trust TLD.
+futurestate.dealer,681.89,,KILL,DNF,"$681 premium — automotive/dealer connotation, brand confusion."
+futurestate.fail,56.11,,KILL,DNF,Brand-negative — DO NOT acquire.
+futurestate.fun,5.45,,KILL,DNF,Fun — wrong tone for institutional RE.
+futurestate.game,425.81,,KILL,DNF,Premium (C$426) with no clear ecosystem fit.
+futurestate.gg,94.45,,KILL,DNF,Gaming TLD — wrong vertical.
+futurestate.guru,4.08,,KILL,DNF,Cultural niche — no fit for institutional RE venture.
+futurestate.hair,2.46,,KILL,DNF,Personal-care niche — wrong vertical.
+futurestate.hiphop,35.57,,KILL,DNF,Cultural niche — no fit for institutional RE venture.
+futurestate.hosting,425.81,,KILL,DNF,Premium (C$426) with no clear ecosystem fit.
+futurestate.juegos,505.23,,KILL,DNF,Spanish gaming — wrong vertical.
+futurestate.lol,2.46,,KILL,DNF,Cultural niche — no fit for institutional RE venture.
+futurestate.makeup,2.46,,KILL,DNF,Personal-care niche — wrong vertical.
+futurestate.meme,17.77,,KILL,DNF,Cultural niche — no fit for institutional RE venture.
+futurestate.mom,2.46,,KILL,DNF,Cultural niche — no fit for institutional RE venture.
+futurestate.monster,2.46,,KILL,DNF,Cultural niche — no fit for institutional RE venture.
+futurestate.motorcycles,2.46,,KILL,DNF,Vehicle niche — wrong vertical.
+futurestate.navy,60.22,,KILL,DNF,Military niche — brand-unclear.
+futurestate.new,669.54,,KILL,DNF,$669 premium for generic word.
+futurestate.ninja,16.40,,KILL,DNF,Cultural niche — no fit for institutional RE venture.
+futurestate.protection,2834.35,,KILL,DNF,$2834 premium — no clear FutureState fit; brand-risk overpromise.
+futurestate.rest,2.46,,KILL,DNF,Rest TLD — no fit.
+futurestate.sbs,2.11,,KILL,DNF,Low-trust TLD.
+futurestate.security,2834.35,,KILL,DNF,$2834 premium — no clear FutureState fit; brand-risk overpromise.
+futurestate.sexy,4105.02,,KILL,DNF,Adult content — institutional-brand kill (FutureState investor-facing).
+futurestate.skin,2.46,,KILL,DNF,Personal-care niche — wrong vertical.
+futurestate.storage,738.00,,KILL,DNF,$738 premium — no fit (Cliff Bay isn't storage).
+futurestate.theatre,738.00,,KILL,DNF,$738 premium — no fit.
+futurestate.tickets,539.46,,KILL,DNF,$539 premium — wrong vertical.
+futurestate.vana,3146.54,,KILL,DNF,$3146 niche TLD — no fit.
+futurestate.yachts,2.46,,KILL,DNF,Vehicle niche — wrong vertical.
