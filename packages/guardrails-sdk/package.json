@@ -1,0 +1,25 @@
+{
+  "name": "@mcv/guardrails-sdk",
+  "version": "0.1.0",
+  "description": "MCV Model-Armor-equivalent safety gateway. Ingress/egress sanitization for LLM traffic: prompt-injection heuristics, PII redaction, URL allowlist enforcement, voice-turn sanitizer. Dependency-free by design (supply-chain hardening). Ships local to mcv-one-desktop in Phase 0; promotes to mcv-core-triangle once contract stabilizes.",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".":             { "types": "./src/index.ts",       "default": "./src/index.ts" },
+    "./types":       { "types": "./src/types.ts",       "default": "./src/types.ts" },
+    "./heuristics":  { "types": "./src/heuristics.ts",  "default": "./src/heuristics.ts" },
+    "./pii":         { "types": "./src/pii.ts",         "default": "./src/pii.ts" },
+    "./url":         { "types": "./src/url-allowlist.ts","default": "./src/url-allowlist.ts" },
+    "./rules":       { "types": "./src/rules.ts",       "default": "./src/rules.ts" },
+    "./voice":       { "types": "./src/voice.ts",       "default": "./src/voice.ts" },
+    "./sanitize":    { "types": "./src/sanitize.ts",    "default": "./src/sanitize.ts" }
+  },
+  "files": ["src"],
+  "dependencies": {},
+  "scripts": {
+    "lint": "echo 'no lint yet'",
+    "test": "echo 'no tests yet'"
+  }
+}

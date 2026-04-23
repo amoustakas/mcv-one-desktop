@@ -39,12 +39,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const connections = await getUserConnections(userId);
 
-    // Also include health check data for API-key-only services
+    // Phase-0 safety (2026-04-23): health checks must NOT treat VITE_* as a
+    // valid source. Those names leak into browser bundles — reporting a key
+    // as "configured" when it's only present via its VITE_ shape would mask
+    // a live vulnerability. LLM/voice provider keys are server-only from
+    // this commit forward. See docs/CLAUDE.md "ENVIRONMENT VARIABLES".
     const health: Record<string, boolean> = {
       ANTHROPIC_API_KEY: !!process.env.ANTHROPIC_API_KEY,
-      GOOGLE_AI_KEY: !!(process.env.GOOGLE_AI_KEY || process.env.VITE_GOOGLE_AI_KEY),
-      DEEPGRAM_API_KEY: !!(process.env.DEEPGRAM_API_KEY || process.env.VITE_DEEPGRAM_API_KEY),
-      ELEVENLABS_API_KEY: !!(process.env.ELEVENLABS_API_KEY || process.env.VITE_ELEVENLABS_API_KEY),
+      GOOGLE_AI_KEY: !!process.env.GOOGLE_AI_KEY,
+      DEEPGRAM_API_KEY: !!process.env.DEEPGRAM_API_KEY,
+      ELEVENLABS_API_KEY: !!process.env.ELEVENLABS_API_KEY,
       GOOGLE_MAPS_KEY: !!(process.env.GOOGLE_MAPS_KEY || process.env.VITE_GOOGLE_MAPS_KEY),
       VERCEL_TOKEN: !!process.env.VERCEL_TOKEN,
       N8N_API_KEY: !!process.env.N8N_API_KEY,

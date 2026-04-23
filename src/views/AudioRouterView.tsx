@@ -263,11 +263,20 @@ function VoicePlaygroundSection() {
     monthlySpendCapUsd: 250,
   }), []);
 
+  // Phase-0 safety (2026-04-23): LLM / voice provider API keys are server-only.
+  // Reading import.meta.env.VITE_*_API_KEY here would bundle the raw keys into
+  // the public browser JS — anyone could extract and burn them.
+  //
+  // VoiceDock is expected to obtain short-lived ephemeral tokens from
+  // `/api/live-ephemeral-token` (Gemini Live) or route through server proxies
+  // (`/api/elevenlabs`, `/api/deepgram`, `/api/_embeddings`). The providerConfigs
+  // here intentionally omit apiKey — VoiceDock's provider adapters detect the
+  // absence and take the proxy path.
   const providerConfigs = useMemo<Partial<Record<ProviderName, { apiKey?: string }>>>(() => ({
-    'gemini-live': { apiKey: import.meta.env.VITE_GOOGLE_AI_KEY },
-    'elevenlabs': { apiKey: import.meta.env.VITE_ELEVENLABS_API_KEY },
-    'deepgram': { apiKey: import.meta.env.VITE_DEEPGRAM_API_KEY },
-    'openai-realtime': { apiKey: import.meta.env.VITE_OPENAI_API_KEY },
+    'gemini-live': {},
+    'elevenlabs': {},
+    'deepgram': {},
+    'openai-realtime': {},
   }), []);
 
   const [transcripts, setTranscripts] = useState<string[]>([]);

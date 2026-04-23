@@ -78,9 +78,28 @@ export function useVoiceAgent(config: VoiceAgentConfig = {}): VoiceAgentReturn {
     updateState('connecting');
 
     try {
-      const apiKey = import.meta.env.VITE_GOOGLE_AI_KEY;
-      if (!apiKey) {
-        addToast({ type: 'error', message: 'GOOGLE_AI_KEY required for voice' });
+      // Phase-0 safety (2026-04-23): the browser no longer reads
+      // import.meta.env.VITE_GOOGLE_AI_KEY — that env shape gets bundled into
+      // the public JS by Vite at build time. Instead we mint a short-lived
+      // ephemeral token from `/api/live-ephemeral-token` which is bound to a
+      // single session and expires quickly. The raw GOOGLE_AI_KEY never
+      // leaves the server. If token mint fails, we surface a clear error and
+      // stay in idle — no fallback to raw-key flow.
+      const tokenRes = await fetch('/api/live-ephemeral-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ model: 'gemini-live-2.5-flash-preview', ttlSeconds: 600 }),
+      });
+      if (!tokenRes.ok) {
+        const err = await tokenRes.json().catch(() => ({}));
+        addToast({ type: 'error', message: `Live token mint failed: ${err.error ?? tokenRes.status}` });
+        updateState('error');
+        return;
+      }
+      const { token: ephemeralToken } = (await tokenRes.json()) as { token: string };
+      if (!ephemeralToken) {
+        addToast({ type: 'error', message: 'Live token response missing token' });
         updateState('error');
         return;
       }
@@ -93,9 +112,9 @@ export function useVoiceAgent(config: VoiceAgentConfig = {}): VoiceAgentReturn {
       // Build system instruction
       const systemInstruction = `You are NAOS, a voice-controlled AI assistant for MCV One Desktop. You can execute tools to check email, manage calendar, search files, create tasks, and more. Be concise in voice responses — speak naturally, not in markdown. When you use a tool, briefly describe what you found.`;
 
-      // Connect to Gemini Live API via WebSocket
+      // Connect to Gemini Live API via WebSocket using the ephemeral token.
       const model = 'gemini-2.5-flash';
-      const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`;
+      const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?access_token=${encodeURIComponent(ephemeralToken)}`;
 
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
@@ -122,6 +141,10 @@ export function useVoiceAgent(config: VoiceAgentConfig = {}): VoiceAgentReturn {
         // Setup complete
         if (data.setupComplete) {
           updateState('listening');
+          // Pre-existing: startMicCapture is declared later in the hook body
+          // but invoked here via WebSocket onmessage, which always fires after
+          // the declaration completes. Tracked for Phase-1 cleanup.
+          // eslint-disable-next-line react-hooks/immutability
           startMicCapture();
           addToast({ type: 'success', message: 'NAOS Voice active' });
           return;
@@ -213,6 +236,12 @@ export function useVoiceAgent(config: VoiceAgentConfig = {}): VoiceAgentReturn {
 
       ws.onclose = () => {
         updateState('idle');
+        // Pre-existing: stopMicCapture is declared after start() but only
+        // invoked here via a callback that fires when the WebSocket closes —
+        // by which point the declaration has completed. Lint can't prove the
+        // temporal ordering, so disable the stale-check rule. Tracked for
+        // Phase-1 use-voice-agent cleanup.
+        // eslint-disable-next-line react-hooks/immutability
         stopMicCapture();
       };
 

@@ -1,6 +1,7 @@
 import { requireAuth } from './_auth.js';
 import Anthropic from '@anthropic-ai/sdk';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { sanitizeIngress, sanitizeEgress } from '@mcv/guardrails-sdk';
 
 import { requestLogger } from '../../src/lib/server/logger';
 // ---------------------------------------------------------------------------
@@ -38,16 +39,49 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     switch (action) {
       // ── Chat Completion ──
       case 'chat': {
-        const { messages, model = 'claude-sonnet-4-5-20250929', max_tokens = 4096, system, temperature, tools, tool_choice } = req.body;
-        if (!messages) return res.status(400).json({ error: 'messages required' });
+        const { messages: rawMessages, model = 'claude-sonnet-4-5-20250929', max_tokens = 4096, system, temperature, tools, tool_choice } = req.body;
+        if (!rawMessages) return res.status(400).json({ error: 'messages required' });
+
+        // Phase-0 ingress sanitization — check user+system content for prompt
+        // injection / tool-poisoning / PII before handing to the model.
+        const ingressPayload = [
+          ...(system ? [{ role: 'system' as const, content: typeof system === 'string' ? system : JSON.stringify(system) }] : []),
+          ...rawMessages,
+        ];
+        const ingress = sanitizeIngress(ingressPayload, {
+          userId, correlationId: __correlationId, agentHandle: 'claude-handler',
+        });
+        if (ingress.blocked) {
+          return res.status(400).json({
+            error: 'request blocked by safety policy',
+            blocks: ingress.violations.map((v) => ({
+              kind: v.kind, patternId: v.patternId, severity: v.severity,
+            })),
+          });
+        }
+        const safeSystem = system
+          ? (ingress.safe.find((m): m is { role: 'system'; content: string } => typeof m === 'object' && 'role' in m && m.role === 'system')?.content ?? system)
+          : undefined;
+        const messages = ingress.safe.filter((m) => typeof m === 'object' && 'role' in m && m.role !== 'system');
+
         const params: Record<string, unknown> = { model, max_tokens, messages };
-        if (system) params.system = system;
+        if (safeSystem) params.system = safeSystem;
         if (temperature !== undefined) params.temperature = temperature;
         if (tools) params.tools = tools;
         if (tool_choice) params.tool_choice = tool_choice;
         const message = await client.messages.create(params as Anthropic.MessageCreateParamsNonStreaming);
+
+        // Phase-0 egress sanitization — PII redaction on returned text blocks.
+        const sanitizedContent = message.content.map((block) => {
+          if (block.type === 'text') {
+            const egress = sanitizeEgress(block.text, { userId, correlationId: __correlationId });
+            return { ...block, text: egress.safe };
+          }
+          return block;
+        });
+
         return res.json({
-          content: message.content,
+          content: sanitizedContent,
           model: message.model,
           stop_reason: message.stop_reason,
           usage: message.usage,

@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createServerIntelligence } from '../../src/lib/mcv-core/intelligence.js';
+import { sanitizeIngress, sanitizeEgress } from '@mcv/guardrails-sdk';
 
 import { requestLogger } from '../../src/lib/server/logger';
 async function requireAuth(req: VercelRequest, res: VercelResponse): Promise<string | null> {
@@ -35,11 +36,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { messages, systemPrompt } = req.body;
+  const { messages: rawMessages, systemPrompt: rawSystemPrompt } = req.body as {
+    messages?: Array<{ role: string; content: string }>;
+    systemPrompt?: string;
+  };
 
-  if (!messages || !Array.isArray(messages)) {
+  if (!rawMessages || !Array.isArray(rawMessages)) {
     return res.status(400).json({ error: 'messages array required' });
   }
+
+  // ── Phase-0 ingress sanitization ───────────────────────────────────
+  // Run before any upstream model call (intelligence gateway OR direct GenAI)
+  // so both paths get the same guardrail floor. See @mcv/guardrails-sdk.
+  const sanitizePayload = [
+    ...(rawSystemPrompt ? [{ role: 'system' as const, content: rawSystemPrompt }] : []),
+    ...rawMessages,
+  ];
+  const ingressResult = sanitizeIngress(sanitizePayload, {
+    userId, correlationId: __correlationId, agentHandle: 'gemini-handler',
+  });
+  if (ingressResult.blocked) {
+    return res.status(400).json({
+      error: 'request blocked by safety policy',
+      blocks: ingressResult.violations.map((v) => ({
+        kind: v.kind, patternId: v.patternId, severity: v.severity,
+      })),
+    });
+  }
+  const safeSystemPrompt = rawSystemPrompt
+    ? (ingressResult.safe.find((m): m is { role: 'system'; content: string } =>
+        typeof m === 'object' && 'role' in m && m.role === 'system')?.content ?? rawSystemPrompt)
+    : undefined;
+  const messages = ingressResult.safe.filter((m): m is { role: string; content: string } =>
+    typeof m === 'object' && 'role' in m && m.role !== 'system') as Array<{ role: string; content: string }>;
 
   // ── Triangle routing ────────────────────────────────────────────────
   // Route through Intelligence with provider:'google' when configured. The
@@ -51,15 +80,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         provider: 'google',
         model: 'gemini-1.5-pro',
         messages: [
-          ...(systemPrompt ? [{ role: 'system' as const, content: systemPrompt }] : []),
-          ...messages.map((m: { role: string; content: string }) => ({
+          ...(safeSystemPrompt ? [{ role: 'system' as const, content: safeSystemPrompt }] : []),
+          ...messages.map((m) => ({
             role: (m.role === 'assistant' ? 'assistant' : 'user') as 'user' | 'assistant',
             content: m.content,
           })),
         ],
       });
       if (result.ok) {
-        return res.status(200).json({ content: result.data.content });
+        const egress = sanitizeEgress(result.data.content, { userId, correlationId: __correlationId });
+        return res.status(200).json({ content: egress.safe });
       }
       // eslint-disable-next-line no-console
       console.warn('[gemini] Intelligence call failed, falling back to direct GenAI:', result.error.message);
@@ -69,7 +99,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  const googleKey = process.env.GOOGLE_AI_KEY || process.env.VITE_GOOGLE_AI_KEY || process.env.GOOGLE_GENERATIVE_AI_KEY || '';
+  // Phase-0 safety: VITE_* env names leak into the browser bundle via Vite.
+  // Server handlers MUST NOT fall back to VITE_GOOGLE_AI_KEY — that shape
+  // silently re-introduces the browser-exposed-key vuln (see docs/CLAUDE.md env section).
+  const googleKey = process.env.GOOGLE_AI_KEY || process.env.GOOGLE_GENERATIVE_AI_KEY || '';
   if (!googleKey) {
     return res.status(500).json({ error: 'GOOGLE_AI_KEY not configured' });
   }
@@ -78,11 +111,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const genAI = new GoogleGenerativeAI(googleKey);
     const model = genAI.getGenerativeModel({
       model: 'gemini-1.5-pro',
-      systemInstruction: systemPrompt || undefined,
+      systemInstruction: safeSystemPrompt || undefined,
     });
 
     const chat = model.startChat({
-      history: messages.slice(0, -1).map((m: { role: string; content: string }) => ({
+      history: messages.slice(0, -1).map((m) => ({
         role: m.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: m.content }],
       })),
@@ -92,7 +125,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const result = await chat.sendMessage(lastMessage.content);
     const text = result.response.text();
 
-    return res.status(200).json({ content: text });
+    const egress = sanitizeEgress(text, { userId, correlationId: __correlationId });
+    return res.status(200).json({ content: egress.safe });
   } catch (error) {
     const message = error instanceof Error ? error.message : (error && typeof error === 'object' && 'message' in error ? String((error as { message: unknown }).message) : JSON.stringify(error));
     return res.status(500).json({ error: message });

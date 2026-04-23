@@ -122,7 +122,8 @@ async function slackCall(method: string, token: string, params?: Record<string, 
 // ── AI Classifier ──
 
 async function classifyItems(items: Array<{ id: string; platform: string; from?: string; subject?: string; content: string }>) {
-  const apiKey = process.env.ANTHROPIC_API_KEY || process.env.VITE_ANTHROPIC_API_KEY;
+  // Phase-0 safety: no VITE_* fallback — Vite bundles those names into the browser.
+  const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey || items.length === 0) return items.map((i) => ({ id: i.id, importance: 'medium' as const, routes: [{ target: 'document' as const, docType: 'note' }], ventureId: guessVenture(i.content + (i.subject || '')) }));
 
   try {
