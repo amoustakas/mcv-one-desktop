@@ -142,7 +142,10 @@ export type SectionKey =
   | 'entityStack'
   | 'budgetRollup'
   | 'blueMarlinGate'
-  | 'ownedDomains';
+  | 'ownedDomains'
+  | 'githubRepos'
+  | 'vercelProjects'
+  | 'vercelDeployments';
 
 /** Owned-domain row mirroring `domain_registry`. Synced from Namecheap. */
 export interface OwnedDomain {
@@ -162,6 +165,63 @@ export interface OwnedDomain {
   created_at: string;
 }
 
+/** GitHub repo row mirroring `github_repos`. Synced from GitHub REST API. */
+export interface GitHubRepo {
+  id: string;
+  full_name: string;
+  owner: string;
+  name: string;
+  description: string | null;
+  language: string | null;
+  default_branch: string | null;
+  visibility: 'public' | 'private' | 'internal';
+  archived: boolean;
+  html_url: string | null;
+  stargazers_count: number;
+  open_issues_count: number;
+  parent_entity_id: string | null;
+  venture_id: string | null;
+  pushed_at: string | null;
+  updated_at: string | null;
+  last_synced_at: string | null;
+  created_at: string;
+}
+
+/** Vercel project row mirroring `vercel_projects`. */
+export interface VercelProject {
+  id: string;
+  vercel_project_id: string;
+  name: string;
+  framework: string | null;
+  venture_id: string | null;
+  parent_entity_id: string | null;
+  production_url: string | null;
+  last_deployment_at: string | null;
+  last_synced_at: string | null;
+  created_at: string;
+}
+
+/** Vercel deployment row mirroring `vercel_deployments`. */
+export interface VercelDeployment {
+  id: string;
+  vercel_deployment_id: string;
+  vercel_project_id: string;
+  project_name: string;
+  url: string;
+  state: 'READY' | 'ERROR' | 'BUILDING' | 'QUEUED' | 'CANCELED' | 'INITIALIZING' | 'DEPLOYING';
+  target: 'production' | 'staging' | 'preview' | null;
+  creator_username: string | null;
+  commit_sha: string | null;
+  commit_message: string | null;
+  git_branch: string | null;
+  meta: Record<string, unknown> | null;
+  created_at_vercel: string;
+  ready_at: string | null;
+  venture_id: string | null;
+  last_synced_at: string | null;
+  created_at: string;
+}
+
 interface FoundationState {
   ipMarks: IPMark[];
   counselEngagements: CounselEngagement[];
@@ -173,6 +233,12 @@ interface FoundationState {
   blueMarlinGate: BlueMarlinGateStatus | null;
   /** Authoritative owned-domain registry, hydrated from Namecheap. */
   ownedDomains: OwnedDomain[];
+  /** GitHub repositories, hydrated via scripts/seed-github-repos.ts. */
+  githubRepos: GitHubRepo[];
+  /** Vercel projects, hydrated via scripts/seed-vercel-deployments.ts. */
+  vercelProjects: VercelProject[];
+  /** Recent Vercel deployments across all projects. */
+  vercelDeployments: VercelDeployment[];
 
   loading: Record<SectionKey, boolean>;
   errors: Record<SectionKey, string | null>;
@@ -186,6 +252,9 @@ interface FoundationState {
   fetchBudgetRollup: () => Promise<void>;
   fetchBlueMarlinGate: () => Promise<void>;
   fetchOwnedDomains: () => Promise<void>;
+  fetchGitHubRepos: () => Promise<void>;
+  fetchVercelProjects: () => Promise<void>;
+  fetchVercelDeployments: () => Promise<void>;
   fetchAll: () => Promise<void>;
 
   /** Idempotent: seeds the 5 🔴🟠 acquisition rows. Safe to re-run. */
@@ -202,6 +271,7 @@ function emptyLoading(): Record<SectionKey, boolean> {
     ipMarks: false, counselEngagements: false, counselTasks: false,
     acquisitionOrders: false, namingRatifications: false, entityStack: false,
     budgetRollup: false, blueMarlinGate: false, ownedDomains: false,
+    githubRepos: false, vercelProjects: false, vercelDeployments: false,
   };
 }
 function emptyErrors(): Record<SectionKey, string | null> {
@@ -209,6 +279,7 @@ function emptyErrors(): Record<SectionKey, string | null> {
     ipMarks: null, counselEngagements: null, counselTasks: null,
     acquisitionOrders: null, namingRatifications: null, entityStack: null,
     budgetRollup: null, blueMarlinGate: null, ownedDomains: null,
+    githubRepos: null, vercelProjects: null, vercelDeployments: null,
   };
 }
 
@@ -251,6 +322,9 @@ export const useFoundationStore = create<FoundationState>()(
     budgetRollup: null,
     blueMarlinGate: null,
     ownedDomains: [],
+    githubRepos: [],
+    vercelProjects: [],
+    vercelDeployments: [],
     loading: emptyLoading(),
     errors: emptyErrors(),
 
@@ -283,6 +357,24 @@ export const useFoundationStore = create<FoundationState>()(
       (d) => (d.domains as OwnedDomain[]) ?? [],
       (p) => set(p), get,
       (domains) => ({ ownedDomains: domains }),
+    ),
+    fetchGitHubRepos: () => fetchSection(
+      'githubRepos', 'list-github-repos', {},
+      (d) => (d.repos as GitHubRepo[]) ?? [],
+      (p) => set(p), get,
+      (repos) => ({ githubRepos: repos }),
+    ),
+    fetchVercelProjects: () => fetchSection(
+      'vercelProjects', 'list-vercel-projects', {},
+      (d) => (d.projects as VercelProject[]) ?? [],
+      (p) => set(p), get,
+      (projects) => ({ vercelProjects: projects }),
+    ),
+    fetchVercelDeployments: () => fetchSection(
+      'vercelDeployments', 'list-vercel-deployments', { limit: 100 },
+      (d) => (d.deployments as VercelDeployment[]) ?? [],
+      (p) => set(p), get,
+      (deployments) => ({ vercelDeployments: deployments }),
     ),
     fetchNamingRatifications: () => fetchSection(
       'namingRatifications', 'list-naming-ratifications', {},

@@ -122,6 +122,52 @@ export const FoundationContract: ContractDeclaration<'foundation'> = {
       }),
       description: 'Acquisition queue seeded from a docs corpus run (🔴/🟠 triplet etc.).',
     },
+    {
+      topic: 'foundation.domains.synced',
+      schemaVersion: '1.0',
+      payload: z.object({
+        domainCount: z.number(),
+        source: z.string(), // "namecheap" | "cloudflare" | etc.
+      }),
+      description: 'Domain registry refreshed from a registrar API (Namecheap today, Cloudflare next).',
+    },
+
+    // ── GitHub repositories (Foundation-OS Portfolio panel) ─────────────
+    {
+      topic: 'foundation.repo.synced',
+      schemaVersion: '1.0',
+      payload: z.object({
+        repoCount: z.number(),
+        archivedCount: z.number(),
+        source: z.string(), // "github-api"
+      }),
+      description: 'GitHub repository registry refreshed from the GitHub REST API.',
+    },
+
+    // ── Vercel deployments (Foundation-OS Portfolio panel) ──────────────
+    {
+      topic: 'foundation.deployment.live',
+      schemaVersion: '1.0',
+      payload: z.object({
+        projectName: z.string(),
+        url: z.string(),
+        target: z.enum(['production', 'staging', 'preview']),
+        commitSha: z.string().nullable(),
+        commitMessage: z.string().nullable(),
+      }),
+      description: 'Vercel deployment reached READY state. Production targets carry operational weight.',
+    },
+    {
+      topic: 'foundation.deployment.failed',
+      schemaVersion: '1.0',
+      payload: z.object({
+        projectName: z.string(),
+        deploymentId: z.string(),
+        target: z.enum(['production', 'staging', 'preview']),
+        commitSha: z.string().nullable(),
+      }),
+      description: 'Vercel deployment errored. Production failures are ops-page-worthy; preview failures are PR-review signal.',
+    },
 
     // ── Naming ratifications ────────────────────────────────────────────
     {

@@ -63,6 +63,8 @@ const SuiteView = lazyRetry(() => import('./views/suites/SuiteView'));
 const FoundationCounselCockpitView = lazyRetry(() => import('./views/foundation/CounselCockpitView'));
 const FoundationIPPortfolioView = lazyRetry(() => import('./views/foundation/IPPortfolioView'));
 const FoundationDomainPortfolioView = lazyRetry(() => import('./views/foundation/DomainPortfolioView'));
+const FoundationRepositoryPortfolioView = lazyRetry(() => import('./views/foundation/RepositoryPortfolioView'));
+const FoundationDeploymentPortfolioView = lazyRetry(() => import('./views/foundation/DeploymentPortfolioView'));
 const FoundationEntityStackView = lazyRetry(() => import('./views/foundation/EntityStackView'));
 const FoundationNamingBoardView = lazyRetry(() => import('./views/foundation/NamingRatificationBoardView'));
 const FoundationFilingsCalendarView = lazyRetry(() => import('./views/foundation/FilingsCalendarView'));
@@ -225,6 +227,10 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <FoundationIPPortfolioView />;
     case 'foundation-domains':
       return <FoundationDomainPortfolioView />;
+    case 'foundation-repos':
+      return <FoundationRepositoryPortfolioView />;
+    case 'foundation-deployments':
+      return <FoundationDeploymentPortfolioView />;
     case 'foundation-entities':
       return <FoundationEntityStackView />;
     case 'foundation-naming':

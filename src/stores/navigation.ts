@@ -170,6 +170,8 @@ export type ViewId =
   | 'foundation-counsel'
   | 'foundation-ip'
   | 'foundation-domains'
+  | 'foundation-repos'
+  | 'foundation-deployments'
   | 'foundation-entities'
   | 'foundation-naming'
   | 'foundation-filings'
@@ -299,6 +301,8 @@ const VIEW_LABELS: Record<string, string> = {
   'foundation-counsel': 'Counsel Cockpit',
   'foundation-ip': 'IP Portfolio',
   'foundation-domains': 'Domain Portfolio',
+  'foundation-repos': 'Repository Portfolio',
+  'foundation-deployments': 'Deployment Portfolio',
   'foundation-entities': 'Entity Stack',
   'foundation-naming': 'Naming Board',
   'foundation-filings': 'Filings Calendar',

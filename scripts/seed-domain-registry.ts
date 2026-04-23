@@ -162,6 +162,28 @@ async function main() {
 
   console.log(`[seed-domain-registry] ✅ Upserted ${data?.length ?? rows.length} rows.`);
 
+  // Emit foundation.domains.synced so the nervous system sees the sync.
+  // Best-effort; don't fail the seed if the publish fails. Matches the
+  // emission pattern in seed-github-repos.ts / seed-vercel-deployments.ts.
+  try {
+    await supabase.from('event_log').insert({
+      topic: 'foundation.domains.synced',
+      schema_version: '1.0',
+      correlation_id: crypto.randomUUID(),
+      causation_id: null,
+      venture_id: null,
+      emitted_by: 'script:seed-domain-registry',
+      payload: {
+        domainCount: rows.length,
+        source: 'namecheap',
+      },
+      status: 'published',
+    });
+    console.log('[seed-domain-registry] 🔔 Emitted foundation.domains.synced event.');
+  } catch (err) {
+    console.warn('[seed-domain-registry] event emit failed (non-fatal):', err instanceof Error ? err.message : err);
+  }
+
   // Show a sample of what landed for sanity
   const { data: sample } = await supabase
     .from('domain_registry')
