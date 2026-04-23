@@ -141,7 +141,26 @@ export type SectionKey =
   | 'namingRatifications'
   | 'entityStack'
   | 'budgetRollup'
-  | 'blueMarlinGate';
+  | 'blueMarlinGate'
+  | 'ownedDomains';
+
+/** Owned-domain row mirroring `domain_registry`. Synced from Namecheap. */
+export interface OwnedDomain {
+  id: string;
+  fqdn: string;
+  registrar: string | null;
+  registrar_ref: string | null;
+  cloudflare_zone_id: string | null;
+  parent_entity_id: string | null;
+  venture_id: string | null;
+  nameservers: string[];
+  status: 'active' | 'expiring' | 'expired' | 'transfer' | 'parked';
+  registered_at: string | null;
+  expires_at: string | null;
+  auto_renew: boolean | null;
+  last_synced_at: string | null;
+  created_at: string;
+}
 
 interface FoundationState {
   ipMarks: IPMark[];
@@ -152,6 +171,8 @@ interface FoundationState {
   entityStack: EntityStackNode[];
   budgetRollup: IPBudgetRollup | null;
   blueMarlinGate: BlueMarlinGateStatus | null;
+  /** Authoritative owned-domain registry, hydrated from Namecheap. */
+  ownedDomains: OwnedDomain[];
 
   loading: Record<SectionKey, boolean>;
   errors: Record<SectionKey, string | null>;
@@ -164,6 +185,7 @@ interface FoundationState {
   fetchEntityStack: () => Promise<void>;
   fetchBudgetRollup: () => Promise<void>;
   fetchBlueMarlinGate: () => Promise<void>;
+  fetchOwnedDomains: () => Promise<void>;
   fetchAll: () => Promise<void>;
 
   /** Idempotent: seeds the 5 🔴🟠 acquisition rows. Safe to re-run. */
@@ -179,14 +201,14 @@ function emptyLoading(): Record<SectionKey, boolean> {
   return {
     ipMarks: false, counselEngagements: false, counselTasks: false,
     acquisitionOrders: false, namingRatifications: false, entityStack: false,
-    budgetRollup: false, blueMarlinGate: false,
+    budgetRollup: false, blueMarlinGate: false, ownedDomains: false,
   };
 }
 function emptyErrors(): Record<SectionKey, string | null> {
   return {
     ipMarks: null, counselEngagements: null, counselTasks: null,
     acquisitionOrders: null, namingRatifications: null, entityStack: null,
-    budgetRollup: null, blueMarlinGate: null,
+    budgetRollup: null, blueMarlinGate: null, ownedDomains: null,
   };
 }
 
@@ -228,6 +250,7 @@ export const useFoundationStore = create<FoundationState>()(
     entityStack: [],
     budgetRollup: null,
     blueMarlinGate: null,
+    ownedDomains: [],
     loading: emptyLoading(),
     errors: emptyErrors(),
 
@@ -254,6 +277,12 @@ export const useFoundationStore = create<FoundationState>()(
       (d) => (d.orders as AcquisitionOrder[]) ?? [],
       (p) => set(p), get,
       (orders) => ({ acquisitionOrders: orders }),
+    ),
+    fetchOwnedDomains: () => fetchSection(
+      'ownedDomains', 'list-owned-domains', {},
+      (d) => (d.domains as OwnedDomain[]) ?? [],
+      (p) => set(p), get,
+      (domains) => ({ ownedDomains: domains }),
     ),
     fetchNamingRatifications: () => fetchSection(
       'namingRatifications', 'list-naming-ratifications', {},

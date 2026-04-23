@@ -78,6 +78,7 @@
     "decimal.js": "^10.6.0",
     "es-toolkit": "^1.45.1",
     "eventemitter3": "^5.0.4",
+    "fast-xml-parser": "^5.7.1",
     "framer-motion": "^12.38.0",
     "gifenc": "^1.0.3",
     "jspdf": "^4.2.1",

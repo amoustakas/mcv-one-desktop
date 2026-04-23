@@ -28,8 +28,12 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 );
 
-// Service Worker — aggressive update strategy
-if ('serviceWorker' in navigator) {
+// Service Worker — aggressive update strategy (PROD only).
+// In dev, SW caching creates "I just rebuilt but UI is from yesterday" traps
+// during rapid iteration. Gate registration on import.meta.env.PROD, and
+// actively unregister any previously-installed SW + purge caches so users
+// who previously loaded a prod build locally don't keep seeing stale shells.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     // Force update check on every page load by adding cache-bust param
     const reg = await navigator.serviceWorker.register('/sw.js', {
@@ -69,5 +73,18 @@ if ('serviceWorker' in navigator) {
         window.location.reload();
       }
     });
+  });
+} else if (import.meta.env.DEV && 'serviceWorker' in navigator) {
+  // Dev mode — purge any SW previously registered by a prod build loaded
+  // against the same origin (localhost:5173 is shared by prod-preview and
+  // `npm run dev`). Without this, the old SW keeps serving its cached
+  // shell and the user sees stale UI for the entire dev session.
+  window.addEventListener('load', async () => {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (const reg of regs) await reg.unregister();
+    if (typeof caches !== 'undefined') {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
   });
 }

@@ -332,6 +332,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const order = await acquisition.kill(p.id as string, p.reason as string);
         return res.json({ order });
       }
+
+      // ─── Owned-domain registry (Namecheap-synced) ─────────────────────
+      // Thin read surface over the domain_registry table. Hydrated by
+      // scripts/seed-domain-registry.ts (one-shot or scheduled) which calls
+      // the Namecheap API and upserts here. UI consumes via the
+      // DomainPortfolioView "Owned Domains" section.
+      case 'list-owned-domains': {
+        const { data, error } = await supabase
+          .from('domain_registry')
+          .select('*')
+          .order('expires_at', { ascending: true, nullsFirst: false });
+        if (error) throw error;
+        return res.json({ domains: data ?? [] });
+      }
       case 'seed-urgent-acquisitions': {
         const result = await acquisition.seedUrgent();
         if (result.inserted > 0) {

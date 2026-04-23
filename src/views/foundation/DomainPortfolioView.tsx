@@ -26,16 +26,32 @@ const URGENCY_COLOR: Record<AcquisitionOrder['urgencyTier'], string> = {
 
 export default function DomainPortfolioView() {
   const {
-    acquisitionOrders, loading, errors,
-    fetchAcquisitionOrders, seedUrgentAcquisitions,
+    acquisitionOrders, ownedDomains, loading, errors,
+    fetchAcquisitionOrders, fetchOwnedDomains, seedUrgentAcquisitions,
   } = useFoundationStore();
 
   useEffect(() => {
     fetchAcquisitionOrders();
-  }, [fetchAcquisitionOrders]);
+    fetchOwnedDomains();
+  }, [fetchAcquisitionOrders, fetchOwnedDomains]);
 
   const buckets = urgencyBuckets(acquisitionOrders);
   const hasHunterBlockers = buckets.red_7day.some((o) => o.blocksDisclosure);
+
+  // Expiry tone helper — 30 days red, 90 days amber, otherwise neutral.
+  const today = new Date();
+  const daysUntil = (iso: string | null): number | null => {
+    if (!iso) return null;
+    const diff = (new Date(iso).getTime() - today.getTime()) / 86_400_000;
+    return Math.floor(diff);
+  };
+  const expiryTone = (d: number | null): 'error' | 'warning' | 'muted' | 'success' => {
+    if (d == null) return 'muted';
+    if (d < 0) return 'error';
+    if (d <= 30) return 'error';
+    if (d <= 90) return 'warning';
+    return 'success';
+  };
 
   return (
     <PageShell>
@@ -82,6 +98,108 @@ export default function DomainPortfolioView() {
           <span style={{ color: 'var(--error)' }}>{errors.acquisitionOrders}</span>
         </GlassCard>
       )}
+
+      {/* ─── Owned Domains (Namecheap-synced registry) ───────────────────
+          Hydrated by scripts/seed-domain-registry.ts calling Namecheap API.
+          See docs: supabase/migration-domain-registry-2026-04-17.sql.        */}
+      <div style={{ marginBottom: 24 }}>
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+          margin: '0 0 8px 0',
+        }}>
+          <h3 style={{
+            margin: 0, fontSize: 12, textTransform: 'uppercase',
+            letterSpacing: 1.2, color: 'var(--text)',
+          }}>
+            Owned Domains · {ownedDomains.length}
+          </h3>
+          {ownedDomains.length > 0 && ownedDomains[0].last_synced_at && (
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+              Last Namecheap sync:{' '}
+              {new Date(ownedDomains[0].last_synced_at).toLocaleString()}
+            </span>
+          )}
+        </div>
+
+        {errors.ownedDomains && (
+          <GlassCard style={{ padding: 12, marginBottom: 8, borderColor: 'var(--error)' }}>
+            <span style={{ color: 'var(--error)' }}>{errors.ownedDomains}</span>
+          </GlassCard>
+        )}
+
+        {ownedDomains.length === 0 && !loading.ownedDomains ? (
+          <GlassCard style={{ padding: 16, color: 'var(--text-muted)', fontSize: 13 }}>
+            No owned domains synced yet. Run{' '}
+            <code style={{ color: 'var(--text)' }}>npx tsx scripts/seed-domain-registry.ts</code>{' '}
+            to hydrate from Namecheap.
+          </GlassCard>
+        ) : (
+          <GlassCard style={{ padding: 0, overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: 'rgba(255,255,255,0.03)' }}>
+                  <th style={thStyle}>Domain</th>
+                  <th style={thStyle}>Registrar</th>
+                  <th style={thStyle}>Venture</th>
+                  <th style={thStyle}>Expires</th>
+                  <th style={thStyle}>Auto-renew</th>
+                  <th style={thStyle}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ownedDomains.map((d) => {
+                  const days = daysUntil(d.expires_at);
+                  const tone = expiryTone(days);
+                  return (
+                    <tr key={d.id} style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                      <td style={tdStyle}>
+                        <div style={{ fontWeight: 600 }}>{d.fqdn}</div>
+                        {d.parent_entity_id && (
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                            Parent: {d.parent_entity_id}
+                          </div>
+                        )}
+                      </td>
+                      <td style={tdStyle}>{d.registrar ?? '—'}</td>
+                      <td style={tdStyle}>{d.venture_id ?? '—'}</td>
+                      <td style={tdStyle}>
+                        {d.expires_at ? (
+                          <>
+                            <div>{d.expires_at}</div>
+                            {days != null && (
+                              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                                {days < 0 ? `${Math.abs(days)}d expired` : `${days}d left`}
+                              </div>
+                            )}
+                          </>
+                        ) : '—'}
+                      </td>
+                      <td style={tdStyle}>
+                        {d.auto_renew == null
+                          ? '—'
+                          : d.auto_renew
+                            ? <Chip tone="success">on</Chip>
+                            : <Chip tone="warning">off</Chip>}
+                      </td>
+                      <td style={tdStyle}>
+                        <Chip tone={tone}>
+                          {d.status}
+                        </Chip>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </GlassCard>
+        )}
+
+        {loading.ownedDomains && ownedDomains.length === 0 && (
+          <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)' }}>
+            Loading owned domains…
+          </div>
+        )}
+      </div>
 
       {URGENCY_ORDER.map((tier) => (
         <div key={tier} style={{ marginBottom: 20 }}>
