@@ -222,7 +222,7 @@ curl -s https://mcv-one.vercel.app/api/health | jq '.commit_sha'
 - [ ] `/api/health` returns 200 with `db_ok: true`
 - [ ] `migrations_count` matches expected count
 - [ ] Primary UI routes load (command center, venture sidebar, NAOS chat)
-- [ ] Claude API chat responds (requires `VITE_ANTHROPIC_API_KEY` set)
+- [ ] Claude API chat responds (requires `ANTHROPIC_API_KEY` set — server-only; `VITE_ANTHROPIC_API_KEY` is banned as of 2026-04-23 Phase-0 safety hotfix, see CLAUDE.md)
 - [ ] Cron jobs visible in Vercel dashboard → Cron tab (6 active)
 
 ---

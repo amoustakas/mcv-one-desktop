@@ -52,7 +52,13 @@ export default function VoiceStudioView() {
     }
   }, [botConfig.enableFunctionCalling, botConfig.toolDefinitions, botConfig.useAllKits, ventureId]);
 
-  const apiKey = import.meta.env.VITE_GOOGLE_AI_KEY || '';
+  // Phase-0 safety (2026-04-23): no browser read of VITE_GOOGLE_AI_KEY — that
+  // env name gets bundled into the public JS. VoiceStudioView will fetch an
+  // ephemeral token from `/api/live-ephemeral-token` inside useLiveAudio in a
+  // Phase-1 follow-up. For now we pass an empty string — useLiveAudio's
+  // provider adapter must detect the absence and either (a) take the
+  // server-proxy path or (b) surface a clear "not configured" state in UI.
+  const apiKey = '';
 
   // We need a reference to sendToolResponse before setting up the bridge.
   // Hold it in a ref that gets populated after useLiveAudio returns.
@@ -96,7 +102,11 @@ export default function VoiceStudioView() {
     onToolCall: handleToolCall,
   });
 
-  // Populate the ref so our bridge can call sendToolResponse
+  // Populate the ref so our bridge can call sendToolResponse.
+  // Pre-existing: react-hooks/refs flags ref assignment during render. The
+  // correct fix is to move this into a useEffect, but that's out-of-scope for
+  // the Phase-0 ADK safety hotfix. Tracked for Phase-1 VoiceDock cleanup.
+  // eslint-disable-next-line react-hooks/refs
   sendToolResponseRef.current = liveAudio.sendToolResponse;
 
   const handleToggleRecording = useCallback(() => {

@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { sanitizeIngress, sanitizeEgress } from '@mcv/guardrails-sdk';
 
 import { requestLogger } from '../../src/lib/server/logger';
 
@@ -14,10 +15,13 @@ import { requestLogger } from '../../src/lib/server/logger';
  *
  *   The WebSocket-based Live API (bidirectional audio) is a separate flow
  *   handled in `src/lib/google/live-api-client.ts` and `src/hooks/use-voice-agent.ts`,
- *   which talk directly to `wss://generativelanguage.googleapis.com`. That
- *   path uses VITE_GOOGLE_AI_KEY from the browser bundle (a public-by-design
- *   Vite env) and does NOT touch this endpoint — an ephemeral-token model
- *   for that WebSocket flow is Google-API-side work, tracked separately.
+ *   which talks directly to `wss://generativelanguage.googleapis.com`.
+ *
+ *   UPDATE (Phase-0, 2026-04-23): that path MUST NOT read VITE_GOOGLE_AI_KEY
+ *   from the browser — the key would be bundled by Vite and exposed to any
+ *   visitor. Clients now request a short-lived ephemeral token from
+ *   `api/_handlers/live-ephemeral-token.ts` and pass the token into the
+ *   Gemini Live SDK. The raw GOOGLE_AI_KEY never leaves the server.
  *
  * ACCEPTED ACTIONS
  *   generate          — one-shot text generation, returns JSON
@@ -46,7 +50,10 @@ async function requireAuth(req: VercelRequest, res: VercelResponse): Promise<str
   } catch { res.status(401).json({ error: 'Invalid session' }); return null; }
 }
 
-const GOOGLE_AI_KEY = process.env.GOOGLE_AI_KEY || process.env.VITE_GOOGLE_AI_KEY || process.env.GOOGLE_GENERATIVE_AI_KEY || '';
+// Phase-0 safety: server handlers MUST NOT read VITE_* env names — Vite bundles
+// them into the browser at build time, so reading process.env.VITE_GOOGLE_AI_KEY
+// here silently re-introduces the browser-exposed-key vuln closed in 2026-04-17.
+const GOOGLE_AI_KEY = process.env.GOOGLE_AI_KEY || process.env.GOOGLE_GENERATIVE_AI_KEY || '';
 
 type MessageRole = 'user' | 'assistant' | 'model' | 'system';
 interface InboundMessage { role: MessageRole; content: string }
@@ -101,16 +108,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: `Unknown action: ${action}. Supported: generate | generate-stream` });
   }
 
+  // Phase-0 ingress sanitization. Stream responses are sanitized per-chunk
+  // (known gap: PII spanning two chunks may slip; tracked for Phase-1 follow-up).
+  const ingressPayload = [
+    ...(systemPrompt ? [{ role: 'system' as const, content: systemPrompt }] : []),
+    ...messages,
+  ];
+  const ingress = sanitizeIngress(ingressPayload, {
+    userId, correlationId: __correlationId, agentHandle: 'live-proxy',
+  });
+  if (ingress.blocked) {
+    return res.status(400).json({
+      error: 'request blocked by safety policy',
+      blocks: ingress.violations.map((v) => ({
+        kind: v.kind, patternId: v.patternId, severity: v.severity,
+      })),
+    });
+  }
+  const safeSystemPrompt = systemPrompt
+    ? (ingress.safe.find((m): m is { role: 'system'; content: string } => typeof m === 'object' && 'role' in m && m.role === 'system')?.content ?? systemPrompt)
+    : undefined;
+  const safeMessages = ingress.safe.filter((m): m is InboundMessage =>
+    typeof m === 'object' && 'role' in m && m.role !== 'system') as InboundMessage[];
+
   try {
     const { GoogleGenerativeAI } = await import('@google/generative-ai');
     const genAI = new GoogleGenerativeAI(GOOGLE_AI_KEY);
     const model = genAI.getGenerativeModel({
       model: modelName,
-      systemInstruction: systemPrompt || undefined,
+      systemInstruction: safeSystemPrompt || undefined,
     });
 
-    const history = normalizeHistory(messages.slice(0, -1));
-    const lastMessage = messages[messages.length - 1];
+    const history = normalizeHistory(safeMessages.slice(0, -1));
+    const lastMessage = safeMessages[safeMessages.length - 1];
 
     if (action === 'generate-stream') {
       res.setHeader('content-type', 'text/plain; charset=utf-8');
@@ -120,7 +150,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const stream = await chat.sendMessageStream(lastMessage.content);
       for await (const chunk of stream.stream) {
         const piece = chunk.text();
-        if (piece) res.write(piece);
+        if (piece) {
+          const egress = sanitizeEgress(piece, { userId, correlationId: __correlationId });
+          res.write(egress.safe);
+        }
       }
       res.end();
       return;
@@ -130,7 +163,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const chat = model.startChat({ history });
     const result = await chat.sendMessage(lastMessage.content);
     const text = result.response.text();
-    return res.status(200).json({ content: text });
+    const egress = sanitizeEgress(text, { userId, correlationId: __correlationId });
+    return res.status(200).json({ content: egress.safe });
   } catch (error) {
     const message = error instanceof Error ? error.message : JSON.stringify(error);
     if (!res.headersSent) {

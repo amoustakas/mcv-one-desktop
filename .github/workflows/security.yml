@@ -1,0 +1,74 @@
+name: security
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+jobs:
+  banned-env-names:
+    name: banned LLM/voice env names (browser-bundle leak prevention)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Phase-0 safety (2026-04-23): any VITE_*_API_KEY for LLM/voice providers
+      # gets bundled into the public browser JS by Vite. This step greps every
+      # source file for those banned env names and fails the build if any
+      # re-appear. Belt-and-suspenders alongside the ESLint rule in
+      # eslint.config.js — grep catches patterns that the AST-based rule can
+      # miss (string templates, dynamic property access, adjacent files).
+      #
+      # Allowed locations: this file + CLAUDE.md (documentation), and test
+      # fixtures inside __tests__ directories (which never ship to users).
+      - name: ban VITE_* LLM/voice provider keys in source
+        run: |
+          set -euo pipefail
+          pattern='VITE_(ANTHROPIC|GOOGLE_AI|CLAUDE|ELEVENLABS|DEEPGRAM|OPENAI)_API_KEY'
+
+          # Excludes:
+          #   - this workflow file (describes the rule, not enforces it)
+          #   - CLAUDE.md (documents the convention + migration note)
+          #   - docs/**/*.md (may reference historical env names)
+          #   - any __tests__ directory (test fixtures)
+          #   - node_modules, dist, build output
+          # Narrow dated exception (2026-04-23): two API routes in
+          # apps/onboarding/src/app/api/{chat,tts}/route.ts still carry
+          # VITE_* fallbacks. These are owned by the parallel onboarding
+          # session and removed in the session-2 PR. REMOVE THIS EXCEPTION
+          # once that PR lands (grep -r for 'dated exception' to find this).
+          hits=$(grep -rEn --binary-files=without-match \
+            --exclude-dir=node_modules \
+            --exclude-dir=dist \
+            --exclude-dir=build \
+            --exclude-dir=.next \
+            --exclude-dir=__tests__ \
+            --exclude-dir=.github \
+            --exclude='CLAUDE.md' \
+            --exclude='*.md' \
+            "$pattern" src packages apps 2>/dev/null \
+            | grep -v 'apps/onboarding/src/app/api/chat/route.ts' \
+            | grep -v 'apps/onboarding/src/app/api/tts/route.ts' \
+            || true)
+
+          if [ -n "$hits" ]; then
+            echo "::error::Banned VITE_*_API_KEY references found in source:"
+            echo "$hits"
+            echo ""
+            echo "These env names get bundled into the browser JS by Vite and leak the raw keys."
+            echo "Use server proxies (/api/claude, /api/gemini, /api/elevenlabs, /api/deepgram,"
+            echo "/api/_embeddings) or mint ephemeral tokens via /api/live-ephemeral-token."
+            echo "See CLAUDE.md \"ENVIRONMENT VARIABLES\" for the migration."
+            exit 1
+          fi
+          echo "✓ No banned VITE_*_API_KEY references found in source."
+
+      - name: no raw API keys in client bundle
+        if: false  # enabled after first build once dist/ format is locked
+        run: |
+          # Phase-1 follow-up: after `npm run build`, grep the dist/ bundle
+          # for AIza*, sk-ant-*, sk-, etc. to catch any key that slipped
+          # through despite the source-level checks above. Requires build
+          # artifact — will enable once dist layout stabilizes.
+          true

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
-import { Video, Sparkles, Megaphone, Bot, Loader2, Image as ImageIcon } from 'lucide-react';
-import { PageHeader, Tabs, GlassCard, Button, Badge, Input } from '../components/ui';
+import { Video, Sparkles, Megaphone, Bot, Loader2 } from 'lucide-react';
+import { PageHeader, Tabs, GlassCard, Button, Input } from '../components/ui';
 import { useVeo } from '../hooks/use-veo';
 import type { VeoGalleryItem } from '../hooks/use-veo';
 // VeoGenerationMode used internally by components
@@ -209,7 +209,12 @@ export default function VideoStudioView() {
   const [activeTab, setActiveTab] = useState<StudioTab>('generate');
   const [remixPrompt, setRemixPrompt] = useState('');
 
-  const apiKey = import.meta.env.VITE_GOOGLE_AI_KEY || '';
+  // Phase-0 safety (2026-04-23): no browser read of VITE_GOOGLE_AI_KEY — Vite
+  // would bundle it into the public JS. Veo generation is async and doesn't
+  // need a long-lived session, so the Phase-1 fix is a server-proxy for Veo
+  // calls (`/api/veo`) which useVeo() will call directly. For now useVeo()
+  // gets an empty key and must fail gracefully in the UI.
+  const apiKey = '';
   const veo = useVeo(apiKey);
 
   const handleRemix = useCallback((item: VeoGalleryItem) => {

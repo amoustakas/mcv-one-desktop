@@ -1,5 +1,6 @@
 import { requireAuth } from './_auth.js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { sanitizeVoiceTurn } from '@mcv/guardrails-sdk';
 
 import { requestLogger } from '../../src/lib/server/logger';
 // ---------------------------------------------------------------------------
@@ -75,6 +76,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       case 'tts': {
         const { voiceId, text, model_id = 'eleven_multilingual_v2', voice_settings } = req.body;
         if (!voiceId || !text) return res.status(400).json({ error: 'voiceId and text required' });
+
+        // Phase-0 voice sanitization: PII in text about to be spoken aloud gets
+        // replaced with speech-friendly placeholders ("a social security number")
+        // via sanitizeVoiceTurn. Blocks on prompt-injection or tool-poisoning
+        // tags that somehow made it into a TTS request.
+        const voiceSanitized = sanitizeVoiceTurn(
+          { text, kind: 'assistant_pre_tts' },
+          { userId, correlationId: __correlationId, agentHandle: 'elevenlabs-tts' },
+        );
+        if (voiceSanitized.blocked) {
+          return res.status(400).json({
+            error: 'TTS request blocked by safety policy',
+            blocks: voiceSanitized.violations.map((v) => ({
+              kind: v.kind, patternId: v.patternId, severity: v.severity,
+            })),
+          });
+        }
+
         // ElevenLabs TTS returns binary audio; bypass xiFetch which parses JSON.
         const xiRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
           method: 'POST',
@@ -84,7 +103,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             Accept: 'audio/mpeg',
           },
           body: JSON.stringify({
-            text, model_id,
+            text: voiceSanitized.safe, model_id,
             voice_settings: voice_settings || { stability: 0.5, similarity_boost: 0.75 },
           }),
         });

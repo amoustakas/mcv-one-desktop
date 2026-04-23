@@ -167,16 +167,37 @@ src/lib/kits/
 Run `supabase/migration-kits.sql` to create: `kits`, `user_kits`, `kit_audit_log`, `kit_context`
 
 ## ENVIRONMENT VARIABLES
+
+**PHASE-0 SAFETY (2026-04-23): LLM/voice provider API keys are SERVER-ONLY.**
+Any env var prefixed with `VITE_` is bundled into the public browser JS by
+Vite at build time — anyone can extract it from the production bundle. The
+keys below were previously documented with the `VITE_` prefix; that shape is
+now BANNED and enforced by ESLint + CI (`.github/workflows/security.yml`).
+
+Browsers that need these services go through server proxies:
+`/api/claude`, `/api/gemini`, `/api/live-ephemeral-token`, `/api/elevenlabs`,
+`/api/deepgram`, `/api/_embeddings`. The raw keys never leave the server.
+
 ```env
-VITE_ANTHROPIC_API_KEY=          # Claude API
-VITE_GOOGLE_AI_KEY=              # Gemini API (Google AI Studio)
-VITE_DEEPGRAM_API_KEY=           # Voice STT
-VITE_ELEVENLABS_API_KEY=         # Voice TTS
+# Server-only — DO NOT PREFIX WITH VITE_.
+ANTHROPIC_API_KEY=               # Claude API (was VITE_ANTHROPIC_API_KEY)
+GOOGLE_AI_KEY=                   # Gemini API (was VITE_GOOGLE_AI_KEY)
+DEEPGRAM_API_KEY=                # Voice STT (was VITE_DEEPGRAM_API_KEY)
+ELEVENLABS_API_KEY=              # Voice TTS (was VITE_ELEVENLABS_API_KEY)
+
+# Browser-safe / non-secret — VITE_ prefix is fine here.
 VITE_APP_ENV=development
+
+# Server-only (never had VITE_ prefix — continue as-is).
 N8N_BASE_URL=                    # n8n instance URL (e.g. https://n8n.mcv.one)
 N8N_API_KEY=                     # n8n API key for workflow automation
 CLOUDFLARE_API_TOKEN=            # Cloudflare API token (Workers, KV, R2, D1)
 CLOUDFLARE_ACCOUNT_ID=           # Cloudflare account ID
+AGENT_SIGNING_KEY=               # HS256 for short-lived agent JWTs (M3)
+
+# Phase-0 migration note: if your local .env still has VITE_ANTHROPIC_API_KEY
+# etc., rename to the non-VITE_ form. The server handlers no longer fall back
+# to VITE_ names (by design).
 ```
 
 ## BUILD RULES
