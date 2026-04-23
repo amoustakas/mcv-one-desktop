@@ -37,7 +37,7 @@ describe('fabricToEventEnvelope', () => {
     expect(env.ventureId).toBe(V)
     expect(env.emittedAt).toBe('2026-04-22T00:00:00Z')
     expect(env.emittedBy).toBe('fabric:sim-tests')
-    expect(env.status).toBe('pending')
+    expect(env.status).toBe('published')
     expect(env.payload.data).toEqual({ n: 42 })
   })
 

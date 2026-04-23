@@ -376,8 +376,11 @@ describe('fabric-bridge contract parity', () => {
     expect(env.payload.data).toEqual({ core: 'data' });
   });
 
-  it('every bridged envelope sets causationId=null and status=pending', () => {
+  it('every bridged envelope sets causationId=null and status=published', () => {
     // Fabric has no cascade concept today; the bridge produces roots only.
+    // `status` on the envelope tracks PUBLISH lifecycle (EventStatus =
+    // 'published'|'failed'|'retried'); dispatch lifecycle ('pending' etc.)
+    // lives on EventLogRow.status, not here.
     const events = [
       makeFabricFixture({ data: { i: 0 } }),
       makeFabricFixture({ id: '11111111-1111-4111-8111-111111111111', data: { i: 1 } }),
@@ -385,7 +388,7 @@ describe('fabric-bridge contract parity', () => {
     const envs = fabricBatchToEnvelopes(events);
     for (const env of envs) {
       expect(env.causationId).toBeNull();
-      expect(env.status).toBe('pending');
+      expect(env.status).toBe('published');
     }
   });
 

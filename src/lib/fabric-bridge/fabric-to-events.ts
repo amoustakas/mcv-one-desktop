@@ -69,10 +69,11 @@ export interface FabricBridgePayload<T = unknown> {
  * `EventEnvelope`. Pure function — deterministic, side-effect-free,
  * safe to call in hot paths.
  *
- * The returned envelope has `status: 'pending'` — consumers that
- * persist it into `event_log` should update status per their
- * processing contract. For in-memory sim observation no state change
- * is needed.
+ * The returned envelope has `status: 'published'` — the envelope's
+ * `status` field tracks PUBLISH lifecycle (EventStatus =
+ * 'published' | 'failed' | 'retried'). DISPATCH lifecycle
+ * ('pending' → 'resolved' etc.) lives separately on `EventLogRow.status`.
+ * For in-memory sim observation no state change is needed.
  *
  * `emittedBy` is prefixed with `fabric:` so cross-repo provenance is
  * preserved on the audit trail — any handler can see at a glance
