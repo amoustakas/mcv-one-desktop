@@ -7,7 +7,10 @@
 //   2. Archived repos — historical shelf, collapsed by default.
 
 import { useEffect, useState } from 'react';
-import { Github, Archive, ExternalLink } from 'lucide-react';
+// lucide-react dropped the `Github` icon (trademark). Use `GitBranch` as the
+// semantic stand-in for the page header — the same substitution `suites/definitions.ts`
+// expects at runtime when the icon-name lookup for 'Github' misses.
+import { GitBranch, Archive, ExternalLink } from 'lucide-react';
 import { PageShell, PageHeader, GlassCard } from '../../components/ui';
 import { Chip, type ChipTone } from './_chip';
 import { useFoundationStore, type GitHubRepo } from '../../stores/foundation';
@@ -55,7 +58,7 @@ export default function RepositoryPortfolioView() {
       <PageHeader
         title="Repository Portfolio"
         subtitle={`${active.length} active · ${archived.length} archived — synced from GitHub`}
-        icon={<Github size={20} />}
+        icon={<GitBranch size={20} />}
       />
 
       {errors.githubRepos && (
