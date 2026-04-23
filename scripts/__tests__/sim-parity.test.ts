@@ -27,6 +27,12 @@ import {
 } from '@mcv/naos-sdk/prediction';
 import { StudyGate, InMemoryStudyTraceSink, summarize } from '../../src/lib/hitl/study-gate';
 import { MemoryEventPublisher } from '../../src/lib/events/memory-publisher';
+import {
+  fabricToEventEnvelope,
+  fabricBatchToEnvelopes,
+  envelopeToFabricEvent,
+  type FabricMCVEvent,
+} from '../../src/lib/fabric-bridge/fabric-to-events';
 
 // ───────────────────────────────────────────────────────────────────────────
 // Fixtures
@@ -306,5 +312,159 @@ describe('resolveAgentMode', () => {
     expect(isSimMode('production')).toBe(false);
     expect(isSimMode('sim-synthetic')).toBe(true);
     expect(isSimMode('sim-trace')).toBe(true);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// Cross-repo substrate — Fabric bridge contracts
+//
+// Locks the bridge contract between @mcv/fabric (mcv-core-triangle) and
+// @mcv/events-sdk (mcv-one-desktop). A failure here means a cross-repo
+// event flow would lose identity across the boundary — breaks the
+// Marathon 5 P1.B commitment "sim-parity as a first-class feature".
+// ───────────────────────────────────────────────────────────────────────────
+
+const CROSS_V = '88888888-8888-4888-8888-888888888888';
+const CROSS_ID = '99999999-9999-4999-8999-999999999999';
+const CROSS_CORR = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+
+function makeFabricFixture<T>(overrides: Partial<FabricMCVEvent<T>> & { data: T }): FabricMCVEvent<T> {
+  return {
+    id: CROSS_ID,
+    topic: 'fabric.contract.test',
+    type: 'sim.parity',
+    source: 'sim-parity-suite',
+    ventureId: CROSS_V,
+    correlationId: CROSS_CORR,
+    timestamp: '2026-04-22T23:00:00Z',
+    version: '1.0',
+    ...overrides,
+  };
+}
+
+describe('fabric-bridge contract parity', () => {
+  it('preserves every identity field through the bridge', () => {
+    const fabric = makeFabricFixture({
+      data: { amount: 100 },
+      metadata: { k: 'v' },
+    });
+    const env = fabricToEventEnvelope(fabric);
+
+    expect(env.id).toBe(fabric.id);
+    expect(env.topic).toBe(fabric.topic);
+    expect(env.schemaVersion).toBe(fabric.version);
+    expect(env.correlationId).toBe(fabric.correlationId);
+    expect(env.ventureId).toBe(fabric.ventureId);
+    expect(env.emittedAt).toBe(fabric.timestamp);
+  });
+
+  it('applies "fabric:" provenance prefix to emittedBy', () => {
+    const fabric = makeFabricFixture({ data: {} });
+    const env = fabricToEventEnvelope(fabric);
+    expect(env.emittedBy).toBe(`fabric:${fabric.source}`);
+    expect(env.emittedBy.startsWith('fabric:')).toBe(true);
+  });
+
+  it('folds Fabric type + metadata into payload.__fabric without loss', () => {
+    const fabric = makeFabricFixture({
+      data: { core: 'data' },
+      metadata: { extra: 'nested', nums: [1, 2, 3] },
+    });
+    const env = fabricToEventEnvelope(fabric);
+    expect(env.payload.__fabric.type).toBe(fabric.type);
+    expect(env.payload.__fabric.metadata).toEqual(fabric.metadata);
+    expect(env.payload.data).toEqual({ core: 'data' });
+  });
+
+  it('every bridged envelope sets causationId=null and status=pending', () => {
+    // Fabric has no cascade concept today; the bridge produces roots only.
+    const events = [
+      makeFabricFixture({ data: { i: 0 } }),
+      makeFabricFixture({ id: '11111111-1111-4111-8111-111111111111', data: { i: 1 } }),
+    ];
+    const envs = fabricBatchToEnvelopes(events);
+    for (const env of envs) {
+      expect(env.causationId).toBeNull();
+      expect(env.status).toBe('pending');
+    }
+  });
+
+  it('round-trip fabric → envelope → fabric preserves all required fields', () => {
+    const original = makeFabricFixture({
+      data: { complex: { nested: [1, 2] } },
+      metadata: { tag: 'round-trip' },
+    });
+    const env = fabricToEventEnvelope(original);
+    const round = envelopeToFabricEvent<{ complex: { nested: number[] } }>(env);
+    expect(round).not.toBeNull();
+    expect(round!.id).toBe(original.id);
+    expect(round!.topic).toBe(original.topic);
+    expect(round!.type).toBe(original.type);
+    expect(round!.source).toBe(original.source);
+    expect(round!.ventureId).toBe(original.ventureId);
+    expect(round!.correlationId).toBe(original.correlationId);
+    expect(round!.version).toBe(original.version);
+    expect(round!.data).toEqual(original.data);
+    expect(round!.metadata).toEqual(original.metadata);
+  });
+
+  it('envelopeToFabricEvent returns null when envelope was not bridge-originated', () => {
+    const foreign = {
+      id: 'x',
+      topic: 't',
+      schemaVersion: '1.0',
+      correlationId: 'c',
+      causationId: null,
+      ventureId: null,
+      emittedAt: '2026-04-22T00:00:00Z',
+      emittedBy: 'foundation:counsel',
+      payload: { domain: 'data without __fabric wrapper' },
+      status: 'pending' as const,
+    };
+    expect(envelopeToFabricEvent(foreign)).toBeNull();
+  });
+
+  it('batch bridge preserves order and event count', () => {
+    const events = Array.from({ length: 5 }, (_, i) =>
+      makeFabricFixture({
+        id: `${'0'.repeat(7)}${i}-0000-4000-8000-000000000000`,
+        topic: `fabric.test.${i}`,
+        data: { idx: i },
+      }),
+    );
+    const envs = fabricBatchToEnvelopes(events);
+    expect(envs).toHaveLength(5);
+    expect(envs.map((e) => e.topic)).toEqual([
+      'fabric.test.0',
+      'fabric.test.1',
+      'fabric.test.2',
+      'fabric.test.3',
+      'fabric.test.4',
+    ]);
+    expect(envs.map((e) => (e.payload.data as { idx: number }).idx)).toEqual([0, 1, 2, 3, 4]);
+  });
+
+  it('correlation cohesion: events sharing correlationId on Fabric side share it in envelopes', () => {
+    const shared = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+    const events = [
+      makeFabricFixture({
+        id: '00000001-0000-4000-8000-000000000000',
+        correlationId: shared,
+        data: { step: 1 },
+      }),
+      makeFabricFixture({
+        id: '00000002-0000-4000-8000-000000000000',
+        correlationId: shared,
+        data: { step: 2 },
+      }),
+      makeFabricFixture({
+        id: '00000003-0000-4000-8000-000000000000',
+        correlationId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+        data: { step: 1 },
+      }),
+    ];
+    const envs = fabricBatchToEnvelopes(events);
+    expect(envs[0]!.correlationId).toBe(envs[1]!.correlationId);
+    expect(envs[0]!.correlationId).not.toBe(envs[2]!.correlationId);
   });
 });
