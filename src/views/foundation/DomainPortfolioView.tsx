@@ -5,6 +5,9 @@
 import { useEffect } from 'react';
 import { Globe, AlertOctagon } from 'lucide-react';
 import { PageShell, PageHeader, GlassCard, Button } from '../../components/ui';
+import TableSkeleton from '../../components/common/TableSkeleton';
+import CopyButton from '../../components/common/CopyButton';
+import { useToast } from '../../components/Toasts';
 import { Chip } from './_chip';
 import {
   useFoundationStore,
@@ -29,6 +32,7 @@ export default function DomainPortfolioView() {
     acquisitionOrders, ownedDomains, loading, errors,
     fetchAcquisitionOrders, fetchOwnedDomains, seedUrgentAcquisitions,
   } = useFoundationStore();
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchAcquisitionOrders();
@@ -64,7 +68,13 @@ export default function DomainPortfolioView() {
           variant="primary"
           onClick={async () => {
             const r = await seedUrgentAcquisitions();
-            alert(`Seeded ${r.inserted} new, ${r.already} already present.`);
+            toast(
+              'success',
+              `${r.inserted} domain acquisitions staged`,
+              r.already > 0
+                ? `${r.already} already tracked. Ready to brief.`
+                : 'Ready to brief.',
+            );
           }}
         >
           Seed 🔴🟠 urgents
@@ -153,7 +163,10 @@ export default function DomainPortfolioView() {
                   return (
                     <tr key={d.id} style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                       <td style={tdStyle}>
-                        <div style={{ fontWeight: 600 }}>{d.fqdn}</div>
+                        <div style={{ fontWeight: 600 }}>
+                          {d.fqdn}
+                          <CopyButton value={d.fqdn} />
+                        </div>
                         {d.parent_entity_id && (
                           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
                             Parent: {d.parent_entity_id}
@@ -195,9 +208,7 @@ export default function DomainPortfolioView() {
         )}
 
         {loading.ownedDomains && ownedDomains.length === 0 && (
-          <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)' }}>
-            Loading owned domains…
-          </div>
+          <TableSkeleton rows={3} columns={6} />
         )}
       </div>
 
@@ -264,7 +275,7 @@ export default function DomainPortfolioView() {
       ))}
 
       {loading.acquisitionOrders && acquisitionOrders.length === 0 && (
-        <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>Loading acquisitions…</div>
+        <TableSkeleton rows={3} columns={6} />
       )}
     </PageShell>
   );

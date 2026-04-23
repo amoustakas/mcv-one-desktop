@@ -10,6 +10,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Zap, ExternalLink } from 'lucide-react';
 import { PageShell, PageHeader, GlassCard } from '../../components/ui';
+import TableSkeleton from '../../components/common/TableSkeleton';
+import CopyButton from '../../components/common/CopyButton';
 import { Chip, type ChipTone } from './_chip';
 import { useFoundationStore, type VercelDeployment } from '../../stores/foundation';
 
@@ -233,6 +235,7 @@ export default function DeploymentPortfolioView() {
                     >
                       {d.url.length > 36 ? `${d.url.slice(0, 36)}…` : d.url}
                     </a>
+                    <CopyButton value={d.url} />
                   </td>
                   <td style={tdStyle}>
                     {d.git_branch && (
@@ -265,9 +268,7 @@ export default function DeploymentPortfolioView() {
       )}
 
       {loading.vercelDeployments && vercelDeployments.length === 0 && (
-        <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)' }}>
-          Loading deployments…
-        </div>
+        <TableSkeleton rows={3} columns={6} />
       )}
 
       {lastSync && (
