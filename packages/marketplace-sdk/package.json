@@ -1,0 +1,33 @@
+{
+  "name": "@mcv/marketplace-sdk",
+  "version": "0.1.0",
+  "description": "MCV Marketplace SDK — institutional substrate for Futurestate RWA trading + MCV.ONE/MCV.GG utility tokens. Dual-standard Web3 (SPL utility + Token-2022 RWA), Biometric Core-Triangle auth, ZTAG governance, UWG commission DAG, Switchboard TEE oracles, Bonsol ZK-PoR, Meteora DLMM yield sweeping, FIX 4.4/5.0 gateway, Cloud KMS Ed25519 HSM signing inside Confidential Space. Per MCV_MASTER_SPEC v3.1.0 (Sovereign Edition).",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".":                         { "types": "./src/index.ts",                   "default": "./src/index.ts" },
+    "./types":                   { "types": "./src/types/index.ts",             "default": "./src/types/index.ts" },
+    "./types/asset-type":        { "types": "./src/types/asset-type.ts",        "default": "./src/types/asset-type.ts" },
+    "./types/order":             { "types": "./src/types/order.ts",             "default": "./src/types/order.ts" },
+    "./types/exemption-tier":    { "types": "./src/types/exemption-tier.ts",    "default": "./src/types/exemption-tier.ts" },
+    "./types/jurisdiction":      { "types": "./src/types/jurisdiction.ts",      "default": "./src/types/jurisdiction.ts" },
+    "./types/trade":             { "types": "./src/types/trade.ts",             "default": "./src/types/trade.ts" },
+    "./types/l2-book":           { "types": "./src/types/l2-book.ts",           "default": "./src/types/l2-book.ts" },
+    "./core/mcv-client":         { "types": "./src/core/mcv-client.ts",         "default": "./src/core/mcv-client.ts" },
+    "./core/auth-router":        { "types": "./src/core/auth-router.ts",        "default": "./src/core/auth-router.ts" }
+  },
+  "files": ["src"],
+  "dependencies": {
+    "bn.js": "^5.2.2",
+    "zod": "^4.3.6"
+  },
+  "peerDependencies": {
+    "@solana/web3.js": "^1.98.0"
+  },
+  "scripts": {
+    "lint": "echo 'no lint yet'",
+    "test": "echo 'no tests yet'"
+  }
+}
