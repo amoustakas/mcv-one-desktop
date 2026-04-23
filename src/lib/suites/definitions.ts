@@ -308,6 +308,8 @@ SUITES.push({
     { viewId: 'foundation-counsel', label: 'Counsel Cockpit', description: '3 workstream cards + embedded epic board', icon: 'Gavel', category: 'manage' },
     { viewId: 'foundation-ip', label: 'IP Portfolio', description: 'Trademarks / patents / copyrights / trade secrets', icon: 'Shield', category: 'manage' },
     { viewId: 'foundation-domains', label: 'Domain Portfolio', description: '4 urgency lanes — 🔴 Hunter-gating, 🟠 30-day, 🟢 defensive', icon: 'Globe', category: 'manage' },
+    { viewId: 'foundation-repos', label: 'Repository Portfolio', description: 'GitHub repos + activity freshness · synced via seed-github-repos.ts', icon: 'Github', category: 'manage' },
+    { viewId: 'foundation-deployments', label: 'Deployment Portfolio', description: 'Vercel projects + production/preview deployments · state-tracked', icon: 'Zap', category: 'analyze' },
     { viewId: 'foundation-entities', label: 'Entity Stack', description: 'Root → Crown pair → operating subs → venture SPVs', icon: 'Network', category: 'analyze' },
     { viewId: 'foundation-naming', label: 'Naming Board', description: '6 ratifications + occurrence review + git apply/rollback', icon: 'FileSignature', category: 'manage' },
     { viewId: 'foundation-filings', label: 'Filings Calendar', description: 'Critical 30d / 90d / year-one bands + Blue Marlin gate', icon: 'CalendarCheck', category: 'analyze' },
