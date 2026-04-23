@@ -33,6 +33,7 @@ import {
   createDeterministicResolver,
 } from '@mcv/naos-sdk/prediction';
 import { StudyGate, summarize } from '../src/lib/hitl/study-gate';
+import { MemoryEventPublisher } from '../src/lib/events/memory-publisher';
 
 // ───────────────────────────────────────────────────────────────────────────
 // Synthetic agent fleet
@@ -54,14 +55,25 @@ const SYNTHETIC_FLEET = [
 async function exerciseDispatchAndStudyGate(): Promise<{
   totalTraces: number;
   capturedEvents: DispatchEvent[];
+  publishedCount: number;
 }> {
-  console.log('\n[1/3] Dispatch + StudyGate  (seams 2 + 5)');
+  console.log('\n[1/3] Dispatch + StudyGate + EventPublisher bridge  (seams 2 + 5 + M1 integration)');
   const capturedEvents: DispatchEvent[] = [];
   const dispatcher = new SimDispatcher({
     syntheticLatencyMs: 0,
     onEvent: (event) => capturedEvents.push(event),
   });
-  const gate = new StudyGate({ inner: dispatcher, enabled: true });
+
+  // Bridge the Milofish seam to the just-committed @mcv/events-sdk nervous
+  // system. MemoryEventPublisher implements the same EventPublisher interface
+  // as the production Supabase publisher, so the wiring that exercises
+  // here is identical to the wiring FutureState would use in prod.
+  const eventBus = new MemoryEventPublisher({ capacity: 100 });
+  const gate = new StudyGate({
+    inner: dispatcher,
+    enabled: true,
+    publisher: eventBus,
+  });
 
   const requests: DispatchRequest[] = SYNTHETIC_FLEET.map((agent) => ({
     agentId: agent.agentId,
@@ -82,12 +94,29 @@ async function exerciseDispatchAndStudyGate(): Promise<{
     );
   }
 
+  // Fire-and-forget publishes settle on the microtask queue; wait one tick.
+  await new Promise((resolve) => setImmediate(resolve));
+
   const summary = await summarize(gate.getSink(), 100);
   console.log(
     `    traces recorded: ${summary.totalTraces}  ` +
     `avg latency ${summary.averageLatencyMs}ms  ` +
     `ungraded ${summary.ungraded}`,
   );
+
+  const publishedEnvelopes = eventBus.list();
+  const sampleEnvelope = publishedEnvelopes[0];
+  console.log(
+    `    envelopes published: ${publishedEnvelopes.length}  ` +
+    `topics: ${Array.from(new Set(publishedEnvelopes.map((e) => e.topic))).join(', ')}`,
+  );
+  if (sampleEnvelope) {
+    console.log(
+      `    sample envelope: id=${sampleEnvelope.id.slice(0, 8)} ` +
+      `correlationId=${sampleEnvelope.correlationId.slice(0, 16)}… ` +
+      `emittedBy="${sampleEnvelope.emittedBy}" ventureId=${sampleEnvelope.ventureId}`,
+    );
+  }
 
   if (summary.totalTraces !== SYNTHETIC_FLEET.length) {
     throw new Error(
@@ -99,11 +128,35 @@ async function exerciseDispatchAndStudyGate(): Promise<{
       `SimDispatcher should emit one naos.agent.dispatched event per dispatch; expected ${SYNTHETIC_FLEET.length}, got ${capturedEvents.length}`,
     );
   }
+  if (publishedEnvelopes.length !== SYNTHETIC_FLEET.length) {
+    throw new Error(
+      `StudyGate should forward one envelope per dispatched event; expected ${SYNTHETIC_FLEET.length}, got ${publishedEnvelopes.length}`,
+    );
+  }
+  const correlationIds = new Set(publishedEnvelopes.map((e) => e.correlationId));
+  if (correlationIds.size !== 1) {
+    throw new Error(
+      `All envelopes in this dispatch batch should share one correlationId; got ${correlationIds.size}`,
+    );
+  }
+  const ventureIds = new Set(publishedEnvelopes.map((e) => e.ventureId));
+  if (!ventureIds.has('futurestate')) {
+    throw new Error(
+      `Envelopes should carry ventureId=futurestate from the request; got [${Array.from(ventureIds).join(', ')}]`,
+    );
+  }
 
   console.log('    ✓ StudyGate captured all traces');
-  console.log('    ✓ SimDispatcher emitted Fabric-shaped events for sim-publisher (seam 1) to consume');
+  console.log('    ✓ SimDispatcher emitted Fabric-shaped DispatchEvents');
+  console.log('    ✓ MemoryEventPublisher received all envelopes via bridge adapter');
+  console.log('    ✓ Envelope correlationId propagated from request (cascade integrity)');
+  console.log('    ✓ Envelope ventureId propagated from request (tenancy integrity)');
 
-  return { totalTraces: summary.totalTraces, capturedEvents };
+  return {
+    totalTraces: summary.totalTraces,
+    capturedEvents,
+    publishedCount: publishedEnvelopes.length,
+  };
 }
 
 // ───────────────────────────────────────────────────────────────────────────

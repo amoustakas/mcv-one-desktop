@@ -14,6 +14,8 @@ import type {
   DispatchResponse,
   Dispatcher,
 } from '@mcv/naos-sdk/dispatch';
+import type { EventPublisher } from '@mcv/events-sdk/publisher';
+import type { PublishOptions } from '@mcv/events-sdk/types';
 
 // ---------------------------------------------------------------------------
 // Captured trace shape
@@ -102,6 +104,37 @@ export class InMemoryStudyTraceSink implements StudyTraceSink {
 // StudyGate — dispatcher wrapper that observes every dispatch
 // ---------------------------------------------------------------------------
 
+/**
+ * Adapter translating a dispatch event + its trace into an events-sdk
+ * publish call. Return null to drop an event (e.g. filter by topic).
+ */
+export interface StudyGateEventAdapter {
+  (event: DispatchEvent, trace: StudyTrace): {
+    topic: string;
+    payload: Record<string, unknown>;
+    opts?: PublishOptions;
+  } | null;
+}
+
+/**
+ * Default adapter — forwards every DispatchEvent through to the events-sdk
+ * topic it already carries, enriching the payload with the trace id and
+ * propagating venture + correlation metadata from the dispatch request.
+ */
+export const defaultStudyGateEventAdapter: StudyGateEventAdapter = (event, trace) => ({
+  topic: event.topic,
+  payload: {
+    ...event.payload,
+    studyTraceId: trace.id,
+    studyCapturedAt: trace.capturedAt,
+  },
+  opts: {
+    ventureId: trace.request.ventureId,
+    correlationId: trace.request.correlationId,
+    emittedBy: `agent:${trace.request.agentId}`,
+  },
+});
+
 export interface StudyGateOptions {
   /** Inner dispatcher (production or sim). Required. */
   inner: Dispatcher;
@@ -111,6 +144,21 @@ export interface StudyGateOptions {
   enabled?: boolean;
   /** Optional hook fired after every recorded trace (useful for live dashboards) */
   onTrace?: (trace: StudyTrace) => void;
+  /**
+   * Optional events-sdk publisher. When set (plus an adapter), every
+   * DispatchEvent emitted by the inner dispatcher is forwarded through
+   * the publisher. Lets sim-mode traces land in event_log (real publisher)
+   * or an in-memory bus (MemoryEventPublisher) without study-gate knowing
+   * which one is wired. Fire-and-forget; publish failures log but do not
+   * break the dispatch path.
+   */
+  publisher?: EventPublisher;
+  /**
+   * Optional adapter mapping a DispatchEvent → events-sdk publish call.
+   * Defaults to {@link defaultStudyGateEventAdapter} when publisher is set
+   * and adapter is omitted.
+   */
+  adapter?: StudyGateEventAdapter;
 }
 
 export class StudyGate implements Dispatcher {
@@ -119,6 +167,8 @@ export class StudyGate implements Dispatcher {
   private readonly sink: StudyTraceSink;
   private readonly enabled: boolean;
   private readonly onTrace?: (trace: StudyTrace) => void;
+  private readonly publisher?: EventPublisher;
+  private readonly adapter?: StudyGateEventAdapter;
 
   constructor(options: StudyGateOptions) {
     this.inner = options.inner;
@@ -126,6 +176,9 @@ export class StudyGate implements Dispatcher {
     this.sink = options.sink ?? new InMemoryStudyTraceSink();
     this.enabled = options.enabled ?? true;
     this.onTrace = options.onTrace;
+    this.publisher = options.publisher;
+    // Default to the built-in adapter when a publisher is wired without one
+    this.adapter = options.adapter ?? (this.publisher ? defaultStudyGateEventAdapter : undefined);
   }
 
   async dispatch(request: DispatchRequest): Promise<DispatchResponse> {
@@ -156,6 +209,17 @@ export class StudyGate implements Dispatcher {
       }
     } catch (err) {
       console.warn('[StudyGate] sink.record threw:', err);
+    }
+
+    // Fire-and-forget event forwarding — do not block the dispatch path on publisher errors.
+    if (this.publisher && this.adapter) {
+      for (const event of response.emittedEvents) {
+        const mapped = this.adapter(event, trace);
+        if (!mapped) continue;
+        this.publisher.publish(mapped.topic, mapped.payload, mapped.opts).catch((err) => {
+          console.warn('[StudyGate] publish failed:', err);
+        });
+      }
     }
 
     this.onTrace?.(trace);
