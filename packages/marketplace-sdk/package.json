@@ -16,7 +16,10 @@
     "./types/trade":             { "types": "./src/types/trade.ts",             "default": "./src/types/trade.ts" },
     "./types/l2-book":           { "types": "./src/types/l2-book.ts",           "default": "./src/types/l2-book.ts" },
     "./core/mcv-client":         { "types": "./src/core/mcv-client.ts",         "default": "./src/core/mcv-client.ts" },
-    "./core/auth-router":        { "types": "./src/core/auth-router.ts",        "default": "./src/core/auth-router.ts" }
+    "./core/auth-router":        { "types": "./src/core/auth-router.ts",        "default": "./src/core/auth-router.ts" },
+    "./solana/token-engine":     { "types": "./src/solana/token-engine.ts",     "default": "./src/solana/token-engine.ts" },
+    "./solana/verifiable-build": { "types": "./src/solana/verifiable-build.ts", "default": "./src/solana/verifiable-build.ts" },
+    "./compliance/fintrac-tracker": { "types": "./src/compliance/fintrac-tracker.ts", "default": "./src/compliance/fintrac-tracker.ts" }
   },
   "files": ["src"],
   "dependencies": {
