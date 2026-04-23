@@ -12,6 +12,7 @@
     "./genesis": { "types": "./src/genesis.ts", "default": "./src/genesis.ts" },
     "./evolution": { "types": "./src/evolution.ts", "default": "./src/evolution.ts" },
     "./prediction": { "types": "./src/prediction.ts", "default": "./src/prediction.ts" },
+    "./dispatch": { "types": "./src/dispatch.ts", "default": "./src/dispatch.ts" },
     "./authority": { "types": "./src/authority.ts", "default": "./src/authority.ts" },
     "./resonance": { "types": "./src/resonance.ts", "default": "./src/resonance.ts" },
     "./culture": { "types": "./src/culture.ts", "default": "./src/culture.ts" },
