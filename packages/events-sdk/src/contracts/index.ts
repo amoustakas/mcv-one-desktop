@@ -10,8 +10,9 @@ import { CommerceContract } from './commerce.js';
 import { McvSignContract } from './mcv-sign.js';
 import { AgenticContract } from './agentic.js';
 import { OnboardingContract } from './onboarding.js';
+import { IdentityContract } from './identity.js';
 
-export { FoundationContract, CapitalContract, CommerceContract, McvSignContract, AgenticContract, OnboardingContract };
+export { FoundationContract, CapitalContract, CommerceContract, McvSignContract, AgenticContract, OnboardingContract, IdentityContract };
 
 export const ALL_CONTRACTS: ReadonlyArray<ContractDeclaration> = [
   FoundationContract,
@@ -20,4 +21,5 @@ export const ALL_CONTRACTS: ReadonlyArray<ContractDeclaration> = [
   McvSignContract,
   AgenticContract,
   OnboardingContract,
+  IdentityContract,
 ];
