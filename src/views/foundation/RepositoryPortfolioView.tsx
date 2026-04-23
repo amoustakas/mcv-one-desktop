@@ -12,6 +12,8 @@ import { useEffect, useState } from 'react';
 // expects at runtime when the icon-name lookup for 'Github' misses.
 import { GitBranch, Archive, ExternalLink } from 'lucide-react';
 import { PageShell, PageHeader, GlassCard } from '../../components/ui';
+import TableSkeleton from '../../components/common/TableSkeleton';
+import CopyButton from '../../components/common/CopyButton';
 import { Chip, type ChipTone } from './_chip';
 import { useFoundationStore, type GitHubRepo } from '../../stores/foundation';
 
@@ -111,7 +113,10 @@ export default function RepositoryPortfolioView() {
                 return (
                   <tr key={r.id} style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                     <td style={tdStyle}>
-                      <div style={{ fontWeight: 600 }}>{r.full_name}</div>
+                      <div style={{ fontWeight: 600 }}>
+                        {r.full_name}
+                        <CopyButton value={r.full_name} />
+                      </div>
                       {r.description && (
                         <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
                           {r.description.length > 120 ? `${r.description.slice(0, 120)}…` : r.description}
@@ -172,9 +177,7 @@ export default function RepositoryPortfolioView() {
       )}
 
       {loading.githubRepos && githubRepos.length === 0 && (
-        <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)' }}>
-          Loading repositories…
-        </div>
+        <TableSkeleton rows={3} columns={7} />
       )}
 
       {/* Archived repos — collapsed by default */}

@@ -43,6 +43,7 @@ export default function EventStreamView() {
   const [deadLetters, setDeadLetters] = useState<EventDeadLetterRow[]>([]);
   const [contractsInfo, setContractsInfo] = useState<ApiContractsResponse['inMemory'] | null>(null);
   const [publishing, setPublishing] = useState(false);
+  const [demoing, setDemoing] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
 
   // 1. Seed the stream from the recent-events API so the panel isn't empty on open.
@@ -146,6 +147,53 @@ export default function EventStreamView() {
     }
   }, []);
 
+  // Cascading demo sequence — 3 real Foundation topics staggered ~700ms so
+  // the stream visibly animates on a cold-boot demo open. Each payload satisfies
+  // the Zod contract declared in packages/events-sdk/src/contracts/foundation.ts.
+  const publishDemoSequence = useCallback(async () => {
+    setDemoing(true);
+    setLastError(null);
+    const beats: Array<{ topic: string; payload: Record<string, unknown> }> = [
+      {
+        topic: 'foundation.domain.acquired',
+        payload: {
+          orderId: crypto.randomUUID(),
+          assetIdentifier: 'futurestate.holdings',
+          priceUsd: 4200,
+        },
+      },
+      {
+        topic: 'foundation.repo.synced',
+        payload: { repoCount: 42, archivedCount: 3, source: 'github-api' },
+      },
+      {
+        topic: 'foundation.deployment.live',
+        payload: {
+          projectName: 'mcv-investor',
+          url: 'mcv-investor-xyz.vercel.app',
+          target: 'production',
+          commitSha: 'ed95301',
+          commitMessage: 'merge(foundation): GitHub + Vercel portfolio panels',
+        },
+      },
+    ];
+    try {
+      for (const beat of beats) {
+        const res = await fetch('/api/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'publish-test', topic: beat.topic, payload: beat.payload }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status} on ${beat.topic}`);
+        await new Promise((resolve) => setTimeout(resolve, 700));
+      }
+    } catch (err) {
+      setLastError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setDemoing(false);
+    }
+  }, []);
+
   const registerContracts = useCallback(async () => {
     setLastError(null);
     try {
@@ -208,12 +256,15 @@ export default function EventStreamView() {
             <button onClick={() => void publishTest()} disabled={publishing} className="esv-publish">
               {publishing ? 'Publishing…' : '⚡ Publish test event'}
             </button>
+            <button onClick={() => void publishDemoSequence()} disabled={demoing} className="esv-publish esv-demo">
+              {demoing ? 'Animating…' : '🎬 Publish demo event'}
+            </button>
           </div>
 
           <ul className="esv-stream">
             {filtered.length === 0 && (
               <li className="esv-empty">
-                No events yet. {paused ? '(stream paused)' : 'Flip an NDA status in Foundation, or click “Publish test event” above.'}
+                No events yet. {paused ? '(stream paused)' : 'Flip an NDA status in Foundation, or click “🎬 Publish demo event” above.'}
               </li>
             )}
             {filtered.map((ev) => (
@@ -340,6 +391,7 @@ const EVENT_STREAM_CSS = `
 .esv-toolbar button:hover { color: var(--text-primary); border-color: var(--border-default); }
 .esv-toolbar button.esv-paused { color: var(--purple); border-color: var(--purple); }
 .esv-toolbar button.esv-publish { background: color-mix(in srgb, var(--cyan) 14%, transparent); border-color: color-mix(in srgb, var(--cyan) 35%, transparent); color: var(--cyan); }
+.esv-toolbar button.esv-demo { background: color-mix(in srgb, var(--purple) 14%, transparent); border-color: color-mix(in srgb, var(--purple) 35%, transparent); color: var(--purple); }
 .esv-toolbar button:disabled { opacity: .5; cursor: not-allowed; }
 .esv-stream { flex: 1; overflow: auto; list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 2px; }
 .esv-row { padding: 8px 12px; background: var(--surface-raised); border-radius: 6px; border-left: 3px solid transparent; cursor: pointer; transition: background 120ms; }
