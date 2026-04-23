@@ -99,7 +99,7 @@ export function fabricToEventEnvelope<T>(
         ...(event.metadata ? { metadata: event.metadata } : {}),
       },
     },
-    status: 'pending',
+    status: 'published',
   }
 }
 

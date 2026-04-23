@@ -102,7 +102,7 @@ describe('fabricToEventEnvelope', () => {
       emittedAt: '2026-04-22T00:00:00Z',
       emittedBy: 'foundation:counsel',
       payload: { directFields: 'no __fabric wrapper' },
-      status: 'pending' as const,
+      status: 'published' as const,
     }
     expect(envelopeToFabricEvent(foreignEnvelope)).toBeNull()
   })
