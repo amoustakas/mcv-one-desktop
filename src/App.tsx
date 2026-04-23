@@ -68,6 +68,8 @@ const FoundationDeploymentPortfolioView = lazyRetry(() => import('./views/founda
 const FoundationEntityStackView = lazyRetry(() => import('./views/foundation/EntityStackView'));
 const FoundationNamingBoardView = lazyRetry(() => import('./views/foundation/NamingRatificationBoardView'));
 const FoundationFilingsCalendarView = lazyRetry(() => import('./views/foundation/FilingsCalendarView'));
+// Agentic OS Layer 4 — Draft Inbox (review cockpit for agent-produced drafts)
+const AgenticDraftInboxView = lazyRetry(() => import('./views/agentic/DraftInboxView'));
 // Agentic OS Layer 1 — Event Stream dev panel
 const EventStreamView = lazyRetry(() => import('./views/internal/EventStreamView'));
 const VentureIntegrationsView = lazyRetry(() => import('./views/VentureIntegrationsView'));
@@ -237,6 +239,8 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <FoundationNamingBoardView />;
     case 'foundation-filings':
       return <FoundationFilingsCalendarView />;
+    case 'agentic-draft-inbox':
+      return <AgenticDraftInboxView />;
     case 'internal-event-stream':
       return <EventStreamView />;
     case 'crm':

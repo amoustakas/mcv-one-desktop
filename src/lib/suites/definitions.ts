@@ -313,6 +313,7 @@ SUITES.push({
     { viewId: 'foundation-entities', label: 'Entity Stack', description: 'Root → Crown pair → operating subs → venture SPVs', icon: 'Network', category: 'analyze' },
     { viewId: 'foundation-naming', label: 'Naming Board', description: '6 ratifications + occurrence review + git apply/rollback', icon: 'FileSignature', category: 'manage' },
     { viewId: 'foundation-filings', label: 'Filings Calendar', description: 'Critical 30d / 90d / year-one bands + Blue Marlin gate', icon: 'CalendarCheck', category: 'analyze' },
+    { viewId: 'agentic-draft-inbox', label: 'Draft Inbox', description: 'Review pending agent drafts · j/k/a/r/e keyboard flow · emits typed events on approve', icon: 'Inbox', category: 'manage' },
     { kitId: 'foundation', label: 'Foundation (chat)', description: '24 NAOS tools — IP, counsel, acquisitions, naming', icon: 'Sparkles', category: 'manage' },
   ],
   primaryKits: ['foundation'],
