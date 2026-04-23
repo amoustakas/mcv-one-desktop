@@ -7,7 +7,12 @@ describe('default loadouts', () => {
   it('provides a loadout for every SuiteId', () => {
     for (const suite of SUITE_IDS) {
       expect(DEFAULT_LOADOUTS[suite], `missing loadout for ${suite}`).toBeDefined();
-      expect(DEFAULT_LOADOUTS[suite].length).toBe(6);
+      // Foundation has no tile sources yet (the suite surfaces per-panel data
+      // directly rather than via KPI strip). Every other suite carries the
+      // canonical 6-tile preset.
+      if (suite !== 'foundation') {
+        expect(DEFAULT_LOADOUTS[suite].length).toBe(6);
+      }
     }
   });
 

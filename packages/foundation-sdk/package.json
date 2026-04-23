@@ -1,0 +1,35 @@
+{
+  "name": "@mcv/foundation-sdk",
+  "version": "0.1.0",
+  "description": "MCV Foundation OS — types + services for IP portfolio (trademarks/patents/copyrights/trade secrets), counsel engagements + tasks, filing records, domain acquisitions, naming ratifications, and .docs/counsel corpus ingestion. Operationalizes Tony's legal/IP/ventures/domains playbook as first-class cockpit data.",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".":                         { "types": "./src/index.ts",                   "default": "./src/index.ts" },
+    "./types":                   { "types": "./src/types.ts",                   "default": "./src/types.ts" },
+    "./corpus":                  { "types": "./src/corpus/index.ts",            "default": "./src/corpus/index.ts" },
+    "./corpus/ratified-names":   { "types": "./src/corpus/ratified-names.ts",   "default": "./src/corpus/ratified-names.ts" },
+    "./corpus/entity-stack-ids": { "types": "./src/corpus/entity-stack-ids.ts", "default": "./src/corpus/entity-stack-ids.ts" },
+    "./services/ip-portfolio":   { "types": "./src/services/ip-portfolio.ts",   "default": "./src/services/ip-portfolio.ts" },
+    "./services/counsel":        { "types": "./src/services/counsel.ts",        "default": "./src/services/counsel.ts" },
+    "./services/filings":        { "types": "./src/services/filings.ts",        "default": "./src/services/filings.ts" },
+    "./services/acquisition":    { "types": "./src/services/acquisition.ts",    "default": "./src/services/acquisition.ts" },
+    "./services/naming":         { "types": "./src/services/naming.ts",         "default": "./src/services/naming.ts" },
+    "./services/ingestion":      { "types": "./src/services/ingestion.ts",      "default": "./src/services/ingestion.ts" }
+  },
+  "files": ["src"],
+  "dependencies": {
+    "zod": "^4.3.6"
+  },
+  "peerDependencies": {
+    "@supabase/supabase-js": "^2.0.0",
+    "@mcv/capital-sdk": "*",
+    "@mcv/ledger-sdk": "*"
+  },
+  "scripts": {
+    "lint": "echo 'no lint yet'",
+    "test": "echo 'no tests yet'"
+  }
+}

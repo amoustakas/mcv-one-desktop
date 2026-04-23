@@ -11,4 +11,5 @@ export const DEFAULT_LOADOUTS: Record<SuiteId, KpiId[]> = {
   operations:       ['ops_open_tasks','ops_blocked','ops_agent_running','ops_epics_inflight','ops_stale_14d','fct_heartbeat'],
   knowledge:        ['knw_docs','knw_research_dossiers','knw_memory_entries','knw_files','knw_rag_queries_today','knw_stale_90d'],
   comms:            ['cm_unread','cm_dms_pending_reply','cm_calendar_today','cm_missed_calls','cm_mentions','cm_scheduled_sends'],
+  foundation:       [],
 };

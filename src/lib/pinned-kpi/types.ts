@@ -9,6 +9,7 @@ export const SUITE_IDS = [
   'operations',
   'knowledge',
   'comms',
+  'foundation',
 ] as const;
 
 export type SuiteId = typeof SUITE_IDS[number];

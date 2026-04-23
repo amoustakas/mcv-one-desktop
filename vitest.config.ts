@@ -12,7 +12,11 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     pool: 'vmForks',
-    include: ['src/**/__tests__/**/*.test.ts', 'packages/**/src/**/__tests__/**/*.test.ts'],
+    include: [
+      'src/**/__tests__/**/*.test.ts',
+      'packages/**/src/**/__tests__/**/*.test.ts',
+      'scripts/**/__tests__/**/*.test.ts',
+    ],
     coverage: {
       provider: 'v8',
       include: ['src/lib/**/*.ts'],

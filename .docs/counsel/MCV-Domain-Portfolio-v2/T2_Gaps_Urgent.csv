@@ -1,0 +1,11 @@
+Gap / Urgency,Priority,Domain,Function,Blocker,Owner (target),Est. Cost,Action Window,Status,Notes
+🔴 CRITICAL,P0,futurestate.app,FutureState consumer surface,Blocks Hunter Milborne disclosure; Kirill owns weak FutureState domains currently,FutureState LP,TBD (check Namecheap),This week,Not acquired,Acquire via Namecheap if available; otherwise broker
+🔴 CRITICAL,P0,futurestate.io,FutureState technical/dev surface,Blocks Hunter disclosure,FutureState LP,TBD,This week,Not acquired,Acquire in tandem with .app
+🔴 CRITICAL,P0,futurestate.xyz,FutureState Web3-native surface,Blocks Hunter disclosure,FutureState LP,TBD,This week,Not acquired,Complete the trio
+🟠 STRATEGIC,P0,naos.ai,NAOS agent orchestration public brand,NAOS patent surface needs standalone brand,MCV Holdings Ltd,TBD (.ai premium ~$500-2000),Next 30 days,In cart classification (ACQUIRE),Critical if NAOS separately branded
+🟠 STRATEGIC,P1,coretriangle.com,Core-Triangle identity primitive defensive,Patent-adjacent brand defensive,MCV Holdings Ltd,TBD (.com premium likely),Next 30 days,In cart classification (ACQUIRE),Defensive for patent portfolio
+🟡 EXISTING-NEGOTIATION,P0,futurestate.* (Kirill-owned),FutureState legacy domains,"Kirill currently owns ""not great"" FutureState domains — must transfer to Layer 2 entity when formed",FutureState LP (on formation),Negotiate as part of partnership structure,When FutureState LP forms,Kirill holds,Do not let these stay in personal name post-partnership
+🟢 PLANNED,P1,weave.mcv.global (subdomain),Weave (formerly Confluence) capability-matching surface,Subdomain initially; promote to domain if consumer-facing product,MCV Holdings Ltd,C$0 (subdomain),Phase 1 rollout,Subdomain planned,No standalone domain needed yet
+🟢 PLANNED,P1,root.mcv.global (subdomain),Root (Layer 0) public face,Root subdomain works until consumer-facing product emerges,MCV Holdings Ltd,C$0 (subdomain),Phase 1 rollout,Subdomain planned,No standalone domain needed
+🟡 RESEARCH,P2,chorus.* TBD,Chorus (formerly Whole) collective judgment surface,Research availability of chorus.app/.ai/.one,MCV Holdings Ltd,TBD,Next 60 days,Not yet researched,Chorus.ai exists (sales software) — check TLD variants
+🟡 RESEARCH,P2,mcv.ops,Internal operations console,Subdomain ops.mcv.global works if unavailable,MCV Holdings Ltd,TBD,Next 60 days,Not in cart,Check Namecheap availability

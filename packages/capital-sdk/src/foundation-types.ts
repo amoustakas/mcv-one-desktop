@@ -12,7 +12,7 @@
 
 import { z } from 'zod';
 
-// ─── CapitalFlow — the 15-kind taxonomy ─────────────────────────────────
+// ─── CapitalFlow — the 16-kind taxonomy ─────────────────────────────────
 
 export const CapitalFlow = z.enum([
   're_precon_deposit',
@@ -30,6 +30,7 @@ export const CapitalFlow = z.enum([
   'engagement_payout',
   'vendor_bill',
   'platform_fee_split',
+  'ip_filing_expense',
 ]);
 export type CapitalFlow = z.infer<typeof CapitalFlow>;
 

@@ -1,0 +1,25 @@
+{
+  "name": "@mcv/workflow-sdk",
+  "version": "0.1.0",
+  "description": "MCV Agentic OS Layer 2 — durable workflow runner + step primitives. Consumes events from @mcv/events-sdk (M1 Nervous System), orchestrates multi-step work (research → draft → review → execute), and lands outputs in draft_artifacts for human review in the Jarvis inbox (M4). The 'algorithms govern' leg of ZTAG at the execution layer.",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".":                   { "types": "./src/index.ts",              "default": "./src/index.ts" },
+    "./types":             { "types": "./src/types.ts",              "default": "./src/types.ts" },
+    "./steps":             { "types": "./src/steps/index.ts",        "default": "./src/steps/index.ts" },
+    "./steps/dispatch-agent": { "types": "./src/steps/dispatch-agent.ts", "default": "./src/steps/dispatch-agent.ts" },
+    "./steps/draft-gate":  { "types": "./src/steps/draft-gate.ts",   "default": "./src/steps/draft-gate.ts" },
+    "./steps/http":        { "types": "./src/steps/http.ts",         "default": "./src/steps/http.ts" },
+    "./steps/sql":         { "types": "./src/steps/sql.ts",          "default": "./src/steps/sql.ts" },
+    "./runner":            { "types": "./src/runner.ts",             "default": "./src/runner.ts" },
+    "./draft-artifacts":   { "types": "./src/draft-artifacts.ts",    "default": "./src/draft-artifacts.ts" }
+  },
+  "files": ["src"],
+  "scripts": {
+    "lint": "echo 'no lint yet'",
+    "test": "echo 'no tests yet'"
+  }
+}

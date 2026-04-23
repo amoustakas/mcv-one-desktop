@@ -15,6 +15,12 @@ export default defineConfig(({ mode }) => {
       __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
     },
     optimizeDeps: {
+      // Pin scanner to the root app entry only. Without this, Vite picks up
+      // the standalone AI Studio demo apps under docs/google-ai-studio-apps/
+      // (each has its own index.html) and fails to resolve their @/ aliases.
+      // See docs/INTELLIGENCE-CLIENT.md — that mirror is deprecated in favor
+      // of the canonical 114-project inventory in admin-prototype.
+      entries: ['index.html'],
       // @mcv/voice-sdk's optional-peer SDKs — keep Vite's dep-scanner from
       // trying to pre-bundle packages we don't install. Combined with the
       // /* @vite-ignore */ comments on the dynamic imports themselves, dev

@@ -46,6 +46,14 @@ dist-ssr
 # UI walkthrough screenshots (use docs/ or per-PR attachments instead)
 local-state-*.png
 
+# Stray storyboard / preview PNGs at repo root — land them in
+# .docs/storyboards/<sequence-name>/ so they live with context.
+/mcv-*.png
+
+# Scratch / research-sample workspace — keep locally, don't pollute git.
+# If a sample graduates into real work, lift it to the proper path first.
+.sandbox/
+
 # One-off backup files from AI/assistant workflows
 *.gemini.bak.ts
 *.gemini.bak.tsx
