@@ -179,7 +179,10 @@ export type ViewId =
   // Super-admin cockpit
   | 'admin-invites'
   // Agentic OS — Layer 1 dev panels
-  | 'internal-event-stream';
+  | 'internal-event-stream'
+  // Signer SDK — dogfood + admin cockpit (NEXT-3 in-repo consumers of @mcv/signer-sdk)
+  | 'internal-signer-dogfood'
+  | 'admin-signing';
 
 export type ContextMode = 'global' | 'venture';
 
