@@ -72,6 +72,8 @@ const FoundationFilingsCalendarView = lazyRetry(() => import('./views/foundation
 const AgenticDraftInboxView = lazyRetry(() => import('./views/agentic/DraftInboxView'));
 // Agentic OS Layer 1 — Event Stream dev panel
 const EventStreamView = lazyRetry(() => import('./views/internal/EventStreamView'));
+const SignerDogfoodView = lazyRetry(() => import('./views/internal/SignerDogfoodView'));
+const AdminSigningView = lazyRetry(() => import('./views/internal/AdminSigningView'));
 const VentureIntegrationsView = lazyRetry(() => import('./views/VentureIntegrationsView'));
 const CRMView = lazyRetry(() => import('./views/CRMView'));
 const CapitalGlobalView = lazyRetry(() => import('./views/CapitalGlobalView'));
@@ -243,6 +245,10 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <AgenticDraftInboxView />;
     case 'internal-event-stream':
       return <EventStreamView />;
+    case 'internal-signer-dogfood':
+      return <SignerDogfoodView />;
+    case 'admin-signing':
+      return <AdminSigningView />;
     case 'crm':
       return <CRMView />;
     case 'capital':

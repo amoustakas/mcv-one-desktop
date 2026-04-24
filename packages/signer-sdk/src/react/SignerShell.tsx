@@ -15,7 +15,7 @@ import type { ReactNode } from 'react';
 import type { SignerEnvelope, SignerConfig, SigningEventPayload } from '../core/types';
 import type { ErrorCode, ErrorCopy } from '../core/errors';
 import { ERROR_COPY } from '../core/errors';
-import { createSignerServerClient } from '../core/server-client';
+import { createSignerServerClient, type SignerServerClient } from '../core/server-client';
 import { SignerStatusBar } from './SignerStatusBar';
 import { SignerDocumentList } from './SignerDocumentList';
 import { SignerConsent } from './SignerConsent';
@@ -34,9 +34,13 @@ interface SignerShellProps {
   completionSlot?: (envelope: SignerEnvelope) => ReactNode;
   /** Replaces the footer (legal entity name, contact link). */
   footerSlot?: ReactNode;
+  /** Test / dogfood affordance — skip building a client from apiBaseUrl
+   *  and use the provided one instead. Production consumers leave
+   *  unset; the shell then derives the client from config.apiBaseUrl. */
+  clientOverride?: SignerServerClient;
 }
 
-export function SignerShell({ envelope, token, config, errorCopy, completionSlot, footerSlot }: SignerShellProps) {
+export function SignerShell({ envelope, token, config, errorCopy, completionSlot, footerSlot, clientOverride }: SignerShellProps) {
   // Apply theme CSS vars to the document root once per mount. This is a
   // pragmatic choice — the signer page is nearly always the only thing
   // on screen, so scoping to :root is fine and lets the whole tree
@@ -55,7 +59,10 @@ export function SignerShell({ envelope, token, config, errorCopy, completionSlot
     };
   }, [config.theme?.cssVars]);
 
-  const client = useMemo(() => createSignerServerClient({ apiBaseUrl: config.apiBaseUrl }), [config.apiBaseUrl]);
+  const client = useMemo(
+    () => clientOverride ?? createSignerServerClient({ apiBaseUrl: config.apiBaseUrl }),
+    [clientOverride, config.apiBaseUrl],
+  );
 
   const signer = useSigner({
     envelope,
