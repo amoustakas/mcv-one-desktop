@@ -11,7 +11,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@mcv/capital-sdk": "*",
+    "@mcv/capital-sdk": "workspace:*",
     "@supabase/supabase-js": "^2.101.1",
     "next": "^15.0.0",
     "react": "^19.2.4",

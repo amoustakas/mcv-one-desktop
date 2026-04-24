@@ -21,12 +21,12 @@
   },
   "files": ["src"],
   "dependencies": {
-    "@mcv/ad-specs-sdk": "*",
-    "@mcv/capital-sdk": "*",
-    "@mcv/mcp-sdk": "*",
-    "@mcv/payments-sdk": "*",
-    "@mcv/storage-sdk": "*",
-    "@mcv/ventures-sdk": "*"
+    "@mcv/ad-specs-sdk": "workspace:*",
+    "@mcv/capital-sdk": "workspace:*",
+    "@mcv/mcp-sdk": "workspace:*",
+    "@mcv/payments-sdk": "workspace:*",
+    "@mcv/storage-sdk": "workspace:*",
+    "@mcv/ventures-sdk": "workspace:*"
   },
   "scripts": {
     "lint": "echo 'no lint yet'",

@@ -31,7 +31,7 @@
     "zod": "^4.3.6"
   },
   "peerDependencies": {
-    "@mcv/events-sdk": "*",
+    "@mcv/events-sdk": "workspace:*",
     "@supabase/supabase-js": "^2.0.0",
     "react": "^18.0.0 || ^19.0.0"
   },
