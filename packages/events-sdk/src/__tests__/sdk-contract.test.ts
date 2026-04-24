@@ -119,17 +119,15 @@ describe('events-sdk · envelope <-> row round trip', () => {
 });
 
 describe('events-sdk · module contracts (drift detection)', () => {
-  it('exposes all 7 modules', () => {
-    expect(ALL_CONTRACTS).toHaveLength(7);
-    expect(ALL_CONTRACTS.map((c) => c.module).sort()).toEqual([
-      'agentic',
-      'capital',
-      'commerce',
-      'foundation',
-      'identity',
-      'mcv-sign',
-      'onboarding',
-    ]);
+  it('exposes all registered modules', () => {
+    // Module count grows over time as new marathons land contracts.
+    // Historical: 4 (M-F1 seed) → 7 (onboarding session 2 + M4) → 8 (Phase-1 knowledge).
+    // Assertion focuses on the identity of registered modules rather than the bare count,
+    // so future additions append without test churn — add the new module name to the
+    // sorted set below when introducing a contract.
+    expect(ALL_CONTRACTS.map((c) => c.module).sort()).toEqual(
+      ['agentic', 'capital', 'commerce', 'foundation', 'identity', 'knowledge', 'mcv-sign', 'onboarding']
+    );
   });
 
   it('Foundation declares the nda-executed emission (demo target for M-F1)', () => {

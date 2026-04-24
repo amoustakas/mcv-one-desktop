@@ -66,22 +66,31 @@ tenant-scoped tables. A handler is "hardened" when it calls
 | `api/_handlers/foundation.ts`        | foundation_* tables             | bypass  | Harden in M5 Foundation Phase 2+3. |
 | `api/_handlers/capital.ts`           | capital_* tables                | bypass  | Harden when capital service layer gets multi-tenancy pass. |
 
+## Phase-1 landing (2026-04-23)
+
+Phase-1 Intelligence Router migration `supabase/migration-intelligence-unification-2026-04-28.sql`
+SHIPPED on branch `phase-1-intelligence-router-2026-04-23-1934`. What it delivered:
+
+- ✅ **`set_tenant(t uuid)` RPC created** — was missing on master; now live.
+- ✅ **`agent_memory_longterm` table created with STRICT RLS** (no bypass clause).
+- ✅ **`match_agent_memories` RPC created** (mirrors `match_chunks` pattern).
+- ✅ **Retroactive `tenant_id` added to 7 tables** — all backfilled to platform-tenant
+  UUID `00000000-0000-0000-0000-000000000000`. T0/T1/T2 restructure remaps per-venture
+  tenant_id in a follow-up migration.
+- ✅ **4 event_subscribers rows seeded** → `/api/knowledge-observer`.
+- ✅ **`api/_handlers/knowledge-observer.ts` ships STRICT from day one.**
+
 ## Pre-flight gates for downstream sessions
 
 These must be true before the named session starts work:
 
-- [ ] **Before Phase 1 starts:** `packages/workflow-sdk/` exists and exports `WorkflowRunner` with `start()` / `advance()` / `resume()`. Confirm with:
-  ```bash
-  ls packages/workflow-sdk/src/runner.ts && \
-    grep -q "export.*WorkflowRunner" packages/workflow-sdk/src/runner.ts
-  ```
-
+- [x] **Before Phase 1 starts:** `packages/workflow-sdk/` exists and exports `WorkflowRunner` with `start()` / `advance()` / `resume()`. Verified 2026-04-23; `DispatchStepContext` extended with optional `intel?: DispatchIntelligence` in this migration.
 - [ ] **Before Phase 2 starts:** `event_subscribers` table exists in Supabase. Confirm with:
   ```sql
   SELECT 1 FROM event_subscribers LIMIT 1;
   ```
-  If the table doesn't exist, Phase-2 event-resolver work is blocked on
-  `migration-agentic-os-events-2026-04-22.sql` landing first.
+  Verified 2026-04-23 — table is live (landed in migration-agentic-os-events-2026-04-22.sql).
+  Phase-2 work additionally needs `workflow_def_id` column; that's a Phase-2 migration.
 
 - [ ] **Before M3 agent-fleet starts:** this doc has entries for every
   agent-surface handler that will be introduced (`agent-token.ts`,
