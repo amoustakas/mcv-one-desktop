@@ -108,7 +108,7 @@ export const SigningContract: ContractDeclaration<'signing'> = {
 
   subscribes: [
     {
-      topicPattern: 'agentic.draft_approved',
+      topicPattern: 'agentic.draft.approved',
       description:
         'Agent-generated document draft was approved in the Draft Inbox — envelope-builder composes + issues a signing envelope.',
     },
