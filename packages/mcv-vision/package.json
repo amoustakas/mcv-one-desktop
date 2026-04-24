@@ -1,0 +1,19 @@
+{
+  "name": "@mcv/vision",
+  "version": "0.1.0",
+  "description": "Agent eyes+hands on a real browser. CDP-driven accessibility-tree snapshots + ref-id-addressed actions (click/type/scroll/wait/navigate). Pure SDK: takes a CDPSession in, returns JSON/Uint8Array out. Consumed by mcv-one-desktop/server/vision-broker (daemon+HITL+SQLite) and by the Antigravity MCP adapter. Broker persistence, approval gating, and UI live in the Desktop cockpit — not in this package.",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".":       { "types": "./src/index.ts", "default": "./src/index.ts" },
+    "./types": { "types": "./src/types.ts", "default": "./src/types.ts" }
+  },
+  "files": ["src"],
+  "dependencies": {},
+  "scripts": {
+    "lint": "echo 'no lint yet'",
+    "test": "echo 'no tests yet'"
+  }
+}

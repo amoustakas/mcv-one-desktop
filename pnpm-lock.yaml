@@ -512,6 +512,8 @@ importers:
 
   packages/mcp-sdk: {}
 
+  packages/mcv-vision: {}
+
   packages/naos-sdk: {}
 
   packages/onboarding-sdk: {}
