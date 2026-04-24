@@ -17,7 +17,10 @@ import { SignerShell, useSigner } from '@mcv/signer-sdk/react';
 import { SignerPageShell, createSignerAcceptProxy } from '@mcv/signer-sdk/next';
 import { buildEnvelope, rollupEnvelopes, detectMutations } from '@mcv/signer-sdk/server';
 import { SigningContract, createSigningEmitter } from '@mcv/signer-sdk/events';
-import { createInMemoryRegistry } from '@mcv/signer-sdk/registry';
+import { createInMemoryRegistry, createSupabaseRegistry } from '@mcv/signer-sdk/registry';
+// Or, to avoid the @supabase/supabase-js peer dep in builds that only
+// use the in-memory registry:
+// import { createInMemoryRegistry } from '@mcv/signer-sdk/registry';
 ```
 
 ## Consumer quickstart — Next.js (Futurestate, investor app, any Next venture)
@@ -153,7 +156,7 @@ const handle = createSigningObserver({
 ### Topics
 
 | Topic | Fires when | Payload keys |
-|---|---|---|
+| --- | --- | --- |
 | `signing.envelope.created` | Server-side envelope row inserted | `publicId, tenantId, parentVentureId, childVentureId?, documentCount, signerEmail, issuedAt` |
 | `signing.envelope.viewed` | Client first loads the signer page | `publicId, tenantId, viewedAt, userAgent?, ipHash?` |
 | `signing.envelope.signed` | Server-verified accept | `publicId, tenantId, documentId, signedAt, signatureHash` (one per document) |
@@ -166,28 +169,43 @@ const handle = createSigningObserver({
 
 `@mcv/events-sdk` already declares an `mcv-sign.envelope.*` contract for the **operator inbox** (PR #35 — who sends envelopes, tracks sent/signed/executed). This SDK introduces `signing.envelope.*` for the **signer-page + venture-agnostic primitive**. Two contracts, two lifecycles, one DB today (different tables) — a future convergence session can reconcile. The bridge is trivial: `schemaVersion` lives on each event, not in the topic.
 
-## Backend migration
+## Backend migrations
 
-Apply `supabase/migration-signer-sdk-v0-1-2026-04-24.sql` to your Supabase project. Creates:
+Apply in order to your Supabase project:
 
-- `signing_envelopes` — envelope headers with `(tenant_id, parent_venture_id, child_venture_id)` scope tuple.
-- `signing_documents` — per-document rows; enforces `origin = 'agent'` attribution constraint at the DB level.
-- `signing_events_audit` — immutable lifecycle log; append-only.
+1. **`supabase/migration-signer-sdk-v0-1-2026-04-24.sql`** — envelope layer. Creates:
+   - `signing_envelopes` — envelope headers with `(tenant_id, parent_venture_id, child_venture_id)` scope tuple.
+   - `signing_documents` — per-document rows; enforces `origin = 'agent'` attribution constraint at the DB level.
+   - `signing_events_audit` — immutable lifecycle log; append-only.
+2. **`supabase/migration-signer-bundles-2026-04-24.sql`** — registry layer. Creates:
+   - `signing_bundles` — bundle headers matching `SignerBundleManifest`.
+   - `signing_bundle_templates` — per-template rows with `display_order`.
 
 RLS mirrors `migration-agentic-os-events-2026-04-22`: mcv_admin SELECT, service-role writes. Per-tenant scoped policies land once Phase-1 Intelligence Router's `set_tenant` RPC is on master.
 
 Preview integrations are flaky on `migration-*.sql` file layouts — apply via the Supabase MCP `execute_sql` tool in batches per `project_supabase_service_key_mismatch`, or use the seed script pattern.
 
+## Registry backends
+
+Both implementations satisfy the same `SignerBundleRegistry` interface — pick per environment:
+
+```ts
+import { createInMemoryRegistry } from '@mcv/signer-sdk/registry';       // tests, bootstrap, single-tenant
+import { createSupabaseRegistry } from '@mcv/signer-sdk/registry/supabase'; // production
+```
+
+`createSupabaseRegistry` is a thin adapter over `signing_bundles` + `signing_bundle_templates`. Registration is upsert-then-replace-templates so repeated `register()` calls with different template sets never leak old rows. `@supabase/supabase-js` is an optional peer dep — consumers using only `createInMemoryRegistry` don't need to install it.
+
 ## Mass-expansion checklist — v0.1 satisfies all
 
 | Requirement | Implementation |
-|---|---|
+| --- | --- |
 | N documents per envelope | `SignerEnvelope.documents: SignerDocument[]` |
 | Agent-generated docs | `origin: 'human' \| 'agent'` + `generatedByAgent` metadata |
 | Role-agnostic signer | `role?: string` (freeform) + `displayRole?: string` |
 | Child-venture tenancy | `parentVentureId` required + `childVentureId` optional |
 | Template versioning | `templateId + templateVersion` pinned per document + `mutation-detected` event |
-| Registry discovery | `SignerBundleManifest` + `createInMemoryRegistry()` |
+| Registry discovery | `SignerBundleManifest` + both `createInMemoryRegistry()` and `createSupabaseRegistry()` |
 | Cross-venture audit rollup | `server/audit-rollup.ts` — `rollupEnvelopes` + `rollupByChildVenture` |
 | Hybrid tenancy | `apiBaseUrl` configurable per consumer |
 | Events emission | 5 topics via events-sdk from day 1 |
@@ -201,7 +219,6 @@ v0.2 picks up:
 1. **Jurisdictions beyond US** — `JurisdictionV02 = 'us' | 'eu-eidas' | 'ca' | 'uk-etr' | 'au-etr'`. Types already exported; runtime activation is a drop-in replacement of `buildUsEsignConsent` with the parameterised builder.
 2. **Attestation** — `AttestationHook` wires into server-side `envelope-builder` so every signature carries WebAuthn / authorized-device proof of the human who approved.
 3. **Multi-signer envelopes** — today's v0.1 is one signer per envelope. v0.2 widens to N signers with the `pending_others` terminal outcome (already modeled in the server-client's `AcceptSignatureResult.outcome` enum).
-4. **Supabase-backed registry** — the in-memory registry becomes a thin facade over `signing_bundles` tables.
 
 ## Promotion to core-triangle
 
@@ -219,6 +236,5 @@ Target: v0.5 or once ≥ 3 non-MCV ventures consume the SDK in production.
 - Multi-signer envelopes (single signer only).
 - Jurisdictions beyond US.
 - Attestation runtime wiring (types only; v0.2 activates).
-- Server-side Supabase-backed registry (in-memory only for v0.1).
 - DocumentRenderer markdown→safe-HTML pipeline (v0.1 ships pre-wrapped text only for ESIGN integrity).
-- Signing bundle authoring UI (the manifest shape is defined; author tooling is a later session).
+- Signing bundle authoring UI (the manifest shape is defined, `createSupabaseRegistry` is live, but author tooling — a "browse/clone/edit bundle" admin surface — is a later session).
