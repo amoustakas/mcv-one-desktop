@@ -82,7 +82,7 @@ const eventPublisher = createPublisher({ supabase });
 type OnboardingTopic =
   | 'onboarding.invite.accepted'
   | 'onboarding.requirement.assigned'
-  | 'onboarding.requirement.envelope_created'
+  | 'onboarding.requirement.envelope.created'
   | 'onboarding.requirement.signed'
   | 'onboarding.requirements.completed'
   | 'onboarding.access.granted';
@@ -337,7 +337,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             template: { template_key: string; version: string };
           } | null;
           if (ctxRow) {
-            await publish('onboarding.requirement.envelope_created', {
+            await publish('onboarding.requirement.envelope.created', {
               requirementId: ctxRow.id,
               userId: identity.userId,
               inviteId: ctxRow.invite_id,

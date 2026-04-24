@@ -120,7 +120,7 @@ type OnboardingTopic =
   | 'onboarding.invite.revoked'
   | 'onboarding.invite.expired'
   | 'onboarding.requirement.assigned'
-  | 'onboarding.requirement.envelope_created'
+  | 'onboarding.requirement.envelope.created'
   | 'onboarding.requirement.signed'
   | 'onboarding.requirement.declined'
   | 'onboarding.requirement.waived'

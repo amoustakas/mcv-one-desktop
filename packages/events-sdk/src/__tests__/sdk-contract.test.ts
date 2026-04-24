@@ -4,7 +4,7 @@
 //   · topic convention stays `<module>.<entity>.<action>` lowercase-kebab.
 //   · makeEnvelope produces envelopes with self-correlation on root events.
 //   · topicMatches covers exact / trailing-wildcard / segment-wildcard / global.
-//   · 4 module contracts expose expected topics (drift detection).
+//   · 7 module contracts expose expected topics (drift detection).
 //   · Registry rejects duplicate emission topics across modules.
 
 import { describe, it, expect } from 'vitest';
@@ -119,9 +119,17 @@ describe('events-sdk · envelope <-> row round trip', () => {
 });
 
 describe('events-sdk · module contracts (drift detection)', () => {
-  it('exposes all 4 modules', () => {
-    expect(ALL_CONTRACTS).toHaveLength(4);
-    expect(ALL_CONTRACTS.map((c) => c.module).sort()).toEqual(['capital', 'commerce', 'foundation', 'mcv-sign']);
+  it('exposes all 7 modules', () => {
+    expect(ALL_CONTRACTS).toHaveLength(7);
+    expect(ALL_CONTRACTS.map((c) => c.module).sort()).toEqual([
+      'agentic',
+      'capital',
+      'commerce',
+      'foundation',
+      'identity',
+      'mcv-sign',
+      'onboarding',
+    ]);
   });
 
   it('Foundation declares the nda-executed emission (demo target for M-F1)', () => {

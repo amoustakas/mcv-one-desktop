@@ -8,7 +8,7 @@
 //   Footer: keyboard hint strip (a approve, r reject, e edit, ? help)
 //
 // Keyboard flow scoped via use-inbox-hotkeys (document-level, mount-driven).
-// Approve/reject emit agentic.draft_{approved,rejected} events visible live
+// Approve/reject emit agentic.draft.{approved,rejected} events visible live
 // in EventStreamView — the cross-system loop the Waterloo demo closes with.
 
 import { useEffect, useMemo, useRef, useState } from 'react';

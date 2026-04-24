@@ -3,7 +3,7 @@
  *
  * Upserts the same 7 drafts that supabase/migration-agent-drafts-2026-04-24.sql
  * seeds (idempotent on `created_key`), and additionally writes a
- * `agentic.draft_created` event into event_log per draft so the EventStreamView
+ * `agentic.draft.created` event into event_log per draft so the EventStreamView
  * lights up when the script runs.
  *
  * Usage:
@@ -266,12 +266,12 @@ async function main() {
   const rows = data ?? [];
   console.log(`Upserted ${rows.length} rows into agent_drafts.`);
 
-  // Emit one agentic.draft_created per row so the EventStreamView glows on seed.
+  // Emit one agentic.draft.created per row so the EventStreamView glows on seed.
   let emitted = 0;
   for (const r of rows) {
     const source = DRAFTS.find((d) => d.created_key === r.created_key);
     const { error: evErr } = await supabase.from('event_log').insert({
-      topic: 'agentic.draft_created',
+      topic: 'agentic.draft.created',
       schema_version: '1.0',
       correlation_id: crypto.randomUUID(),
       emitted_by: 'script:seed-agent-drafts',
@@ -291,7 +291,7 @@ async function main() {
       emitted += 1;
     }
   }
-  console.log(`Emitted ${emitted} / ${rows.length} agentic.draft_created events.`);
+  console.log(`Emitted ${emitted} / ${rows.length} agentic.draft.created events.`);
   console.log('Done. Open Foundation → Draft Inbox in the desktop to review.');
 }
 

@@ -6,9 +6,9 @@
 //
 // Actions:
 //   list-drafts     → all drafts newest-first
-//   approve-draft   → { id, notes? }  → status=approved, emits agentic.draft_approved
-//   reject-draft    → { id, reason? } → status=rejected, emits agentic.draft_rejected
-//   edit-draft      → { id, body_md } → status=edited,   emits agentic.draft_edited
+//   approve-draft   → { id, notes? }  → status=approved, emits agentic.draft.approved
+//   reject-draft    → { id, reason? } → status=rejected, emits agentic.draft.rejected
+//   edit-draft      → { id, body_md } → status=edited,   emits agentic.draft.edited
 //
 // Writes go through the service-role Supabase client; reads as well (no RLS
 // needed — Clerk gates at the handler boundary).
@@ -45,10 +45,10 @@ const supabase = createClient(
 const eventPublisher = createPublisher({ supabase });
 
 type AgenticTopic =
-  | 'agentic.draft_created'
-  | 'agentic.draft_approved'
-  | 'agentic.draft_rejected'
-  | 'agentic.draft_edited';
+  | 'agentic.draft.created'
+  | 'agentic.draft.approved'
+  | 'agentic.draft.rejected'
+  | 'agentic.draft.edited';
 
 async function publishAgenticEvent(
   topic: AgenticTopic,
@@ -132,7 +132,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .single();
         if (error) throw error;
         const draft = data as AgentDraftRow;
-        await publishAgenticEvent('agentic.draft_approved', {
+        await publishAgenticEvent('agentic.draft.approved', {
           ...draftCore(draft),
           decidedBy: userId,
           notes: (p.notes as string | null) ?? null,
@@ -153,7 +153,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .single();
         if (error) throw error;
         const draft = data as AgentDraftRow;
-        await publishAgenticEvent('agentic.draft_rejected', {
+        await publishAgenticEvent('agentic.draft.rejected', {
           ...draftCore(draft),
           decidedBy: userId,
           reason: (p.reason as string | null) ?? null,
@@ -177,7 +177,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .single();
         if (error) throw error;
         const draft = data as AgentDraftRow;
-        await publishAgenticEvent('agentic.draft_edited', {
+        await publishAgenticEvent('agentic.draft.edited', {
           ...draftCore(draft),
           decidedBy: userId,
           bodyPreview: body.slice(0, 240),
