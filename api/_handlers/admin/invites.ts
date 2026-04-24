@@ -308,6 +308,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const id = p.id as string;
         if (!id) return res.status(400).json({ error: 'id required' });
         const reason = (p.reason as string | null) ?? null;
+        // Session 5: optional cascade. When true AND previousStatus === 'accepted',
+        // we also revoke every active user_access_grants row tied to this invite.
+        // When false (default), grants are left in place — admins can revoke them
+        // individually via a future user-access surface.
+        const cascadeGrants = p.cascade_grants === true || p.cascade_grants === 'true';
 
         // Read current status so the event can report previousStatus correctly.
         const { data: current, error: readErr } = await supabase
@@ -319,14 +324,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (!current) return res.status(404).json({ error: 'invite not found' });
         const previousStatus = (current as { status: string }).status;
         if (previousStatus === 'revoked') {
-          return res.json({ invite: current, already: true });
+          return res.json({ invite: current, already: true, cascadedGrants: 0 });
         }
 
+        const revokedAtIso = new Date().toISOString();
         const { data: revoked, error: updateErr } = await supabase
           .from('onboarding_invites')
           .update({
             status: 'revoked',
-            revoked_at: new Date().toISOString(),
+            revoked_at: revokedAtIso,
             revoked_by: admin.userId,
             revoked_reason: reason,
           })
@@ -349,15 +355,57 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           revokedAt: revokedRow.revoked_at,
           reason,
           previousStatus,
+          cascade: cascadeGrants,
         });
 
-        // EXPAND: if previousStatus === 'accepted', also revoke associated
-        // user_access_grants for this invite_id in a follow-up call / event
-        // subscriber. Deliberately not auto-cascading here — revoke semantics
-        // differ by case (are all grants revoked, or does the user keep some?),
-        // so the admin dashboard (session 4) will surface the decision.
+        // ─── Optional cascade: revoke associated user_access_grants ──────
+        let cascadedGrants = 0;
+        if (cascadeGrants && previousStatus === 'accepted') {
+          const acceptedUserId = (current as { accepted_user_id: string | null }).accepted_user_id;
+          // Find active grants tied to this invite. We scope by invite_id so
+          // an admin-issued grant the user earned elsewhere isn't touched.
+          const { data: activeGrants, error: grantsErr } = await supabase
+            .from('user_access_grants')
+            .select('id, user_id, venture_id, access_level')
+            .eq('invite_id', id)
+            .is('revoked_at', null);
+          if (grantsErr) {
+            log.error({ event: 'grants_read_err', err: grantsErr.message });
+          } else if (activeGrants && activeGrants.length > 0) {
+            const { error: grantUpdateErr } = await supabase
+              .from('user_access_grants')
+              .update({
+                revoked_at: revokedAtIso,
+                revoked_by: admin.userId,
+                revoked_reason: reason ?? 'cascade from invite revoke',
+              })
+              .eq('invite_id', id)
+              .is('revoked_at', null);
+            if (grantUpdateErr) {
+              log.error({ event: 'grants_update_err', err: grantUpdateErr.message });
+            } else {
+              cascadedGrants = activeGrants.length;
+              for (const g of activeGrants as Array<{
+                id: string; user_id: string; venture_id: string | null; access_level: string;
+              }>) {
+                await publishOnboardingEvent('onboarding.access.revoked', {
+                  grantId: g.id,
+                  userId: g.user_id,
+                  inviteId: id,
+                  ventureId: g.venture_id,
+                  accessLevel: g.access_level,
+                  revokedBy: admin.userId,
+                  revokedAt: revokedAtIso,
+                  reason: reason ?? 'cascade from invite revoke',
+                  source: 'invite_revoke_cascade',
+                  acceptedUserId,
+                });
+              }
+            }
+          }
+        }
 
-        return res.json({ invite: revokedRow });
+        return res.json({ invite: revokedRow, cascadedGrants });
       }
 
       // ─── Bundles (read-only in session 1) ────────────────────────────

@@ -92,7 +92,7 @@ interface AdminInvitesState {
   fetchBundles: () => Promise<void>;
   fetchTemplates: () => Promise<void>;
   createInvite: (input: CreateInviteInput) => Promise<{ invite: AdminInvite; inviteUrl: string }>;
-  revokeInvite: (id: string, reason?: string) => Promise<void>;
+  revokeInvite: (id: string, reason?: string, cascadeGrants?: boolean) => Promise<{ cascadedGrants: number }>;
   clearLastCreatedInviteUrl: () => void;
 }
 
@@ -188,19 +188,21 @@ export const useAdminInvitesStore = create<AdminInvitesState>((set) => ({
     }
   },
 
-  revokeInvite: async (id, reason) => {
+  revokeInvite: async (id, reason, cascadeGrants = false) => {
     set((s) => ({ loading: { ...s.loading, revoking: true }, errors: { ...s.errors, revoking: null } }));
     try {
-      const data = await apiPost<{ invite: AdminInvite }>('/api/admin/invites', {
+      const data = await apiPost<{ invite: AdminInvite; cascadedGrants?: number }>('/api/admin/invites', {
         action: 'revoke-invite',
         id,
         reason: reason ?? null,
+        cascade_grants: cascadeGrants,
       });
       // Patch the revoked invite in place.
       set((s) => ({
         invites: s.invites.map((inv) => (inv.id === id ? data.invite : inv)),
         loading: { ...s.loading, revoking: false },
       }));
+      return { cascadedGrants: data.cascadedGrants ?? 0 };
     } catch (e) {
       set((s) => ({
         errors: { ...s.errors, revoking: (e as Error).message },

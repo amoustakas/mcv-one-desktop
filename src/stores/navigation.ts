@@ -176,6 +176,8 @@ export type ViewId =
   | 'foundation-naming'
   | 'foundation-filings'
   | 'agentic-draft-inbox'
+  // Super-admin cockpit
+  | 'admin-invites'
   // Agentic OS — Layer 1 dev panels
   | 'internal-event-stream';
 

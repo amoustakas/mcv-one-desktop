@@ -70,6 +70,8 @@ const FoundationNamingBoardView = lazyRetry(() => import('./views/foundation/Nam
 const FoundationFilingsCalendarView = lazyRetry(() => import('./views/foundation/FilingsCalendarView'));
 // Agentic OS Layer 4 — Draft Inbox (review cockpit for agent-produced drafts)
 const AgenticDraftInboxView = lazyRetry(() => import('./views/agentic/DraftInboxView'));
+// MCV Atlas — super-admin invite cockpit (Session 4 of demo-gate epic)
+const AdminInvitesView = lazyRetry(() => import('./views/AdminInvitesView'));
 // Agentic OS Layer 1 — Event Stream dev panel
 const EventStreamView = lazyRetry(() => import('./views/internal/EventStreamView'));
 const VentureIntegrationsView = lazyRetry(() => import('./views/VentureIntegrationsView'));
@@ -241,6 +243,8 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <FoundationFilingsCalendarView />;
     case 'agentic-draft-inbox':
       return <AgenticDraftInboxView />;
+    case 'admin-invites':
+      return <AdminInvitesView />;
     case 'internal-event-stream':
       return <EventStreamView />;
     case 'crm':
@@ -562,18 +566,38 @@ function Breadcrumbs() {
 // on a visitor's first paint.
 const PublicRoute = lazyRetry(() => import('./views/public/PublicRoute'));
 
+// Onboarding hub — invite-gated wizard served from /onboard. Pre-auth
+// friendly (the welcome step's lookup-invite action is public). Sits
+// outside the dashboard shell for the same reason as PublicRoute.
+const OnboardingHubView = lazyRetry(() => import('./views/OnboardingHubView'));
+
 export default function App() {
   // Public content bypass — visitors on /p/:venture/… skip the entire
   // authenticated app shell (no NavRail, no ChatDock). Split into a thin
   // router + AppBody so rules-of-hooks stays happy: the public branch
   // never runs the dashboard's hooks at all, and AppBody's hooks are
   // called unconditionally every render.
-  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/p/')) {
-    return (
-      <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.6 }}>Loading…</div>}>
-        <PublicRoute pathname={window.location.pathname} />
-      </Suspense>
-    );
+  if (typeof window !== 'undefined') {
+    const path = window.location.pathname;
+    if (path.startsWith('/p/')) {
+      return (
+        <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.6 }}>Loading…</div>}>
+          <PublicRoute pathname={path} />
+        </Suspense>
+      );
+    }
+    if (
+      path === '/onboard' ||
+      path.startsWith('/onboard/') ||
+      path === '/accept-invite' ||
+      path.startsWith('/accept-invite/')
+    ) {
+      return (
+        <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.6 }}>Loading…</div>}>
+          <OnboardingHubView />
+        </Suspense>
+      );
+    }
   }
   return <AppBody />;
 }
