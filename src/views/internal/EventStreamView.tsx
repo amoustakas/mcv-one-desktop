@@ -241,6 +241,16 @@ export default function EventStreamView() {
 
       {tab === 'stream' && (
         <>
+          <div className="esv-presets">
+            <span className="esv-presets-label">Presets:</span>
+            <button className="esv-preset" onClick={() => setPattern('knowledge.*')}>Knowledge</button>
+            <button className="esv-preset" onClick={() => setPattern('agentic.*')}>Agentic</button>
+            <button className="esv-preset" onClick={() => setPattern('foundation.*')}>Foundation</button>
+            <button className="esv-preset" onClick={() => setPattern('capital.*')}>Capital</button>
+            <button className="esv-preset" onClick={() => setPattern('onboarding.*')}>Onboarding</button>
+            <button className="esv-preset" onClick={() => setPattern('identity.*')}>Identity</button>
+            <button className="esv-preset" onClick={() => setPattern('*')}>All</button>
+          </div>
           <div className="esv-toolbar">
             <input
               className="esv-pattern"

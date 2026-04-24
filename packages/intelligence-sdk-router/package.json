@@ -1,0 +1,30 @@
+{
+  "name": "@mcv/intelligence-sdk-router",
+  "version": "0.1.0",
+  "description": "MCV Intelligence Router — unified recall/observe across 7 memory/knowledge substrates. Implements Plan §1.1–1.6. Ships LOCAL to mcv-one-desktop; promotes to mcv-core-triangle/packages/intelligence-sdk/src/router/ when foundation-substrate-2026-04-22 merges to core-triangle/main. Telemetry + determinism DTOs are forward-copied from that branch (c532c7d) pending the merge.",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".":                          { "types": "./src/index.ts",                          "default": "./src/index.ts" },
+    "./types":                    { "types": "./src/types.ts",                          "default": "./src/types.ts" },
+    "./ranker":                   { "types": "./src/ranker.ts",                         "default": "./src/ranker.ts" },
+    "./telemetry":                { "types": "./src/telemetry.ts",                      "default": "./src/telemetry.ts" },
+    "./determinism":              { "types": "./src/determinism.ts",                    "default": "./src/determinism.ts" },
+    "./backpressure":             { "types": "./src/backpressure.ts",                   "default": "./src/backpressure.ts" },
+    "./substrates/semantic":      { "types": "./src/substrates/semantic.ts",            "default": "./src/substrates/semantic.ts" },
+    "./substrates/personal":      { "types": "./src/substrates/personal.ts",            "default": "./src/substrates/personal.ts" },
+    "./substrates/episodic":      { "types": "./src/substrates/episodic.ts",            "default": "./src/substrates/episodic.ts" },
+    "./substrates/procedural":    { "types": "./src/substrates/procedural.ts",          "default": "./src/substrates/procedural.ts" },
+    "./substrates/social":        { "types": "./src/substrates/social.ts",              "default": "./src/substrates/social.ts" },
+    "./substrates/referential":   { "types": "./src/substrates/referential.ts",         "default": "./src/substrates/referential.ts" },
+    "./substrates/long-term":     { "types": "./src/substrates/long-term.ts",           "default": "./src/substrates/long-term.ts" }
+  },
+  "files": ["src"],
+  "dependencies": {},
+  "scripts": {
+    "lint": "echo 'no lint yet'",
+    "test": "echo 'no tests yet'"
+  }
+}
