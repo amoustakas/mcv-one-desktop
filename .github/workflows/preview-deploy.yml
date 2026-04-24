@@ -57,7 +57,7 @@ jobs:
 
             **URL:** ${deployUrl}
             **Commit:** ${sha}
-            **Built on:** Fluid Compute · Node 20
+            **Built on:** Fluid Compute · Node 22
 
             Smoke-test the surfaces that touch your diff. CI gates catch typecheck + tests — this gate catches the real runtime.`;
 

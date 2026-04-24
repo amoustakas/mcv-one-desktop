@@ -4,6 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9"
+  },
   "scripts": {
     "dev": "vite",
     "dev:local": "concurrently \"vite\" \"npx tsx server/local.ts\"",
