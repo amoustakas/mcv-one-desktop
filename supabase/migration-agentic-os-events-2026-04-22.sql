@@ -86,11 +86,18 @@ CREATE TABLE IF NOT EXISTS event_subscribers (
   last_seen_at timestamptz,
   health text NOT NULL DEFAULT 'unknown'
     CHECK (health IN ('unknown','green','yellow','red','disabled')),
-  created_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (module, topic_pattern, COALESCE(handler_url, ''), COALESCE(agent_id, ''))
+  created_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS idx_event_subscribers_topic_pattern ON event_subscribers (topic_pattern);
+
+-- Inline `UNIQUE (module, topic_pattern, COALESCE(handler_url,''), COALESCE(agent_id,''))`
+-- isn't legal in Postgres table definitions — inline UNIQUEs only accept column
+-- names, not expressions. Implemented as an expression-based UNIQUE INDEX so
+-- NULL handler_url / agent_id collapse to '' for dedupe (otherwise two
+-- (module, pattern, NULL handler, 'agent-x') rows would be considered distinct).
+CREATE UNIQUE INDEX IF NOT EXISTS idx_event_subscribers_unique
+  ON event_subscribers (module, topic_pattern, COALESCE(handler_url, ''), COALESCE(agent_id, ''));
 
 COMMENT ON TABLE event_subscribers IS
   'Tracks every registered subscriber so the dev panel can answer "who listens to X?" '

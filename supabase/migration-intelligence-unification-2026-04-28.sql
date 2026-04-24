@@ -387,11 +387,16 @@ CREATE POLICY user_access_grants_tenant_isolation ON user_access_grants
 -- ON CONFLICT DO NOTHING makes this migration rerun-safe.
 -- ============================================================================
 
+-- Topic names switched from snake_case (draft_approved) to dotted
+-- (draft.approved) to match the post-PR#67 producer convention
+-- (api/_handlers/agentic.ts emits `agentic.draft.{approved,edited,rejected}`).
+-- Health discriminator 'healthy' was never valid — event_subscribers CHECK
+-- constraint allows only ('unknown','green','yellow','red','disabled').
 INSERT INTO event_subscribers (module, topic_pattern, handler_url, health) VALUES
-  ('intelligence', 'agentic.draft_approved', '/api/knowledge-observer', 'healthy'),
-  ('intelligence', 'agentic.draft_edited',   '/api/knowledge-observer', 'healthy'),
-  ('intelligence', 'agentic.draft_rejected', '/api/knowledge-observer', 'healthy'),
-  ('intelligence', 'foundation.*.approved',  '/api/knowledge-observer', 'healthy')
+  ('intelligence', 'agentic.draft.approved', '/api/knowledge-observer', 'green'),
+  ('intelligence', 'agentic.draft.edited',   '/api/knowledge-observer', 'green'),
+  ('intelligence', 'agentic.draft.rejected', '/api/knowledge-observer', 'green'),
+  ('intelligence', 'foundation.*.approved',  '/api/knowledge-observer', 'green')
 ON CONFLICT DO NOTHING;
 
 

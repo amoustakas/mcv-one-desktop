@@ -11,6 +11,7 @@ import { describe, it, expect } from 'vitest';
 
 import {
   assertValidTopic,
+  assertValidTopicPattern,
   makeEnvelope,
   randomUuid,
   rowToEnvelope,
@@ -37,6 +38,20 @@ describe('events-sdk · topic convention', () => {
     expect(() => assertValidTopic('Foundation.Round.Funded')).toThrow(/invalid topic/); // uppercase
     expect(() => assertValidTopic('foundation..funded')).toThrow(/invalid topic/);
     expect(() => assertValidTopic('foundation.round_funded.x')).toThrow(/invalid topic/); // underscore not kebab
+  });
+
+  it('accepts well-formed subscription patterns (wildcards allowed)', () => {
+    expect(() => assertValidTopicPattern('foundation.counsel.nda-executed')).not.toThrow();
+    expect(() => assertValidTopicPattern('foundation.*.approved')).not.toThrow();
+    expect(() => assertValidTopicPattern('knowledge.recall.*')).not.toThrow();
+    expect(() => assertValidTopicPattern('*')).not.toThrow();
+  });
+
+  it('rejects malformed subscription patterns (same kebab rule as emissions)', () => {
+    expect(() => assertValidTopicPattern('knowledge.recall_completed')).toThrow(/invalid topic pattern/); // underscore drift — the exact class PR #69 fixed
+    expect(() => assertValidTopicPattern('Knowledge.Recall.Completed')).toThrow(/invalid topic pattern/); // uppercase drift
+    expect(() => assertValidTopicPattern('knowledge')).toThrow(/invalid topic pattern/); // only 1 part
+    expect(() => assertValidTopicPattern('foundation..approved')).toThrow(/invalid topic pattern/);
   });
 });
 
@@ -165,6 +180,19 @@ describe('events-sdk · module contracts (drift detection)', () => {
     for (const c of ALL_CONTRACTS) {
       for (const em of c.emits) {
         expect(() => assertValidTopic(em.topic)).not.toThrow();
+      }
+    }
+  });
+
+  it('every subscription topicPattern passes assertValidTopicPattern (symmetric CI guard)', () => {
+    // Symmetric counterpart to the emission iterator above. Prevents the
+    // snake_case / uppercase drift class PR #69 paid to debug: the subscriber
+    // side of a contract can silently diverge from the kebab-case publish
+    // convention because `topicMatches()` is a string compare, so bad patterns
+    // fail only at runtime subscribe. This guard catches it at author time.
+    for (const c of ALL_CONTRACTS) {
+      for (const sub of c.subscribes) {
+        expect(() => assertValidTopicPattern(sub.topicPattern)).not.toThrow();
       }
     }
   });

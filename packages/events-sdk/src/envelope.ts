@@ -11,6 +11,9 @@
 import type { EventEnvelope, EventLogRow, PublishOptions } from './types.js';
 
 const TOPIC_RE = /^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*){2,}$/;
+// Same shape as TOPIC_RE, but each segment may also be a literal `*` so
+// subscription patterns (`foundation.*.approved`, `knowledge.recall.*`) are valid.
+const TOPIC_PATTERN_RE = /^(\*|[a-z][a-z0-9-]*)(\.(\*|[a-z][a-z0-9-]*)){2,}$/;
 
 /**
  * Validates the `<module>.<entity>.<action>` convention. Rejects empty or malformed
@@ -22,6 +25,23 @@ export function assertValidTopic(topic: string): void {
   if (!TOPIC_RE.test(topic)) {
     throw new Error(
       `[events-sdk] invalid topic "${topic}". Expected "<module>.<entity>.<action>" with lowercase kebab-case parts (e.g. foundation.counsel.nda-executed)`,
+    );
+  }
+}
+
+/**
+ * Validates a subscription topic pattern. Same kebab-case three-part convention
+ * as assertValidTopic, but each segment may also be `*` for segment wildcards
+ * (`foundation.*.approved`); the full pattern may also be `*` for a global
+ * subscriber. Symmetric with assertValidTopic on the publish side so the
+ * contract-test fixture catches snake_case / uppercase drift in `subscribes[]`
+ * at author time instead of at runtime subscribe.
+ */
+export function assertValidTopicPattern(pattern: string): void {
+  if (pattern === '*') return;
+  if (!TOPIC_PATTERN_RE.test(pattern)) {
+    throw new Error(
+      `[events-sdk] invalid topic pattern "${pattern}". Expected "<module>.<entity>.<action>" with lowercase kebab-case parts or "*" wildcards (e.g. foundation.*.approved)`,
     );
   }
 }
