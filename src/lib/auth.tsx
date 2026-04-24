@@ -30,6 +30,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// Routes that must render without triggering the full-screen sign-in gate.
+// The OnboardingHubView's WelcomeStep calls /api/onboarding?action=lookup-invite
+// which is deliberately pre-auth — the user may arrive at this URL before ever
+// having a Clerk session. Clerk context still wraps the subtree (so the welcome
+// step's SignInButton works), but AuthGate yields instead of blocking.
+function isPublicPath(): boolean {
+  if (typeof window === 'undefined') return false;
+  const path = window.location.pathname;
+  return (
+    path.startsWith('/p/') ||
+    path === '/onboard' ||
+    path.startsWith('/onboard/') ||
+    // /accept-invite?code=... is the URL shape that api/_handlers/admin/invites.ts
+    // emits for new invites; mirror it here so the same handler-generated link
+    // lands pre-auth without a 404.
+    path === '/accept-invite' ||
+    path.startsWith('/accept-invite/')
+  );
+}
+
 function AuthGate({ children }: { children: ReactNode }) {
   const { isSignedIn, isLoaded, getToken } = useAuth();
   const { user } = useUser();
@@ -75,6 +95,13 @@ function AuthGate({ children }: { children: ReactNode }) {
       }).catch(() => {});
     }
   }, [isSignedIn, user]);
+
+  // Pre-auth public paths render their own chrome — skip both the spinner and
+  // the sign-in screen so the onboarding wizard can do its lookup-invite call
+  // before the user signs in.
+  if (isPublicPath()) {
+    return <>{children}</>;
+  }
 
   if (!isLoaded) {
     return (
@@ -150,11 +177,23 @@ function AuthGate({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+// Re-export Clerk primitives so consumers import from one place. This is
+// a legacy barrel — mixing hook and component exports trips Fast Refresh's
+// react-refresh/only-export-components rule because the bundler can't know
+// which symbol a given import site wants when it needs to invalidate. A
+// proper split into `lib/auth-hooks.ts` + `lib/auth-components.ts` would
+// clear this cleanly and is tracked for a future refactor, but the payoff
+// is dev-time UX (Fast Refresh granularity), not correctness, so we
+// suppress the rule locally rather than expand this commit's scope.
 export {
+  // eslint-disable-next-line react-refresh/only-export-components
   useAuth,
+  // eslint-disable-next-line react-refresh/only-export-components
   useUser,
   UserButton,
+  // eslint-disable-next-line react-refresh/only-export-components
   useOrganization,
+  // eslint-disable-next-line react-refresh/only-export-components
   useOrganizationList,
   OrganizationSwitcher,
   OrganizationProfile,
