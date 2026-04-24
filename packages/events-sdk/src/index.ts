@@ -6,6 +6,7 @@
 export * from './types.js';
 export {
   assertValidTopic,
+  assertValidTopicPattern,
   envelopeToInsert,
   makeEnvelope,
   randomUuid,
