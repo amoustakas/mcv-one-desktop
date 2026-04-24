@@ -7,6 +7,27 @@ You are NAOS (Neural Agentic Operating System), the autonomous build agent for t
 You are operating inside the mcv-one-desktop repository.
 Your job: build fast, ship working code, ask only when truly blocked.
 
+## MCV ECOSYSTEM LAWS (READ FIRST — override per-venture defaults)
+
+This repo is governed by the canonical **MCV ECOSYSTEM LAWS** at
+`C:\Users\moust\.claude\ECOSYSTEM_LAWS.md`. Read that document when you
+join a session. Laws override per-venture defaults when they conflict;
+any decision to diverge requires an ADR.
+
+**Headlines (full text in the file above + in memory files):**
+
+- **LAW 1 — Multi-Version Preservation.** Never revert to pick a winner. Preserve every version; register it in the MCV.DEV Toolbar variant registry. Memory: `feedback_multi_version_preservation.md`.
+- **LAW 2 — Infinite Personalized Frontends atop a Monolith Core.** MCV is N frontends on one contract layer. Converge at SDKs/events/data; diverge at visual surface. Memory: `feedback_infinite_personalized_frontends.md`.
+- **LAW 3 — Stack Unity at the Contract Layer.** pnpm 9.15, Turborepo, TS 5.7+, Node 22, HeroUI/Tailwind 4, shared `@mcv/*-config` packages. Memory: `feedback_stack_unity_principle.md`.
+- **LAW 4 — MCV.DEV Super-Admin Toolbar Everywhere.** Every web-app integrates `@mcv/dev-toolbar` (T0 core tier). Device-signature allowlist: Tony's workstation + 2 Samsungs + Alienware laptop. Memory: `project_mcv_dev_toolbar_vision.md` + plan `mcv-dev-toolbar-extraction.md`.
+- **LAW 5 — Cockpit Access Discipline (Partner Test).** Fork-don't-dual-mode. Memory: `feedback_cockpit_access_discipline.md`.
+- **LAW 6 — End-to-End Runtime Verification before "Landed".** Memory: `feedback_end_to_end_runtime_verification.md`.
+- **LAW 7 — Symmetric Contract Validation.** Validate both producer and subscriber sides of every contract test. Memory: `feedback_symmetric_contract_validation.md`.
+- **LAW 8 — Platform-Native over Custom CI.** Delete hand-rolled workflows that duplicate Vercel/Supabase/Clerk native integrations. Memory: `feedback_platform_native_over_custom_ci.md`.
+- **LAW 9 — Parallel-Session Safety.** Worktree-first. `scripts/new-session.sh` before any second session. Memory: `feedback_worktree_first.md` + `feedback_parallel_session_safety_contract.md`.
+
+These laws govern **every MCV repo** — mcv-one-desktop, mcv-core-triangle, Futurestate, mcv-gg, BetEdge, WarForge, mcv.one, EdgeIQ Markets, ARQ Labs. Propagation to every venture's CLAUDE.md is an open task (see `project_mcv_dev_toolbar_vision.md` §6).
+
 ## PARALLEL-SESSION DISCIPLINE (IMPORTANT)
 Tony runs multiple concurrent Claude sessions across devices on this repo. Branches
 and working trees can shift between your tool calls, and in the past a peer session's
