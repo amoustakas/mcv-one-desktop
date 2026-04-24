@@ -3,8 +3,8 @@
  * env-audit.ts — prod env var whitelist gate
  *
  * Usage:
- *   npm run env:audit              — diff .env.example against REQUIRED_FOR_PROD
- *   npm run env:audit:prod         — same + cross-check Vercel prod env (needs VERCEL_TOKEN)
+ *   pnpm run env:audit             — diff .env.example against REQUIRED_FOR_PROD
+ *   pnpm run env:audit:prod        — same + cross-check Vercel prod env (needs VERCEL_TOKEN)
  *
  * Exit 0 = all required keys present.
  * Exit 1 = one or more required keys are missing (build should fail).

@@ -67,7 +67,7 @@ jobs:
       - name: no raw API keys in client bundle
         if: false  # enabled after first build once dist/ format is locked
         run: |
-          # Phase-1 follow-up: after `npm run build`, grep the dist/ bundle
+          # Phase-1 follow-up: after `pnpm run build`, grep the dist/ bundle
           # for AIza*, sk-ant-*, sk-, etc. to catch any key that slipped
           # through despite the source-level checks above. Requires build
           # artifact — will enable once dist layout stabilizes.
