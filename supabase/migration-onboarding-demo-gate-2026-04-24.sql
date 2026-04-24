@@ -249,7 +249,10 @@ CREATE TABLE IF NOT EXISTS user_access_grants (
   revoked_by text,
   revoked_reason text,
   metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
-  UNIQUE (user_id, venture_id, access_level) WHERE revoked_at IS NULL
+  -- Full (non-partial) UNIQUE so PostgREST upsert (onConflict: 'user_id,venture_id,access_level')
+  -- has a target it can reference. Lifecycle stays on one row: re-granting a revoked access
+  -- un-revokes the existing row instead of inserting a duplicate — cleaner audit trail.
+  UNIQUE (user_id, venture_id, access_level)
 );
 
 CREATE INDEX IF NOT EXISTS idx_grants_user_active
