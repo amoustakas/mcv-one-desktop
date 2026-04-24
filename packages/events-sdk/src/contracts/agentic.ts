@@ -34,14 +34,14 @@ export const AgenticContract: ContractDeclaration<'agentic'> = {
 
   emits: [
     {
-      topic: 'agentic.draft_created',
+      topic: 'agentic.draft.created',
       schemaVersion: '1.0',
       payload: DraftCore.extend({ summary: z.string() }),
       description:
         'Agent drafted a document (NDA, filing, redline, etc.) and parked it in the inbox for human review.',
     },
     {
-      topic: 'agentic.draft_approved',
+      topic: 'agentic.draft.approved',
       schemaVersion: '1.0',
       payload: DraftCore.extend({
         decidedBy: z.string(),
@@ -51,7 +51,7 @@ export const AgenticContract: ContractDeclaration<'agentic'> = {
         'Human approved the draft. Downstream systems should act on it — counter-sign, file, wire, etc.',
     },
     {
-      topic: 'agentic.draft_rejected',
+      topic: 'agentic.draft.rejected',
       schemaVersion: '1.0',
       payload: DraftCore.extend({
         decidedBy: z.string(),
@@ -61,7 +61,7 @@ export const AgenticContract: ContractDeclaration<'agentic'> = {
         'Human rejected the draft. Reason (when provided) should feed back into the agent for next attempt.',
     },
     {
-      topic: 'agentic.draft_edited',
+      topic: 'agentic.draft.edited',
       schemaVersion: '1.0',
       payload: DraftCore.extend({
         decidedBy: z.string(),

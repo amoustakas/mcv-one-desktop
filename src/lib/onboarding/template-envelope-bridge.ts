@@ -12,7 +12,7 @@
 //   2. Call MCV Sign's createEnvelope() with the content_id + user email.
 //   3. Patch the user_document_requirements row with envelope_id + flip
 //      status to 'envelope_issued'.
-//   4. Emit `onboarding.requirement.envelope_created` on the event bus.
+//   4. Emit `onboarding.requirement.envelope.created` on the event bus.
 //
 // Idempotency: if the requirement already has a non-null envelope_id and
 // status 'envelope_issued' / 'signed', this function is a no-op that

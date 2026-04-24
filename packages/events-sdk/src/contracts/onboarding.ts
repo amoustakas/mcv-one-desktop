@@ -125,7 +125,7 @@ export const OnboardingContract: ContractDeclaration<'onboarding'> = {
         'A requirement row was materialized for a user from an accepted invite. Fired once per template in the bundle.',
     },
     {
-      topic: 'onboarding.requirement.envelope_created',
+      topic: 'onboarding.requirement.envelope.created',
       schemaVersion: '1.0',
       payload: RequirementCore.extend({
         envelopeId: z.string().uuid(),
