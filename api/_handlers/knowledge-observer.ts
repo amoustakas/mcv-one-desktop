@@ -4,9 +4,9 @@
 //
 // Subscribes to 4 event topics (seeded into event_subscribers by the
 // Phase-1 migration):
-//   - agentic.draft_approved  → kind='decision' memory
-//   - agentic.draft_edited    → kind='preference' memory
-//   - agentic.draft_rejected  → kind='constraint' memory
+//   - agentic.draft.approved  → kind='decision' memory
+//   - agentic.draft.edited    → kind='preference' memory
+//   - agentic.draft.rejected  → kind='constraint' memory
 //   - foundation.*.approved   → kind='fact' memory (per-module extraction)
 //
 // Invocation shape — this handler is called by:
@@ -100,9 +100,9 @@ async function requireAuth(req: VercelRequest, res: VercelResponse): Promise<str
 }
 
 function topicToKind(topic: string): { kind: ObserveKind; summaryStub: string } | null {
-  if (topic === 'agentic.draft_approved') return { kind: 'decision', summaryStub: 'approved draft' };
-  if (topic === 'agentic.draft_edited')   return { kind: 'preference', summaryStub: 'edited draft' };
-  if (topic === 'agentic.draft_rejected') return { kind: 'constraint', summaryStub: 'rejected draft' };
+  if (topic === 'agentic.draft.approved') return { kind: 'decision', summaryStub: 'approved draft' };
+  if (topic === 'agentic.draft.edited')   return { kind: 'preference', summaryStub: 'edited draft' };
+  if (topic === 'agentic.draft.rejected') return { kind: 'constraint', summaryStub: 'rejected draft' };
   if (topic.startsWith('foundation.') && topic.endsWith('.approved')) {
     return { kind: 'fact', summaryStub: `approved ${topic.slice('foundation.'.length, -'.approved'.length)}` };
   }
@@ -164,7 +164,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let draftId: string | undefined;
   const ventureId = (body.venture_id as string | null | undefined) ?? null;
   const payloadDraftId = (body.payload as { draftId?: string } | undefined)?.draftId;
-  if (payloadDraftId && (topic === 'agentic.draft_approved' || topic === 'agentic.draft_edited' || topic === 'agentic.draft_rejected')) {
+  if (payloadDraftId && (topic === 'agentic.draft.approved' || topic === 'agentic.draft.edited' || topic === 'agentic.draft.rejected')) {
     const { data } = await supabase
       .from('agent_drafts')
       .select('id, title, summary, body_md, target_venture, tenant_id, status')

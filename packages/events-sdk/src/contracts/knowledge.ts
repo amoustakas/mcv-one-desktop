@@ -73,17 +73,17 @@ export const KnowledgeContract: ContractDeclaration<'knowledge'> = {
 
   subscribes: [
     {
-      topicPattern: 'agentic.draft_approved',
+      topicPattern: 'agentic.draft.approved',
       handlerUrl: '/api/knowledge-observer',
       description: 'Draft approval → decision memory in agent_memory_longterm.',
     },
     {
-      topicPattern: 'agentic.draft_edited',
+      topicPattern: 'agentic.draft.edited',
       handlerUrl: '/api/knowledge-observer',
       description: 'Draft edit → preference memory (Tony materially rewrote; that preference pattern matters).',
     },
     {
-      topicPattern: 'agentic.draft_rejected',
+      topicPattern: 'agentic.draft.rejected',
       handlerUrl: '/api/knowledge-observer',
       description: 'Draft rejection → constraint memory (avoid this output class next time).',
     },
