@@ -64,3 +64,6 @@ local-state-*.png
 .mcv/vision-broker.db
 .mcv/vision-broker.db-wal
 .mcv/vision-broker.db-shm
+
+# VIL — manual smoke output from POST /vision/snapshot
+tmp-annotated-smoke.png

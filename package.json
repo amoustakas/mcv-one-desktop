@@ -64,6 +64,7 @@
     "@mcv/ventures-sdk": "workspace:*",
     "@mcv/vision": "workspace:^",
     "@mcv/voice-sdk": "workspace:*",
+    "@napi-rs/canvas": "^0.1.69",
     "@sentry/node": "^10.49.0",
     "@sentry/react": "^10.49.0",
     "@solana/pay": "^0.2.6",
