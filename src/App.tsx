@@ -76,6 +76,8 @@ const AdminInvitesView = lazyRetry(() => import('./views/AdminInvitesView'));
 const EventStreamView = lazyRetry(() => import('./views/internal/EventStreamView'));
 const SignerDogfoodView = lazyRetry(() => import('./views/internal/SignerDogfoodView'));
 const AdminSigningView = lazyRetry(() => import('./views/internal/AdminSigningView'));
+// VIL Session 3 — HITL approval cockpit for @mcv/vision agent actions
+const VisionBrokerPanel = lazyRetry(() => import('./components/VisionBrokerPanel'));
 const VentureIntegrationsView = lazyRetry(() => import('./views/VentureIntegrationsView'));
 const CRMView = lazyRetry(() => import('./views/CRMView'));
 const CapitalGlobalView = lazyRetry(() => import('./views/CapitalGlobalView'));
@@ -253,6 +255,8 @@ function renderView(viewId: ViewId, venture: ReturnType<typeof getVenture> & obj
       return <SignerDogfoodView />;
     case 'admin-signing':
       return <AdminSigningView />;
+    case 'vision-broker':
+      return <VisionBrokerPanel />;
     case 'crm':
       return <CRMView />;
     case 'capital':

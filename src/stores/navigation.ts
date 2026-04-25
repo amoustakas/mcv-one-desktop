@@ -182,7 +182,9 @@ export type ViewId =
   | 'internal-event-stream'
   // Signer SDK — dogfood + admin cockpit (NEXT-3 in-repo consumers of @mcv/signer-sdk)
   | 'internal-signer-dogfood'
-  | 'admin-signing';
+  | 'admin-signing'
+  // VIL Session 3 — HITL approval cockpit for @mcv/vision agent actions
+  | 'vision-broker';
 
 export type ContextMode = 'global' | 'venture';
 

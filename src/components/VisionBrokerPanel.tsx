@@ -164,7 +164,7 @@ export default function VisionBrokerPanel(): React.JSX.Element {
     es.onerror = () => {
       // Browser will auto-reconnect; meanwhile drop to a 5s poll.
       if (!pollTimerRef.current) {
-        pollTimerRef.current = setInterval(() => void refetch(), 5_000);
+        pollTimerRef.current = setInterval(() => void pollOnce(), 5_000);
       }
     };
 
