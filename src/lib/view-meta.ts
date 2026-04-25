@@ -61,6 +61,8 @@ export const VIEW_ICONS: Record<string, LucideIcon> = {
   'knowledge-hub': Brain,
   'audit-log': Shield,
   ladder: Trophy,
+  // VIL Session 3 — HITL approval cockpit for @mcv/vision agent actions
+  'vision-broker': Radar,
 };
 
 // ── Label map ──

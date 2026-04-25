@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useClerk, useUser } from '@clerk/clerk-react';
 import {
@@ -9,6 +9,7 @@ import { useVentureContextStore } from '../stores/venture-context';
 import { ventures } from '../lib/ventures';
 import { cn } from '../lib/utils';
 import { getViewIcon } from '../lib/view-meta';
+import { isSuperAdmin } from '../lib/superadmin';
 
 // Icons now sourced from shared view-meta.ts
 
@@ -121,6 +122,14 @@ const globalSections: NavSection[] = [
       { id: 'team', label: 'Team' },
       { id: 'pipeline', label: 'Pipeline' },
       { id: 'audit-log', label: 'Audit Log' },
+    ],
+  },
+  // Cockpit — super-admin only; filtered out for non-allowlist devices
+  // by the isSuperAdmin() gate read in the NavRail component body.
+  {
+    label: 'Cockpit', key: 'cockpit-section',
+    items: [
+      { id: 'vision-broker', label: 'Vision Broker', badge: 'NEW' },
     ],
   },
   {
@@ -254,7 +263,17 @@ export default function NavRail() {
     }
   }, [activeVenture, setActiveVenture]);
 
-  const sections = mode === 'global' ? globalSections : ventureSections;
+  // Super-admin filter — strip cockpit sections (Vision Broker, future
+  // tools) for non-allowlist devices. Read once on mount; the
+  // isSuperAdmin() result doesn't change without a 'mcv:super-admin-
+  // changed' event, which we don't yet listen for here (re-enter the
+  // page after unlocking via ?mcv-dev=… to refresh).
+  const showCockpit = useMemo(() => isSuperAdmin(), []);
+  const baseSections = mode === 'global' ? globalSections : ventureSections;
+  const sections = useMemo(
+    () => (showCockpit ? baseSections : baseSections.filter((s) => s.key !== 'cockpit-section')),
+    [showCockpit, baseSections],
+  );
   const w = expanded ? 220 : 56;
 
   function toggleSection(key: string) {
