@@ -10,7 +10,7 @@
     { "path": "/api/cron-capital-distributions", "schedule": "*/5 * * * *" },
     { "path": "/api/cron-notifications-dispatch", "schedule": "*/2 * * * *" }
   ],
-  "buildCommand": "npm run build",
+  "buildCommand": "pnpm run build",
   "outputDirectory": "dist",
   "framework": "vite",
   "headers": [

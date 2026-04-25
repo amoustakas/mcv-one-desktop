@@ -16,37 +16,41 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [20]
+        node-version: [22]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      # pnpm must be installed BEFORE setup-node so setup-node's `cache: pnpm`
+      # can locate the pnpm binary. Version pinned via root package.json's
+      # packageManager field (pnpm@9.15.0).
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
 
       - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+          cache: 'pnpm'
 
-      # npm install (not npm ci) — the lockfile is generated on Windows and
-      # misses some Linux-only optional deps (@emnapi/runtime, utf-8-validate,
-      # etc.) that CI's Ubuntu runner needs. `npm install` tolerates the
-      # mismatch; `npm ci` rejects it. Revisit once lockfile generation is
-      # moved to a Linux runner.
+      # pnpm's lockfile is platform-independent (content-addressable store
+      # doesn't vary by OS), so --frozen-lockfile works cross-platform even
+      # when the lockfile was generated on Windows. This supersedes the
+      # npm-era `install-not-ci` workaround for Windows→Ubuntu drift.
       - name: Install dependencies
-        run: npm install --prefer-offline --no-audit --no-fund
+        run: pnpm install --frozen-lockfile
 
       # Lint is non-blocking while we work through the ~3.2k pre-existing ESLint
       # errors that accumulated before the primary pipeline ever successfully
-      # executed (PR #58 introduced pnpm-backed CI that died at install, so lint
-      # never actually gated merges). Remove continue-on-error once lint is clean.
+      # executed. Remove continue-on-error once lint is clean.
       - name: Lint
-        run: npm run lint
+        run: pnpm run lint
         continue-on-error: true
 
       - name: Build (tsc -b + vite build — real typecheck gate)
-        run: npm run build
+        run: pnpm run build
 
       - name: Test
         env:
           NODE_ENV: test
-        run: npm test
+        run: pnpm test
