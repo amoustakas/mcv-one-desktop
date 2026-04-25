@@ -7,13 +7,16 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
-    ".":       { "types": "./src/index.ts", "default": "./src/index.ts" },
-    "./types": { "types": "./src/types.ts", "default": "./src/types.ts" }
+    ".":         { "types": "./src/index.ts",    "default": "./src/index.ts" },
+    "./types":   { "types": "./src/types.ts",    "default": "./src/types.ts" },
+    "./ref-id":  { "types": "./src/ref-id.ts",   "default": "./src/ref-id.ts" },
+    "./snapshot":{ "types": "./src/snapshot.ts", "default": "./src/snapshot.ts" },
+    "./actions": { "types": "./src/actions.ts",  "default": "./src/actions.ts" }
   },
   "files": ["src"],
   "dependencies": {},
   "scripts": {
     "lint": "echo 'no lint yet'",
-    "test": "echo 'no tests yet'"
+    "test": "vitest run --root ../.. packages/mcv-vision/src/__tests__"
   }
 }

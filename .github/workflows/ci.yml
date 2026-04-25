@@ -50,6 +50,14 @@ jobs:
       - name: Build (tsc -b + vite build — real typecheck gate)
         run: pnpm run build
 
+      # @mcv/vision tests launch a real headless browser via CDP. Fresh
+      # Ubuntu runners ship without the chromium-headless-shell binary
+      # (used by `chromium.launch({ headless: true })`), so we explicitly
+      # install it. --with-deps is defensive — ubuntu-latest already has
+      # the required system libs but the flag survives image drift.
+      - name: Install Playwright browser (chromium-headless-shell)
+        run: pnpm exec playwright install --with-deps chromium-headless-shell
+
       - name: Test
         env:
           NODE_ENV: test
