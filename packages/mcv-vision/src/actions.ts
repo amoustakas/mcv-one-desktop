@@ -87,6 +87,17 @@ export async function scroll(cdp: CdpSession, dx: number, dy: number): Promise<A
   return { ok: true, snapshot: post };
 }
 
+/**
+ * Default quiescence window for `wait({ kind: 'networkIdle' })`. Once
+ * the in-flight request count hits zero and stays there for this many
+ * milliseconds without bouncing back, we consider the page idle.
+ *
+ * 500ms tolerates the typical SPA hydration burst (multiple chained
+ * fetches firing within a tick of each other) without misclassifying
+ * a true idle as a brief lull.
+ */
+const NETWORK_IDLE_QUIESCENCE_MS = 500;
+
 export async function wait(cdp: CdpSession, condition: WaitCondition): Promise<ActionResult> {
   const timeoutMs = condition.timeoutMs ?? 10_000;
   try {
@@ -108,7 +119,7 @@ export async function wait(cdp: CdpSession, condition: WaitCondition): Promise<A
         );
         break;
       case 'networkIdle':
-        await pollExpression(cdp, 'document.readyState === "complete"', timeoutMs);
+        await waitForNetworkIdle(cdp, timeoutMs);
         break;
     }
     const post = await getSnapshot(cdp);
@@ -120,6 +131,90 @@ export async function wait(cdp: CdpSession, condition: WaitCondition): Promise<A
       snapshot: post,
       error: err instanceof Error ? err.message : String(err),
     };
+  }
+}
+
+/**
+ * Block until in-flight network requests stay at zero for
+ * NETWORK_IDLE_QUIESCENCE_MS. Sources of truth are the CDP Network
+ * lifecycle events:
+ *
+ *   `Network.requestWillBeSent`   — increments in-flight
+ *   `Network.loadingFinished`     — decrements (success path)
+ *   `Network.loadingFailed`       — decrements (network error / abort)
+ *
+ * Notes:
+ *   - `Network.enable` is required before events flow. We send it once
+ *     on entry; if the caller already enabled the domain, the second
+ *     call is a no-op on Chromium so it's safe to issue.
+ *   - The quiescence timer restarts every time in-flight bumps off
+ *     zero, so a chain of XHRs `[A → B → C]` correctly waits for C.
+ *   - We never `Network.disable` on exit. The domain stays on for the
+ *     remainder of the session — the cost is bookkeeping inside
+ *     Chromium, but downstream consumers (broker side-effect capture)
+ *     also need it on, and toggling causes a brief event-drop window.
+ */
+async function waitForNetworkIdle(cdp: CdpSession, timeoutMs: number): Promise<void> {
+  await cdp.send('Network.enable').catch(() => {
+    // Already enabled, or transport is rejecting commands during a
+    // navigation transition — keep going; the worst case is we time
+    // out without ever seeing an event, and the caller surfaces that.
+  });
+
+  let inFlight = 0;
+  let quiescenceTimer: ReturnType<typeof setTimeout> | null = null;
+  let resolveIdle: (() => void) | null = null;
+  let rejectIdle: ((err: Error) => void) | null = null;
+
+  const idleSettled = new Promise<void>((resolve, reject) => {
+    resolveIdle = resolve;
+    rejectIdle = reject;
+  });
+
+  function clearQuiescenceTimer(): void {
+    if (quiescenceTimer !== null) {
+      clearTimeout(quiescenceTimer);
+      quiescenceTimer = null;
+    }
+  }
+
+  function armQuiescenceTimerIfIdle(): void {
+    if (inFlight === 0 && quiescenceTimer === null) {
+      quiescenceTimer = setTimeout(() => {
+        quiescenceTimer = null;
+        if (inFlight === 0 && resolveIdle) resolveIdle();
+      }, NETWORK_IDLE_QUIESCENCE_MS);
+    }
+  }
+
+  const offRequest = cdp.on('Network.requestWillBeSent', () => {
+    inFlight += 1;
+    clearQuiescenceTimer();
+  });
+  const offFinished = cdp.on('Network.loadingFinished', () => {
+    if (inFlight > 0) inFlight -= 1;
+    armQuiescenceTimerIfIdle();
+  });
+  const offFailed = cdp.on('Network.loadingFailed', () => {
+    if (inFlight > 0) inFlight -= 1;
+    armQuiescenceTimerIfIdle();
+  });
+
+  // Cold-start case: page may already be idle before any request fires.
+  armQuiescenceTimerIfIdle();
+
+  const timeoutHandle = setTimeout(() => {
+    if (rejectIdle) rejectIdle(new Error(`networkIdle timed out after ${timeoutMs}ms`));
+  }, timeoutMs);
+
+  try {
+    await idleSettled;
+  } finally {
+    clearTimeout(timeoutHandle);
+    clearQuiescenceTimer();
+    offRequest();
+    offFinished();
+    offFailed();
   }
 }
 
