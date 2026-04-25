@@ -12,9 +12,12 @@
  * Frame streaming is handled separately in browser-ws.ts via WebSocket.
  */
 
-import { chromium, type Browser, type BrowserContext, type Page, type CDPSession } from 'playwright';
+import { chromium, type BrowserContext, type Page, type CDPSession } from 'playwright';
 import { Readability } from '@mozilla/readability';
 import { JSDOM } from 'jsdom';
+import { mkdirSync } from 'node:fs';
+import { homedir } from 'node:os';
+import path from 'node:path';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ExpressApp = any;
@@ -29,6 +32,8 @@ type Res = any;
 
 interface BrowserSession {
   id: string;
+  /** Shared persistent context — same instance across all live sessions
+   *  so cookies/logins survive page closes and process restarts. */
   context: BrowserContext;
   page: Page;
   cdp: CDPSession;
@@ -45,17 +50,40 @@ interface BrowserSession {
 const MAX_SESSIONS = 5;
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
-let browser: Browser | null = null;
+/** Single persistent context shared across all sessions. Each session
+ *  gets its own Page; cookies, localStorage, and login state live in the
+ *  user-data-dir on disk and survive process restarts. */
+let persistentContext: BrowserContext | null = null;
 const sessions = new Map<string, BrowserSession>();
 
-async function ensureBrowser(): Promise<Browser> {
-  if (!browser || !browser.isConnected()) {
-    browser = await chromium.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-    });
+function resolveUserDataDir(): string {
+  return (
+    process.env.MCV_VISION_USER_DATA_DIR ??
+    path.join(homedir(), '.mcv', 'vision-browser-profile')
+  );
+}
+
+async function ensurePersistentContext(): Promise<BrowserContext> {
+  if (persistentContext) {
+    const browser = persistentContext.browser();
+    if (browser && browser.isConnected()) return persistentContext;
+    // Crashed Chrome — drop the stale ref and relaunch.
+    persistentContext = null;
   }
-  return browser;
+
+  const userDataDir = resolveUserDataDir();
+  // Profile dir must exist before launchPersistentContext touches it.
+  mkdirSync(userDataDir, { recursive: true });
+
+  persistentContext = await chromium.launchPersistentContext(userDataDir, {
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+    viewport: { width: 1280, height: 800 },
+    userAgent:
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    ignoreHTTPSErrors: true,
+  });
+  return persistentContext;
 }
 
 function generateId(): string {
@@ -78,15 +106,10 @@ async function createSession(viewportWidth = 1280, viewportHeight = 800): Promis
     if (oldest) await closeSession(oldest.id);
   }
 
-  const b = await ensureBrowser();
-  const context = await b.newContext({
-    viewport: { width: viewportWidth, height: viewportHeight },
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-    ignoreHTTPSErrors: true,
-  });
-
+  const context = await ensurePersistentContext();
   const page = await context.newPage();
-  const cdp = await page.context().newCDPSession(page);
+  await page.setViewportSize({ width: viewportWidth, height: viewportHeight });
+  const cdp = await context.newCDPSession(page);
 
   // Navigate to a blank start page
   await page.goto('about:blank');
@@ -112,7 +135,10 @@ async function closeSession(sessionId: string): Promise<void> {
   sessions.delete(sessionId);
   try {
     await s.cdp.detach().catch(() => {});
-    await s.context.close().catch(() => {});
+    // Close the page only — `s.context` is the shared persistent context
+    // and must outlive the session so cookies/logins survive across
+    // session boundaries.
+    await s.page.close().catch(() => {});
   } catch { /* already closed */ }
 }
 
