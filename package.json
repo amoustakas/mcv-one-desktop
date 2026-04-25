@@ -161,6 +161,7 @@
       "@mcv/eslint-config": "link:../Documents/GitHub/mcv-core-triangle/tooling/eslint-config",
       "@mcv/prettier-config": "link:../Documents/GitHub/mcv-core-triangle/tooling/prettier-config",
       "@mcv/renovate-config": "link:../Documents/GitHub/mcv-core-triangle/tooling/renovate-config",
+      "@mcv/tailwind-config": "link:../Documents/GitHub/mcv-core-triangle/tooling/tailwind-config",
       "@mcv/tsconfig": "link:../Documents/GitHub/mcv-core-triangle/tooling/tsconfig",
       "@mcv/turbo-config": "link:../Documents/GitHub/mcv-core-triangle/tooling/turbo-config",
       "@mcv/vitest-config": "link:../Documents/GitHub/mcv-core-triangle/tooling/vitest-config"
