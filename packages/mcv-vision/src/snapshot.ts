@@ -26,12 +26,30 @@ import type {
 
 // ---------------------------------------------------------------------------
 // Structural CDP transport — compatible with Playwright's CDPSession at the
-// call sites we use (`send(method, params)`). Exported so consumers and
-// tests can pass any CDP-shaped client.
+// call sites we use. Exported so consumers and tests can pass any
+// CDP-shaped client.
+//
+// `send(method, params?)`  — issue a CDP command, await its reply.
+// `on(event, handler)`     — subscribe to a CDP event; returns an
+//                            unsubscribe function. Playwright's CDPSession
+//                            already matches this shape, so the broker
+//                            seam works without runtime adapters. The
+//                            unsubscribe-on-call return convention keeps
+//                            test mocks tiny: a single `Map<event, Set>`
+//                            satisfies it.
+//
+// `on()` was added in VIL Session 3 to back two consumers:
+//   - the SDK's own `wait({ kind: 'networkIdle' })` quiescence detector
+//   - the broker's `withSideEffectCapture()` middleware
+//
+// Adding a method is a structural widening of the type — call sites and
+// implementers expecting only `send` keep compiling. No version bump
+// required (consult `feedback_multi_version_preservation.md` if in doubt).
 // ---------------------------------------------------------------------------
 
 export interface CdpSession {
   send: (method: string, params?: Record<string, unknown>) => Promise<unknown>;
+  on: (event: string, handler: (params: unknown) => void) => () => void;
 }
 
 // ---------------------------------------------------------------------------
