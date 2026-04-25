@@ -1,4 +1,5 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig, mergeConfig } from 'vitest/config';
+import { createNodeVitestConfig } from '@mcv/vitest-config';
 import path from 'path';
 
 // vmForks pool is required to work around a Windows + Node.js v24 + Vitest v4 issue
@@ -6,11 +7,9 @@ import path from 'path';
 // (due to drive-letter case normalization), causing the module-level `runner`
 // variable to be undefined when describe() calls initSuite().
 // vmForks uses VM context isolation which avoids this path resolution issue.
-export default defineConfig({
-  plugins: [],
-  test: {
-    globals: true,
-    environment: 'node',
+
+export default mergeConfig(
+  createNodeVitestConfig({
     pool: 'vmForks',
     include: [
       'src/**/__tests__/**/*.test.ts',
@@ -26,10 +25,13 @@ export default defineConfig({
       include: ['src/lib/**/*.ts'],
       exclude: ['src/lib/**/__tests__/**', 'src/lib/**/types.ts'],
     },
-  },
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
+  }),
+  defineConfig({
+    plugins: [],
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+      },
     },
-  },
-});
+  }),
+);
