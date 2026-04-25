@@ -1,0 +1,89 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "MCV canonical Renovate preset (inlined from @mcv/renovate-config — see commit body for cross-repo extends limitation).",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    ":semanticCommitTypeAll(chore)",
+    ":semanticCommitScope(deps)",
+    ":dependencyDashboard"
+  ],
+  "timezone": "America/Toronto",
+  "schedule": ["before 6am on Monday"],
+  "labels": ["deps", "renovate"],
+  "assigneesFromCodeOwners": true,
+  "prHourlyLimit": 4,
+  "prConcurrentLimit": 10,
+  "rangeStrategy": "bump",
+  "rebaseWhen": "conflicted",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on Monday"],
+    "commitMessageAction": "update",
+    "commitMessageTopic": "lockfile"
+  },
+  "packageRules": [
+    {
+      "description": "Auto-merge safe patch + pinned-dev updates",
+      "matchUpdateTypes": ["patch", "pin", "digest"],
+      "matchDepTypes": ["devDependencies"],
+      "automerge": true,
+      "automergeType": "branch"
+    },
+    {
+      "description": "Group React ecosystem major upgrades to land as one PR",
+      "matchPackageNames": ["react", "react-dom", "@types/react", "@types/react-dom"],
+      "groupName": "react"
+    },
+    {
+      "description": "Group Next.js ecosystem",
+      "matchPackageNames": ["next", "@next/*", "eslint-config-next"],
+      "groupName": "next.js"
+    },
+    {
+      "description": "Group TypeScript + typescript-eslint",
+      "matchPackageNames": ["typescript", "typescript-eslint", "@typescript-eslint/*"],
+      "groupName": "typescript"
+    },
+    {
+      "description": "Group Vitest ecosystem",
+      "matchPackageNames": ["vitest", "@vitest/*", "happy-dom", "jsdom"],
+      "groupName": "vitest"
+    },
+    {
+      "description": "Group Turbo + Turborepo tooling",
+      "matchPackageNames": ["turbo", "eslint-config-turbo"],
+      "groupName": "turbo"
+    },
+    {
+      "description": "Group Tailwind ecosystem",
+      "matchPackageNames": ["tailwindcss", "@tailwindcss/*", "autoprefixer", "postcss"],
+      "groupName": "tailwind"
+    },
+    {
+      "description": "Group Prisma ecosystem",
+      "matchPackageNames": ["prisma", "@prisma/*"],
+      "groupName": "prisma"
+    },
+    {
+      "description": "Group Drizzle ecosystem",
+      "matchPackageNames": ["drizzle-orm", "drizzle-kit", "drizzle-zod"],
+      "groupName": "drizzle"
+    },
+    {
+      "description": "Pin Node engines conservatively",
+      "matchDepTypes": ["engines"],
+      "enabled": false
+    },
+    {
+      "description": "Never bump internal @mcv/* workspace packages",
+      "matchPackageNames": ["@mcv/*"],
+      "matchPackagePatterns": ["^@mcv/"],
+      "enabled": false
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security"]
+  }
+}
