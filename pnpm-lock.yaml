@@ -4,6 +4,15 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  '@mcv/commitlint-config': link:../Documents/GitHub/mcv-core-triangle/tooling/commitlint-config
+  '@mcv/eslint-config': link:../Documents/GitHub/mcv-core-triangle/tooling/eslint-config
+  '@mcv/prettier-config': link:../Documents/GitHub/mcv-core-triangle/tooling/prettier-config
+  '@mcv/renovate-config': link:../Documents/GitHub/mcv-core-triangle/tooling/renovate-config
+  '@mcv/tsconfig': link:../Documents/GitHub/mcv-core-triangle/tooling/tsconfig
+  '@mcv/turbo-config': link:../Documents/GitHub/mcv-core-triangle/tooling/turbo-config
+  '@mcv/vitest-config': link:../Documents/GitHub/mcv-core-triangle/tooling/vitest-config
+
 importers:
 
   .:
@@ -258,6 +267,27 @@ importers:
       '@eslint/js':
         specifier: ^9.39.4
         version: 9.39.4
+      '@mcv/commitlint-config':
+        specifier: link:../Documents/GitHub/mcv-core-triangle/tooling/commitlint-config
+        version: link:../Documents/GitHub/mcv-core-triangle/tooling/commitlint-config
+      '@mcv/eslint-config':
+        specifier: link:../Documents/GitHub/mcv-core-triangle/tooling/eslint-config
+        version: link:../Documents/GitHub/mcv-core-triangle/tooling/eslint-config
+      '@mcv/prettier-config':
+        specifier: link:../Documents/GitHub/mcv-core-triangle/tooling/prettier-config
+        version: link:../Documents/GitHub/mcv-core-triangle/tooling/prettier-config
+      '@mcv/renovate-config':
+        specifier: link:../Documents/GitHub/mcv-core-triangle/tooling/renovate-config
+        version: link:../Documents/GitHub/mcv-core-triangle/tooling/renovate-config
+      '@mcv/tsconfig':
+        specifier: link:../Documents/GitHub/mcv-core-triangle/tooling/tsconfig
+        version: link:../Documents/GitHub/mcv-core-triangle/tooling/tsconfig
+      '@mcv/turbo-config':
+        specifier: link:../Documents/GitHub/mcv-core-triangle/tooling/turbo-config
+        version: link:../Documents/GitHub/mcv-core-triangle/tooling/turbo-config
+      '@mcv/vitest-config':
+        specifier: link:../Documents/GitHub/mcv-core-triangle/tooling/vitest-config
+        version: link:../Documents/GitHub/mcv-core-triangle/tooling/vitest-config
       '@mozilla/readability':
         specifier: ^0.6.0
         version: 0.6.0
