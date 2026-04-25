@@ -16,6 +16,10 @@ export default defineConfig({
       'src/**/__tests__/**/*.test.ts',
       'packages/**/src/**/__tests__/**/*.test.ts',
       'scripts/**/__tests__/**/*.test.ts',
+      // VIL Session 2: pick up server/vision-broker/__tests__ and any
+      // future server-side daemon test directories that follow the
+      // co-located __tests__ convention.
+      'server/**/__tests__/**/*.test.ts',
     ],
     coverage: {
       provider: 'v8',

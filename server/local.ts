@@ -96,6 +96,7 @@ import { registerBrowserRoutes } from './browser-routes';
 import { registerYouTubeRoutes } from './youtube-routes';
 import { attachBrowserWebSocket } from './browser-ws';
 import { registerApiRoutes } from './api-routes';
+import { registerVisionBrokerRoutes } from './vision-broker/routes';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "3100");
@@ -494,6 +495,7 @@ registerMcpRoutes(app);
 registerDeviceRoutes(app);
 registerBrowserRoutes(app);
 registerYouTubeRoutes(app);
+registerVisionBrokerRoutes(app);
 
 // Vercel-style /api/* handlers (loaded dynamically from the api/ directory
 // so local dev matches production routing without needing Vercel CLI).
@@ -509,7 +511,8 @@ const server = app.listen(PORT, () => {
   console.log(`  🔗 Pipeline:  /local/pipeline, /local/pipeline/read, /local/pipeline/git-log`);
   console.log(`  🔌 MCP Proxy: /mcp/spawn, /mcp/message/:id, /mcp/kill/:id, /mcp/status`);
   console.log(`  🌐 Browser:   /local/browser/session, /local/browser/navigate, ws://stream`);
-  console.log(`  🎬 YouTube:   /local/youtube/transcript, /local/youtube/info\n`);
+  console.log(`  🎬 YouTube:   /local/youtube/transcript, /local/youtube/info`);
+  console.log(`  👁️  Vision:    /vision/snapshot (annotated overlay + audit log)\n`);
 });
 
 // Attach WebSocket handler for browser frame streaming
