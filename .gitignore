@@ -59,3 +59,8 @@ local-state-*.png
 # One-off backup files from AI/assistant workflows
 *.gemini.bak.ts
 *.gemini.bak.tsx
+
+# VIL — vision-broker local SQLite audit log (per-user, per-machine)
+.mcv/vision-broker.db
+.mcv/vision-broker.db-wal
+.mcv/vision-broker.db-shm
